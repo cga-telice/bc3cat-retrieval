@@ -1,0 +1,43 @@
+# Ignore all files in milvus, etcd, and minio folders
+milvus/
+etcd/
+minio/
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore data directories
+data/
+datasets/
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore virtual environment
+venv/
+env/
+
+# Ignore compiled files
+*.class
+*.pyc
+*.o
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.swp
+*.bak
+*.orig
+
+# Ignore Ollama-related files
+ollama/
+*.ollama
+
+# Ignore coda and torch folders
+coda/
+torch/
