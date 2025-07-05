@@ -6,9 +6,10 @@ minio/
 # Ignore Jupyter notebook checkpoints
 .ipynb_checkpoints/
 
-# Ignore data directories
-data/
-datasets/
+# Ignore data files
+*.pkl
+*.json
+*.npz
 
 # Ignore logs
 *.log
