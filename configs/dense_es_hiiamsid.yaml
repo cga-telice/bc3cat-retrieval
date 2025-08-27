@@ -1,0 +1,41 @@
+# Dense E5 baseline (Spanish/multilingual)
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_text_path: "{data_dir}/{collection}_resumen.json"
+  long_text_path: "{data_dir}/{collection}_texto.json"
+
+method:
+  family: dense
+  name: dense_es_hiiamsid
+  impl: dense_es_hiiamsid
+  params:
+    model_name: hiiamsid/sentence_similarity_spanish_es
+    batch_size: 256
+    max_length: 512
+    normalize: true
+    add_query_prefix: false # IMPORTANT: no "query" prefix for this model
+    trust_remote_code: true
+
+index:
+  # Where the index artifacts will be written (same layout as lexical methods)
+  output_dir: /index/dense_es_hiiamsid
+
+builder:
+  module: src.index_builders.dense_es_hiiamsid
+
+retriever:
+  module: src.retrievers.dense_es_hiiamsid
+  class: DenseSearcher
+  params:
+    topk: 100
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json

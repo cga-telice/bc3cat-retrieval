@@ -10,6 +10,25 @@ minio/
 *.pkl
 *.json
 *.npz
+*.csv
+*.parquet
+*.gz
+
+# Datos y cachés
+data/
+runs/
+index/
+data/hf_cache/
+sandbox/
+notebooks/.ipynb_checkpoints/
+
+# Artefactos/modelos
+*.npz
+*.pkl
+*.pt
+*.onnx
+*.bin
+*.model
 
 # Ignore logs
 *.log

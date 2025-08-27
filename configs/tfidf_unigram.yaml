@@ -1,0 +1,35 @@
+# configs/tfidf_unigram.yaml
+experiment_id: oeb_v1
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  # these are produced by data.ipynb + features.ipynb
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats:  "{data_dir}/{collection}_long_feats.parquet"
+  features_meta: "{data_dir}/{collection}_features_meta.json"
+
+method:
+  name: tfidf_unigram
+  family: tfidf
+  params:
+    analyzer: word
+    ngram_range: [1, 1]
+    norm: l2
+    use_idf: true
+    smooth_idf: true
+    sublinear_tf: false
+    dtype: float32
+    lowercase: true
+    token_pattern: '(?u)\b\w+\b'
+    strip_accents: 'unicode'
+
+io:
+  # standard file names under /index/<method>/...
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+  data_dirname: data

@@ -1,0 +1,7 @@
+bm25_unibigram
+bm25_unigram
+tfidf_char_3_5
+tfidf_unigram
+tfidf_unigram_nostop
+tfidf_unigram_phrases_add
+tfidf_unigram_phrases_replace

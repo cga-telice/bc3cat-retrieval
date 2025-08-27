@@ -1,0 +1,36 @@
+{
+  "collection": "OEB",
+  "paths": {
+    "data_dir": "/work/data/processed",
+    "index_root": "/work/index"
+  },
+  "inputs": {
+    "short_feats": "/work/data/processed/OEB_short_feats.parquet",
+    "long_feats": "/work/data/processed/OEB_long_feats.parquet",
+    "features_meta": "/work/data/processed/OEB_features_meta.json"
+  },
+  "method": {
+    "family": "bm25",
+    "name": "bm25_unigram__k1-0.60__b-0.50",
+    "impl": "bm25_unigram",
+    "save_as": "bm25_unigram__k1-0.60__b-0.50",
+    "params": {
+      "analyzer": "word",
+      "ngram_range": [
+        1,
+        1
+      ],
+      "lowercase": true,
+      "token_pattern": "(?u)\\b\\w+\\b",
+      "strip_accents": "unicode",
+      "k1": 0.6,
+      "b": 0.5
+    }
+  },
+  "io": {
+    "data_dirname": "data",
+    "mapping_file": "mapping.jsonl",
+    "fields_file": "fields.json",
+    "meta_file": "meta.json"
+  }
+}

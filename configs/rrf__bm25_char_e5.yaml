@@ -1,0 +1,65 @@
+# /work/configs/rrf__bm25_char_e5.yaml
+# Keep METHOD_NAME starting with 'rrf__' so the retrieve notebook imports retrievers.rrf
+# while saving results under a unique index folder (rrf__bm25_char)
+
+method:
+  name: rrf__bm25_char_e5     # used by notebooks; base 'rrf' ensures retriever import works
+  impl: rrf                # index_builder module: src/index_builders/rrf.py
+  save_as: rrf__bm25_char_e5  # index folder name under /work/index
+  family: rrf
+  params:
+    k_merge: 100     # how many from each component to fuse
+    k_final: 100     # what your RRF.search_batch should return
+    k_base: 60       # classic RRF constant (score += 1/(k_base + rank))
+
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+# Only used by the notebook to load queries; RRF itself doesn't read inputs.
+inputs:
+  short_text_path: "{data_dir}/{collection}_short_norm.parquet"
+  long_text_path: "{data_dir}/{collection}_long_norm.parquet"
+
+rrf:
+  # list the **METHOD_NAMEs** of existing retrievers + where their indexes live
+  rrf_constant: 60
+  k_each: 200
+  query_text_field: text 
+
+  components:
+    - name: tfidf_char_3_5
+      module: tfidf_unigram
+      index_dir: /work/index/tfidf_char_3_5
+      k: 100
+      weight: 1.0
+
+    - name: bm25_unigram
+      module: bm25_unigram
+      index_dir: /work/index/bm25_unigram
+      k: 100
+      weight: 1.0
+    
+    - name: dense_e5
+      module: dense_e5
+      index_dir: /work/index/dense_e5
+      k: 100
+      weight: 1.5
+
+  # Optional: numeric bonus context (kept for future use; retriever keeps fusion pure)
+  numeric_bonus:
+    enable: false
+    mode: exact
+    beta: 0.15
+    numbers_column: numbers
+    long_feats_path: "{data_dir}/{collection}_long_norm.parquet"
+    short_feats_path: "{data_dir}/{collection}_short_norm.parquet"
+
+io:
+  # standard file names under /index/<method>/...
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
