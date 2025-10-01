@@ -1,0 +1,40 @@
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+# What to build and how it’s named on disk
+method:
+  family: dense               # appears in meta.json (your notebooks read this)
+  name: bge_m3_dense          # run name (registry key)
+  impl: bge_m3_dense          # module: index_builders.bge_m3_dense / retrievers.bge_m3_dense
+  save_as: bge_m3_dense       # folder under /index/
+  params:
+    api_base: "http://host.docker.internal:8800"
+
+# Inputs: long/short templates (your notebook formats them)
+inputs:
+  long_feats: "{data_dir}/{collection}_long_norm.parquet"
+  short_feats: "{data_dir}/{collection}_short_norm.parquet"
+  # optional: features_meta if you keep a JSON with text_fields
+  # features_meta: "{data_dir}/OEB_features_meta.json"
+
+# I/O naming under the index folder
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+
+# Model params (used by the builder)
+model:
+  name: BAAI/bge-m3
+  use_fp16: true
+  max_length_doc: 2048
+  max_length_query: 256
+  # optional: if set, builder/retriever will call the container API
+  # comment it out to run locally
+  api_base: "http://host.docker.internal:8800"
+
+# (Optional) experiment id
+experiment_id: bge_m3_dense_v1

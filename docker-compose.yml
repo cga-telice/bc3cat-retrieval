@@ -31,7 +31,7 @@ services:
 
     ollama:
         container_name: ollama
-        image: ollama/ollama:0.3.12-rc4-rocm
+        image: ollama/ollama:0.12.3
         pull_policy: always
         tty: true
         restart: always
@@ -55,6 +55,36 @@ services:
                         - driver: nvidia
                           count: all
                           capabilities: [ "gpu" ]
+
+    bge-m3:
+        build:
+            context: . # folder where Dockerfile.bge-m3 is located
+            dockerfile: Dockerfile.bge-m3
+        image: bge-m3:cuda
+        container_name: bge-m3
+        restart: unless-stopped
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: all
+                          capabilities: [ "gpu" ]
+        environment:
+            - HF_HOME=/hf-cache
+            - TRANSFORMERS_CACHE=/hf-cache/transformers
+            - HF_DATASETS_CACHE=/hf-cache/datasets
+            - XDG_CACHE_HOME=/hf-cache
+            - HF_HUB_ENABLE_HF_TRANSFER=1
+            - BGE_MODEL=BAAI/bge-m3
+            - BGE_USE_FP16=true
+        volumes:
+            - ./work:/work
+            - ./hf-cache:/hf-cache
+        ports:
+            - "8800:8000"
+        networks:
+            - default
 
 
 

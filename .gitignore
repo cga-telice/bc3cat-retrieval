@@ -14,19 +14,26 @@ minio/
 *.parquet
 *.gz
 
-# Datos y cachés
+# Data / cache
 data/
+resultados.jsonl
+notebooks/resultados.jsonl
 runs/
 index/
 data/hf_cache/
+hf_cache/
 sandbox/
 notebooks/.ipynb_checkpoints/
+*.ipynb_checkpoints/
+__pycache__/
 
-# Artefactos/modelos
+
+# Artefacts/models
 *.npz
 *.pkl
 *.pt
 *.onnx
+*.onnx_data
 *.bin
 *.model
 
