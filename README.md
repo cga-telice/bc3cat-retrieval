@@ -1,103 +1,311 @@
-# Proyecto de procesamiento de lenguaje natural
+# BC3CAT Retrieval: A Benchmark for Retrieval on Parametric Construction Catalogs
 
-Este proyecto realiza procesamiento de lenguaje natural (NLP) utilizando modelos de la librería Hugging Face, almacenamiento de vectores con Milvus y almacenamiento de objetos con MinIO. Todo el sistema se despliega mediante Docker Compose.
+This repository contains the retrieval pipeline for creating a evaluation benchmark from ADIF's parametric construction price catalog. The methods are part of the research presented in:
 
-## Requisitos
+> **A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches**  
+> González-Alvarez, C., Fernández-Robles, L., Alegre, E., & Castejón-Limas, M.  
+> *Automation in Construction* (under review)
 
-* Docker
-* Docker Compose
+## Overview
 
-## Instalación y arranque
+This repository contains the implementation and evaluation framework for construction catalog matching, where:
 
-1. Clonar el repositorio:
+- **Queries**: Short-format descriptions (*resumen*) — condensed summaries of construction work items
+- **Documents**: Long-format descriptions (*texto*) — detailed technical specifications
 
-```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <directorio_del_proyecto>
+The study evaluates retrieval methods on the ADIF Spanish railway construction catalog (~40,000 items, 16,590 queries), using a dual-target evaluation protocol that assesses both item-level and parent-category accuracy.
+
+### Key Findings
+
+- **Best Method**: BM25 with tuned parameters (k1=0.60, b=0.35) achieves **97.4% Item Acc@1** and **98.5% Parent Acc@1**
+- Lexical methods with parameter values in queries outperform neural embeddings at fine-grained item retrieval
+- Dense neural embeddings show improved consistency at the broader parent-category level
+- Well-tuned BM25 provides a robust, interpretable baseline for construction catalog matching
+
+## Repository Structure
+
+```
+bc3cat-retrieval/
+├── configs/           # YAML configuration files for all method variants
+├── data/              # Processed datasets (parquet/json) and HuggingFace cache
+├── index/             # Built indexes for all retrieval methods
+├── runs/              # Evaluation results (metrics, rankings, logs)
+├── eval/              # Analysis outputs (bootstrap tests, error analysis)
+├── src/               # Python implementation
+│   ├── index_builders/   # Index construction modules
+│   ├── retrievers/       # Retrieval implementations
+│   ├── rerankers/        # Reranking modules
+│   └── utils/            # Shared utilities
+├── notebooks/         # Analysis and orchestration notebooks
+├── apis/              # API services (e.g., BGE-M3 server)
+└── logs/              # Execution logs
 ```
 
-2. Levantar el entorno completo con Docker Compose:
+## Methods Implemented
+
+### Lexical Methods
+- **BM25** (unigram, unigram+params, unibigram) with parameter sweeps (k1, b)
+- **TF-IDF** variants (unigram, char n-grams 3-5, phrase detection)
+
+### Neural Methods
+- **Dense Embeddings**: E5, GTE, BGE-M3, Spanish sentence-transformers
+- **Sparse Embeddings**: BGE-M3 sparse
+- **Late Interaction**: BGE-M3 ColBERT
+
+### Hybrid & Advanced
+- **RRF Fusion**: Combining lexical and neural rankings
+- **PRF** (Pseudo-Relevance Feedback): RM3 and Rocchio query expansion
+- **Reranking**: Cross-encoder and tiebreaking strategies
+
+## Quick Start
+
+### Prerequisites
+
+- Docker with NVIDIA GPU support (recommended)
+- Or: Python 3.11+ with dependencies
+
+### Using Docker (Recommended)
 
 ```bash
-docker-compose up --build
+# Clone the repository
+git clone https://github.com/cga-telice/bc3cat-dataset.git
+cd bc3cat-dataset
+
+# Start Jupyter environment
+docker-compose up -d
+
+# Access Jupyter at http://localhost:8888 (token: j)
 ```
 
-> Nota: el primer arranque puede tardar mientras se construyen las imágenes y se descargan las dependencias.
+### Manual Setup
 
-3. El sistema expondrá el servicio principal en `http://localhost:8000` (o el puerto especificado en el docker-compose).
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
 
-## Servicios incluidos en Docker Compose
+# Install dependencies
+pip install -r requirements.txt
 
-* **Aplicación principal (app)**: ejecuta el procesamiento principal.
-* **Milvus**: base de datos vectorial para almacenamiento de embeddings.
-* **MinIO**: almacenamiento de objetos para datasets y procesamiento de datos.
-* **Ollama**: servicio auxiliar (posiblemente para modelos LLM locales).
-* **etcd**: servicio de coordinación de Milvus.
+# Run notebooks in order
+cd src
+jupyter notebook
+```
 
-## Estructura del proyecto
+### Additional Dependencies
 
-### Código fuente (`src/`)
+For full functionality, you may need:
 
-* `01_parse/` → módulos de parsing y preprocesamiento de datos.
-* `02_indexes/` → módulos de indexación y gestión de índices.
-* `utils/` → funciones utilitarias compartidas.
+```bash
+pip install pandas pyarrow ranx faiss-cpu scikit-learn tqdm pyyaml matplotlib seaborn
+```
 
-### Datos (`data/`)
+For neural methods:
+```bash
+pip install transformers sentence-transformers torch
+```
 
-* `raw/` → datos originales sin procesar.
-* `processed/` → datos listos para ser utilizados en el pipeline.
-* `intermediate/` → resultados intermedios del procesamiento.
-* `indexes/` → índices generados.
+## Usage
 
-## Instrucciones de procesamiento de datos
+### 1. Data Preparation
 
-En la carpeta `data/raw` se encuentra el archivo `BPA_2024_v2.txt`, que contiene el cuadro de precios de ADIF en formato BC3. A partir de él he generado un fichero modificado `BPA_2024_v2_OEB_mod.txt` para que las descripciones de unidades del subcapítulo **OEB** sean más expresivas (por ejemplo: "Volumen Relevante" en lugar de "R").
+The dataset should be placed in `data/` with the following structure:
+- `OEB_short_feats.parquet`: Short feature representations
+- `OEB_long_feats.parquet`: Long feature representations  
+- `OEB_features_meta.json`: Feature metadata
 
-### Pipeline de parseado
+### 2. Building Indexes
 
-El pipeline de procesamiento se ejecuta de forma secuencial a través de los cuadernos numerados:
+Use the index builder notebooks in `src/`:
 
-- `S01_...` hasta `S08_...`
+```python
+# In src/index_builder.ipynb
+# Load config and build index for a specific method
+config = load_config("configs/bm25_unigram_params__k1-0.60__b-0.35.yaml")
+# Build and save index artifacts
+```
 
-Hay que prestar especial atención a los nombres de los archivos de entrada y salida de cada cuaderno.
+Each index builder module follows a standard contract:
+- `select_field()`: Determines which text field to index
+- `build()`: Constructs method-specific artifacts (matrices, vocabularies, etc.)
 
-Estos cuadernos procesan el archivo `BPA_2024_v2.txt` y generan los datasets intermedios.
+### 3. Running Retrieval
 
-### Extracción del subcapítulo OEB
+Use the retrieval notebooks in `src/`:
 
-Una vez finalizado el parseado completo, se ejecuta el cuaderno:
+```python
+# In src/retrieve.ipynb
+# Load index and run retrieval on query set
+results = retrieve(config, queries, top_k=100)
+```
 
-- `Generate_OEB_dataset`
+### 4. Evaluation
 
-Este cuaderno filtra y extrae exclusivamente los elementos pertenecientes al subcapítulo **OEB**.
+Evaluate results using the evaluation notebook:
 
-### Generación y análisis de índices
+```python
+# In src/eval.ipynb
+# Compute metrics for both item and parent targets
+metrics = evaluate(results, qrels, targets=['item', 'parent'])
+```
 
-Los índices vectoriales se generan y analizan mediante los siguientes cuadernos:
+Metrics computed via [ranx](https://github.com/AmenRa/ranx) v0.3.7:
+- **Acc@1** (Accuracy at rank 1)
+- **Recall@5, Recall@10**
+- **MRR** (Mean Reciprocal Rank)
+- **nDCG@10**
 
-- Generación: `I#_[índice]_Builder`
-- Análisis: `I#_[índice]_Analysis`
+### 5. Parameter Sweeps
 
-Para su ejecución, los archivos de partida necesarios se encuentran en `data/processed`:
+Configuration files in `configs/` support systematic parameter exploration:
 
-- `[Capitulo]_resumen.pkl`
-- `[Capitulo]_texto.pkl`
+```yaml
+method:
+  family: bm25
+  name: bm25_unigram_params__k1-0.60__b-0.35
+  params:
+    k1: 0.60
+    b: 0.35
+```
 
+## Evaluation Protocol
 
-## Dependencias principales
+The evaluation uses a **dual-target** approach:
+1. **Item-level**: Exact match to the specific catalog item
+2. **Parent-level**: Match to the parent category (allowing siblings as correct)
 
-Las dependencias de Python se encuentran en `requirements.txt`, e incluyen:
+This reflects the hierarchical structure of parametric construction catalogs where items share parent categories through parameterized attributes.
 
-* `transformers==4.26.0`
-* `sentence-transformers==2.2.2`
-* `huggingface_hub==0.13.4`
+### Statistical Testing
 
-Estas versiones garantizan compatibilidad con PyTorch 2.2.2.
+Bootstrap significance tests (10,000 iterations) with Holm-Bonferroni and Benjamini-Hochberg corrections are provided in `eval/bootstrap_*/`.
 
-## Contribuciones
+## Results Summary
 
+| Method | Item Acc@1 | Parent Acc@1 | MRR |
+|--------|------------|--------------|-----|
+| BM25 (k1=0.60, b=0.35) | **0.974** | **0.985** | 0.979 |
+| BM25 (default) | 0.569 | 0.612 | 0.584 |
+| TF-IDF unigram | 0.411 | 0.468 | 0.432 |
+| BGE-M3 ColBERT | 0.294 | 0.412 | 0.341 |
+| Dense E5 | 0.088 | 0.324 | 0.142 |
 
+*Full results available in `runs/` and `eval/` directories.*
 
-## Licencia
+## Configuration
 
+All experiments are controlled via YAML configuration files:
+
+```yaml
+collection: "OEB"
+paths:
+  data_dir: "/work/data/processed"
+  index_root: "/work/index"
+inputs:
+  short_feats: "/work/data/processed/OEB_short_feats.parquet"
+  long_feats: "/work/data/processed/OEB_long_feats.parquet"
+method:
+  family: "bm25"
+  name: "bm25_unigram_params__k1-0.60__b-0.35"
+  impl: "bm25_unigram_params"
+  params:
+    analyzer: "word"
+    ngram_range: [1, 1]
+    k1: 0.60
+    b: 0.35
+```
+
+## Docker Support
+
+For BGE-M3 embedding server:
+
+```bash
+docker-compose up bge-m3-server
+```
+
+## Citation
+
+If you use this code or dataset, please cite:
+
+```bibtex
+@article{gonzalez2025systematic,
+  title={A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches},
+  author={González-Alvarez, Cesáreo and Fernández-Robles, Laura and Alegre, Enrique and Castejón-Limas, Manuel},
+  journal={Automation in Construction},
+  year={2025},
+  note={Under review}
+}
+```
+
+## License
+
+This repository uses dual licensing:
+
+### Code (MIT License)
+
+The source code (notebooks, scripts, utilities) is licensed under the MIT License:
+```
+MIT License
+
+Copyright (c) 2025 Cesáreo González-Alvarez, Laura Fernández-Robles, 
+Enrique Alegre, Manuel Castejón-Limas, Universidad de León
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### Dataset (CC-BY 4.0)
+
+The processed dataset files are licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+
+You are free to:
+- **Share** — copy and redistribute the material in any medium or format
+- **Adapt** — remix, transform, and build upon the material for any purpose, including commercial
+
+Under the following terms:
+- **Attribution** — You must give appropriate credit, provide a link to the license, and indicate if changes were made. Please cite our paper (see Citation section above).
+
+The source data is derived from ADIF's publicly available price catalog (Base de Precios ADIF). Our processed dataset and annotations are original contributions licensed under CC-BY 4.0.
+
+### Third-Party Models
+
+This repository uses pre-trained models with their own licenses:
+- **E5/GTE**: MIT License
+- **BGE-M3**: MIT License
+- **Sentence-Transformers**: Apache 2.0
+
+Please refer to the respective model repositories for full license terms.
+
+## Acknowledgments
+
+This work was conducted at the Group for Vision and Intelligent Systems (GVIS), I4 Institute, Universidad de León, Spain.
+
+The authors gratefully acknowledge **Telice S.A.** for providing resources and data access that made this research possible, and **ADIF** for making their price catalog (Base de Precios ADIF) publicly available.
+
+This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
+
+### AI Disclosure
+
+The authors used generative AI tools to assist with code development, data analysis, and manuscript preparation. All AI-assisted outputs were reviewed and verified by the authors, who take full responsibility for the content of this work.
+
+## Contact
+
+Cesáreo González-Alvarez  
+Universidad de León  
+Email: cgonza06@estudiantes.unileon.es
 

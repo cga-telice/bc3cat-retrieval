@@ -16,6 +16,8 @@ minio/
 
 # Data / cache
 data/
+data/raw/
+data/intermediate/
 resultados.jsonl
 notebooks/resultados.jsonl
 runs/
@@ -26,6 +28,8 @@ sandbox/
 notebooks/.ipynb_checkpoints/
 *.ipynb_checkpoints/
 __pycache__/
+hf-cache/
+**.ipynb_checkpoints/
 
 
 # Artefacts/models

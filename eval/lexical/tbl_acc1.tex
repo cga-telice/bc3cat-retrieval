@@ -1,0 +1,19 @@
+\begin{table}
+\caption{Accuracy@1 by scope: has numbers vs no numbers.}
+\label{tab:acc1}
+\begin{tabular}{lrr}
+\toprule
+method & Has numbers & No numbers \\
+\midrule
+bm25_unigram_params__k1-0.60__b-0.35 & 0.974000 & 1.000000 \\
+bm25_unigram__k1-0.80__b-0.35 & 0.869000 & 0.931000 \\
+bm25_unibigram__k1-0.80__b-0.35 & 0.826000 & 0.966000 \\
+tfidf_unigram_phrases_replace & 0.708000 & 1.000000 \\
+tfidf_unigram_phrases_add & 0.649000 & 1.000000 \\
+tfidf_unigram_nostop & 0.641000 & 1.000000 \\
+tfidf_unigram & 0.626000 & 1.000000 \\
+tfidf_char_3_5 & 0.558000 & 1.000000 \\
+rrf__bm25_char_e5 & 0.496000 & 0.966000 \\
+\bottomrule
+\end{tabular}
+\end{table}

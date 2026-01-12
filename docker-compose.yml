@@ -1,15 +1,15 @@
 networks:
     default:
-        name: price-catalog
+        name: bc3cat-retrieval
         driver: bridge
 
 services:
     jupyter-pytorch:
         image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
-        container_name: milvus-jupyter-pytorch
+        container_name: jupyter-pytorch
         user: root
         volumes:
-            - "d:/users/cesar/dev/phd/price-catalog:/work"
+            - ".:/work"
         environment:
             - NVIDIA_VISIBLE_DEVICES=all
             - NVIDIA_DRIVER_CAPABILITIES=compute,utility
@@ -28,34 +28,6 @@ services:
         entrypoint: >
             /bin/bash -c " if [ -f /work/requirements.txt ]; then pip install -r /work/requirements.txt; fi && exec jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --debug --notebook-dir=/work --ServerApp.iopub_data_rate_limit=10000000
                           "
-
-    ollama:
-        container_name: ollama
-        image: ollama/ollama:0.12.3
-        pull_policy: always
-        tty: true
-        restart: always
-        environment:
-            - OLLAMA_MAX_LOADED_MODELS=2
-            - OLLAMA_NUM_PARALLEL=2
-            - OLLAMA_KEEP_ALIVE=24h
-            - OLLAMA_HOST=0.0.0.0
-            - OLLAMA_DEBUG=1
-            - NVIDIA_VISIBLE_DEVICES=all
-        volumes:
-            - "d:/users/cesar/dev/phd/price-catalog/ollama:/root/.ollama"
-        ports:
-            - "11434:11434"
-        networks:
-            - default
-        deploy:
-            resources:
-                reservations:
-                    devices:
-                        - driver: nvidia
-                          count: all
-                          capabilities: [ "gpu" ]
-
     bge-m3:
         build:
             context: . # folder where Dockerfile.bge-m3 is located
