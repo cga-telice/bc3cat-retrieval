@@ -1,0 +1,40 @@
+# Concept-level E5 index (Stage 1 of structured pipeline)
+# One vector per concept group (25 vectors) using concept field text.
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+method:
+  family: dense
+  name: concept_dense_e5
+  impl: concept_dense_e5
+  params:
+    model_name: intfloat/multilingual-e5-base
+    batch_size: 256
+    max_length: 512
+    normalize: true
+    add_doc_prefix: true
+    doc_prefix: "passage: "
+    add_query_prefix: true
+    query_prefix: "query: "
+    device: "cuda"
+
+index:
+  output_dir: /index/concept_dense_e5
+
+builder:
+  module: src.index_builders.concept_dense_e5
+
+retriever:
+  module: src.retrievers.dense_e5
+  class: DenseSearcher
+  params:
+    topk: 25
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json

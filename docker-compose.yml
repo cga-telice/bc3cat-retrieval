@@ -58,6 +58,23 @@ services:
         networks:
             - default
 
+    ollama:
+        image: ollama/ollama:0.17.7
+        container_name: ollama
+        ports:
+            - "11434:11434"
+        volumes:
+            - ollama-models:/root/.ollama
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [ gpu ]
+        networks:
+            - default
+        restart: unless-stopped
 
-
-
+volumes:
+    ollama-models:
