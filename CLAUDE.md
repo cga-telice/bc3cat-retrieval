@@ -2,7 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
- **Branch note:** If working on the structured-retrieval branch, read `docs/CLAUDE_STRUCTURED_RETRIEVAL.md` for pipeline-specific context.
+ **Branch note:** If working on the `structured-retrieval` branch, read `docs/structured-retrieval/CLAUDE_STRUCTURED_RETRIEVAL.md` for pipeline-specific context.
+ **Branch note:** If working on the `lightweight-extraction` branch, read `docs/lightweight-extraction/CLAUDE_LIGHTWEIGHT.md` for pipeline-specific context.
 
 ## Project Summary
 

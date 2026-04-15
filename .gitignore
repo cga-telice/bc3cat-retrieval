@@ -72,3 +72,6 @@ ollama/
 # Ignore coda and torch folders
 coda/
 torch/
+
+# Ignore Serena
+*.serena
