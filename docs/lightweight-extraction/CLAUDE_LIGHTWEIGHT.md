@@ -19,6 +19,16 @@ The SEPLN 2026 paper showed that in the three-stage structured retrieval pipelin
 **Prior research (read-only):**
 - `docs/structured-retrieval/` — all SEPLN paper documents (proposal, protocol, log, Claude context)
 
+## Sprint Closure Checklist
+
+After completing each sprint, **always** do the following before moving on:
+
+1. Commit sprint code changes
+2. Update `docs/lightweight-extraction/RESEARCH_LOG_LIGHTWEIGHT.md` with results
+3. Update this file's Sprint History section (if new context is needed)
+4. Commit doc updates
+5. Push
+
 ---
 
 ## Pipeline Architecture (unchanged from structured-retrieval)
@@ -157,6 +167,13 @@ docs/lightweight-extraction/
 ## Sprint History
 
 *Newest entries at the top.*
+
+### Sprint LW-01 — Training Data Generation
+**Date:** April 2026
+**What changed:**
+- Created `src/pipeline/training/data_prep.py`
+- Produced `classifier_training_data.parquet` (47,508 rows, 80/10/10 split) and `classifier_label_encoders.json` (97 heads, 556 classes)
+- OEB160$ (3 items) placed entirely in train due to small size
 
 ### Sprint LW-00 — Branch Setup
 **Date:** April 2026
