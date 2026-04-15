@@ -168,6 +168,13 @@ docs/lightweight-extraction/
 
 *Newest entries at the top.*
 
+### Sprint LW-02 — Multi-Head Classifier Implementation
+**Date:** April 2026
+**What changed:**
+- Created `src/pipeline/param_extractor_classifier.py` — model + extractor with same interface as rules/LLM
+- Created `src/pipeline/training/train_classifier.py` — full training loop with validation and early stopping
+- 97 heads, 278.5M params. Sanity test passed (100 samples, 1 epoch).
+
 ### Sprint LW-01 — Training Data Generation
 **Date:** April 2026
 **What changed:**
