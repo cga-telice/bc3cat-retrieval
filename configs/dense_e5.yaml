@@ -1,0 +1,47 @@
+# Dense E5 baseline (Spanish/multilingual)
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_text_path: "{data_dir}/{collection}_resumen.json"
+  long_text_path: "{data_dir}/{collection}_texto.json"
+
+method:
+  family: dense
+  name: dense_e5
+  impl: dense_e5
+  params:
+    model_name: intfloat/multilingual-e5-base   # or Alibaba-NLP/gte-large
+    batch_size: 256
+    max_length: 512
+    normalize: true
+    # Docs (applied at index time):
+    add_doc_prefix: true
+    doc_prefix: "passage: "
+    # Queries (applied at retrieval time):
+    add_query_prefix: true # IMPORTANT: "query" prefix for this model
+    query_prefix: "query: Busca el documento que más se parezca a la siguiente consulta: "
+    device: "cuda"
+    trust_remote_code: true
+
+index:
+  # Where the index artifacts will be written (same layout as lexical methods)
+  output_dir: /index/dense_e5
+
+builder:
+  module: src.index_builders.dense_e5
+
+retriever:
+  module: src.retrievers.dense_e5
+  class: DenseSearcher
+  params:
+    topk: 100
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json

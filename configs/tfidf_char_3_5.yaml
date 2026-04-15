@@ -1,0 +1,33 @@
+# configs/tfidf_char_3_5.yaml
+collection: OEB
+experiment_id: oeb_v1
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+  features_meta: "{data_dir}/{collection}_features_meta.json"
+
+method:
+  family: tfidf
+  name: tfidf_char_3_5
+  params:
+    analyzer: char_wb
+    ngram_range: [3, 5]
+    lowercase: true
+    strip_accents: unicode
+    token_pattern: '(?u)\b\w+\b'
+    norm: l2
+    use_idf: true
+    smooth_idf: true
+    sublinear_tf: false
+    min_df: 2
+
+io:
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+  data_dirname: data
