@@ -208,6 +208,19 @@ VARIANTS = [
         "oracle": True,
         "stage2_model_dir": "/work/models/e5_classifier",
     },
+    # ── Frozen-encoder classifier variants (Sprint LW-07 baseline) ──
+    {
+        "name": "structured_pipeline_classifier_frozen",
+        "stage2_method": "classifier",
+        "oracle": False,
+        "stage2_model_dir": "/work/models/e5_classifier_frozen",
+    },
+    {
+        "name": "structured_pipeline_oracle_classifier_frozen",
+        "stage2_method": "classifier",
+        "oracle": True,
+        "stage2_model_dir": "/work/models/e5_classifier_frozen",
+    },
 ]
 
 

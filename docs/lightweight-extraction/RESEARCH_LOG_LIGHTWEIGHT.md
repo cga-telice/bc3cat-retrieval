@@ -9,6 +9,71 @@
 
 ---
 
+## Sprint LW-07 — Frozen Encoder Baseline Experiment
+
+**Date:** 2026-04-16
+**What changed:**
+- Added `--freeze-encoder` flag to `src/pipeline/training/train_classifier.py`
+- Trained frozen encoder variant on same long text data (5 epochs, RTX 4090, ~13 min total — ~2.5× faster than full FT due to no encoder gradients)
+- Created pipeline infrastructure: 2 new index dirs, 2 new proxy modules
+- Ran full evaluation on 16,590 short-text queries for both pipeline and oracle conditions
+
+**Hypothesis tested:** If the full-FT model's cross-distribution collapse is due to learning format-specific patterns, then a frozen E5 encoder (relying on pretrained multilingual semantic representations) should generalize better to short text. Threshold for "interesting result": frozen >70% short Acc@1.
+
+**Training results (long text val):**
+
+| Epoch | Loss | val_axis_acc | val_query_acc | Time |
+|---|---|---|---|---|
+| 1 | 1.795 | 33.1% | 0.3% | 158s |
+| 2 | 1.674 | 47.2% | 1.8% | 155s |
+| 3 | 1.634 | 58.1% | 5.7% | 156s |
+| 4 | 1.609 | 63.6% | 9.1% | 156s |
+| 5 | 1.596 | **65.8%** | **11.4%** | 157s |
+
+**Evaluation results (16,590 short-text queries):**
+
+| Condition | item Acc@1 | parent Acc@1 | Runtime |
+|---|---|---|---|
+| Frozen classifier (pipeline) | **0.56%** | 98.5% | 10m 51s |
+| Frozen classifier (oracle) | **0.58%** | 100.0% | 11m 08s |
+
+**Head-to-head comparison:**
+
+| Setup | val (long) query acc | cross-dist pipeline item Acc@1 | cross-dist oracle item Acc@1 |
+|---|---|---|---|
+| Full FT (LW-06) | **99.6%** | **20.9%** | **21.2%** |
+| Frozen encoder (LW-07) | 11.4% | 0.56% | 0.58% |
+| Rules baseline (SEPLN) | — | 90.3% | 91.4% |
+
+**Key findings:**
+- **Hypothesis REJECTED.** Frozen encoder achieves 0.56% short-text Acc@1 — 37× worse than full FT, nowhere near the 70% threshold. Full FT is not counterproductive; it is necessary.
+- On its own training distribution (long text), the frozen model reaches only 11.4% query accuracy vs 99.6% for full FT. E5's pretrained CLS embedding does not encode enough parameter-relevant signal for linear classification heads to extract.
+- Oracle-vs-pipeline gap is tiny in both settings (20.9→21.2 for full FT; 0.56→0.58 for frozen) — Stage 1 E5 retrieval is not the bottleneck.
+- Parent Acc@1 unchanged (98.5% / 100%) — unaffected by Stage 2 because it only depends on Stage 1.
+- 16,497 missed queries (pipeline) and 16,494 (oracle) for frozen — near-total failure.
+
+**Interpretation:**
+The 20.9% cross-distribution gap observed in LW-06 is **real distribution shift**, not an artifact of "over-fitting on long-text format patterns." Full fine-tuning is genuinely required to adapt E5's representations to the parameter-extraction task. The frozen baseline confirms:
+
+1. E5's pretrained CLS does not encode structural parameter information
+2. The 97 classification heads alone (~45K params) cannot extract this information via linear projection
+3. Representation adaptation via encoder fine-tuning is necessary even to reach 11.4% on the same distribution
+4. The cross-distribution gap in full FT reflects a genuine mismatch between training (long-text structural patterns) and eval (short-text parenthetical patterns) — not a failure of the fine-tuning approach per se
+
+**Implications for the paper:**
+This is a valuable negative result. It establishes that:
+- Lightweight alternatives (frozen E5 + heads) are not viable for this task
+- The representation adaptation is non-trivial — the semantic content of parameter descriptions is entangled with their surface formatting in E5's embedding space
+- Future work to bridge the short↔long gap must address representation alignment, not just decoder design
+
+**Next steps:**
+The most promising paths from the LW-06 analysis remain:
+1. Mixed training (long + short with proper holdout) — most direct fix
+2. Query augmentation to bridge formats — rewrite one style in the other
+3. Short-text training with concept-group holdout — matches eval distribution
+
+---
+
 ## Sprint LW-06 — Fix Training Data Source (short→long) + Re-evaluation
 
 **Date:** 2026-04-16

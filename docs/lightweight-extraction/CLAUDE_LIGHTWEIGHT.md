@@ -168,6 +168,15 @@ docs/lightweight-extraction/
 
 *Newest entries at the top.*
 
+### Sprint LW-07 — Frozen Encoder Baseline Experiment
+**Date:** April 2026
+**What changed:**
+- Added `--freeze-encoder` flag; trained variant with only classification heads learnable (~45K params)
+- Created separate pipeline infrastructure (2 index dirs, 2 proxies)
+- Frozen val accuracy (long): 11.4% (vs 99.6% full FT)
+- Frozen cross-dist (short): **0.56%** pipeline / **0.58%** oracle (vs 20.9% / 21.2% full FT)
+- Hypothesis "full FT counterproductive" REJECTED. E5 pretrained CLS insufficient; representation adaptation is necessary.
+
 ### Sprint LW-06 — Fix Training Data Source (short→long) + Re-evaluation
 **Date:** April 2026
 **What changed:**

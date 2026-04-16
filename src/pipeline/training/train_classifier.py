@@ -186,8 +186,18 @@ def train(args):
     num_params = sum(p.numel() for p in model.parameters())
     logger.info("Model: %d heads, %.1fM parameters", num_heads, num_params / 1e6)
 
+    # Freeze encoder if requested (only train classification heads)
+    if args.freeze_encoder:
+        for param in model.encoder.parameters():
+            param.requires_grad = False
+        trainable = [p for p in model.parameters() if p.requires_grad]
+        trainable_count = sum(p.numel() for p in trainable)
+        logger.info("Encoder FROZEN. Trainable params: %.1fK (heads only)", trainable_count / 1e3)
+    else:
+        trainable = model.parameters()
+
     # Optimizer & scheduler
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
+    optimizer = torch.optim.AdamW(trainable, lr=args.lr, weight_decay=0.01)
     total_steps = len(train_dl) * args.epochs
     warmup_steps = int(0.1 * total_steps)
     scheduler = get_linear_schedule_with_warmup(optimizer, warmup_steps, total_steps)
@@ -301,6 +311,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--freeze-encoder", action="store_true",
+                        help="Freeze the E5 encoder; only train classification heads")
     parser.add_argument("--sanity", type=int, default=0,
                         help="If > 0, use only this many samples for a quick sanity check")
     args = parser.parse_args()
