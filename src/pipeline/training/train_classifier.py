@@ -192,9 +192,15 @@ def train(args):
     warmup_steps = int(0.1 * total_steps)
     scheduler = get_linear_schedule_with_warmup(optimizer, warmup_steps, total_steps)
 
-    # Mixed precision
+    # Mixed precision (compatible with older PyTorch versions)
     use_amp = args.device.startswith("cuda")
-    scaler = torch.amp.GradScaler("cuda") if use_amp else None
+    if use_amp:
+        try:
+            scaler = torch.amp.GradScaler("cuda")
+        except (TypeError, AttributeError):
+            scaler = torch.cuda.amp.GradScaler()
+    else:
+        scaler = None
 
     # Training loop
     best_query_acc = 0.0
@@ -221,7 +227,7 @@ def train(args):
             optimizer.zero_grad()
 
             if use_amp:
-                with torch.amp.autocast("cuda"):
+                with torch.cuda.amp.autocast():
                     logits_dict = model(input_ids, attn_mask, list(all_head_keys))
                     loss = compute_loss(logits_dict, batch["targets"], device)
                 scaler.scale(loss).backward()

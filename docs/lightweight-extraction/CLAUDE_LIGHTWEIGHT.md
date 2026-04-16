@@ -168,6 +168,13 @@ docs/lightweight-extraction/
 
 *Newest entries at the top.*
 
+### Sprint LW-03 — Full Training Run
+**Date:** April 2026
+**What changed:**
+- Trained on RTX 4090: 5 epochs, ~30 min total
+- Best val_query_acc: 99.7%, val_axis_acc: 99.9%
+- Checkpoint saved at `models/e5_classifier/model.pt`
+
 ### Sprint LW-02 — Multi-Head Classifier Implementation
 **Date:** April 2026
 **What changed:**
