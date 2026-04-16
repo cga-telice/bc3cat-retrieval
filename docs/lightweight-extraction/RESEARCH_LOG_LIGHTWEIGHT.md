@@ -9,6 +9,39 @@
 
 ---
 
+## Sprint LW-05 — Full Evaluation (16,590 queries)
+
+**Date:** 2026-04-16
+**What changed:**
+- Ran `run_full_eval.py` for both classifier conditions on RTX 4090 (Docker)
+- Pipeline condition: 12m 52s (~47ms/query)
+- Oracle condition: 11m 02s (~40ms/query)
+
+**Results (16,590 queries):**
+
+| Condition | item Acc@1 | parent Acc@1 | Runtime |
+|---|---|---|---|
+| E5 classifier (pipeline) | **96.6%** | 98.5% | 12m 52s |
+| E5 classifier (oracle) | **97.6%** | 100.0% | 11m 02s |
+| Rules (pipeline) | 90.3% | 98.5% | 10m 50s |
+| Rules (oracle) | 91.4% | 100.0% | 13m 05s |
+| Phi-4 classify (pipeline) | 87.7% | 98.5% | 5h 17m |
+| Llama extract (pipeline) | 80.9% | 98.5% | 3h 27m |
+| BM25 param-aware tokens | 97.4% | — | — |
+
+**Key findings:**
+- Classifier beats all structured pipeline baselines: +6.3 pp over rules, +8.9 pp over Phi-4 classify
+- Oracle gap is only 1.0 pp (96.6% → 97.6%) — Stage 1 E5 retrieval is not the bottleneck
+- Approaches BM25 param-aware (97.4%) to within 0.8 pp — and BM25 uses domain-specific tokenization
+- 18x faster than Phi-4 (47ms vs 886ms), though slower than rules (47ms vs 0.015ms)
+- The classifier learned to solve the TRABAJO axis problem that accounted for ~70% of rules oracle errors
+- 569 missed queries (pipeline) vs 397 (oracle) — classifier errors are smaller and different from rules errors
+
+**Known issues:**
+- Queries are catalog-generated (same distribution as training) — robustness testing (Phase D) will reveal generalization
+
+---
+
 ## Sprint LW-04 — Pipeline Integration
 
 **Date:** 2026-04-16

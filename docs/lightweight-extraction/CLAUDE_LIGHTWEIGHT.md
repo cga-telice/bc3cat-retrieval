@@ -168,6 +168,13 @@ docs/lightweight-extraction/
 
 *Newest entries at the top.*
 
+### Sprint LW-05 — Full Evaluation (16,590 queries)
+**Date:** April 2026
+**What changed:**
+- Full eval on 16,590 queries: classifier pipeline 96.6%, oracle 97.6% item Acc@1
+- Beats rules (+6.3 pp), Phi-4 classify (+8.9 pp), approaches BM25 param-aware (-0.8 pp)
+- 47ms/query (18x faster than Phi-4)
+
 ### Sprint LW-04 — Pipeline Integration
 **Date:** April 2026
 **What changed:**
