@@ -242,6 +242,15 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
         from src.pipeline.param_extractor_rules import RuleBasedParamExtractor
         extractor = RuleBasedParamExtractor(SCHEMA_PATH)
         print("  Stage 2: rule-based extractor")
+    elif stage2 == "classifier":
+        from src.pipeline.param_extractor_classifier import ClassifierParamExtractor
+        model_dir = params.get("stage2_model_dir", str(ROOT / "models" / "e5_classifier"))
+        # Resolve Docker path (/work/...) to local path if not running in Docker
+        if model_dir.startswith("/work/") and not Path(model_dir).exists():
+            model_dir = str(ROOT / model_dir.removeprefix("/work/"))
+        classifier_device = device_override or "cpu"
+        extractor = ClassifierParamExtractor(model_dir, device=classifier_device)
+        print(f"  Stage 2: E5 classifier ({model_dir})")
     else:
         from src.pipeline.param_extractor import LLMParamExtractor
         prompt_mode = params.get("stage2_prompt_mode", "extract")

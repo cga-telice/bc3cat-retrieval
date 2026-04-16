@@ -75,6 +75,7 @@ class ClassifierParamExtractor:
         encoder_name: str = "intfloat/multilingual-e5-base",
     ):
         model_dir = Path(model_dir)
+        repo_root = Path(__file__).resolve().parents[2]
 
         # Load label encoders
         config_path = model_dir / "config.json"
@@ -83,6 +84,11 @@ class ClassifierParamExtractor:
 
         enc_path = config.get("label_encoders_path")
         if enc_path:
+            enc_path = Path(enc_path)
+            # Resolve Docker path (/work/...) to local if needed
+            enc_str = str(enc_path).replace("\\", "/")
+            if not enc_path.exists() and enc_str.startswith("/work/"):
+                enc_path = repo_root / enc_str.removeprefix("/work/")
             with open(enc_path, encoding="utf-8") as f:
                 self.label_encoders = json.load(f)
         else:
@@ -105,7 +111,8 @@ class ClassifierParamExtractor:
         ckpt_path = model_dir / "model.pt"
         if ckpt_path.exists():
             state = torch.load(ckpt_path, map_location=self.device, weights_only=True)
-            self.model.load_state_dict(state)
+            # strict=False handles cross-version differences (e.g. position_ids)
+            self.model.load_state_dict(state, strict=False)
             logger.info("Loaded checkpoint from %s", ckpt_path)
 
         self.model.to(self.device)

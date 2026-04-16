@@ -168,6 +168,14 @@ docs/lightweight-extraction/
 
 *Newest entries at the top.*
 
+### Sprint LW-04 — Pipeline Integration
+**Date:** April 2026
+**What changed:**
+- Classifier wired into `structured_pipeline.py` as `stage2_method: "classifier"`
+- 2 proxy modules, 2 YAML configs, 2 pseudo-index dirs (24 total variants)
+- Docker/Windows path resolution and cross-PyTorch compatibility fixed
+- Pipeline test passed: `search()` and `search_batch()` work end-to-end
+
 ### Sprint LW-03 — Full Training Run
 **Date:** April 2026
 **What changed:**

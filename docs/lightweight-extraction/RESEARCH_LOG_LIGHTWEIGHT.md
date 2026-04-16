@@ -9,6 +9,28 @@
 
 ---
 
+## Sprint LW-04 — Pipeline Integration
+
+**Date:** 2026-04-16
+**What changed:**
+- Added `classifier` branch to `load()` in `src/retrievers/structured_pipeline.py`
+- Created 2 proxy modules: `structured_pipeline_classifier.py`, `structured_pipeline_oracle_classifier.py`
+- Created 2 YAML configs: `structured_pipeline_classifier.yaml`, `structured_pipeline_oracle_classifier.yaml`
+- Added 2 classifier variants to `scripts/setup_structured_index.py` (24 total)
+- Created pseudo-index dirs with `stage2_method: classifier`
+- Fixed Docker/Windows path resolution for `model_dir` and `label_encoders_path`
+- Fixed `strict=False` in model loading for cross-PyTorch-version compatibility (`position_ids` key)
+
+**Pipeline test:**
+- `load('index/structured_pipeline_classifier')` → loads E5 + classifier + catalog lookup
+- `search()` and `search_batch()` return correct shapes and scores
+- Integration verified on CPU
+
+**Known issues:**
+- None — ready for full evaluation (Sprint LW-05)
+
+---
+
 ## Sprint LW-03 — Full Training Run
 
 **Date:** 2026-04-16

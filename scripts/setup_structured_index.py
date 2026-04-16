@@ -195,6 +195,19 @@ VARIANTS = [
         "stage2_model": "phi4:latest",
         "stage2_prompt_mode": "paraaware2",
     },
+    # ── Classifier variants (lightweight-extraction branch) ──
+    {
+        "name": "structured_pipeline_classifier",
+        "stage2_method": "classifier",
+        "oracle": False,
+        "stage2_model_dir": "/work/models/e5_classifier",
+    },
+    {
+        "name": "structured_pipeline_oracle_classifier",
+        "stage2_method": "classifier",
+        "oracle": True,
+        "stage2_model_dir": "/work/models/e5_classifier",
+    },
 ]
 
 
@@ -215,6 +228,8 @@ def setup_variant(variant: dict) -> None:
         params["stage2_model"] = variant["stage2_model"]
     if variant.get("stage2_prompt_mode"):
         params["stage2_prompt_mode"] = variant["stage2_prompt_mode"]
+    if variant.get("stage2_model_dir"):
+        params["stage2_model_dir"] = variant["stage2_model_dir"]
 
     meta = {
         "method": "structured_pipeline",
