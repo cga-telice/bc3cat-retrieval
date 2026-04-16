@@ -1,9 +1,13 @@
 """
-Sprint LW-01: Training data generation for the multi-head E5 classifier.
+Training data generation for the multi-head E5 classifier.
 
-Reads OEB_short_norm.parquet + OEB_concept_schema.json and produces:
+Reads OEB_long_norm.parquet + OEB_concept_schema.json and produces:
   - data/processed/classifier_training_data.parquet
   - data/processed/classifier_label_encoders.json
+
+We train on LONG text (documento/texto) so that evaluation queries
+(short text / resumen) are a fully held-out cross-distribution test.
+This avoids data leakage and tests genuine generalization.
 
 Usage:
     python src/pipeline/training/data_prep.py [--data-dir DATA_DIR]
@@ -18,10 +22,10 @@ from sklearn.model_selection import train_test_split
 
 
 def load_inputs(data_dir: Path):
-    short_df = pd.read_parquet(data_dir / "OEB_short_norm.parquet")
+    long_df = pd.read_parquet(data_dir / "OEB_long_norm.parquet")
     with open(data_dir / "OEB_concept_schema.json", encoding="utf-8") as f:
         schema = json.load(f)
-    return short_df, schema
+    return long_df, schema
 
 
 def filter_leaf_items(df: pd.DataFrame) -> pd.DataFrame:
@@ -163,7 +167,7 @@ def main():
 
     print("Loading inputs...")
     raw_df, schema = load_inputs(data_dir)
-    print(f"  Short parquet: {len(raw_df)} rows")
+    print(f"  Long parquet: {len(raw_df)} rows")
     print(f"  Schema: {len(schema)} concept groups")
 
     print("Filtering to leaf items...")

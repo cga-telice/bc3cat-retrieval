@@ -20,6 +20,10 @@ python scripts/run_full_eval.py structured_pipeline_oracle_classifier --device c
 
 ## Acceptance Criteria
 
-- [ ] Both conditions complete on 16,590 queries
-- [ ] `runs/<condition>/metrics_dual.json` produced for each
-- [ ] Results compared against baselines (rules, Phi-4, Llama)
+- [x] Both conditions complete on 16,590 queries
+- [x] `runs/<condition>/metrics_dual.json` produced for each
+- [x] Results compared against baselines (rules, Phi-4, Llama)
+
+## Note (post-sprint)
+
+Results from this sprint (96.6% item Acc@1) are **invalidated** due to data leakage: the classifier was trained on `OEB_short_norm.parquet`, the same distribution as the 16,590 evaluation queries. See Sprint LW-06 for the fix.

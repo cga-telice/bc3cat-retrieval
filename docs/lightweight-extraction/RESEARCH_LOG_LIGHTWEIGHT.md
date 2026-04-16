@@ -9,9 +9,77 @@
 
 ---
 
-## Sprint LW-05 — Full Evaluation (16,590 queries)
+## Sprint LW-06 — Fix Training Data Source (short→long) + Re-evaluation
 
 **Date:** 2026-04-16
+**What changed:**
+- Discovered data leakage: classifier was trained on `OEB_short_norm.parquet`, same distribution as 16,590 eval queries
+- Changed `data_prep.py` to use `OEB_long_norm.parquet` (long text / documents)
+- Regenerated `classifier_training_data.parquet` (47,508 rows, avg 511 chars vs 141 chars)
+- Retrained model on RTX 4090: 5 epochs, best val_query_acc: 99.6%
+- Ran full evaluation on 16,590 queries for both conditions
+
+**Training results (long text):**
+
+| Epoch | Loss | val_axis_acc | val_query_acc | Time |
+|---|---|---|---|---|
+| 1 | 1.084 | 98.1% | 93.1% | 374s |
+| 2 | 0.248 | 99.6% | 98.6% | 369s |
+| 3 | 0.112 | 99.8% | 99.2% | 368s |
+| 4 | 0.069 | 99.9% | 99.6% | 370s |
+| 5 | 0.053 | **99.9%** | **99.6%** | 370s |
+
+Val accuracy on long text is comparable to LW-03 (99.6% vs 99.7%) — the model learns parameter extraction equally well from longer text.
+
+**Evaluation results (16,590 short-text queries — cross-distribution test):**
+
+| Condition | item Acc@1 | parent Acc@1 | Runtime |
+|---|---|---|---|
+| E5 classifier (pipeline) | **20.9%** | 98.5% | 12m 16s |
+| E5 classifier (oracle) | **21.2%** | 100.0% | 12m 27s |
+
+**Comparison with LW-05 (invalidated) and baselines:**
+
+| Condition | LW-06 (long→short) | LW-05 (short→short, LEAKED) | Rules | Phi-4 classify |
+|---|---|---|---|---|
+| Pipeline item Acc@1 | 20.9% | ~~96.6%~~ | 90.3% | 87.7% |
+| Oracle item Acc@1 | 21.2% | ~~97.6%~~ | 91.4% | 88.6% |
+
+**Key findings:**
+- The classifier achieves near-perfect accuracy on long text validation (99.6%), proving it can extract parameters from detailed descriptions
+- But when evaluated on short text queries (cross-distribution), accuracy collapses to ~21% — the classifier does NOT generalize across text distributions
+- The ~75 pp drop from LW-05 confirms the prior results were almost entirely data leakage
+- Parent Acc@1 is unaffected (98.5%/100%) — this is driven by Stage 1 E5 retrieval, not the classifier
+- Oracle gap is tiny (20.9% → 21.2%) — the bottleneck is Stage 2, not Stage 1
+- 13,117 missed queries (pipeline) — the classifier fails catastrophically on short text it hasn't seen
+
+**Error analysis (detailed: [RESEARCH_LOG_LIGHTWEIGHT-06_Analysis.md](RESEARCH_LOG_LIGHTWEIGHT-06_Analysis.md)):**
+
+The failure is caused by **surface-level formatting mismatch**, not a semantic understanding problem. Long text encodes parameters as explicit key-value pairs (`trabajo: diurno banda de mantenimiento: i < 3 horas`), while short text uses compressed parenthetical notation (`(diurno/i < "3" horas/volumen escaso)`). Per-axis accuracy on 2,000-query sample:
+
+| Axis | Accuracy | Why |
+|---|---|---|
+| Nº TUBOS, PROFUNDIDAD, DIÁMETROS | 100% | Numbers transfer across formats |
+| CONDICIONES DE EJECUCIÓN | 95.6% | Values identical in both formats |
+| TIPO DE TERRENO | 69.1% | Short text abbreviates (`rocoso` vs `en terreno rocoso`) |
+| BANDA DE MANTENIMIENTO | 62.9% | Operators differ: `i < "3"` vs `i < 3 horas` |
+| TRABAJO | 52.5% | Worst — classifier adds "excepcional" to predictions without label context |
+
+**Interpretation:**
+The classifier learns format-specific pattern matching, not semantic parameter extraction. Numerical axes transfer perfectly; text-based axes fail because their surface encoding is completely different between long and short text. The classifier needs same-distribution training, or the architecture needs explicit cross-distribution transfer.
+
+**Next steps to consider:**
+1. Train on short text WITH proper held-out evaluation (concept-group holdout avoids leakage)
+2. Mixed training: combine long + short text for distribution-invariant representations
+3. Augment queries to bridge the distribution gap (Phase D from backlog)
+4. Accept same-distribution training is required and reframe the research question
+
+---
+
+## Sprint LW-05 — Full Evaluation (16,590 queries) ⚠️ INVALIDATED
+
+**Date:** 2026-04-16
+**⚠️ These results have data leakage — classifier trained on same distribution as eval queries. See Sprint LW-06.**
 **What changed:**
 - Ran `run_full_eval.py` for both classifier conditions on RTX 4090 (Docker)
 - Pipeline condition: 12m 52s (~47ms/query)
@@ -127,7 +195,7 @@
 **Date:** 2026-04-15
 **What changed:**
 - Created `src/pipeline/training/` package with `data_prep.py`
-- Script loads `OEB_short_norm.parquet` + `OEB_concept_schema.json`, filters to 47,508 leaf items, extracts per-axis labels from `parameters` column, splits 80/10/10 stratified by concept group
+- Script originally loaded `OEB_short_norm.parquet` (fixed to `OEB_long_norm.parquet` in Sprint LW-06); loads concept schema, filters to 47,508 leaf items, extracts per-axis labels from `parameters` column, splits 80/10/10 stratified by concept group
 - Produced `data/processed/classifier_training_data.parquet` — columns: `query_text`, `item_key`, `parent_key`, `labels` (JSON dict), `split`
 - Produced `data/processed/classifier_label_encoders.json` — 97 (group, axis) heads, 556 total classes (incl. null)
 

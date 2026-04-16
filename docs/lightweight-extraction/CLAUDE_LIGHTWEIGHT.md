@@ -83,7 +83,7 @@ At inference, only heads for the query's concept group are active.
 | Base encoder | `intfloat/multilingual-e5-base` | Same as Stage 1 — enables single-model pipeline |
 | Head structure | One per (concept_group, axis) pair | Avoids cross-group value confusion |
 | Null class | Explicit per head | Queries may not mention all parameters |
-| Training data | 47,508 pairs from `OEB_short_norm.parquet` | Same queries used in evaluation |
+| Training data | 47,508 pairs from `OEB_long_norm.parquet` | Train on documents; short text queries are held-out cross-distribution eval |
 | Split strategy | Concept-group-aware | Tests generalization to unseen axis combinations |
 
 ### Extractor Interface
@@ -168,12 +168,19 @@ docs/lightweight-extraction/
 
 *Newest entries at the top.*
 
-### Sprint LW-05 — Full Evaluation (16,590 queries)
+### Sprint LW-06 — Fix Training Data Source (short→long) + Re-evaluation
+**Date:** April 2026
+**What changed:**
+- Fixed data leakage: retrained classifier on `OEB_long_norm.parquet` (long text)
+- Val accuracy on long text: 99.6% (comparable to LW-03's 99.7%)
+- Cross-distribution eval (short text queries): **20.9% item Acc@1** — classifier does not generalize
+- LW-05's 96.6% was entirely data leakage; real cross-distribution performance is ~21%
+
+### Sprint LW-05 — Full Evaluation (16,590 queries) — INVALIDATED
 **Date:** April 2026
 **What changed:**
 - Full eval on 16,590 queries: classifier pipeline 96.6%, oracle 97.6% item Acc@1
-- Beats rules (+6.3 pp), Phi-4 classify (+8.9 pp), approaches BM25 param-aware (-0.8 pp)
-- 47ms/query (18x faster than Phi-4)
+- ⚠️ Results invalidated: data leakage (trained on same distribution as eval queries)
 
 ### Sprint LW-04 — Pipeline Integration
 **Date:** April 2026

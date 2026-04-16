@@ -147,7 +147,7 @@ The parameter overhead is negligible: ~80 heads × 768 input × ~10 output ≈ 6
 |---|---|---|
 | Base encoder model | **`intfloat/multilingual-e5-base`** (278M params) | Already used in Stage 1 — enables single-model pipeline. If performance is poor, consider BETO or other Spanish encoders as fallback. |
 | Classifier architecture | **Per-group heads** | One head per (concept_group, axis) pair. Avoids cross-group vocabulary confusion; negligible parameter overhead. |
-| Training data source | **`OEB_short_norm.parquet`** (query text from `text_norm` column) + labels from `parameters` column | Both short and long parquet files share the same `item_key`, `parent_key`, and `parameters` columns. Short descriptions are used as queries throughout the evaluation. |
+| Training data source | **`OEB_long_norm.parquet`** (document text from `text_norm` column) + labels from `parameters` column | Train on long text (documents) so that short text queries are a fully held-out cross-distribution test. Avoids data leakage and tests genuine generalization. Both parquets share the same `item_key`, `parent_key`, and `parameters` columns. |
 | Train/val/test split | **Concept-group-aware split.** Hold out concept groups, not random items. | Tests generalization to unseen axis combinations. Also do random split for comparison. |
 | Query text field | **`text_norm`** (normalized text) | Matches what the existing pipeline uses in evaluation |
 | Null label handling | **Explicit null class per head** | Queries may not mention all parameters; the model must learn to predict "not specified" |
@@ -162,7 +162,7 @@ The parameter overhead is negligible: ~80 heads × 768 input × ~10 output ≈ 6
 
 - **A1. Branch setup.** Create `lightweight-extraction` from `structured-retrieval`. Move prior docs to `docs/structured-retrieval/`. Set up `docs/lightweight-extraction/` with protocol, log, CLAUDE.md. Create `sprints/` directory for new sprint files.
 
-- **A2. Training data generation.** From `OEB_short_norm.parquet` + `OEB_concept_schema.json`:
+- **A2. Training data generation.** From `OEB_long_norm.parquet` + `OEB_concept_schema.json`:
   - For each query row: extract `(text_norm, parent_key, {axis_label: value})` from the `parameters` column
   - Produce a clean dataset: `data/processed/classifier_training_data.parquet` with columns: `query_text`, `parent_key`, `axis_labels`, `axis_values` (dict)
   - Verify: 47,508 rows, all axis values present in schema
