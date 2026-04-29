@@ -194,6 +194,16 @@ docs/sprints/
 
 *Newest entries at the top.*
 
+### Sprint LWN-02 — Phase B (BIO tagger, normalizer, training, sanity)
+**Date:** 2026-04-30
+**Status:** complete
+**What changed:**
+- `src/pipeline/span_normalizer.py` — deterministic schema-bounded normalizer (exact / surface override / axis rules / fuzzy ≤0.15) — **23 unit tests pass**
+- `src/pipeline/param_extractor_bio.py` — `BIOTagger` + `BIOParamExtractor` (interface match with rules / classifier extractors)
+- `src/pipeline/training/train_bio_tagger.py` — training loop with `token_acc / span_f1 / query_acc` metrics + `--class-weight-o` fallback
+- B4 sanity verified: model architecture can learn spans (span_f1 0% → 6.4% on 200 × 3 epochs with class weight 0.1); pure unweighted CE collapses to all-O on small samples (anticipated by protocol §4.6)
+- Output paths: `models/e5_bio_tagger/{model.pt, model_best.pt, config.json, training_log.json}`
+
 ### Sprint LWN-01 — Branch Setup & Phase A (BIO Training Data Preparation)
 **Date:** 2026-04-30
 **Status:** complete
