@@ -204,10 +204,11 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     """Factory following the retriever contract. Reads pipeline config from meta.json.
 
     The meta.json params section controls:
-      - stage2_method: "llm" or "rules"
+      - stage2_method: "llm", "rules", "classifier", or "bio_tagger"
       - stage2_prompt_mode: "extract" or "classify" (default: "extract" for backward compat)
       - oracle: true/false (bypass Stage 1 with ground-truth parent_key)
       - stage2_ollama_url, stage2_model (for LLM variant)
+      - stage2_model_dir (for "classifier" and "bio_tagger" variants)
 
     Args:
         device_override: If set, overrides the E5 searcher's device (e.g. "cpu").
@@ -251,6 +252,16 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
         classifier_device = device_override or "cpu"
         extractor = ClassifierParamExtractor(model_dir, device=classifier_device)
         print(f"  Stage 2: E5 classifier ({model_dir})")
+    elif stage2 == "bio_tagger":
+        from src.pipeline.param_extractor_bio import BIOParamExtractor
+        model_dir = params.get("stage2_model_dir", str(ROOT / "models" / "e5_bio_tagger"))
+        if model_dir.startswith("/work/") and not Path(model_dir).exists():
+            model_dir = str(ROOT / model_dir.removeprefix("/work/"))
+        bio_device = device_override or "cpu"
+        extractor = BIOParamExtractor(
+            model_dir, schema_path=SCHEMA_PATH, device=bio_device
+        )
+        print(f"  Stage 2: BIO tagger ({model_dir})")
     else:
         from src.pipeline.param_extractor import LLMParamExtractor
         prompt_mode = params.get("stage2_prompt_mode", "extract")

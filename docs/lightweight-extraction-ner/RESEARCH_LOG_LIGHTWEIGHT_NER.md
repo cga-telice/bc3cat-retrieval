@@ -11,6 +11,81 @@
 
 ---
 
+## Sprint LWN-03 — B5 Full Training + C1 Pipeline Integration + C2 Full Evaluation (the headline)
+
+**Date:** 2026-04-30
+**Tasks completed:** B5, C1.a–C1.f, C2 (oracle + pipeline), C2 v2 (with normalizer typo fix), per-axis diagnostic on 1,630-query stratified sample
+
+### Headline result
+
+**The BIO tagger collapses to 3.13% item Acc@1 on the cross-distribution short-text test (16,590 queries), worse than the CLS classifier's 21.2%.**
+
+| Method | Pipeline item Acc@1 | Oracle item Acc@1 | val (long) query_acc |
+|---|---|---|---|
+| **BIO tagger full FT (this sprint)** | **3.10%** | **3.13%** | **99.2%** |
+| CLS classifier full FT (LW-06) | 20.9% | 21.2% | 99.6% |
+| Frozen CLS encoder (LW-07) | 0.56% | 0.58% | 11.4% |
+| Rules baseline (SEPLN) | 90.3% | 91.4% | — |
+| Phi-4 classify (SEPLN) | 87.7% | 88.6% | — |
+| dense_e5 (no FT, main) | 13.4% | — | — |
+
+The cross-distribution gap **widens** from 99.2% (val, long) → 3.13% (test, short) — a 96-percentage-point drop. Oracle vs pipeline delta is 0.03 pp; Stage 1 is not the bottleneck.
+
+### Mechanism (per-axis diagnostic)
+
+Per-axis recall on a 1,630-query stratified short-text sample (`analysis/bio_per_axis_short_text.csv`):
+
+| Axis | Recall | What it tells us |
+|---|---|---|
+| TRABAJO | **90.0%** | Token-level signal transfers cleanly when the surface form ("Diurno", "Nocturno") is preserved across formats |
+| TIPO DE TERRENO | 58.5% | Surface override (LWN-01's `cualquier clase de terreno → Normal`) recovers ~58%; the rest fails because the tagger split compound spans |
+| BANDA DE MANTENIMIENTO | 55.8% | Operator/quote canonicalization handles typo variants; remainder fails on multi-token span continuity |
+| Nº TUBOS | 39.0% | Model learned to anchor on " tubos" / " mm" in long text; short text uses " t," which the model didn't link to Nº TUBOS — instead it (correctly per the supervision) emits a TUBO span that gets filtered by the per-(parent, axis) gate |
+| **CONDICIONES DE EJECUCIÓN** | **5.4%** | **The binding bottleneck.** Long text always carries the explicit label prefix `condiciones de ejecución:` before the value; short text uses `(.../volumen relevante)` with no label anchor. The BIO tagger learned to fire B-CONDICIONES on `volumen` ONLY when preceded by the label, so short text gets no span. |
+| MATERIAL, PAVIMENTO, TERRENO | 0% | All in tiny groups (OEB010$ / OEB160$); surface forms aren't recovered |
+| TIPO DE ACCIÓN, TUBO, DIÁMETRO, DIÁMETROS | 100% | Small but well-anchored axes (single concept group; clean surface forms) |
+
+Queries with **all** axes correct: 38 / 1,630 = 2.3% (matches the 3.13% headline within sampling noise).
+
+### §8 interpretation
+
+The BIO tagger lands in the **most negative row** of the protocol's decision matrix:
+
+- `BIO oracle ≤ 40%` → "fundamental cross-distribution gap; redirect to data-side solutions"
+- `BIO oracle ≈ CLS oracle (~21%)` → "fully negative architectural result"
+- And — *not anticipated by the protocol* — **strictly below CLS at 21.2%**
+
+**The hypothesis from protocol §3.2 is rejected.** Token-level evidence does NOT transfer better than CLS aggregation across the long↔short pair in BC3CAT. The opposite happens: per-token loss creates stronger per-token sensitivity to local context, which in this corpus is the very label-prefix anchor that doesn't transfer. The CLS architecture's sequence-level aggregation, despite being the alleged source of LW-06's failure, gave it more redundancy at query level — letting it land at 21% where BIO lands at 3%.
+
+The CLS and BIO results together establish a stronger negative claim than either alone: **for this corpus, no purely architectural change in the long-only-training regime closes the cross-distribution gap.** Future work must address representation alignment or training-distribution mixing — the data side, not the architecture side.
+
+### What got built (and committed)
+
+| Component | Path | Notes |
+|---|---|---|
+| BIO tagger checkpoint | `models/e5_bio_tagger/{model.pt, model_best.pt, config.json, training_log.json}` | 1.1 GB; .gitignored per repo convention. `config.json` + `training_log.json` are committed. |
+| Pipeline dispatch | `src/retrievers/structured_pipeline.py` `load()` | Added `bio_tagger` branch; one new `elif` block. |
+| Proxy modules | `src/retrievers/structured_pipeline_bio_tagger.py`, `..._oracle_bio_tagger.py` | Both one-line re-exports of `load`. |
+| YAML configs | `configs/structured_pipeline_bio_tagger.yaml`, `..._oracle_bio_tagger.yaml` | Mirror the CLS classifier configs. |
+| Pseudo-index dirs | `index/structured_pipeline_bio_tagger/meta.json`, `..._oracle_bio_tagger/meta.json` | `stage2_method=bio_tagger`, oracle flag set. |
+| TIER1 registration | `scripts/run_full_eval.py` | Both new conditions added. |
+| Eval results | `runs/structured_pipeline_bio_tagger/`, `..._oracle_bio_tagger/` | `metrics_dual.json` + per-query summaries. |
+| Per-axis diagnostic | `analysis/bio_per_axis_short_text.csv` | 1,630 stratified queries; the §8 mechanism table is built from this. |
+| Normalizer fix | `src/pipeline/span_normalizer.py` `_normalize_banda` | Placeholder-based rewrite: `<==`/`>==` typos collapse to canonical `<=`/`>=`. Five new tests added (25/25 passing). Headline-neutral but locks in correct behavior. |
+
+### Out of scope (deferred to LWN-04)
+
+- C3 — diagnostic ablations: per-axis breakdown vs CLS classifier on the same queries (deeper than this sprint's per-axis recall), span-vs-query error split, confusion matrix vs CLS, `frana horaria` typo set tracer.
+- C4 — speed benchmark: CPU + GPU mean and p95 for rules / CLS / BIO / Phi-4.
+- D1 — cross-format diagnostic on 500 long↔short pairs.
+- D2 — query perturbation evaluation.
+- D3 — frozen-encoder BIO ablation (mirroring LW-07).
+
+### Next sprint
+**Sprint LWN-04:** Phase C3/C4 + Phase D — diagnostic ablations, speed benchmark, cross-format diagnostic, optional frozen-encoder ablation. Then **Phase E** (paper drafting) follows in LWN-05.
+
+---
+
 ## Sprint LWN-02 — Phase B (BIO tagger, normalizer, training, sanity)
 
 **Date:** 2026-04-30

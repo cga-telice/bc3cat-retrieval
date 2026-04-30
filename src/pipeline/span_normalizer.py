@@ -64,11 +64,16 @@ def _normalize_banda(text: str) -> str:
     s = text.lower().strip()
     # Strip stray quote characters around digits/operators
     s = s.replace('"', "").replace("'", "")
-    # Normalize operator forms: <= and >= (with optional spaces) into a stable form
-    s = re.sub(r"<\s*=", "<=", s)
-    s = re.sub(r">\s*=", ">=", s)
-    # Add a single space around <, <=, >, >= operators
-    s = re.sub(r"\s*(<=|>=|<|>)\s*", r" \1 ", s)
+    # Replace <= and >= variants (including the multi-equals typos <==, <===,
+    # >==, >=== seen in 23,700+ short-text queries) with placeholders so the
+    # bare < / > rules don't re-fire on the < / > char inside the 2-char op.
+    s = re.sub(r"\s*<\s*=+\s*", " __LE__ ", s)
+    s = re.sub(r"\s*>\s*=+\s*", " __GE__ ", s)
+    # Space bare < / > operators
+    s = re.sub(r"\s*<\s*", " < ", s)
+    s = re.sub(r"\s*>\s*", " > ", s)
+    # Restore the 2-char operators
+    s = s.replace("__LE__", "<=").replace("__GE__", ">=")
     # Collapse whitespace
     s = re.sub(r"\s+", " ", s).strip()
     return s

@@ -36,6 +36,16 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(_normalize_banda("i >= 5 horas"), "i >= 5 horas")
         self.assertEqual(_normalize_banda("i>= 5 horas"), "i >= 5 horas")
 
+    def test_normalize_banda_multi_equals_typo(self):
+        # The short-text corpus contains typo variants like <== and >== (double
+        # equals). 23,700+ short-text queries have these typos. They must collapse
+        # to the canonical <= / >= form to match the schema canonical values.
+        self.assertEqual(_normalize_banda("i >== 5 horas"), "i >= 5 horas")
+        self.assertEqual(_normalize_banda("i >==5 horas"), "i >= 5 horas")
+        self.assertEqual(_normalize_banda('3 <== i < "5" horas'), "3 <= i < 5 horas")
+        self.assertEqual(_normalize_banda("3 <=== i < 5 horas"), "3 <= i < 5 horas")
+        self.assertEqual(_normalize_banda("3 <== i < 5 horas"), "3 <= i < 5 horas")
+
     def test_normalize_numeric_strips_units(self):
         self.assertEqual(_normalize_numeric("2"), "2")
         self.assertEqual(_normalize_numeric(" 2 "), "2")
@@ -170,6 +180,22 @@ class TestSpanNormalizerBanda(unittest.TestCase):
         )
         self.assertEqual(
             self.norm.normalize("BANDA DE MANTENIMIENTO", 'i >= "5" horas', "OEB020$"),
+            "i >= 5 horas",
+        )
+
+    def test_banda_multi_equals_typo_via_normalize(self):
+        # End-to-end: short-text typos should map to the canonical schema value.
+        # These are the real patterns seen in OEB_short_norm.parquet (~23,700 queries).
+        self.assertEqual(
+            self.norm.normalize("BANDA DE MANTENIMIENTO", '3 <== i < "5" horas', "OEB290$"),
+            "3 <= i < 5 horas",
+        )
+        self.assertEqual(
+            self.norm.normalize("BANDA DE MANTENIMIENTO", "i >== 5 horas", "OEB290$"),
+            "i >= 5 horas",
+        )
+        self.assertEqual(
+            self.norm.normalize("BANDA DE MANTENIMIENTO", "i >==5 horas", "OEB290$"),
             "i >= 5 horas",
         )
 

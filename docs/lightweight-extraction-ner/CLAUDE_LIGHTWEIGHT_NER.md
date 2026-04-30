@@ -194,6 +194,20 @@ docs/sprints/
 
 *Newest entries at the top.*
 
+### Sprint LWN-03 — B5 Full Training + C1 Pipeline Integration + C2 Full Evaluation
+**Date:** 2026-04-30
+**Status:** complete — **the headline number is in**
+**What changed:**
+- B5: trained on RTX 4090, 5 epochs × 38,007 rows, ~32 min. Final val (long): span_f1 **97.4%**, query_acc **99.2%**. No class-imbalance collapse with unweighted CE on the full corpus.
+- C1: dispatch branch in `structured_pipeline.py`; 2 proxy modules; 2 YAML configs; 2 pseudo-index dirs; both conditions registered in `run_full_eval.py` `TIER1_CONDITIONS`.
+- C2: full eval on 16,590 short-text queries — **BIO oracle 3.13% / pipeline 3.10% item Acc@1**.
+- Per-axis diagnostic on 1,630 stratified queries → `analysis/bio_per_axis_short_text.csv`.
+- Normalizer fix: BANDA `<==`/`>==` typo handling (placeholder-based rewrite) + 5 new tests (25/25 passing). Headline-neutral.
+
+**Key result:** the BIO architecture is **strictly worse than the CLS classifier** on the cross-distribution test (3.13% vs 21.2% oracle). Per protocol §8 this lands in the most negative interpretation row. The mechanism is per-axis collapse on axes whose surface form lacks a transferable token-level anchor — **CONDICIONES DE EJECUCIÓN at 5.4% recall** is the binding bottleneck, dragging the headline below the all-axes-correct threshold even when the other axes work (TRABAJO 90%, BANDA 56%, etc.).
+
+The hypothesis from protocol §3.2 — that token-level supervision would force the model away from anchor-dependence — is rejected. The two negative results (CLS in LW-06, BIO in LWN-03) together establish: **no architectural fix in the long-only-training regime closes the cross-distribution gap on this corpus.**
+
 ### Sprint LWN-02 — Phase B (BIO tagger, normalizer, training, sanity)
 **Date:** 2026-04-30
 **Status:** complete
