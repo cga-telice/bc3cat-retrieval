@@ -11,6 +11,198 @@
 
 ---
 
+## Sprint LWN-04 — Phase C3/C4 + Phase D (Diagnostic Ablations)
+
+**Date:** 2026-04-30
+**Tasks completed:** C3.a (confusion vs CLS), C3.b (error taxonomy), C3.c (typo tracer), per-axis recall on full 16,590 eval (replaces stratified-sample analysis from LWN-03), C4 (speed benchmark), D1 (cross-format diagnostic), D3 (frozen-encoder BIO ablation)
+
+### Five diagnostics that explain the LWN-03 negative result
+
+#### C3.a — CLS ⊕ BIO contingency (16,590 oracle queries)
+
+|             | CLS correct | CLS wrong | Total |
+|-------------|-------------|-----------|-------|
+| BIO correct |    199      |    321    |   520 |
+| BIO wrong   |   3,321     |  12,749   | 16,070 |
+| Total       |   3,520     |  13,070   | 16,590 |
+
+- BIO Acc@1 = 3.13%, CLS Acc@1 = 21.22%
+- **Both correct: 199 (1.20%) — the two architectures share only 38% of BIO's correct queries**
+- **BIO-only correct: 321 (1.93%)** — non-zero, so BIO has *some* unique strengths over CLS
+- **CLS-only correct: 3,321 (20.02%)** — CLS has 10× more unique correct queries than BIO
+- **Union: 23.15%** — even an oracle ensemble of CLS and BIO would not reach the rules baseline (90.3%); 12,749 queries (76.85%) are wrong under both methods
+
+The two architectures are not redundant, but neither approaches the rules baseline. The 76.85% intersection of failures defines a hard core of queries that no architectural choice within the long-only-training paradigm can solve.
+
+#### C3.b — Error taxonomy on the 16,070 missed BIO queries
+
+| Top-level category | Count | % of misses |
+|---|---|---|
+| TAGGER_MISS (model emitted no span for a required axis) | 13,882 | 86.4% |
+| NORMALIZER_MISS (span emitted, normalizer rejected) | 2,187 | 13.6% |
+| WRONG_VALUE (span emitted and normalized, but to the wrong canonical) | 1 | 0.0% |
+| ALL_AXES_OK_BUT_CATALOG_MISS | 0 | 0.0% |
+
+Per-axis TAGGER_MISS counts (model didn't emit a span):
+- **Nº TUBOS: 13,681 (85.1% of misses)** — the model anchors on " tubos" / " mm" in long text, but the short-text format `<digit> t,` doesn't trigger Nº TUBOS. The digit gets tagged as `B-TUBO` (the singular axis present only in OEB160$) and gets filtered out at the per-(parent, axis) gate because TUBO isn't in the schema for OEB020/030/etc.
+- TIPO DE TERRENO: 1,946
+- everything else: ≤ 19
+
+Per-axis NORMALIZER_MISS counts (span emitted but unnormalizable):
+- **CONDICIONES DE EJECUCIÓN: 15,988 (99.5% of misses!)** — the model emits a B-CONDICIONES span but typically truncated to a single token like `cualquier` or `volumen` or `relevante`. The normalizer can't fuzzy-match a single word to compound canonicals like `Cualquier condición de ejecución` or `Volumen relevante` (Lev distance > 0.15).
+- TRABAJO: 7,866
+- BANDA DE MANTENIMIENTO: 7,257
+- TIPO DE TERRENO: 3,175
+
+The dominant failure pattern (87% of missed queries match this exact signature):
+```
+TAGGER_MISS:Nº TUBOS | NORMALIZER_MISS:CONDICIONES DE EJECUCIÓN
+```
+
+Saved: `analysis/bio_error_taxonomy.csv` (one row per missed query).
+
+#### C3.c — `frana horaria` typo tracer
+
+The short-text corpus contains 2,904 queries with the typo "frana horaria" (missing `j`). Comparing TRABAJO axis accuracy on 200 typo queries vs 200 correctly-spelled queries:
+
+| Surface | n | BIO | CLS |
+|---|---|---|---|
+| `frana horaria` (typo) | 200 | **96.0%** | 98.0% |
+| `franja horaria` (correct) | 200 | 85.5% | **100.0%** |
+
+Both architectures are robust to this typo at the TRABAJO axis level. CLS is more accurate on the canonical surface; BIO is comparable on the typo. Curiously, BIO does better on the typo than on the canonical surface — likely because the typo set has fewer compound TRABAJO values like `Cualquier franja horaria excepcional` that BIO truncates.
+
+Saved: `analysis/franja_horaria_typo_tracer.csv`.
+
+#### Per-axis recall on FULL 16,590 eval (replaces LWN-03's stratified sample)
+
+The LWN-03 sample (1,630 stratified queries) over-represented easy parents and gave inflated numbers. The canonical full-corpus numbers:
+
+| Axis | Total | Correct | Recall (full) | Recall (sample, LWN-03) |
+|---|---|---|---|---|
+| TRABAJO | 16,571 | 15,220 | **91.8%** | 90.0% |
+| TIPO DE TERRENO | 15,259 | 9,948 | 65.2% | 58.5% |
+| PROFUNDIDAD | 377 | 249 | 66.0% | 69.4% |
+| BANDA DE MANTENIMIENTO | 16,571 | 9,261 | 55.9% | 55.8% |
+| **Nº TUBOS** | 15,986 | 2,149 | **13.4%** | 39.0% |
+| **CONDICIONES DE EJECUCIÓN** | 16,580 | 141 | **0.9%** | 5.4% |
+| MATERIAL, PAVIMENTO, TERRENO | small | 0 | 0% | 0% |
+| TIPO DE ACCIÓN, TUBO, DIÁMETRO, DIÁMETROS | small | all | 100% | 100% |
+
+The bottleneck axes are clearer in the full corpus:
+- **CONDICIONES at 0.9%** is essentially never correct on short text
+- **Nº TUBOS at 13.4%** fails 86.6% of the time (the `<digit> t,` format mismatch)
+
+Queries with **all** axes correct: 85/16,590 (0.51%). The 3.13% item Acc@1 from the eval is achievable because Stage 3 catalog lookup can return the right item from partial parameter matches when the other parents in the group differ on the wrong axes only. The pure all-axes-correct rate is much lower.
+
+Saved: `analysis/bio_per_axis_short_text_full.csv` (replaces the misleading sample-based CSV from LWN-03).
+
+#### C4 — Speed benchmark (200 queries, mean ms / p95 ms)
+
+| Method | CPU mean | CPU p95 | GPU mean | GPU p95 |
+|---|---|---|---|---|
+| Rules | 0.02 ms | 0.02 ms | — | — |
+| CLS classifier | 23.88 ms | 28.26 ms | 5.43 ms | 6.46 ms |
+| BIO tagger | 22.94 ms | 28.55 ms | 5.87 ms | 7.73 ms |
+| Phi-4 (reference, SEPLN log) | — | — | ~886 ms | — |
+
+BIO and CLS have effectively identical inference latency (within 1 ms). The architectural change is speed-neutral. Both are ~1,200× slower than rules and ~150× faster than Phi-4. The "speed cost of fine-tuning" is paid once at training time; inference cost is the same as the CLS classifier.
+
+Saved: `analysis/speed_benchmark.csv`.
+
+#### D1 — Cross-format diagnostic (500 matched (long, short) pairs)
+
+For each `item_key` present in both long and short corpora, run BIO on both. Per-axis transfer rate = fraction of long-correct that survives to short:
+
+| Axis | Long acc | Short acc | Transfer rate |
+|---|---|---|---|
+| TRABAJO | 100% | 91.0% | 91.0% |
+| TIPO DE TERRENO | 100% | 62.8% | 62.8% |
+| BANDA DE MANTENIMIENTO | 100% | 56.7% | 56.7% |
+| Nº TUBOS | 100% | 38.6% | 38.6% |
+| **CONDICIONES DE EJECUCIÓN** | 100% | 6.8% | **6.8%** |
+| MATERIAL, PAVIMENTO, TERRENO | 100% | 0% | 0% |
+| DIÁMETRO, DIÁMETROS, TIPO DE ACCIÓN, TUBO | 100% | 100% | 100% |
+
+**`short_only` correct never happens** in any of the 474 pairs. Whenever the short-text format produces a correct prediction, the long-text format also did. The cross-distribution gap is strictly one-directional: long → short, never the reverse.
+
+This is the cleanest possible measurement of cross-distribution loss for this architecture. The CONDICIONES axis loses 93.2 percentage points moving from long to short text on the SAME `item_key`s.
+
+Saved: `analysis/cross_format_diagnostic.csv`.
+
+#### D3 — Frozen-encoder BIO ablation (mirrors LW-07)
+
+Train BIO with `--freeze-encoder` so only the 27-class head (~21k parameters) is learnable. The encoder is the pretrained `intfloat/multilingual-e5-base` with no fine-tuning.
+
+Training (RTX 4090, 5 epochs × 38,007 rows, ~12 min):
+
+| Epoch | Loss | token_acc (long val) | span_f1 (long val) | query_acc (long val) |
+|---|---|---|---|---|
+| 1 | 1.6752 | 87.7% | 0.0% | 0.0% |
+| 2 | 0.8419 | 88.7% | 4.9% | 0.0% |
+| 3 | 0.6013 | 90.4% | 6.7% | 0.0% |
+| 4 | 0.4885 | 91.1% | 6.9% | 0.0% |
+| 5 | 0.4445 | 91.3% | **7.0%** | 0.0% |
+
+Frozen BIO reaches only 7.0% span_f1 on its own training distribution after 5 epochs. Compare to:
+- Full FT BIO (LWN-03): span_f1 97.4%, query_acc 99.2% on the same val
+- Frozen CLS (LW-07): val_query_acc 11.4% on long text
+
+The frozen BIO is **even worse on long text than the frozen CLS was**, despite operating on the same encoder. The linear projection from frozen E5 token-level representations over a 27-class space is harder than the per-(group, axis) softmaxes the CLS classifier uses.
+
+**Frozen BIO oracle eval result on 16,590 short-text queries:**
+
+| Condition | item Acc@1 | parent Acc@1 |
+|---|---|---|
+| Frozen BIO oracle | **0.07%** | 100.00% |
+
+Comparison table (LW-06/07 baselines + LWN-03/04):
+
+| Setup | val (long) query_acc | cross-dist oracle Acc@1 | Trainable params |
+|---|---|---|---|
+| BIO full FT (LWN-03) | 99.2% | 3.13% | 278M |
+| BIO frozen encoder (LWN-04) | 0.0% | **0.07%** | 21k |
+| CLS full FT (LW-06) | 99.6% | 21.2% | 278M |
+| CLS frozen encoder (LW-07) | 11.4% | 0.58% | 45k |
+
+**The frozen BIO is worse than the frozen CLS** (0.07% vs 0.58%) on the cross-distribution test. Three ways the BIO architecture is more brittle than CLS:
+1. On its own training distribution: BIO frozen reaches 0.0% query_acc vs CLS frozen's 11.4% (the linear projection from frozen E5 to 27-class BIO is harder than to 97 small softmaxes)
+2. On cross-distribution test: BIO frozen 0.07% vs CLS frozen 0.58%
+3. With full FT: BIO 3.13% vs CLS 21.2%
+
+Across all three regimes, the BIO architecture trails CLS. The hypothesis that token-level supervision improves cross-distribution robustness (protocol §3.2) is rejected from every angle.
+
+### What this sprint adds to the paper
+
+1. **CLS and BIO are non-redundant but jointly capped at 23%.** No architectural choice within the long-only-training regime gets close to the rules baseline.
+2. **The BIO failure mode is dominated by two specific signatures:** TAGGER_MISS:Nº TUBOS (the digit-anchor mismatch in short text) and NORMALIZER_MISS:CONDICIONES (compound-span truncation). Both are mechanically explained and would need targeted fixes — not architecture-level changes.
+3. **Cross-distribution loss is strictly one-directional.** No (long, short) pair has the BIO correct only on short. Every short-format degradation reflects information loss vs the long format.
+4. **Speed is architecture-invariant.** BIO and CLS have identical inference latency. The architectural choice doesn't change deployment cost.
+5. **Frozen encoder ablations confirm representation adaptation is necessary.** BIO frozen reaches only 7% on its own training distribution; full FT is required even to reach the (low) ceiling demonstrated by full-FT cross-distribution numbers.
+
+### Files added
+
+| Artifact | Path |
+|---|---|
+| Confusion matrix | `analysis/cls_vs_bio_confusion.csv`, `analysis/bio_only_correct_sample.csv` |
+| Error taxonomy | `analysis/bio_error_taxonomy.csv` |
+| Typo tracer | `analysis/franja_horaria_typo_tracer.csv` |
+| Per-axis (full corpus) | `analysis/bio_per_axis_short_text_full.csv` |
+| Speed benchmark | `analysis/speed_benchmark.csv` |
+| Cross-format | `analysis/cross_format_diagnostic.csv` |
+| Frozen BIO checkpoint | `models/e5_bio_tagger_frozen/{model.pt, config.json, training_log.json}` (gitignored) |
+| Frozen pipeline | `src/retrievers/structured_pipeline_oracle_bio_tagger_frozen.py`, `configs/structured_pipeline_oracle_bio_tagger_frozen.yaml`, `index/structured_pipeline_oracle_bio_tagger_frozen/meta.json` |
+
+### Out of scope (deferred)
+
+- D2 — query perturbation evaluation (LWN-05+; needs synthetic-query generation)
+- E1/E2 — paper draft (LWN-05+)
+
+### Next sprint
+**Sprint LWN-05:** Phase E — paper draft. The negative-architecture story is now fully characterized; the paper can be written with the central comparison (CLS vs BIO vs rules vs Phi-4) and the mechanistic per-axis breakdown as the contribution.
+
+---
+
 ## Sprint LWN-03 — B5 Full Training + C1 Pipeline Integration + C2 Full Evaluation (the headline)
 
 **Date:** 2026-04-30

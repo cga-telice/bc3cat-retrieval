@@ -194,6 +194,20 @@ docs/sprints/
 
 *Newest entries at the top.*
 
+### Sprint LWN-04 — Phase C3/C4 + Phase D (Diagnostic Ablations)
+**Date:** 2026-04-30
+**Status:** complete
+**What changed:**
+- C3.a — confusion matrix vs CLS: BIO ∩ CLS = 199 queries (1.2%); BIO-only-correct = 321 (1.93%); CLS-only-correct = 3,321 (20.0%); both wrong = 12,749 (76.85%). Union capped at 23.15% — far below rules.
+- C3.b — error taxonomy on 16,070 missed queries: 86% are TAGGER_MISS (dominated by 13,681 Nº TUBOS misses); 14% are NORMALIZER_MISS (dominated by 15,988 CONDICIONES misses where the model emits a single-token span like "cualquier" or "volumen" that fails to fuzzy-match the compound canonical).
+- C3.c — `frana horaria` typo tracer: both architectures robust (BIO 96% / CLS 98% TRABAJO accuracy on the typo).
+- Per-axis recall on FULL 16,590 queries (replaces LWN-03's biased stratified sample): TRABAJO 91.8%, BANDA 55.9%, TIPO DE TERRENO 65.2%, **Nº TUBOS 13.4%**, **CONDICIONES 0.9%**, all-axes-correct 0.51%.
+- C4 — speed benchmark: BIO ≈ CLS (5.5 ms GPU, 23 ms CPU). Both ~1,200× slower than rules, ~150× faster than Phi-4. Architectural change is speed-neutral.
+- D1 — cross-format diagnostic on 500 (long, short) pairs: CONDICIONES transfer rate **6.8%** (long 100% → short 6.8%); TRABAJO 91.0%; **`short_only` correct never happens in any pair** — cross-distribution loss is strictly one-directional.
+- D3 — frozen-encoder BIO ablation: trained with `--freeze-encoder` (~21k trainable params); reached only 7.0% val span_f1 on long text, **0.07% on cross-distribution short text** (vs CLS frozen 0.58%). The BIO architecture is more brittle than CLS in *every* regime: frozen on long, frozen on short, full FT on short.
+
+**Key paper-strengthening result:** the frozen-encoder ablation confirms representation adaptation is necessary, but full FT also fails — the cross-distribution gap is fundamental to the long↔short pair in BC3CAT. The BIO architecture is *strictly worse* than CLS in all three regimes (frozen long, frozen short, full FT short). The hypothesis from protocol §3.2 (token-level supervision improves cross-distribution robustness) is rejected from every angle.
+
 ### Sprint LWN-03 — B5 Full Training + C1 Pipeline Integration + C2 Full Evaluation
 **Date:** 2026-04-30
 **Status:** complete — **the headline number is in**

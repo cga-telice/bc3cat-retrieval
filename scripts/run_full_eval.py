@@ -51,6 +51,7 @@ TIER1_CONDITIONS = [
     "structured_pipeline_oracle_phi4_classify",
     "structured_pipeline_bio_tagger",     # Sprint LWN-03 — shared BIO tagger
     "structured_pipeline_oracle_bio_tagger",
+    "structured_pipeline_oracle_bio_tagger_frozen",  # Sprint LWN-04 — frozen-encoder BIO ablation
 ]
 
 CHECKPOINT_INTERVAL = 500
