@@ -194,6 +194,16 @@ docs/sprints/
 
 *Newest entries at the top.*
 
+### Sprint LWN-05 — Phase E (Comparative Error Taxonomy + Paper Draft)
+**Date:** 2026-04-30
+**Status:** complete
+**What changed:**
+- E1 — `analysis/comparative_error_taxonomy.csv` and `..._per_axis.csv`: uniform error categorization across rules / CLS / BIO on 16,590 queries.
+- Three distinct failure profiles: Rules 93.5% all-correct (NULL on out-of-template surfaces), CLS 21.6% all-correct (confident-wrong values), BIO 0.51% all-correct (conservative-null abstentions).
+- Stage 3 catalog lookup amplifies the asymmetry: NULLs ignored, WRONGs exclude the right item. Explains BIO 3.13% Acc@1 from 0.51% all-correct vs CLS 21.2% from 21.6% all-correct.
+- E2 — `docs/lightweight-extraction-ner/PAPER_DRAFT.md`: 10-section markdown draft, all numerical claims source-pointed. Title: *Architectural Choices in Lightweight Parameter Extraction: When CLS Classifiers Exploit Format-Specific Cues and What Survives at the Token Level.*
+- The protocol's Phase E is now complete. Possible next sprints: paper finalization (LaTeX), data-side experiments (mixed training, anchor-removal augmentation), or D2 query perturbation.
+
 ### Sprint LWN-04 — Phase C3/C4 + Phase D (Diagnostic Ablations)
 **Date:** 2026-04-30
 **Status:** complete

@@ -11,6 +11,62 @@
 
 ---
 
+## Sprint LWN-05 — Phase E (Comparative Error Taxonomy + Paper Draft)
+
+**Date:** 2026-04-30
+**Tasks completed:** E1 (comparative error taxonomy across rules / CLS / BIO), E2 (paper draft)
+
+### What changed
+
+- `analysis/comparative_error_taxonomy.csv` + `..._per_axis.csv` — uniform error categorization across the three Stage 2 methods on the same 16,590-query short-text test.
+- `docs/lightweight-extraction-ner/PAPER_DRAFT.md` — 10-section markdown draft, ~7 pages, every numerical claim source-pointed to a sprint or analysis CSV.
+
+### E1 — The comparative error structure (the LWN-04/05 punchline)
+
+| Method | ALL_CORRECT | PARTIAL | WRONG_VALUE | ALL_NULL |
+|---|---|---|---|---|
+| Rules | 93.51% | 6.49% | 0.00% | 0.00% |
+| CLS classifier (full FT) | 21.57% | 78.37% | 0.05% | 0.00% |
+| BIO tagger (full FT) | 0.51% | 97.44% | 0.00% | 2.04% |
+
+Three distinct failure profiles (per-axis NULL vs WRONG counts on missed queries):
+
+- **Rules** — high accuracy on the patterns it hand-encodes; failures are NULL extractions on out-of-template surface forms (TRABAJO 1,017).
+- **CLS** — confident-wrong: softmax forces a commit. TRABAJO 7,777 wrong, BANDA 6,382 wrong, TIPO DE TERRENO 4,718 wrong.
+- **BIO** — conservative-null: per-token decision returns no canonical when the span is uninterpretable. CONDICIONES 16,439 NULL, Nº TUBOS 13,837 NULL.
+
+**Stage 3 amplifies the asymmetry.** NULLs are ignored by the catalog lookup (partial-match recovery still works); WRONGs actively exclude the correct item. This is why BIO reaches 3.13% Acc@1 from 0.51% all-axes-correct (catalog lookup tolerates NULLs) while CLS reaches 21.2% from 21.6% all-axes-correct (lookup is unforgiving of WRONGs).
+
+### E2 — Paper draft
+
+10 sections covering: cross-distribution test framing, both architectures, the deterministic schema-bounded normalizer, all five LWN-04 diagnostics, the comparative error taxonomy, and the discussion of why BIO is worse than CLS in every regime tested. Title: *Architectural Choices in Lightweight Parameter Extraction: When CLS Classifiers Exploit Format-Specific Cues and What Survives at the Token Level.*
+
+The discussion (§6) frames the central counter-intuitive finding: **per-token loss creates *stronger* per-token sensitivity to local context.** In a corpus where the local context is the very label-prefix anchor that doesn't transfer across formats, the BIO architecture ends up more anchor-bound than the CLS architecture — opposite of the prior on token-level robustness.
+
+The conclusion (§8) closes the architectural-axis question and points at the data-side directions (mixed training, anchor-removal augmentation) that future work needs to take.
+
+### Files added
+
+- `analysis/comparative_error_taxonomy.csv`
+- `analysis/comparative_error_taxonomy_per_axis.csv`
+- `docs/lightweight-extraction-ner/PAPER_DRAFT.md`
+- `docs/sprints/SPRINT_LWN_05.md`
+
+### Out of scope (deferred)
+
+- D2 — query perturbation evaluation (the paper has enough diagnostic depth without it; would be a follow-up if a venue requests additional robustness data).
+- LaTeX submission-ready formatting and BibTeX bibliography (deferred until a venue is chosen).
+- Camera-ready figures (markdown tables suffice for the draft; figure generation comes later).
+
+### Next sprint (suggested)
+
+The protocol's Phase E is now complete. Possible next steps:
+- **LWN-06: paper finalization** — translate to LaTeX, add figures, line up references, target a venue.
+- **LWN-06 alt: data-side experiments** — mixed training (long + labeled-short with proper holdout), anchor-removal augmentation. The natural follow-up implied by §6.5 of the paper.
+- **LWN-06 alt: D2 query perturbation** — synthetic perturbed queries to test architectural robustness more broadly.
+
+---
+
 ## Sprint LWN-04 — Phase C3/C4 + Phase D (Diagnostic Ablations)
 
 **Date:** 2026-04-30
