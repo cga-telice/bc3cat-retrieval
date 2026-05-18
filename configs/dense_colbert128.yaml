@@ -1,0 +1,42 @@
+# Dense ColBERT128 
+
+collection: "OEB"
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_text_path: "{data_dir}/{collection}_resumen.json"
+  long_text_path: "{data_dir}/{collection}_texto.json"
+
+method:
+  family: dense
+  name: colbert128
+  impl: dense_colbert128
+  save_as: dense_colbert128
+  params:
+    engine: voyager           
+    chunk_size: 2000
+    encode_bsize: 64
+    service_index_name: dense_colbert128  # optional; defaults to save_as/name
+    single_pass: false
+
+index:
+  # Where the index artifacts will be written (same layout as lexical methods)
+  output_dir: /index/dense_colbert128
+
+builder:
+  module: src.index_builders.dense_colbert128
+
+retriever:
+  module: src.retrievers.dense_colbert128
+  class: DenseSearcher
+  params:
+    topk: 100
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json

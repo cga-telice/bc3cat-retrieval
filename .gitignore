@@ -1,0 +1,74 @@
+# Ignore all files in milvus, etcd, and minio folders
+milvus/
+etcd/
+minio/
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore data files
+*.pkl
+*.json
+*.npz
+*.csv
+*.parquet
+*.gz
+
+# Data / cache
+data/
+data/raw/
+data/intermediate/
+resultados.jsonl
+notebooks/resultados.jsonl
+runs/
+index/
+data/hf_cache/
+hf_cache/
+sandbox/
+notebooks/.ipynb_checkpoints/
+*.ipynb_checkpoints/
+__pycache__/
+hf-cache/
+**.ipynb_checkpoints/
+
+
+# Artefacts/models
+*.npz
+*.pkl
+*.pt
+*.onnx
+*.onnx_data
+*.bin
+*.model
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore virtual environment
+venv/
+env/
+
+# Ignore compiled files
+*.class
+*.pyc
+*.o
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.swp
+*.bak
+*.orig
+
+# Ignore Ollama-related files
+ollama/
+*.ollama
+
+# Ignore coda and torch folders
+coda/
+torch/

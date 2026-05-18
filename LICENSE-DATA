@@ -1,0 +1,100 @@
+BC3CAT-Retrieval — Dataset Licensing Notice
+===========================================
+
+Copyright (c) 2026 Cesáreo González-Alvarez, Laura Fernández-Robles,
+Enrique Alegre, Manuel Castejón-Limas, Universidad de León.
+
+This file applies to the *dataset artifacts* distributed with this
+repository and the companion Zenodo deposit, including (but not limited
+to):
+
+  * Processed parquet/JSON files derived from the BC3 catalog
+    (e.g. `OEB_short_feats.parquet`, `OEB_long_feats.parquet`,
+    `OEB_features_meta.json`).
+  * Query sets, ground-truth mappings, and qrels files used in the
+    evaluation protocol.
+  * Retrieval outputs, ranked candidate lists, error annotations,
+    and evaluation summaries stored under `runs/` and `eval/`.
+
+Source-code files in this repository are licensed separately under the
+MIT License; see the accompanying `LICENSE` file.
+
+----------------------------------------------------------------------
+
+LICENSE FOR DATASET ARTIFACTS
+
+The dataset artifacts are released under the
+**Creative Commons Attribution 4.0 International License (CC-BY-4.0)**.
+
+You are free to:
+  - Share — copy and redistribute the material in any medium or format.
+  - Adapt — remix, transform, and build upon the material for any
+    purpose, even commercially.
+
+Under the following terms:
+  - Attribution — You must give appropriate credit, provide a link to
+    the license, and indicate if changes were made. You may do so in
+    any reasonable manner, but not in any way that suggests the licensor
+    endorses you or your use.
+  - No additional restrictions — You may not apply legal terms or
+    technological measures that legally restrict others from doing
+    anything the license permits.
+
+Full legal code: https://creativecommons.org/licenses/by/4.0/legalcode
+Human-readable summary: https://creativecommons.org/licenses/by/4.0/
+
+When citing this dataset, please cite the Zenodo deposit:
+
+  González-Alvarez, C., Fernández-Robles, L., Alegre, E., &
+  Castejón-Limas, M. (2026). BC3CAT-Retrieval: A retrieval benchmark
+  for parametric construction catalogs [Dataset]. Zenodo.
+  https://doi.org/10.5281/zenodo.XXXXXXX
+
+A manuscript describing the methodology and findings is currently
+under review at Automation in Construction:
+
+  González-Alvarez, C., Fernández-Robles, L., Alegre, E., &
+  Castejón-Limas, M. (2026). A Systematic Comparative Study of
+  Retrieval Methods for Parametric Construction Catalogs: From Lexical
+  to Neural Approaches. Manuscript submitted for publication.
+
+Once the manuscript is accepted, please cite the published version
+instead; this notice will be updated accordingly.
+
+----------------------------------------------------------------------
+
+ATTRIBUTION TO THE UPSTREAM SOURCE (ADIF BPA)
+
+The dataset artifacts are derived from the publicly available price
+catalog of ADIF (Administrador de Infraestructuras Ferroviarias),
+published through the BPA portal at https://bpa.adif.es/bp1/. The raw
+BC3 (Base de Costes de la Construcción, version 3) records were parsed,
+expanded, deduplicated, and annotated by the authors to produce a
+benchmark suitable for retrieval evaluation. The processed artifacts
+distributed here are an original contribution by the authors; the
+underlying construction work items, parameter values, and technical
+specifications remain the intellectual property of ADIF.
+
+The terms under which ADIF publishes the BPA catalog have not been
+verified at the time of this release. The authors release their
+processed artifacts under CC-BY-4.0 under the good-faith assumption
+that the BPA catalog is made available for public reuse with attribution,
+consistent with Spanish Law 37/2007 on the reuse of public-sector
+information (BOE-A-2007-19814) and its successors. Downstream users
+who plan to redistribute or transform large portions of the underlying
+ADIF data are encouraged to contact ADIF directly (info@adif.es) to
+confirm the applicable terms.
+
+----------------------------------------------------------------------
+
+DISCLAIMER
+
+THE DATASET ARTIFACTS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF FITNESS FOR A PARTICULAR PURPOSE, ACCURACY OR COMPLETENESS. THE
+AUTHORS AND THE UNIVERSIDAD DE LEÓN SHALL NOT BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE DATASET.
+
+The catalog data does not constitute a recommendation, endorsement, or
+official statement by ADIF, Telice S.A., or any other entity referenced
+in the accompanying paper.
