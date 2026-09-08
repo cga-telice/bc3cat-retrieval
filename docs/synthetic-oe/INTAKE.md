@@ -18,29 +18,33 @@ so the `/work/data/processed/{COLLECTION}_*` convention keeps working with `COLL
 
 | File | Role | Status |
 |---|---|---|
-| `data/processed/OE_texto.json` | document corpus — original TEXTO, deduplicated (retrieval **targets**) | **pending — place here** |
-| `data/processed/OE_resumen.json` | original RESUMEN of the same leaves (resumen→texto **baseline** queries) | **pending — place here** |
+| `data/processed/OE_texto.json` | document corpus — original TEXTO, deduplicated (retrieval **targets**) | in place (2026-09-08) |
+| `data/processed/OE_resumen.json` | original RESUMEN of the same leaves (resumen→texto **baseline** queries) | in place (2026-09-08) |
 | `data/processed/OE_single_texto.json` | synthetic queries, **one** modification each | in place |
 | `data/processed/OE_stacked_texto.json` | synthetic queries, **all** applicable modifications stacked | in place |
 | `data/processed/OE_concept_schema.json` | per concept: name, axes, item_keys, num_items | in place |
 | `data/processed/OE_handoff_README.md` | the handoff README shipped with the query sets | in place |
 
-Expected shape of the two pending files (same producer, `scripts/package_for_retrieval.py`
-in `bc3cat-dataset`): JSON list of `{id, item_key, parent_key, ud, concept, parameters, text}`,
-**70 242 records each**, 83 distinct `parent_key`, no template rows (`#`/`$`), no empty text,
-`item_key` unique and identical between the two files.
+Validated on 2026-09-08 after copying from `D:/Users/cesar/Downloads/BC3CAT_Syn_OE_handoff`:
+`OE_texto.json` / `OE_resumen.json` are JSON lists of `{id, item_key, parent_key, ud, concept,
+parameters, text}`, **70 242 records each**, 83 distinct `parent_key`, no template rows (`#`/`$`),
+no empty text, `item_key` unique and in identical order in both files, `parameters` nested in
+every corpus record. All 4 439 single and 4 998 stacked `gold_item_key` exist in the corpus and
+their `parent_key` matches the corpus parent. 4 leaves have resumen identical to texto.
 
-Working-copy note: this branch is developed in the worktree
-`.claude/worktrees/corpus-synthetic-queries-785c03`; `data/`, `index/`, `runs/`, `logs/` and
-`hf-cache/` there are NTFS junctions to the main checkout, so both checkouts see the same
-artifacts. Docker still mounts whichever checkout you run `docker-compose` from as `/work`.
+Working-copy note: the branch is checked out in the main checkout
+(`D:/Users/cesar/Dev/Phd/bc3cat-retrieval`), which is what `docker-compose` mounts as `/work`.
+The app worktree `.claude/worktrees/corpus-synthetic-queries-785c03` used to open the branch is
+left on a detached HEAD and can be removed; its `data/ index/ runs/ logs/ hf-cache/` entries are
+NTFS junctions to the main checkout, not copies.
 
 ## 2. Provenance
 
 - Producer: `bc3cat-dataset`, branch `synthetic`, `scripts/package_for_retrieval.py`.
 - Query sets + schema versioned in `bc3cat-dataset` commit `8998875` (2026-09-08).
   SHA-256 prefixes at copy time: single `b6a43961295cc2ca`, stacked `1bde21157ef97421`,
-  schema `2d3273ddb3e443a1`.
+  schema `2d3273ddb3e443a1`, texto `02a2c270d7ffe147`, resumen `0cd380e9e44ad8c5` (the two corpus files are
+  git-ignored in `bc3cat-dataset` and were delivered as the folder `BC3CAT_Syn_OE_handoff`).
 - Corpus source parquets: `data/synthetic/processed_OE/OE_target_long.parquet` /
   `OE_target_short.parquet` (after cross-concept twin drop OED170$→OED020$ and intra-concept
   collapse OEG010$; see `docs/synthetic/OE_dedup_report.md` there).
