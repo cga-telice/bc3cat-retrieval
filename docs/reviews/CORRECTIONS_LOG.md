@@ -77,6 +77,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | N10 | 413-417 | GTE evaluado con `doc_prefix: "passage: "` | `gte-multilingual-base` no usa prefijos estilo E5. Afecta a las dos variantes GTE | pendiente |
 | N11 | 914 | Paréntesis suelto: `($\lambda=0.6$))` | — | hecho |
 | N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | **verificado**: mean+prefijos = 0,0000 · CLS sin prefijos = 0,0970 (ver Evidencia). Falta decidir si se reejecuta con la configuración correcta |
+| N14 | 467, 472 | *"retrieve … from 47,513 candidates"*: los índices densos indexan **47.514** documentos | `index/{dense_e5,dense_gte,dense_es_hiiamsid,dense_bge-m3}/meta.json` declaran `num_docs: 47514`, mientras BM25, TF-IDF y BGE-M3 declaran 47.513. La diferencia es el registro raíz `OEB#` ("ZANJAS, CANALIZACIONES Y TUBOS"), que no es un ítem recuperable: los densos lo llevan como distractor extra y los léxicos no. `dense_gte_instrQ` tiene 47.513, así que ni siquiera es consistente dentro de la misma familia. No altera ninguna conclusión, pero el corpus debe declararse igual para todos los métodos | pendiente |
 | N13 | — | `index/*/meta.json` no registra qué backend de codificación se usó | Ni `dense_gte/meta.json` ni los demás guardan si se codificó con sentence-transformers o con el camino alternativo, de modo que N12 no era detectable desde los artefactos. `software.sklearn` es `null` y `corpus_hash` también | pendiente |
 
 ## Bloque C — Correcciones de código
@@ -211,6 +212,19 @@ compatibilidad con torch 2.2.2 y sentence-transformers 2.2.2— **no puede carga
 `transformers` 4.57 sobre el mismo torch, carga sin problema. El índice publicado se
 construyó en 2025-08-21, presumiblemente con otro entorno; `meta.json` no lo registra
 (N13), así que no es reconstruible desde los artefactos.
+
+**Reejecución completa** (muestra canónica, CLS, sin prefijos, `transformers` 4.57):
+
+| | Acc@1 ítem | Acc@1 padre |
+|---|---|---|
+| Publicado (mean + prefijos, n=16.589) | 0,0128 | 0,8367 |
+| **Corregido (CLS, sin prefijos, n=16.590)** | **0,0696** | **0,9982** |
+
+El salto a nivel de padre es lo relevante: de 0,837 a **0,998**. Bien configurado,
+GTE identifica la familia paramétrica casi perfectamente y la variante concreta casi
+nunca — una brecha de **92,9 puntos**. Deja de ser un valor atípico sospechoso y pasa
+a ser la instancia más nítida del colapso ítem↔padre, que es el hallazgo que encabeza
+la versión revisada.
 
 **Consecuencia:** el 1,3 % de GTE no puede usarse como evidencia sobre modelos densos,
 y la frase de L1109 que lo presenta como prueba de que *"retrieval in technical domains
