@@ -93,3 +93,4 @@ docs/reviews/*.log
 paper/paper_28.pdf
 paper/*.log
 paper/*.spl
+docker-compose.override.yml

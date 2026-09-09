@@ -1,6 +1,39 @@
-# Downgrade transformers to be compatible with PyTorch 2.2.2
+# Entorno de ejecución del benchmark BC3CAT.
+#
+# Versiones fijadas a las realmente usadas en el contenedor
+# `quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8`, que ya aporta
+# torch 2.2.2+cu121. El fichero anterior sólo listaba cinco paquetes y omitía
+# la mayoría de lo que el código importa, de modo que una instalación limpia
+# fallaba.
+
+# --- Modelos neuronales ---
+# transformers se mantiene en 4.26.0 por compatibilidad con torch 2.2.2 y con
+# sentence-transformers 2.2.2, que es la versión con la que se ejecutaron los
+# experimentos publicados.
 transformers==4.26.0
 sentence-transformers==2.2.2
 huggingface_hub==0.13.4
-faiss-cpu
-requests
+
+# --- Datos y cálculo ---
+# Los métodos léxicos son implementación propia sobre CountVectorizer/TfidfVectorizer
+# y matrices dispersas de scipy: no se usa Pyserini ni ningún backend Lucene.
+numpy==1.26.4
+pandas==2.2.2
+pyarrow==15.0.2
+scikit-learn==1.4.2
+scipy==1.13.0
+faiss-cpu==1.15.0
+
+# --- Orquestación y utilidades ---
+# papermill parametriza los notebooks (index_builder, retrieve, metrics).
+papermill==2.7.0
+PyYAML==6.0.1
+tqdm==4.66.2
+requests==2.31.0
+
+# --- Figuras ---
+matplotlib==3.8.4
+seaborn==0.13.2
+
+# Nota: las métricas (Acc@1, Recall@k, MRR, nDCG@10) están implementadas a mano
+# en src/metrics.ipynb. No se usa la librería ranx.

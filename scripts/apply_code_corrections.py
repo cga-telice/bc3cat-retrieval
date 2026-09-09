@@ -39,7 +39,65 @@ class Patch:
             self.applied_marker = novel[0] if novel else self.new[0]
 
 
+CANONICAL_SAMPLE_PATH = "/work/benchmark/query_samples/OEB_query_sample_test_16590.json"
+
 PATCHES: list[Patch] = [
+    Patch(
+        ident="C1-param",
+        notebook="src/retrieve.ipynb",
+        rationale=(
+            "Expone la muestra de consultas como parametro de papermill, para poder "
+            "lanzar el mismo notebook sobre test o sobre validacion sin editarlo."
+        ),
+        old=[
+            "RANDOM_SAMPLE = 16590   \n",
+        ],
+        new=[
+            "# Fichero versionado con los identificadores de consulta. Sustituye al\n",
+            "# muestreo en memoria; RANDOM_SAMPLE solo actua si este queda vacio.\n",
+            f'QUERY_SAMPLE  = "{CANONICAL_SAMPLE_PATH}"\n',
+            "RANDOM_SAMPLE = 16590   \n",
+        ],
+    ),
+    Patch(
+        ident="C1-load",
+        notebook="src/retrieve.ipynb",
+        rationale=(
+            "`.sample(n, random_state=42)` es posicional: con el mismo seed pero "
+            "distinto orden de filas produce subconjuntos distintos. Como cada YAML "
+            "declara un fichero de queries diferente (short_feats.parquet, "
+            "resumen.json, short_norm.parquet), el estudio publicado acabo "
+            "conviviendo con tres muestras presentadas como una sola."
+        ),
+        old=[
+            "# 1) Optional: take a random subset (also shuffles it)\n",
+            "if RANDOM_SAMPLE is not None:\n",
+            "    queries_df = queries_df.sample(n=int(RANDOM_SAMPLE), random_state=42).copy()\n",
+            "# 2) Else: just shuffle order (no change to membership)\n",
+            "elif SHUFFLE:\n",
+            "    queries_df = queries_df.sample(frac=1.0, random_state=42).copy()\n",
+        ],
+        new=[
+            "# 1) Muestra fija, cargada de un fichero versionado y verificada por huella.\n",
+            "if QUERY_SAMPLE:\n",
+            "    import hashlib as _hashlib, json as _json\n",
+            "    _payload = _json.loads(Path(QUERY_SAMPLE).read_text(encoding='utf-8'))\n",
+            "    _wanted = set(_payload['query_item_keys'])\n",
+            "    _fp = _hashlib.sha256('\\n'.join(sorted(_wanted)).encode('utf-8')).hexdigest()\n",
+            "    if _payload.get('sha256') and _fp != _payload['sha256']:\n",
+            "        raise ValueError(f\"{QUERY_SAMPLE}: huella {_fp[:12]} != declarada {_payload['sha256'][:12]}\")\n",
+            "    queries_df = queries_df[queries_df['item_key'].astype(str).isin(_wanted)].copy()\n",
+            "    if len(queries_df) != len(_wanted):\n",
+            "        raise ValueError(f\"El fichero de queries aporta {len(queries_df)} de las {len(_wanted)} consultas de la muestra\")\n",
+            "    queries_df = queries_df.sort_values('item_key').reset_index(drop=True)\n",
+            "    print(f\"[SAMPLE] {len(queries_df):,} consultas de {QUERY_SAMPLE} (sha256 {_fp[:12]})\")\n",
+            "# 2) Legado: muestreo aleatorio en memoria. No usar para resultados publicables.\n",
+            "elif RANDOM_SAMPLE is not None:\n",
+            "    queries_df = queries_df.sample(n=int(RANDOM_SAMPLE), random_state=42).copy()\n",
+            "elif SHUFFLE:\n",
+            "    queries_df = queries_df.sample(frac=1.0, random_state=42).copy()\n",
+        ],
+    ),
     Patch(
         ident="C3b",
         notebook="src/hybrid.ipynb",

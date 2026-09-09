@@ -81,7 +81,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 
 | # | Cambio | Fichero | Estado |
 |---|---|---|---|
-| C1 | Persistir la muestra de consultas y cargarla en todos los notebooks en lugar de re-muestrear en memoria | `scripts/build_query_samples.py`, `src/retrieve.ipynb`, `src/prf_bm25_orchestrator.ipynb`, `src/hybrid.ipynb`, `notebooks/bm25_orchestrator.ipynb` | parcial — ficheros generados, falta enganchar los notebooks |
+| C1 | Persistir la muestra de consultas y cargarla en todos los notebooks en lugar de re-muestrear en memoria | `scripts/build_query_samples.py`, `src/retrieve.ipynb` | parcial — hecho en `retrieve.ipynb`; faltan `prf_bm25_orchestrator`, `hybrid` y `bm25_orchestrator` |
 | C2 | Conjunto de validación disjunto de 5.000 consultas | `scripts/build_query_samples.py` | hecho |
 | C3a | `_nums` acepta `np.ndarray` además de `list` | `src/hybrid.ipynb` | hecho |
 | C3b | `numbers_long` sobre los 47.513 documentos del corpus, no sobre los muestreados | `src/hybrid.ipynb` | hecho |
@@ -91,7 +91,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | C7 | Eliminar el `query_prefix` inerte de `dense_e5.yaml` | `configs/dense_e5.yaml` | pendiente |
 | C8 | Persistir `base_runs_norm.parquet` y separar el barrido de la recuperación base | `src/hybrid.ipynb` | pendiente |
 | C9 | Runner completo build → retrieve → metrics para cualquier config | `scripts/run_all.py` | pendiente |
-| C10 | `requirements.txt` real; eliminar menciones a `ranx` y Pyserini | `requirements.txt`, `README.md` | pendiente |
+| C10 | `requirements.txt` real; eliminar menciones a `ranx` y Pyserini | `requirements.txt`, `README.md` | hecho en `requirements.txt`; falta el README |
 
 ## Bloque R — Reejecuciones y experimentos
 
