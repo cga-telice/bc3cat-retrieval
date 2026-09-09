@@ -90,3 +90,6 @@ paper/*.fdb_latexmk
 paper/*.fls
 .cache/
 docs/reviews/*.log
+paper/paper_28.pdf
+paper/*.log
+paper/*.spl

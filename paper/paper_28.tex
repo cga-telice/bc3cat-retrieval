@@ -39,6 +39,9 @@
 
 \setlength{\marginparwidth}{2cm}
 
+% Las figuras viven en paper/figures/ y las tablas generadas en eval/.
+\graphicspath{{figures/}}
+
 \sloppy
 
 \journal{Automation in Construction}
@@ -161,7 +164,7 @@ Figure~\ref{fig:retrieval_workflow} summarizes the retrieval setting considered 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\linewidth]{elsarticle/graphical_abstract.png}
+    \includegraphics[width=\linewidth]{graphical_abstract.png}
     \caption{Overview of the construction catalog retrieval task evaluated in this study. Short catalog descriptions are used as proxy practitioner-oriented queries to retrieve the exact matching item from a large parametric catalog, where near-duplicate entries may differ only in technical or numeric attributes.}
     \label{fig:retrieval_workflow}
 \end{figure}
