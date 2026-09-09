@@ -1,0 +1,22 @@
+% Generado por scripts/leaderboard.py --dual -- no editar a mano.
+\begin{table}[ht]
+\centering
+\caption{Item-level versus parent-level accuracy on the canonical test set ($n=16{,}590$). The gap is the difference in percentage points. Systems are ordered by item-level accuracy; the gap grows monotonically as item-level accuracy falls.}
+\label{tab:dissociation}
+\begin{tabular}{lccc}
+\toprule
+\textbf{System} & \textbf{Item Acc@1} & \textbf{Parent Acc@1} & \textbf{Gap (pp)} \\
+\midrule
+BM25 with parameter phrases (best lexical) & 0.974 & 0.985 & 1.2 \\
+BM25 unigram & 0.869 & 0.973 & 10.4 \\
+TF-IDF with parameter phrases & 0.708 & 0.990 & 28.1 \\
+BGE-M3 ColBERT (best neural) & 0.448 & 0.997 & 54.9 \\
+multilingual-e5-base & 0.136 & 0.982 & 84.5 \\
+BGE-M3 dense & 0.127 & 0.960 & 83.4 \\
+BGE-M3 sparse & 0.125 & 0.994 & 87.0 \\
+GTE-multilingual-base (instruct) & 0.073 & 0.997 & 92.4 \\
+GTE-multilingual-base (direct) & 0.070 & 0.998 & 92.9 \\
+sentence-similarity-spanish & 0.024 & 0.395 & 37.1 \\
+\bottomrule
+\end{tabular}
+\end{table}

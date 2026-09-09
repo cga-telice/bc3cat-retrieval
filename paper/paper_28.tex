@@ -859,26 +859,13 @@ On the 29 non-numeric queries all three modes improved markedly --- ColBERT and 
 
 \subsubsection{Cross-Family Performance Comparisons}
 
-Table~\ref{tab:neural_comparison} presents a direct comparison of item-level Acc@1 performance across the best-performing configuration from each model family, revealing substantial performance differences.
+Table~\ref{tab:dissociation} places every method evaluated in this study side by side at both levels of the catalog hierarchy. It is the central result of this work.
 
-\begin{table}[htbp]
-\centering
-\caption{Item-level Acc@1 comparison across neural model families. Values shown for best configuration within each family.}
-\label{tab:neural_comparison}
-\begin{tabular}{lcc}
-\hline
-\textbf{Model Family} & \textbf{Best Configuration} & \textbf{Acc@1} \\
-\hline
-BGE-M3 & ColBERT (multi-vector) & 0.448 (44.8\%) \\
-E5 & multilingual-e5-base & 0.134 (13.4\%) \\
-GTE & gte-large-en-v1.5 & 0.013 (1.3\%) \\
-\hline
-\multicolumn{3}{l}{\textit{Single-vector modes within BGE-M3:}} \\
-BGE-M3 & Sparse & 0.125 (12.5\%) \\
-BGE-M3 & Dense & 0.127 (12.7\%) \\
-\hline
-\end{tabular}
-\end{table}
+\input{tables/item_parent_dissociation.tex}
+
+Three observations follow. First, the ordering at item level is almost exactly reversed at parent level: the systems that discriminate variants worst are among those that identify families best. Second, the gap widens monotonically as item-level accuracy falls, from $1.2$ percentage points for BM25 with parameter phrases to $92.9$ for GTE. Third, the single exception --- \texttt{sentence\_similarity\_spanish\_es}, with a gap of only $37.1$ points --- is the exception that confirms the pattern: it is a monolingual sentence-similarity model rather than a retriever, and it is weak at both levels, so it never reaches the regime in which the dissociation appears.
+
+The dissociation is not an artefact of any single architecture. It holds for single-vector dense encoders, for learned sparse representations, and, in attenuated form, for late interaction. What separates the methods is not whether they understand the domain --- at parent level almost all of them are close to ceiling --- but whether their representation preserves the parameter values that distinguish one variant from another.
 
 The performance hierarchy is clear: BGE-M3-ColBERT (44.8\%) outperformed E5-large by 31.4 percentage points and GTE-large by 43.5 percentage points. These substantial differences are meaningful for practical retrieval applications.
 
