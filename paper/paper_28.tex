@@ -822,11 +822,11 @@ This subsection presents the comparative performance of neural dense retrieval m
 
 \subsubsection{E5 Model Family Performance}
 
-Table~\ref{tab:e5_performance} presents the performance comparison across E5 model variants. The multilingual-e5-base model achieved item-level Acc@1 of 0.134 (13.4\%), meaning only 1 in 7.5 queries successfully retrieved the correct item as the top result. At the parent level, E5-large demonstrated substantially stronger performance with Acc@1 of 0.982 (98.2\%).
+Table~\ref{tab:e5_performance} presents the performance comparison across E5 model variants. The multilingual-e5-base model achieved item-level Acc@1 of 0.136 (13.6\%), meaning roughly 1 in 7 queries retrieved the correct item as the top result. At the parent level the same model reaches 0.982 (98.2\%).
 
 \begin{table}[htbp]
 \centering
-\caption{Performance comparison of E5 model variants. All models evaluated on 16,589 queries (test set).}
+\caption{Performance comparison of E5 model variants. Evaluated on the canonical test set ($n=16{,}590$).}
 \label{tab:e5_performance}
 \begin{tabular}{lccccc}
 \hline
@@ -834,18 +834,18 @@ Table~\ref{tab:e5_performance} presents the performance comparison across E5 mod
 \hline
 \multicolumn{6}{c}{\textit{Item-Level Retrieval}} \\
 \hline
-multilingual-e5-base & 0.134 & 0.376 & 0.518 & 0.251 & 0.303 \\
+multilingual-e5-base & 0.136 & 0.371 & 0.516 & 0.252 & 0.303 \\
 \hline
 \multicolumn{6}{c}{\textit{Parent-Level Retrieval}} \\
 \hline
-multilingual-e5-base & 0.982 & 0.993 & 0.996 & 0.987 & 0.969 \\
+multilingual-e5-base & 0.982 & 0.993 & 0.997 & 0.986 & 0.968 \\
 \hline
 \end{tabular}
 \end{table}
 
-The E5 model demonstrated dramatically different performance between hierarchical levels, with Acc@1 improving 7.3-fold from 13.4\% at item-level to 98.2\% at parent-level. This pattern suggests that while E5 embeddings effectively capture high-level semantic similarity for parent document matching, they struggle to discriminate between fine-grained item variations within the same parent category.
+The two levels differ by a factor of $7.2$: from $13.6\%$ at item level to $98.2\%$ at parent level, a gap of $84.5$ percentage points. The embeddings capture enough of the domain to place a query under the right template, and almost none of what separates the variants within it.
 
-Stratification by query type revealed a critical limitation: queries without numeric parameters achieved Acc@1 of 0.875 versus 0.133 for numeric queries --- a pattern that persists across all neural model families.
+Stratification by query type points to where the loss occurs: on the 29 queries with no numeric parameters, Acc@1 is $0.897$, against $0.135$ on the 16,561 numeric ones. The non-numeric subset is far too small to carry a statistical claim, but the direction is consistent across every neural family evaluated here.
 
 \subsubsection{GTE Model Family Performance}
 \label{subsec:gte}
