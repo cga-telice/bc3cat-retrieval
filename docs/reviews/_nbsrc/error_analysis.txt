@@ -1,0 +1,722 @@
+
+#===== CELL 0 [markdown] =====
+# 🧩 Error Analysis — Retrieval Failure Modes, Overlaps, and Duplicates
+
+This notebook analyzes **why** different retrieval methods fail or succeed on the **Spanish construction item retrieval task**, and produces diagnostic tables + plots under
+`/work/eval/error_analysis/`.
+
+---
+
+## 🔍 What it does
+
+1. **Loads data**
+
+   * Short-format and long-format items from `/work/data/processed/*_feats.parquet`
+   * Parent–child mappings between items.
+
+2. **Loads multiple retrieval runs**
+
+   * Each method listed in `METHODS` (e.g. `bm25_unigram`, `tfidf_char_3_5`, etc.).
+   * Looks for the latest `results_top*.jsonl.gz` under `/work/runs/<method>/`.
+
+3. **Aligns queries**
+
+   * Keeps only queries common to all selected methods.
+   * Builds comparable evaluation tables.
+
+---
+
+## 📊 Analyses performed
+
+### 1. **@1 Success Overlap**
+
+* Computes intersections of correctly retrieved queries across methods.
+* Saves:
+
+  * `overlap_counts__@1.csv`
+  * `overlap_jaccard__@1.csv`
+* Produces a heatmap: `overlap_jaccard__@1.png`
+
+---
+
+### 2. **Parent / Item Diagnostics**
+
+Detects typical *failure modes*:
+
+| Category                     | Meaning                           |
+| ---------------------------- | --------------------------------- |
+| ✅ `correct_at_1`             | Correct item retrieved            |
+| ⚙️ `right_parent_wrong_item` | Correct parent, wrong child item  |
+| ❌ `parent_wrong`             | Retrieved item under wrong parent |
+| 🚫 `no_parent_in_topK`       | Gold parent absent from top-10    |
+
+Outputs:
+
+* `diagnostics_parent_item.csv`
+* Example markdowns:
+
+  * `examples_right_parent_wrong_item.md`
+  * `examples_parent_wrong.md`
+  * `examples_no_parent_in_top10.md`
+
+---
+
+### 3. **Parent Confusion Matrices**
+
+* Cross-tab of `(gold_parent, predicted_parent)` pairs.
+* Saves CSVs and heatmaps per method:
+
+  * `confusion_parent__<method>.csv`
+  * `confusion_parent__<method>.png`
+
+Shows which parent categories are frequently confused.
+
+---
+
+### 4. **Duplicate Detection**
+
+Checks for **identical vectors or text duplicates** in each index:
+
+* For sparse models (TF–IDF/BM25): exact vector hashes.
+* Fallback: identical text strings (post-preprocessing).
+* Outputs:
+
+  * `duplicates_summary.csv`
+  * `duplicates_examples.md`
+
+Helps identify items that collapse into the same representation.
+
+---
+
+## 📂 Output folder structure
+
+```
+/work/eval/error_analysis/
+│
+├── overlap_counts__@1.csv
+├── overlap_jaccard__@1.csv
+├── overlap_jaccard__@1.png
+│
+├── diagnostics_parent_item.csv
+├── examples_right_parent_wrong_item.md
+├── examples_parent_wrong.md
+├── examples_no_parent_in_top10.md
+│
+├── confusion_parent__<method>.csv
+├── confusion_parent__<method>.png
+│
+├── duplicates_summary.csv
+└── duplicates_examples.md
+```
+
+---
+
+## ⚙️ Configuration
+
+* `METHODS`: list of methods/runs to compare
+* `TOPK_FOR_PARENT`: top-k threshold for parent-in-top-k checks
+* `N_EXAMPLES`: number of examples per failure category
+* All paths (`RUNS_DIR`, `INDEX_ROOT`, `DATA_DIR`) configurable at top of notebook
+
+---
+
+## 🧠 Insights this produces
+
+* How much the methods **agree** on correct items (@1 Jaccard).
+* Whether errors are due to **within-parent confusion** or **parent mismatch**.
+* Which parent categories are **systematically confused**.
+* How much vector **duplication or collapse** exists in the indexes.
+
+---
+
+**Output location:** `/work/eval/error_analysis/`
+**Dependencies:** `pandas`, `numpy`, `matplotlib`, `gzip`, `json`, `importlib`.
+
+
+#===== CELL 1 [code] =====
+# error_analysis.ipynb — failure modes, overlaps, confusion, duplicates
+# Produces tables and plots under /work/evals/error_analysis/
+
+from __future__ import annotations
+import os, re, json, gzip, math, time
+from pathlib import Path
+from typing import List, Dict, Tuple
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from importlib import import_module
+
+# ------------------ CONFIG ------------------
+METHODS = [
+    "bm25_unigram",
+    "bge_m3_colbert",
+    "hyb_bm25_uni__bge_colbert__tfidf_char_3_5",
+]
+
+RUNS_DIR   = Path("/work/runs")
+INDEX_ROOT = Path("/work/index")
+DATA_DIR   = Path("/work/data/processed")
+EVALS_DIR  = Path("/work/eval/error_analysis")
+EVALS_DIR.mkdir(parents=True, exist_ok=True)
+
+COLLECTION = "OEB"
+Q_PATH = DATA_DIR / f"{COLLECTION}_short_feats.parquet"
+D_PATH = DATA_DIR / f"{COLLECTION}_long_feats.parquet"
+
+TOPK_FOR_PARENT = 10   # look up to top-10 for parent-diagnostics
+N_EXAMPLES = 5         # examples per category
+
+USE_CE_RESULTS = False  # True = analyze reranked runs, False = raw retrievers
+
+RANDOM_SEED = 42
+rng = np.random.default_rng(RANDOM_SEED)
+
+# ------------------ UTILS ------------------
+def read_json(p: Path):
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def read_registry(index_root: Path) -> dict:
+    p = index_root / "registry.json"
+    return read_json(p) if p.exists() else {}
+
+def resolve_index_dir(method_name: str, index_root: Path) -> Path:
+    reg = read_registry(index_root)
+    if method_name in reg and reg[method_name].get("path"):
+        return Path(reg[method_name]["path"])
+    return index_root / method_name
+
+def resolve_text_field(index_dir: Path, df: pd.DataFrame) -> str:
+    # find the text column used at index time
+    meta = read_json(index_dir / "meta.json")
+    col = meta.get("text_field")
+    if col and col in df.columns: return col
+    fields = read_json(index_dir / "fields.json")
+    col2 = fields.get("text_field")
+    if col2 and col2 in df.columns: return col2
+    # fallback common
+    for c in ["text_word", "text"]:
+        if c in df.columns: return c
+    raise KeyError(f"Cannot resolve text_field for {index_dir}")
+
+def find_parent_col(df: pd.DataFrame) -> str:
+    candidates = ["parent_key","parent_id","parent","parentItem","parent_code"]
+    for c in candidates:
+        if c in df.columns: return c
+    raise KeyError(f"Parent column not found; tried {candidates}")
+
+def dynamic_load_retriever(method: str):
+    alias = {
+        "tfidf_unigram_nostop": "tfidf_unigram",
+    }
+    mod = import_module(f"retrievers.{alias.get(method, method)}")
+    if not hasattr(mod, "load"):
+        raise AttributeError(f"{method}: retriever must expose load(index_dir)")
+    return mod
+
+def latest_results_file(run_dir: Path) -> Path | None:
+    # Pick the latest results_top*.jsonl.gz in method folder or its subfolders
+    cands = []
+    if (run_dir / "results_top100.jsonl.gz").exists():
+        cands.append(run_dir / "results_top100.jsonl.gz")
+    cands.extend(sorted(run_dir.glob("results_top*.jsonl.gz")))
+    
+    # Filter out CE-reranked files for pre-rerank results
+    if not USE_CE_RESULTS:
+        cands = [p for p in cands if "_ce_" not in p.name]
+    
+    if not cands:
+        # search one-level deeper (e.g., when method has variant subfolders)
+        for sub in sorted(run_dir.iterdir()):
+            if sub.is_dir():
+                cands.extend(sorted(sub.glob("results_top*.jsonl.gz")))
+    if not cands:
+        return None
+    return sorted(cands, key=lambda p: p.stat().st_mtime)[-1]
+
+def load_run_df(results_path: Path) -> pd.DataFrame:
+    rows = []
+    with gzip.open(results_path, "rt", encoding="utf-8") as gz:
+        for ln in gz:
+            if not ln.strip(): continue
+            obj = json.loads(ln)
+            qkey = str(obj["query_item_key"])
+            qtext = obj.get("query_text", "")
+            cands = obj.get("candidates", [])
+            topk_ids = [str(c["index_item_key"]) for c in cands]
+            top1 = topk_ids[0] if len(topk_ids) else None
+            rows.append({
+                "query_item_key": qkey,
+                "query_text": qtext,
+                "top1_item_key": top1,
+                "topk_item_keys": topk_ids,
+            })
+    df = pd.DataFrame(rows)
+    return df
+
+# ------------------ LOAD DATA ------------------
+print("Loading queries/corpus …")
+df_q = pd.read_parquet(Q_PATH)
+df_d = pd.read_parquet(D_PATH)
+
+# Resolve parent column
+PARENT_COL = find_parent_col(df_d)
+print("Detected parent column:", PARENT_COL)
+
+# Build quick lookup dicts
+long_text_col = None  # fill after loading index (we'll reuse index's text_field)
+# map item_key -> parent_key
+parent_of = dict(zip(df_d["item_key"].astype(str), df_d[PARENT_COL].astype(str)))
+
+# ------------------ LOAD RUNS FOR METHODS ------------------
+method_runs = {}
+for m in METHODS:
+    run_dir = RUNS_DIR / m
+    # If straight folder is empty, try to locate a child folder (e.g., variant)
+    res_path = latest_results_file(run_dir)
+    if res_path is None:
+        # try deeper under any subfolder named like the method
+        for sub in sorted(RUNS_DIR.glob(f"{m}*")):
+            if sub.is_dir():
+                res_path = latest_results_file(sub)
+                if res_path is not None:
+                    run_dir = sub
+                    break
+    if res_path is None:
+        print(f"WARNING: No results_top*.jsonl.gz found for {m} under {RUNS_DIR}")
+        continue
+    print(f"{m}: using {res_path}")
+    df_run = load_run_df(res_path)
+    method_runs[m] = df_run
+
+assert method_runs, "No runs loaded. Make sure you have results_top*.jsonl.gz for the selected methods."
+
+# ------------------ ALIGN QUERIES ------------------
+# Intersect query universe across selected methods
+common_q = None
+for m, df in method_runs.items():
+    qs = set(df["query_item_key"])
+    common_q = qs if common_q is None else (common_q & qs)
+common_q = sorted(common_q)
+print(f"Common queries across methods: {len(common_q)}")
+
+for m in method_runs:
+    method_runs[m] = method_runs[m][method_runs[m]["query_item_key"].isin(common_q)].reset_index(drop=True)
+
+# ------------------ SUCCESS @1 OVERLAP ------------------
+print("\nComputing @1 success overlap matrix …")
+success_sets = {}
+for m, df in method_runs.items():
+    success = set(df[df["top1_item_key"] == df["query_item_key"]]["query_item_key"])
+    success_sets[m] = success
+
+methods = list(success_sets.keys())
+M = len(methods)
+overlap_counts = np.zeros((M, M), dtype=int)
+jaccard = np.zeros((M, M), dtype=float)
+
+for i, mi in enumerate(methods):
+    Si = success_sets[mi]
+    for j, mj in enumerate(methods):
+        Sj = success_sets[mj]
+        inter = len(Si & Sj)
+        union = len(Si | Sj) if (Si or Sj) else 1
+        overlap_counts[i, j] = inter
+        jaccard[i, j] = inter / union
+
+ov_df = pd.DataFrame(overlap_counts, index=methods, columns=methods)
+jc_df = pd.DataFrame(jaccard, index=methods, columns=methods)
+
+ov_df.to_csv(EVALS_DIR / "overlap_counts__@1.csv")
+jc_df.to_csv(EVALS_DIR / "overlap_jaccard__@1.csv")
+
+plt.figure(figsize=(6,5))
+plt.imshow(jaccard, cmap="Blues")
+plt.colorbar(label="Jaccard(@1 success)")
+plt.xticks(range(M), methods, rotation=45, ha="right")
+plt.yticks(range(M), methods)
+plt.title("@1 Success Overlap (Jaccard)")
+plt.tight_layout()
+plt.savefig(EVALS_DIR / "overlap_jaccard__@1.png", dpi=150)
+plt.close()
+
+print("Saved overlap matrices.")
+
+# ------------------ RIGHT-PARENT / WRONG-ITEM DIAGNOSTICS ------------------
+print("\nComputing right-parent / wrong-item …")
+diag_rows = []
+examples_right_parent_wrong_item = {m: [] for m in methods}
+examples_parent_wrong = {m: [] for m in methods}
+examples_no_parent_in_topk = {m: [] for m in methods}
+
+for m, df in method_runs.items():
+    # enrich with parents
+    gold_parent = [parent_of.get(str(x), None) for x in df["query_item_key"]]
+    pred_parent = [parent_of.get(str(x), None) for x in df["top1_item_key"]]
+    has_parent_in_topK = []
+    has_item_in_topK = []
+    for qk, topk in zip(df["query_item_key"], df["topk_item_keys"]):
+        # check if gold parent appears among topK parents
+        gpar = parent_of.get(str(qk), None)
+        topk_pars = set(parent_of.get(str(tk), None) for tk in topk)
+        has_parent_in_topK.append(gpar in topk_pars)
+        has_item_in_topK.append(str(qk) in set(topk))
+
+    tmp = df.copy()
+    tmp["gold_parent"] = gold_parent
+    tmp["pred_parent"] = pred_parent
+    tmp["parent_in_topK"] = has_parent_in_topK
+    tmp["item_in_topK"] = has_item_in_topK
+    tmp["correct_at_1"] = (tmp["top1_item_key"] == tmp["query_item_key"])
+
+    # categories
+    rp_ri = (~tmp["correct_at_1"]) & (tmp["gold_parent"].notna()) & (tmp["gold_parent"] == tmp["pred_parent"])
+    parent_wrong = (~tmp["correct_at_1"]) & (tmp["pred_parent"].notna()) & (tmp["gold_parent"] != tmp["pred_parent"])
+    no_parent_in_k = (~tmp["correct_at_1"]) & (~tmp["parent_in_topK"])
+
+    # rates
+    n = len(tmp)
+    diag_rows.append({
+        "method": m,
+        "n_queries": n,
+        "acc1": float(tmp["correct_at_1"].mean()),
+        "right_parent_wrong_item_rate": float(rp_ri.mean()),
+        "parent_wrong_rate": float(parent_wrong.mean()),
+        "no_parent_in_topK_rate": float(no_parent_in_k.mean()),
+    })
+
+    # sample examples
+    examples_right_parent_wrong_item[m] = tmp[rp_ri].sample(min(N_EXAMPLES, rp_ri.sum()), random_state=RANDOM_SEED).to_dict("records") if rp_ri.any() else []
+    examples_parent_wrong[m] = tmp[parent_wrong].sample(min(N_EXAMPLES, parent_wrong.sum()), random_state=RANDOM_SEED).to_dict("records") if parent_wrong.any() else []
+    examples_no_parent_in_topk[m] = tmp[no_parent_in_k].sample(min(N_EXAMPLES, no_parent_in_k.sum()), random_state=RANDOM_SEED).to_dict("records") if no_parent_in_k.any() else []
+
+diag_df = pd.DataFrame(diag_rows).sort_values("acc1", ascending=False)
+diag_df.to_csv(EVALS_DIR / "diagnostics_parent_item.csv", index=False)
+print("Saved right-parent/wrong-item diagnostics.")
+
+# Write examples to markdown
+def write_examples_md(title: str, ex_map: Dict[str, List[dict]], path: Path):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"# {title}\n\n")
+        for m in methods:
+            f.write(f"## {m}\n\n")
+            rows = ex_map.get(m, [])
+            if not rows:
+                f.write("_none_\n\n")
+                continue
+            for r in rows:
+                qk = r["query_item_key"]; qtext = r["query_text"]
+                pred = r["top1_item_key"]; gpar = r.get("gold_parent"); ppar = r.get("pred_parent")
+                f.write(f"- **query** `{qk}`: {qtext}\n")
+                f.write(f"  - gold parent: `{gpar}` | pred parent: `{ppar}`\n")
+                f.write(f"  - top1 item: `{pred}` | gold item: `{qk}`\n")
+                # Show top-5 predicted to see distractors
+                topk = r["topk_item_keys"]
+                f.write(f"  - top5: {topk[:5]}\n\n")
+
+write_examples_md("Examples — Right parent, wrong item", examples_right_parent_wrong_item, EVALS_DIR/"examples_right_parent_wrong_item.md")
+write_examples_md("Examples — Wrong parent at rank-1", examples_parent_wrong, EVALS_DIR/"examples_parent_wrong.md")
+write_examples_md("Examples — Gold parent not in top-10", examples_no_parent_in_topk, EVALS_DIR/"examples_no_parent_in_top10.md")
+print("Saved example markdowns.")
+
+# ------------------ PARENT CONFUSION MATRICES ------------------
+print("\nBuilding parent confusion matrices …")
+for m, df in method_runs.items():
+    gold_parent = [parent_of.get(str(x), None) for x in df["query_item_key"]]
+    pred_parent = [parent_of.get(str(x), None) for x in df["top1_item_key"]]
+    tmp = pd.DataFrame({"gold_parent": gold_parent, "pred_parent": pred_parent})
+    cm = tmp.value_counts().rename("count").reset_index()
+    cm_pivot = cm.pivot_table(index="gold_parent", columns="pred_parent", values="count", fill_value=0)
+    cm_pivot.to_csv(EVALS_DIR / f"confusion_parent__{m}.csv")
+
+    # Plot (top 25 parents by support to keep readable)
+    counts_gold = cm_pivot.sum(axis=1).sort_values(ascending=False)
+    top_parents = list(counts_gold.head(25).index)
+    labels = [p for p in top_parents if p in cm_pivot.index or p in cm_pivot.columns]
+    sub = cm_pivot.reindex(index=labels, columns=labels, fill_value=0)
+    plt.figure(figsize=(8,6))
+    plt.imshow(sub, cmap="Reds")
+    plt.colorbar(label="count")
+    plt.xticks(range(len(top_parents)), top_parents, rotation=90)
+    plt.yticks(range(len(top_parents)), top_parents)
+    plt.title(f"Parent confusion (top-25) — {m}")
+    plt.tight_layout()
+    plt.savefig(EVALS_DIR / f"confusion_parent__{m}.png", dpi=150)
+    plt.close()
+print("Saved parent confusions.")
+
+# ------------------ DUPLICATE VECTORS PER METHOD ------------------
+print("\nScanning duplicate vectors per method …")
+
+def sparse_row_hash(row) -> tuple:
+    # row: 1 x d csr_matrix
+    # Return a stable hash based on indices and rounded values
+    r = row.tocsr()
+    idx = r.indices
+    dat = np.round(r.data, 6)  # tolerance for float noise
+    return (tuple(idx.tolist()), tuple(dat.tolist()))
+
+dup_summary = []
+dup_examples_map = {}
+
+for m in METHODS:
+    idx_dir = resolve_index_dir(m, INDEX_ROOT)
+    # try to load retriever and inspect X_docs (TF-IDF & some BM25 impls won't expose it)
+    try:
+        retr_mod = dynamic_load_retriever(m)
+        searcher = retr_mod.load(idx_dir)
+    except Exception as e:
+        print(f"{m}: could not load retriever — {e}")
+        continue
+
+    # External IDs mapping
+    ext_ids = getattr(searcher, "external_ids", None)
+    if ext_ids is not None:
+        ext_ids = np.asarray(ext_ids, dtype=object)
+
+    duplicates = []
+    n_docs = None
+
+    if hasattr(searcher, "X_docs"):
+        # True vector duplicates via CSR hashing
+        X = searcher.X_docs  # csr_matrix
+        n_docs = X.shape[0]
+        seen = {}
+        for i in range(n_docs):
+            h = sparse_row_hash(X[i])
+            if h in seen:
+                seen[h].append(i)
+            else:
+                seen[h] = [i]
+        groups = [v for v in seen.values() if len(v) > 1]
+        total_dups = sum(len(g) for g in groups)
+        n_groups = len(groups)
+        dup_summary.append({"method": m, "n_docs": n_docs, "dup_groups": n_groups, "dup_docs": total_dups})
+        # examples
+        ex = []
+        for g in groups[:N_EXAMPLES]:
+            ids = [str(ext_ids[idx]) if ext_ids is not None else str(idx) for idx in g]
+            ex.append(ids)
+        dup_examples_map[m] = ex
+        print(f"{m}: vector duplicates — groups={n_groups}, docs-in-groups={total_dups} / {n_docs}")
+    else:
+        # Fallback: use identical text strings in the index text field as a proxy
+        # (still interesting: shows items that collapse after preprocessing)
+        meta = read_json(idx_dir / "meta.json")
+        # pick the same text field the index used
+        tcol = meta.get("text_field")
+        if not tcol or tcol not in df_d.columns:
+            tcol = resolve_text_field(idx_dir, df_d)
+        g = df_d.groupby(df_d[tcol].astype(str)).agg(item_ids=("item_key", lambda x: list(map(str, x))))
+        groups = [row.item_ids for _, row in g.iterrows() if len(row.item_ids) > 1]
+        n_docs = len(df_d)
+        dup_summary.append({"method": m, "n_docs": n_docs, "dup_groups": len(groups), "dup_docs": sum(len(g) for g in groups)})
+        dup_examples_map[m] = [grp[:N_EXAMPLES] for grp in groups[:N_EXAMPLES]]
+        print(f"{m}: text-duplicate proxy — groups={len(groups)} / docs={n_docs}")
+
+dup_df = pd.DataFrame(dup_summary).sort_values("method")
+dup_df.to_csv(EVALS_DIR / "duplicates_summary.csv", index=False)
+
+with open(EVALS_DIR / "duplicates_examples.md", "w", encoding="utf-8") as f:
+    f.write("# Duplicate vector groups — examples\n\n")
+    for m in METHODS:
+        f.write(f"## {m}\n")
+        exs = dup_examples_map.get(m, [])
+        if not exs:
+            f.write("_none_\n\n"); continue
+        for i, grp in enumerate(exs, 1):
+            f.write(f"{i}. {grp}\n")
+        f.write("\n")
+
+print("\nAll done. Artifacts saved under:", EVALS_DIR)
+print("Files:")
+for p in sorted(EVALS_DIR.glob("*")):
+    print(" -", p.name)
+
+# ============================================================
+#  EXTRA: Error Type Classification & Representative Examples
+#  (for Section 4.8 "Error Analysis" in the paper)
+# ============================================================
+
+import difflib
+import re
+
+print("\n[Extra] Classifying detailed error types …")
+
+# -------------------------------------------
+# 1) Helper functions
+# -------------------------------------------
+
+def extract_numbers(text: str) -> list[str]:
+    """Return all numeric tokens in the text (as strings)."""
+    return re.findall(r"\d+(?:[.,]\d+)?", str(text))
+
+def normalize_text(text: str) -> str:
+    """Lowercase, remove numbers and punctuation."""
+    t = re.sub(r"\d+(?:[.,]\d+)?", " ", str(text))
+    t = re.sub(r"[^a-záéíóúüñ ]", " ", t.lower())
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+def lexical_similarity(a: str, b: str) -> float:
+    """Rough lexical overlap measure (0–1)."""
+    return difflib.SequenceMatcher(None, normalize_text(a), normalize_text(b)).ratio()
+
+def classify_error(qtext: str, rtext: str, gold_in_topk: bool, dup_groups: list[list[str]], qid: str, rid: str) -> str:
+    """Return error category label."""
+    nums_q, nums_r = extract_numbers(qtext), extract_numbers(rtext)
+    if nums_q and nums_r and nums_q != nums_r:
+        return "Numeric Mismatch"
+    if any(qid in g and rid in g for g in dup_groups):
+        return "Near-Duplicate Error"
+    sim = lexical_similarity(qtext, rtext)
+    if sim > 0.7:
+        return "Lexical Confusion"
+    if gold_in_topk:
+        return "Ranking Failure"
+    return "Other"
+
+# Preload duplicate groups (flatten from dup_examples_map)
+dup_groups_all = []
+for g_list in dup_examples_map.values():
+    dup_groups_all.extend(g_list)
+
+# -------------------------------------------
+# 2) Build per-method error DataFrame
+# -------------------------------------------
+
+all_errors = []
+for m, df in method_runs.items():
+    for _, row in df.iterrows():
+        if row["top1_item_key"] == row["query_item_key"]:
+            continue  # correct ones skipped
+        qtext = row["query_text"]
+        rid = row["top1_item_key"]
+        gold_in_topk = row["item_in_topK"] if "item_in_topK" in row else False
+        # Get retrieved text
+        rtext = df_d.loc[df_d["item_key"] == rid, long_text_col or "text"].squeeze() \
+                if rid in set(df_d["item_key"].astype(str)) else ""
+        etype = classify_error(qtext, rtext, gold_in_topk, dup_groups_all, row["query_item_key"], rid)
+        all_errors.append({
+            "method": m,
+            "query_item_key": row["query_item_key"],
+            "retrieved_item_key": rid,
+            "error_type": etype,
+            "query_text": qtext,
+            "retrieved_text": rtext,
+        })
+
+df_errors = pd.DataFrame(all_errors)
+print(f"Collected {len(df_errors)} total error cases across {len(METHODS)} methods.")
+
+# -------------------------------------------
+# 3) Aggregate distribution table
+# -------------------------------------------
+
+error_dist = (
+    df_errors.groupby(["method", "error_type"])
+    .size()
+    .groupby(level=0, group_keys=False)
+    .apply(lambda x: 100 * x / x.sum())
+    .rename("percent")
+    .reset_index()
+)
+
+error_dist.to_csv(EVALS_DIR / "error_distribution.csv", index=False)
+
+print("Saved error_distribution.csv")
+
+# Markdown table for quick inclusion
+with open(EVALS_DIR / "error_distribution.md", "w", encoding="utf-8") as f:
+    f.write("# Error Type Distribution (% of failed queries)\n\n")
+    for m in METHODS:
+        f.write(f"## {m}\n\n")
+        sub = error_dist[error_dist["method"] == m]
+        if sub.empty:
+            f.write("_no errors_\n\n"); continue
+        for _, r in sub.iterrows():
+            f.write(f"- {r['error_type']}: {r['percent']:.1f}%\n")
+        f.write("\n")
+
+# -------------------------------------------
+# 4) Representative examples per category
+# -------------------------------------------
+
+EXAMPLES_PER_CAT = 2
+np.random.seed(RANDOM_SEED)
+
+rep_path = EVALS_DIR / "error_examples_detailed.md"
+with open(rep_path, "w", encoding="utf-8") as f:
+    f.write("# Representative Error Examples (Section 4.8)\n\n")
+    for m in METHODS:
+        f.write(f"## Method: {m}\n\n")
+        sub = df_errors[df_errors["method"] == m]
+        if sub.empty:
+            f.write("_no errors_\n\n"); continue
+        for etype in sorted(sub["error_type"].unique()):
+            f.write(f"### {etype}\n")
+            smp = sub[sub["error_type"] == etype].sample(
+                n=min(EXAMPLES_PER_CAT, len(sub[sub["error_type"] == etype])),
+                random_state=RANDOM_SEED
+            )
+            for _, r in smp.iterrows():
+                f.write(f"- **Query** `{r['query_item_key']}`: {r['query_text']}\n")
+                f.write(f"  - **Retrieved** `{r['retrieved_item_key']}`: {r['retrieved_text']}\n")
+                f.write(f"  - **Error type:** {r['error_type']}\n\n")
+        f.write("\n")
+
+print("Saved representative examples to:", rep_path)
+print("\n[Extra] Error analysis augmentation completed.")
+
+
+#--- OUT ---
+Loading queries/corpus …
+Detected parent column: parent_key
+bm25_unigram: using /work/runs/bm25_unigram/results_top100.jsonl.gz
+bge_m3_colbert: using /work/runs/bge_m3_colbert/results_top100.jsonl.gz
+hyb_bm25_uni__bge_colbert__tfidf_char_3_5: using /work/runs/hyb_bm25_uni__bge_colbert__tfidf_char_3_5/results_top100.jsonl.gz
+Common queries across methods: 5844
+
+Computing @1 success overlap matrix …
+Saved overlap matrices.
+
+Computing right-parent / wrong-item …
+Saved right-parent/wrong-item diagnostics.
+Saved example markdowns.
+
+Building parent confusion matrices …
+Saved parent confusions.
+
+Scanning duplicate vectors per method …
+bm25_unigram: vector duplicates — groups=1602, docs-in-groups=3276 / 47513
+bge_m3_colbert: text-duplicate proxy — groups=0 / docs=47513
+hyb_bm25_uni__bge_colbert__tfidf_char_3_5: could not load retriever — No module named 'retrievers.hyb_bm25_uni__bge_colbert__tfidf_char_3_5'
+
+All done. Artifacts saved under: /work/eval/error_analysis
+Files:
+ - confusion_parent__bge_m3_colbert.csv
+ - confusion_parent__bge_m3_colbert.png
+ - confusion_parent__bm25_unigram.csv
+ - confusion_parent__bm25_unigram.png
+ - confusion_parent__hyb_bm25_uni__bge_colbert__tfidf_char_3_5.csv
+ - confusion_parent__hyb_bm25_uni__bge_colbert__tfidf_char_3_5.png
+ - diagnostics_parent_item.csv
+ - duplicates_examples.md
+ - duplicates_summary.csv
+ - examples_no_parent_in_top10.md
+ - examples_parent_wrong.md
+ - examples_right_parent_wrong_item.md
+ - overlap_counts__@1.csv
+ - overlap_jaccard__@1.csv
+ - overlap_jaccard__@1.png
+
+[Extra] Classifying detailed error types …
+Collected 6224 total error cases across 3 methods.
+Saved error_distribution.csv
+Saved representative examples to: /work/eval/error_analysis/error_examples_detailed.md
+
+[Extra] Error analysis augmentation completed.
+
+
+#===== CELL 2 [code] =====
+

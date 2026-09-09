@@ -1,0 +1,848 @@
+
+#===== CELL 0 [code] =====
+# papermill parameters
+RUN_DIR = "/work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7"
+RUN_CONTEXT = "manual"
+
+#===== CELL 1 [code] =====
+# === metrics.ipynb — Per-method Evaluation Runner ===
+#
+# PURPOSE:
+#   Load retrieval results from a single run (produced by retrieve.ipynb with SAVE=True)
+#   and compute evaluation metrics at two levels:
+#     1. Item-level (exact short→long match)
+#     2. Parent-level (credit if query matches any sibling under the same parent)
+#
+# HOW IT WORKS:
+#   1. Locate the latest results_top{K}.jsonl.gz in the chosen run directory (/work/runs/...).
+#   2. Read index metadata to discover collection and parent structure.
+#   3. Load processed queries (short items) and corpus (long items) from parquet.
+#   4. For each query:
+#        - Align with its gold document and parent.
+#        - Compare ranked candidates from the run.
+#        - Compute relevance vectors for item and parent targets.
+#   5. Compute metrics:
+#        • Acc@1, Recall@5, Recall@10
+#        • MRR (Mean Reciprocal Rank)
+#        • nDCG@10 (with proper parent normalization)
+#   6. Split metrics by queries “with numbers” vs “without numbers.”
+#   7. Save results to CSV and JSON:
+#        - metrics_single__item.json/csv
+#        - metrics_single__parent.json/csv
+#        - metrics_dual.json/csv (both targets combined)
+#
+# KEY FEATURES:
+#   • Dual-target evaluation (strict item vs. parent group).
+#   • Automatic detection of parent column in the corpus.
+#   • Numeric vs. non-numeric breakdown for error analysis.
+#   • Standardized outputs for reproducible comparisons.
+#
+# Typical usage:
+#   - Set RUN_DIR to the run you want to evaluate (e.g., /work/runs/bm25_unigram).
+#   - Run all cells; metrics will be displayed and saved alongside the run folder.
+
+# --- Single-method metrics: load ------------------------------------------------
+import json, gzip, os, glob, math
+import numpy as np
+import pandas as pd
+from pathlib import Path
+
+# normalize params (must be in a separate, untagged cell)
+RUN_DIR = Path(RUN_DIR)          # works whether RUN_DIR was str or Path
+RUN_NAME = RUN_DIR.name
+
+if not RUN_DIR.exists():
+    raise FileNotFoundError(f"RUN_DIR does not exist: {RUN_DIR}")
+
+print("[metrics] RUN_DIR:", RUN_DIR)
+
+
+# find the results file written by retrieve.ipynb (results_top{K}.jsonl.gz)
+res_files = sorted(Path(RUN_DIR).glob("results_top*.jsonl.gz"))
+if not res_files:
+    raise FileNotFoundError(f"No results_top*.jsonl.gz in {RUN_DIR}. "
+                            "Run retrieve.ipynb with SAVE=True first.")
+RESULTS_PATH = res_files[-1]  # pick the newest/biggest K
+
+# peek first record to discover index_path (retrieve wrote this in meta)
+first = None
+with gzip.open(RESULTS_PATH, "rt", encoding="utf-8") as gz:
+    for line in gz:
+        if line.strip():
+            first = json.loads(line)
+            break
+if first is None:
+    raise RuntimeError(f"{RESULTS_PATH} is empty.")
+
+index_path = Path(first["meta"]["index_path"])
+index_meta = json.load(open(index_path / "meta.json", "r", encoding="utf-8"))
+collection = index_meta.get("collection", "OEB")
+
+# infer processed data root from index path (/work/index/.. -> /work/data/processed/)
+repo_root = index_path.parent.parent    # /work
+processed = repo_root / "data" / "processed"
+QUERIES_PATH = processed / f"{collection}_short_feats.parquet"
+CORPUS_PATH  = processed / f"{collection}_long_feats.parquet"
+
+# load ground-truth tables
+if not QUERIES_PATH.exists() or not CORPUS_PATH.exists():
+    raise FileNotFoundError(f"Missing processed parquet files:\n  {QUERIES_PATH}\n  {CORPUS_PATH}\n")
+
+df_q = pd.read_parquet(QUERIES_PATH)
+df_d = pd.read_parquet(CORPUS_PATH)
+
+# standardize text columns
+df_q = df_q.rename(columns={"text_word":"q_text"})
+df_d = df_d.rename(columns={"text_word":"d_text"})
+
+# --- auto-detect parent column on the corpus (long docs) ---
+PARENT_CANDIDATES = ["parent_key", "parent_id", "parent", "parent_item_key", "ParentID", "padre", "id_padre"]
+PARENT_COL = next((c for c in PARENT_CANDIDATES if c in df_d.columns), None)
+if PARENT_COL is None:
+    raise KeyError(
+        f"Could not find a parent column in corpus. Looked for {PARENT_CANDIDATES}. "
+        f"Add/rename the parent column in {CORPUS_PATH}."
+    )
+
+# keep only needed columns to reduce RAM
+df_q = df_q[["item_key", "q_text"]]
+df_d = df_d[["item_key", "d_text", PARENT_COL]]
+
+print("Loaded:")
+print(" - Run dir      :", RUN_DIR)
+print(" - Results file :", RESULTS_PATH.name)
+print(" - Index path   :", index_path)
+print(" - Collection   :", collection)
+print(" - Parent col   :", PARENT_COL)
+print(" - #queries     :", len(df_q), "| #docs:", len(df_d))
+
+
+#--- OUT ---
+[metrics] RUN_DIR: /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7
+Loaded:
+ - Run dir      : /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7
+ - Results file : results_top100.jsonl.gz
+ - Index path   : /work/index/bm25_unigram
+ - Collection   : OEB
+ - Parent col   : parent_key
+ - #queries     : 47513 | #docs: 47513
+
+
+#===== CELL 2 [code] =====
+# --- Dual-target metrics (item + parent) with proper parent nDCG normalization ---
+import math, gzip, json
+import numpy as np
+import pandas as pd
+from IPython.display import display
+from collections import defaultdict
+
+# Lookups from Cell 1
+gold_doc_keys = set(df_d["item_key"].astype(str))
+q_table  = df_q.set_index(df_q["item_key"].astype(str), drop=False)
+d_table  = df_d.set_index(df_d["item_key"].astype(str), drop=False)
+doc2parent = d_table[PARENT_COL].astype(str).to_dict()
+
+# Precompute parent -> set of doc keys (fast ideal DCG computation)
+parent2docs = defaultdict(set)
+for doc_k, parent_k in doc2parent.items():
+    parent2docs[parent_k].add(doc_k)
+
+def iter_results(jsonl_gz_path):
+    with gzip.open(jsonl_gz_path, "rt", encoding="utf-8") as gz:
+        for line in gz:
+            if line.strip():
+                yield json.loads(line)
+
+def gold_label_for_query(qkey: str, target: str) -> str:
+    return qkey if target == "item" else doc2parent.get(qkey, "")
+
+def relevance_vector(cand_doc_keys, gold_label: str, target: str):
+    if target == "item":
+        return [1 if c == gold_label else 0 for c in cand_doc_keys]
+    # parent
+    rel_parent_docs = parent2docs.get(gold_label, set())
+    return [1 if c in rel_parent_docs else 0 for c in cand_doc_keys]
+
+def dcg_at_k(hh, k):
+    s = 0.0
+    for i, rel in enumerate(hh[:k], start=1):
+        if rel:
+            s += 1.0 / math.log2(i + 1)
+    return s
+
+def idcg_at_10_for_target(gold_label: str, target: str):
+    """Ideal DCG@10: item → one relevant; parent → as many siblings as exist (capped at 10)."""
+    if target == "item":
+        # only one relevant item
+        return dcg_at_k([1], 10)
+    # parent target: all siblings are relevant
+    num_rel = len(parent2docs.get(gold_label, ()))
+    if num_rel == 0:
+        return 0.0
+    ideal = [1] * min(num_rel, 10)
+    return dcg_at_k(ideal, 10)
+
+def compute_metrics_for_target(target: str):
+    """Returns (df_per_query, agg_series, K_seen)."""
+    recs = []
+    K_seen = None
+
+    for rec in iter_results(RESULTS_PATH):
+        qkey = str(rec.get("query_item_key", ""))
+        if not qkey or qkey not in gold_doc_keys:
+            continue
+        cands = rec.get("candidates", [])
+        if not cands:
+            continue
+
+        cand_doc_keys = [str(c.get("index_item_key","")) for c in cands]
+        if K_seen is None:
+            K_seen = len(cand_doc_keys)
+
+        gold_lbl = gold_label_for_query(qkey, target)
+        rel = relevance_vector(cand_doc_keys, gold_lbl, target)
+
+        # Basic metrics
+        acc1  = int(rel[0] == 1)
+        rec5  = int(any(rel[:min(5, len(rel))]))
+        rec10 = int(any(rel[:min(10, len(rel))]))
+
+        # Reciprocal Rank
+        rr = 0.0
+        for r, v in enumerate(rel, start=1):
+            if v:
+                rr = 1.0 / r
+                break
+
+        # nDCG@10 with proper normalization
+        dcg10  = dcg_at_k(rel, 10)
+        idcg10 = idcg_at_10_for_target(gold_lbl, target)
+        ndcg10 = (dcg10 / idcg10) if idcg10 > 0 else 0.0
+
+        qtext = q_table.loc[qkey, "q_text"] if qkey in q_table.index else ""
+        has_num = any(ch.isdigit() for ch in str(qtext))
+
+        recs.append({
+            "query_item_key": qkey,
+            "acc1": acc1, "rec5": rec5, "rec10": rec10,
+            "rr": rr, "ndcg10": ndcg10,
+            "has_numbers": has_num
+        })
+
+    if not recs:
+        raise RuntimeError(f"[{target}] No per-query records; check item_key/parents in parquet & results.")
+
+    df = pd.DataFrame(recs)
+
+    def agg(d):
+        return pd.Series({
+            "queries": len(d),
+            "Acc@1":    float(d["acc1"].mean()),
+            "Recall@5": float(d["rec5"].mean()),
+            "Recall@10":float(d["rec10"].mean()),
+            "MRR":      float(d["rr"].mean()),
+            "nDCG@10":  float(d["ndcg10"].mean()),
+        })
+
+    overall = agg(df)
+    split_has = agg(df[df["has_numbers"] == True])  if (df["has_numbers"] == True).any() else None
+    split_no  = agg(df[df["has_numbers"] == False]) if (df["has_numbers"] == False).any() else None
+
+    return df, overall, split_has, split_no, K_seen
+
+# Run both targets
+results = {}
+combined_rows = []
+
+for target in ["item", "parent"]:
+    df_perq, overall, split_has, split_no, K_seen = compute_metrics_for_target(target)
+    results[target] = {"df": df_perq, "overall": overall, "split_has": split_has, "split_no": split_no, "K": K_seen}
+
+    # Display
+    print(f"\nMethod: {RUN_DIR.name} | K in file: {K_seen} | TARGET: {target}"
+          + (f" (parent col: {PARENT_COL})" if target == "parent" else ""))
+    display(pd.DataFrame([overall]).round(4).assign(scope="Overall", target=target)[
+        ["target","scope","queries","Acc@1","Recall@5","Recall@10","MRR","nDCG@10"]
+    ])
+    rows = []
+    if split_has is not None:
+        rows.append(pd.DataFrame([split_has]).assign(scope="Has numbers", target=target))
+    if split_no is not None:
+        rows.append(pd.DataFrame([split_no]).assign(scope="No numbers", target=target))
+    if rows:
+        display(pd.concat(rows, ignore_index=True).round(4)[
+            ["target","scope","queries","Acc@1","Recall@5","Recall@10","MRR","nDCG@10"]
+        ])
+
+    # Save per-target
+    suffix = "parent" if target == "parent" else "item"
+    out_json = RUN_DIR / f"metrics_single__{suffix}.json"
+    out_csv  = RUN_DIR / f"metrics_single__{suffix}.csv"
+    report_rows = [{"method": RUN_DIR.name, **overall.to_dict(), "scope": "overall", "target": target}]
+    if split_has is not None:
+        report_rows.append({"method": RUN_DIR.name, **split_has.to_dict(), "scope": "has_numbers", "target": target})
+    if split_no is not None:
+        report_rows.append({"method": RUN_DIR.name, **split_no.to_dict(), "scope": "no_numbers", "target": target})
+    df_report = pd.DataFrame(report_rows)
+    df_report.to_json(out_json, orient="records", force_ascii=False, indent=2)
+    df_report.to_csv(out_csv, index=False)
+    print("Saved per-target:")
+    print(" -", out_json)
+    print(" -", out_csv)
+
+    combined_rows.extend(df_report.to_dict(orient="records"))
+
+# Save combined report (both targets side by side)
+df_combined = pd.DataFrame(combined_rows)
+df_combined.to_json(RUN_DIR / "metrics_dual.json", orient="records", force_ascii=False, indent=2)
+df_combined.to_csv(RUN_DIR / "metrics_dual.csv", index=False)
+print("\nSaved combined:")
+print(" -", RUN_DIR / "metrics_dual.json")
+print(" -", RUN_DIR / "metrics_dual.csv")
+#--- OUT ---
+
+Method: prf_rocchio__bm25_unigram__M10__N40__beta0_7 | K in file: 100 | TARGET: item
+
+  target    scope  queries   Acc@1  Recall@5  Recall@10     MRR  nDCG@10
+0   item  Overall  16590.0  0.8319    0.9142     0.9356  0.8665   0.8822
+  target        scope  queries   Acc@1  Recall@5  Recall@10     MRR  nDCG@10
+0   item  Has numbers  16561.0  0.8329    0.9144     0.9356  0.8672   0.8827
+1   item   No numbers     29.0  0.2414    0.7931     0.8966  0.4774   0.5802
+Saved per-target:
+ - /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/metrics_single__item.json
+ - /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/metrics_single__item.csv
+
+Method: prf_rocchio__bm25_unigram__M10__N40__beta0_7 | K in file: 100 | TARGET: parent (parent col: parent_key)
+
+   target    scope  queries   Acc@1  Recall@5  Recall@10     MRR  nDCG@10
+0  parent  Overall  16590.0  0.9544    0.9671     0.9705  0.9594   0.9323
+   target        scope  queries   Acc@1  Recall@5  Recall@10     MRR  nDCG@10
+0  parent  Has numbers  16561.0  0.9545    0.9672     0.9707  0.9595   0.9324
+1  parent   No numbers     29.0  0.8966    0.8966     0.8966  0.8966   0.8966
+Saved per-target:
+ - /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/metrics_single__parent.json
+ - /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/metrics_single__parent.csv
+
+Saved combined:
+ - /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/metrics_dual.json
+ - /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/metrics_dual.csv
+
+
+#===== CELL 3 [code] =====
+# --- Explode results into a candidate-level table with correctness flags -------
+import gzip, json
+import pandas as pd
+
+# Reuse variables from previous cells:
+# RESULTS_PATH, RUN_DIR, df_q, df_d, PARENT_COL, d_table (index by item_key)
+
+# Maps & helpers
+doc2parent = d_table[PARENT_COL].astype(str).to_dict()
+q_text_map = df_q.set_index("item_key")["q_text"].astype(str).to_dict()
+
+rows = []
+with gzip.open(RESULTS_PATH, "rt", encoding="utf-8") as gz:
+    for line in gz:
+        if not line.strip():
+            continue
+        rec = json.loads(line)
+        qkey = str(rec.get("query_item_key", ""))
+        qtext = q_text_map.get(qkey, "")
+        gold_parent = doc2parent.get(qkey, "")
+
+        for c in rec.get("candidates", []):
+            rank = int(c.get("rank", 0))
+            cand_key = str(c.get("index_item_key", ""))
+            cand_parent = doc2parent.get(cand_key, "")
+            rows.append({
+                "query_id": rec.get("query_id",""),
+                "query_item_key": qkey,
+                "query_text": qtext,
+                "gold_item_key": qkey,
+                "gold_parent_key": gold_parent,
+                "rank": rank,
+                "cand_item_key": cand_key,
+                "cand_parent_key": cand_parent,
+                "score": float(c.get("score", 0.0)),
+                "is_correct_item": int(cand_key == qkey),
+                "is_correct_parent": int(cand_parent == gold_parent),
+            })
+
+df_cands = pd.DataFrame(rows)
+print("Exploded candidates:", len(df_cands), "rows")
+display(df_cands.head(10))
+
+# Save for external inspection
+cand_csv = RUN_DIR / "results_exploded_candidates.csv"
+cand_parq = RUN_DIR / "results_exploded_candidates.parquet"
+df_cands.to_csv(cand_csv, index=False)
+df_cands.to_parquet(cand_parq, index=False)
+print("Saved:", cand_csv, "\nSaved:", cand_parq)
+
+#--- OUT ---
+Exploded candidates: 1659000 rows
+
+   query_id query_item_key                                         query_text  \
+0  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+1  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+2  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+3  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+4  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+5  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+6  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+7  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+8  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+9  q_000000    OEB040idbcb  canalización hormigonada 16 t polietileno libr...   
+
+  gold_item_key gold_parent_key  rank cand_item_key cand_parent_key  \
+0   OEB040idbcb         OEB040$     1   OEB040idbcb         OEB040$   
+1   OEB040idbcb         OEB040$     2   OEB040idbbb         OEB040$   
+2   OEB040idbcb         OEB040$     3   OEB040iddcb         OEB040$   
+3   OEB040idbcb         OEB040$     4   OEB040iddbb         OEB040$   
+4   OEB040idbcb         OEB040$     5   OEB040idbab         OEB040$   
+5   OEB040idbcb         OEB040$     6   OEB040iddab         OEB040$   
+6   OEB040idbcb         OEB040$     7   OEB040idbdb         OEB040$   
+7   OEB040idbcb         OEB040$     8   OEB040idddb         OEB040$   
+8   OEB040idbcb         OEB040$     9   OEB040idbca         OEB040$   
+9   OEB040idbcb         OEB040$    10   OEB040idacb         OEB040$   
+
+       score  is_correct_item  is_correct_parent  
+0  28.813793                1                  1  
+1  28.760551                0                  1  
+2  28.760551                0                  1  
+3  28.707502                0                  1  
+4  28.448347                0                  1  
+5  28.395782                0                  1  
+6  28.278765                0                  1  
+7  28.226513                0                  1  
+8  27.595482                0                  1  
+9  27.594080                0                  1  
+Saved: /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/results_exploded_candidates.csv 
+Saved: /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/results_exploded_candidates.parquet
+
+
+#===== CELL 4 [code] =====
+# --- Per-query summary: first-hit ranks for item & parent ----------------------
+import numpy as np
+
+# first rank where item is correct (or np.inf)
+first_item = (df_cands[df_cands["is_correct_item"]==1]
+              .groupby("query_item_key")["rank"].min())
+first_parent = (df_cands[df_cands["is_correct_parent"]==1]
+                .groupby("query_item_key")["rank"].min())
+
+summary = (
+    df_cands[["query_item_key","query_text","gold_item_key","gold_parent_key"]]
+    .drop_duplicates()
+    .assign(rank_item=lambda d: d["query_item_key"].map(first_item).fillna(np.inf),
+            rank_parent=lambda d: d["query_item_key"].map(first_parent).fillna(np.inf))
+    .assign(
+        acc1_item=lambda d: (d["rank_item"]==1).astype(int),
+        acc1_parent=lambda d: (d["rank_parent"]==1).astype(int),
+        rec5_item=lambda d: (d["rank_item"]<=5).astype(int),
+        rec10_item=lambda d: (d["rank_item"]<=10).astype(int),
+        rec5_parent=lambda d: (d["rank_parent"]<=5).astype(int),
+        rec10_parent=lambda d: (d["rank_parent"]<=10).astype(int),
+    )
+    .sort_values(["acc1_parent","rank_parent","rank_item"], ascending=[True,True,True])
+)
+
+display(summary.head(10))
+
+# Save
+sum_csv = RUN_DIR / "results_perquery_summary.csv"
+summary.to_csv(sum_csv, index=False)
+print("Saved:", sum_csv)
+
+# --- Find queries where gold item not in top-K -----------------
+K = 100
+missed = summary[summary["rank_item"] > K].copy()
+
+missed_out = missed[["query_item_key", "query_text", "rank_item"]]
+print("Missed queries:", len(missed_out))
+
+# Save for inspection
+missed_csv = RUN_DIR / "missed_queries.csv"
+missed_out.to_csv(missed_csv, index=False)
+print("Saved:", missed_csv)
+
+# Peek a few
+display(missed_out.head(10))
+
+#--- OUT ---
+       query_item_key                                         query_text  \
+11900     OEB030hfdba  canalización hormigonada 12 t polietileno libr...   
+76100     OEB030fffdb  canalización hormigonada 6 t polietileno libre...   
+97200     OEB030bffdc  canalización hormigonada 2 t polietileno libre...   
+114600    OEB030hfdbb  canalización hormigonada 12 t polietileno libr...   
+185700    OEB030gfcdc  canalización hormigonada 8 t polietileno libre...   
+190300    OEB030gfcbb  canalización hormigonada 8 t polietileno libre...   
+201100    OEB030ffdda  canalización hormigonada 6 t polietileno libre...   
+336700    OEB030dfcda  canalización hormigonada 4 t polietileno libre...   
+360400    OEB030ffdba  canalización hormigonada 6 t polietileno libre...   
+392500    OEB030jffdb  canalización hormigonada 18 t polietileno libr...   
+
+       gold_item_key gold_parent_key  rank_item  rank_parent  acc1_item  \
+11900    OEB030hfdba         OEB030$        2.0          2.0          0   
+76100    OEB030fffdb         OEB030$        2.0          2.0          0   
+97200    OEB030bffdc         OEB030$        2.0          2.0          0   
+114600   OEB030hfdbb         OEB030$        2.0          2.0          0   
+185700   OEB030gfcdc         OEB030$        2.0          2.0          0   
+190300   OEB030gfcbb         OEB030$        2.0          2.0          0   
+201100   OEB030ffdda         OEB030$        2.0          2.0          0   
+336700   OEB030dfcda         OEB030$        2.0          2.0          0   
+360400   OEB030ffdba         OEB030$        2.0          2.0          0   
+392500   OEB030jffdb         OEB030$        2.0          2.0          0   
+
+        acc1_parent  rec5_item  rec10_item  rec5_parent  rec10_parent  
+11900             0          1           1            1             1  
+76100             0          1           1            1             1  
+97200             0          1           1            1             1  
+114600            0          1           1            1             1  
+185700            0          1           1            1             1  
+190300            0          1           1            1             1  
+201100            0          1           1            1             1  
+336700            0          1           1            1             1  
+360400            0          1           1            1             1  
+392500            0          1           1            1             1  
+Saved: /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/results_perquery_summary.csv
+Missed queries: 617
+Saved: /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/missed_queries.csv
+
+        query_item_key                                         query_text  \
+68200      OEB030eacdc  canalización hormigonada 5 t polietileno libre...   
+414800     OEB030cadda  canalización hormigonada 3 t polietileno libre...   
+540400     OEB030eadda  canalización hormigonada 5 t polietileno libre...   
+806500     OEB030eaddb  canalización hormigonada 5 t polietileno libre...   
+1385800    OEB030caddb  canalización hormigonada 3 t polietileno libre...   
+1463800    OEB030eaddc  canalización hormigonada 5 t polietileno libre...   
+159800     OEB030cafda  canalización hormigonada 3 t polietileno libre...   
+1133100    OEB030eafdc  canalización hormigonada 5 t polietileno libre...   
+3600       OEB200abcdc  zanja para cables de hasta 0.80 m de profundid...   
+4700       OEB030cbfdc  canalización hormigonada 3 t polietileno libre...   
+
+         rank_item  
+68200          inf  
+414800         inf  
+540400         inf  
+806500         inf  
+1385800        inf  
+1463800        inf  
+159800         inf  
+1133100        inf  
+3600           inf  
+4700           inf  
+
+#===== CELL 5 [code] =====
+if RUN_CONTEXT != "manual":
+    # skip during orchestrated runs
+    raise SystemExit  # or just: pass
+
+#===== CELL 6 [code] =====
+# --- Interactive inspector: show top-10 with item/parent flags -----------------
+from IPython.display import display
+
+def inspect(query_key: str, k: int = 10):
+    s = summary.loc[summary["query_item_key"]==query_key]
+    if s.empty:
+        print("Query not found in summary:", query_key); return
+    srow = s.iloc[0]
+    print(f"\nQuery: {query_key}")
+    print("Short text:", srow["query_text"][:240].replace("\n"," "))
+    print("Gold item :", srow["gold_item_key"])
+    print("Gold parent:", srow["gold_parent_key"])
+    print(f"First correct item rank  : {int(srow['rank_item']) if srow['rank_item']!=np.inf else 'None'}")
+    print(f"First correct parent rank: {int(srow['rank_parent']) if srow['rank_parent']!=np.inf else 'None'}")
+
+    topk = (df_cands[df_cands["query_item_key"]==query_key]
+            .sort_values("rank").head(k)
+            [["rank","cand_item_key","cand_parent_key","score","is_correct_item","is_correct_parent"]])
+    display(topk)
+
+# Example calls:
+# inspect("OEB040idbcb", k=10)
+# inspect(summary.sort_values("rank_parent", ascending=False).iloc[0]["query_item_key"])
+
+
+#===== CELL 7 [code] =====
+inspect("OEB040idbcb", k=10)
+#--- OUT ---
+
+Query: OEB040idbcb
+Short text: canalización hormigonada 16 t polietileno libre de halógenos de 160 mm en cruce de carretera nocturno i 3 horas volumen escaso
+Gold item : OEB040idbcb
+Gold parent: OEB040$
+First correct item rank  : 3
+First correct parent rank: 1
+
+   rank cand_item_key cand_parent_key     score  is_correct_item  \
+0     1   OEB040idbbb         OEB040$  36.34375                0   
+1     2   OEB040iddcb         OEB040$  36.34375                0   
+2     3   OEB040idbcb         OEB040$  36.34375                1   
+3     4   OEB040iddbb         OEB040$  36.25000                0   
+4     5   OEB040idbab         OEB040$  36.12500                0   
+5     6   OEB040iddab         OEB040$  36.06250                0   
+6     7   OEB030iddcb         OEB030$  35.87500                0   
+7     8   OEB030idbbb         OEB030$  35.87500                0   
+8     9   OEB040idbca         OEB040$  35.87500                0   
+9    10   OEB030idbcb         OEB030$  35.87500                0   
+
+   is_correct_parent  
+0                  1  
+1                  1  
+2                  1  
+3                  1  
+4                  1  
+5                  1  
+6                  0  
+7                  0  
+8                  1  
+9                  0  
+
+#===== CELL 8 [code] =====
+inspect(summary.sort_values("rank_parent", ascending=False).iloc[0]["query_item_key"])
+#--- OUT ---
+
+Query: OEB050bac
+Short text: ejecución de canalización de comunicaciones para línea subterranea doble circuito de 220 ó 400 kv en terreno medio sin reposición de pavimento cualquier condición de ejecución
+Gold item : OEB050bac
+Gold parent: OEB050$
+First correct item rank  : 20
+First correct parent rank: 19
+
+        rank cand_item_key cand_parent_key      score  is_correct_item  \
+427700     1     OEB010aab         OEB010$  30.734375                0   
+427701     2     OEB010aaa         OEB010$  30.734375                0   
+427702     3     OEB010aac         OEB010$  30.734375                0   
+427703     4     OEB010abb         OEB010$  30.734375                0   
+427704     5     OEB010abc         OEB010$  30.734375                0   
+427705     6     OEB010baa         OEB010$  30.734375                0   
+427706     7     OEB010bab         OEB010$  30.734375                0   
+427707     8     OEB010bac         OEB010$  30.734375                0   
+427708     9     OEB010bba         OEB010$  30.734375                0   
+427709    10     OEB010aba         OEB010$  30.734375                0   
+
+        is_correct_parent  
+427700                  0  
+427701                  0  
+427702                  0  
+427703                  0  
+427704                  0  
+427705                  0  
+427706                  0  
+427707                  0  
+427708                  0  
+427709                  0  
+
+#===== CELL 9 [code] =====
+# --- Find cases where parent Acc@1 is 0 but parent is in top-5/10 -------------
+bad_parent_at1 = summary[summary["acc1_parent"]==0].copy()
+print("Queries with parent@1 = 0:", len(bad_parent_at1))
+
+# Parent present in top-5/10?
+in5 = bad_parent_at1[bad_parent_at1["rec5_parent"]==1]
+in10 = bad_parent_at1[bad_parent_at1["rec10_parent"]==1]
+print("... of which parent in top-5:", len(in5))
+print("... of which parent in top-10:", len(in10))
+
+# Peek a few
+peek = in5.sample(min(5, len(in5)), random_state=0) if len(in5)>0 else pd.DataFrame()
+for _, r in peek.iterrows():
+    inspect(r["query_item_key"], k=10)
+
+#--- OUT ---
+Queries with parent@1 = 0: 56
+... of which parent in top-5: 46
+... of which parent in top-10: 50
+
+Query: OEB020ahcbb
+Short text: canalización hormigonada de 2 t pvc 110 mm con topo diurno excepcional 3 i 5 horas volumen escaso
+Gold item : OEB020ahcbb
+Gold parent: OEB020$
+First correct item rank  : None
+First correct parent rank: 3
+
+        rank cand_item_key cand_parent_key      score  is_correct_item  \
+874800     1    OEB070bcab         OEB070$  28.921875                0   
+874801     2    OEB070bcbb         OEB070$  28.890625                0   
+874802     3   OEB020aacab         OEB020$  28.875000                0   
+874803     4   OEB020abcab         OEB020$  28.812500                0   
+874804     5   OEB020aacbb         OEB020$  28.796875                0   
+874805     6    OEB070bccb         OEB070$  28.765625                0   
+874806     7   OEB020accab         OEB020$  28.703125                0   
+874807     8   OEB020afcab         OEB020$  28.687500                0   
+874808     9   OEB020abcbb         OEB020$  28.625000                0   
+874809    10    OEB070babb         OEB070$  28.625000                0   
+
+        is_correct_parent  
+874800                  0  
+874801                  0  
+874802                  1  
+874803                  1  
+874804                  1  
+874805                  0  
+874806                  1  
+874807                  1  
+874808                  1  
+874809                  0  
+
+Query: OEB200caedb
+Short text: zanja para cables de 1.10 m de profundidad a máquina normal en material normal cualquier franja horaria no necesita intervalo volumen escaso
+Gold item : OEB200caedb
+Gold parent: OEB200$
+First correct item rank  : 4
+First correct parent rank: 3
+
+        rank cand_item_key cand_parent_key     score  is_correct_item  \
+721000     1   OEB190caedb         OEB190$  32.31250                0   
+721001     2   OEB190cafdb         OEB190$  32.31250                0   
+721002     3   OEB200cafdb         OEB200$  32.28125                0   
+721003     4   OEB200caedb         OEB200$  32.28125                1   
+721004     5   OEB190cbfdb         OEB190$  32.25000                0   
+721005     6   OEB190cbedb         OEB190$  32.21875                0   
+721006     7   OEB200cbfdb         OEB200$  32.18750                0   
+721007     8   OEB200cbedb         OEB200$  32.09375                0   
+721008     9   OEB190caeda         OEB190$  31.84375                0   
+721009    10   OEB200baedb         OEB200$  31.84375                0   
+
+        is_correct_parent  
+721000                  0  
+721001                  0  
+721002                  1  
+721003                  1  
+721004                  0  
+721005                  0  
+721006                  1  
+721007                  1  
+721008                  0  
+721009                  1  
+
+Query: OEB200cabda
+Short text: zanja para cables de 1.10 m de profundidad a máquina normal en material normal nocturno no necesita intervalo volumen rele
+...[TRUNC]...
+              1  
+1003104                  0  
+1003105                  1  
+1003106                  0  
+1003107                  0  
+1003108                  0  
+1003109                  1  
+
+Query: OEB200bacbb
+Short text: zanja para cables de 0.80 a 1.00 m de profundidad a máquina normal en material normal diurno excepcional 3 i 5 horas volumen escaso
+Gold item : OEB200bacbb
+Gold parent: OEB200$
+First correct item rank  : 2
+First correct parent rank: 2
+
+        rank cand_item_key cand_parent_key     score  is_correct_item  \
+941400     1   OEB190bacbb         OEB190$  37.31250                0   
+941401     2   OEB200bacbb         OEB200$  37.31250                1   
+941402     3   OEB190bbcbb         OEB190$  37.12500                0   
+941403     4   OEB190baabb         OEB190$  37.09375                0   
+941404     5   OEB200baabb         OEB200$  37.09375                0   
+941405     6   OEB200bacab         OEB200$  37.06250                0   
+941406     7   OEB190bacab         OEB190$  37.03125                0   
+941407     8   OEB200bbcbb         OEB200$  37.03125                0   
+941408     9   OEB190bbabb         OEB190$  37.00000                0   
+941409    10   OEB200baccb         OEB200$  36.90625                0   
+
+        is_correct_parent  
+941400                  0  
+941401                  1  
+941402                  0  
+941403                  0  
+941404                  1  
+941405                  1  
+941406                  0  
+941407                  1  
+941408                  0  
+941409                  1  
+
+Query: OEB200cbfcc
+Short text: zanja para cables de 1.10 m de profundidad a máquina rocoso en material rocoso cualquier franja horaria excepcional i 3 horas cualquier condición de ejecución
+Gold item : OEB200cbfcc
+Gold parent: OEB200$
+First correct item rank  : 2
+First correct parent rank: 2
+
+         rank cand_item_key cand_parent_key     score  is_correct_item  \
+1600200     1   OEB190cbfcc         OEB190$  41.87500                0   
+1600201     2   OEB200cbfcc         OEB200$  41.84375                1   
+1600202     3   OEB200cbfcb         OEB200$  41.81250                0   
+1600203     4   OEB200cbfbc         OEB200$  41.78125                0   
+1600204     5   OEB200cbfbb         OEB200$  41.75000                0   
+1600205     6   OEB200cbfab         OEB200$  41.71875                0   
+1600206     7   OEB200cbfca         OEB200$  41.68750                0   
+1600207     8   OEB200cbfba         OEB200$  41.65625                0   
+1600208     9   OEB200cbfac         OEB200$  41.65625                0   
+1600209    10   OEB190cbfbc         OEB190$  41.65625                0   
+
+         is_correct_parent  
+1600200                  0  
+1600201                  1  
+1600202                  1  
+1600203                  1  
+1600204                  1  
+1600205                  1  
+1600206                  1  
+1600207                  1  
+1600208                  1  
+1600209                  0  
+
+#===== CELL 10 [code] =====
+# --- Confusion analysis: most frequent wrong parent@1 --------------------------
+rank1 = df_cands[df_cands["rank"]==1].copy()
+rank1["is_parent_hit"] = (rank1["cand_parent_key"]==rank1["gold_parent_key"]).astype(int)
+wrong_parent = rank1[rank1["is_parent_hit"]==0]
+
+tbl = (wrong_parent
+       .groupby(["gold_parent_key","cand_parent_key"])
+       .size().reset_index(name="count")
+       .sort_values("count", ascending=False)
+       .head(20))
+display(tbl)
+
+# Save
+tbl.to_csv(RUN_DIR / "parent_confusions_rank1.csv", index=False)
+print("Saved:", RUN_DIR / "parent_confusions_rank1.csv")
+
+#--- OUT ---
+  gold_parent_key cand_parent_key  count
+2         OEB200$         OEB190$     40
+0         OEB020$         OEB070$     11
+1         OEB050$         OEB010$      5
+Saved: /work/runs/bge_m3_colbert/parent_confusions_rank1.csv
+
+
+#===== CELL 11 [code] =====
+if RUN_CONTEXT != "manual":
+    # skip during orchestrated runs
+    raise SystemExit  # or just: pass
+
+#===== CELL 12 [code] =====
+# look at the long-format item OEB060
+doc_text = df_d.loc[df_d["item_key"]=="OEB060", "d_text"].iloc[0]
+print("Length (chars):", len(doc_text))
+print("Length (tokens):", len(doc_text.split()))
+print("Text:\n", doc_text)
+
+
+#--- OUT ---
+Length (chars): 279
+Length (tokens): 53
+Text:
+ canalización de 5 tubos de acero de 3 de diámetro en placa de hormigón de 30 cm de profundidad mínima incluida la acometida y el remate a la canaleta o a la arqueta existente y la reposición de la placa de hormigón también se incluyen los accesorios y las uniones entre los tubos
+
+
+#===== CELL 13 [code] =====
+df_d.loc[df_d["item_key"]=="OEB060"].T
+
+#--- OUT ---
+                                                        17316
+item_key                                               OEB060
+d_text      canalización de 5 tubos de acero de 3 de diáme...
+parent_key                                             OEB060
+
+#===== CELL 14 [code] =====
+

@@ -72,3 +72,19 @@ ollama/
 # Ignore coda and torch folders
 coda/
 torch/
+# --- Revisión AUTCON (rama paper/autcon-r1-revision) ---
+# Las fuentes del manuscrito y los artefactos de reproducibilidad deben
+# versionarse pese a los patrones globales *.json / *.csv de más arriba.
+!paper/**
+!benchmark/**
+!docs/**
+
+# Subproductos de compilación LaTeX
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/*.toc
+paper/*.synctex.gz
+paper/*.fdb_latexmk
+paper/*.fls

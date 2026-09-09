@@ -1,0 +1,265 @@
+
+#===== CELL 0 [code] =====
+# papermill parameters
+CFG_PATH = "/work/configs/bge_m3_colbert.yaml"
+RUN_CONTEXT = "manual"
+
+#===== CELL 1 [code] =====
+# === index_build.ipynb — Universal Index Builder ===
+#
+# PURPOSE:
+#   This notebook builds search indexes for the long-format construction item collection
+#   using multiple retrieval methods (TF–IDF, BM25, dense embeddings, hybrids, etc.).
+#   It is a config-driven entry point: by changing the YAML config you can build any
+#   supported method without modifying the notebook code.
+#
+# HOW IT WORKS:
+#   1. Loads the processed features produced by `data.ipynb` + `features.ipynb`
+#      - Short-format items: used only for optional sanity check ("probe") retrieval
+#      - Long-format items: the retrieval corpus we index
+#      - Features metadata: tells us which field to index for each method
+#
+#   2. Reads a YAML config (CFG_PATH) that defines:
+#      - Collection name (e.g., "OEB")
+#      - Paths to data and index storage
+#      - Method family/name (e.g., tfidf / tfidf_unigram_phrases)
+#      - Method parameters (e.g., ngram range, lowercase flag, etc.)
+#      - Output file names and folder structure
+#
+#   3. Dynamically imports the appropriate builder module from `/src/index_builders/`
+#      - Each builder implements:
+#           select_field(feats_meta) -> which feature column to index
+#           build(cfg, long_df, text_field) -> (artifacts_dict, transformer, X_docs)
+#      - Artifacts are method-specific files like `.npz` (vectors), `.json` (vocab), `.npy` (idf)
+#
+#   4. Saves standardized index files to `/index/{method_name}/`:
+#      - mapping.jsonl  : internal doc_id -> external item key + length
+#      - fields.json    : which text_field was indexed
+#      - meta.json      : method params, version info, corpus hash, stats
+#      - data/          : method-specific data files
+#
+#   5. Updates `/index/registry.json` so retrieval code can discover and load this index later.
+#
+#   6. (Optional) Runs a quick retrieval probe on one short-format item to verify the index works.
+#
+# USAGE:
+#   - Set CFG_PATH to point to the desired method's YAML config:
+#       CFG_PATH = "/work/configs/tfidf_unigram.yaml"
+#       CFG_PATH = "/work/configs/tfidf_unigram_phrases.yaml"
+#   - Ensure the matching builder file exists in `/src/index_builders/`:
+#       tfidf_unigram.yaml         -> index_builders/tfidf_unigram.py
+#       tfidf_unigram_phrases.yaml -> index_builders/tfidf_unigram_phrases.py
+#   - Run the cell. The index will be built and saved under `/index/{method_name}/`.
+#
+# EXTENDING:
+#   - To add a new method:
+#       1) Create a builder module in `/src/index_builders/` with select_field() and build()
+#       2) Create a YAML config in `/configs/` pointing to that method
+#       3) Run this notebook with CFG_PATH set to that config
+#
+# NOTE:
+#   This notebook is not tied to a single method — it is a universal builder and dispatcher.
+#   The heavy lifting is delegated to the per-method builders in `/src/index_builders/`.
+
+from pathlib import Path
+import json, time, hashlib, platform, importlib
+from importlib import import_module
+import numpy as np
+import pandas as pd
+from scipy import sparse
+
+# ---------- helpers ----------
+def read_yaml(path):
+    import yaml
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+def fmt_path(template: str, **kw) -> Path:
+    return Path(template.format(**kw))
+
+def ensure_dir(p: Path) -> Path:
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def update_registry(index_root: Path, method_name: str, entry: dict):
+    reg_path = index_root / "registry.json"
+    try:
+        if reg_path.exists():
+            with open(reg_path, "r", encoding="utf-8") as f:
+                reg = json.load(f)
+        else:
+            reg = {}
+        reg[method_name] = entry
+        with open(reg_path, "w", encoding="utf-8") as f:
+            json.dump(reg, f, ensure_ascii=False, indent=2)
+        print("✔ Registry updated:", reg_path)
+    except Exception as e:
+        print("! Registry update skipped:", e)
+
+def write_index_payload(cfg, out_dirname: str, artifacts: dict, *, long_df: pd.DataFrame, text_field: str, impl: str) -> Path:
+    """Standard writer for mapping/fields/meta + method-specific artifacts in data/."""
+    index_root = Path(cfg["paths"]["index_root"])
+    method_dir = ensure_dir(index_root / out_dirname)
+    data_dir   = ensure_dir(method_dir / cfg["io"]["data_dirname"])
+
+    # mapping.jsonl
+    mapping_path = method_dir / cfg["io"]["mapping_file"]
+    with open(mapping_path, "w", encoding="utf-8") as f:
+        for i, row in enumerate(long_df.itertuples(index=False)):
+            txt = getattr(row, text_field) or ""
+            f.write(json.dumps({
+                "doc_id": i,
+                "external_id": getattr(row, "item_key"),
+                "len": len(str(txt).split())
+            }, ensure_ascii=False) + "\n")
+
+    # fields.json
+    fields_path = method_dir / cfg["io"]["fields_file"]
+    with open(fields_path, "w", encoding="utf-8") as f:
+        json.dump({"text_field": text_field}, f, ensure_ascii=False, indent=2)
+
+    # method artifacts
+    for name, value in artifacts.items():
+        if name.endswith(".npz") and hasattr(value, "tocsr"):
+            sparse.save_npz(data_dir / name, value.tocsr())
+        elif name.endswith(".npy"):
+            np.save(data_dir / name, value)
+        elif name.endswith(".json"):
+            with open(data_dir / name, "w", encoding="utf-8") as f:
+                json.dump(value, f, ensure_ascii=False, indent=2)
+
+    # meta.json (keep "method" as family; record impl + variant)
+    meta = {
+        "experiment_id": cfg.get("experiment_id"),
+        "method": cfg["method"]["family"],            # e.g. "bm25" / "tfidf"  (matches retrieve header)
+        "impl": impl,                                  # e.g. "bm25_unigram"
+        "variant": out_dirname,                        # folder/run label (pretty name)
+        "software": {
+            "python": platform.python_version(),
+            "sklearn": __import__("sklearn").__version__ if cfg["method"]["family"] == "tfidf" else None
+        },
+        "params": cfg["method"].get("params", {}),
+        "num_docs": int(artifacts.get("__num_docs__", len(long_df))),
+        "vocab_size": int(artifacts.get("__vocab_size__", 0)),
+        "collection": cfg["collection"],
+        "text_field": text_field,
+        "corpus_hash": artifacts.get("__corpus_hash__", None),
+        "created_utc": pd.Timestamp.utcnow().isoformat()
+    }
+    with open(method_dir / "meta.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+    print("✔ Saved index to:", method_dir)
+    return method_dir
+
+# ---------- load config ----------
+cfg = read_yaml(CFG_PATH)
+
+# --- Resolve builder module & output dir (safe fallbacks) ---
+name_raw = cfg["method"]["name"]                         # e.g. "bm25_unigram__k1-0p60__b-0p20"
+impl     = cfg["method"].get("impl") or name_raw.split("__", 1)[0]
+save_as  = cfg["method"].get("save_as", name_raw)        # default: same as name
+
+# import builder module (index_builders.<impl>)
+builder = import_module(f"index_builders.{impl}")
+
+# --- Paths & data sources ---
+INDEX_ROOT = Path(cfg["paths"]["index_root"])
+COL       = cfg["collection"]
+DATA_DIR  = Path(cfg["paths"]["data_dir"])
+
+# accept lexical and denser YAML keys
+inp = dict(cfg.get("inputs", {}))
+inp.setdefault("short_feats",   inp.get("short_text_path") or inp.get("short_path"))
+inp.setdefault("long_feats",    inp.get("long_text_path")  or inp.get("long_path"))
+
+short_path = fmt_path(inp["short_feats"],    data_dir=DATA_DIR, collection=COL)
+long_path  = fmt_path(inp["long_feats"],     data_dir=DATA_DIR, collection=COL)
+
+# features_meta is optional since it is not defined for dense methods
+meta_tpl  = inp.get("features_meta")
+meta_path = fmt_path(meta_tpl, data_dir=DATA_DIR, collection=COL) if meta_tpl else None
+
+print("Using collection:", COL)
+print("Short feats:", short_path)
+print("Long  feats:",  long_path)
+print("Meta:",         meta_path)
+
+# ---------- load inputs ----------
+# ✨ Minimal helper: load parquet OR json/jsonl transparently
+def _read_df(p: Path) -> tuple[pd.DataFrame, str]:
+    suf = p.suffix.lower()
+    if suf == ".parquet":
+        return pd.read_parquet(p), "parquet"
+    if suf in (".json", ".jsonl"):
+        try:
+            return pd.read_json(p, lines=True), "json"
+        except ValueError:
+            return pd.read_json(p), "json"
+    return pd.read_table(p), "other"
+
+feats_meta = {}
+if meta_path and meta_path.exists():
+    with open(meta_path, "r", encoding="utf-8") as f:
+        feats_meta = json.load(f)
+
+short_df, short_fmt = _read_df(short_path)
+long_df,  long_fmt  = _read_df(long_path)
+
+# Builder contract:
+#   - builder.select_field(feats_meta) -> text_field (str)
+#   - builder.build(cfg, long_df, text_field) -> (artifacts_dict, transformer_or_None, X_docs_or_None)
+text_field = builder.select_field(feats_meta)
+
+# ✨ Only override when the long_df came from JSON and builder’s field is missing
+if long_fmt == "json":
+    print(f"! JSON input detected → forcing text_field = 'text'")
+    text_field = "text"
+
+print("builder:", builder.__name__)
+print("select_field returned:", text_field)
+print("feats_meta.text_fields:", (feats_meta or {}).get("text_fields", {}))
+print("long_df columns sample:", list(long_df.columns)[:30])
+
+assert {"item_key", text_field}.issubset(long_df.columns), f"Missing {text_field} or item_key in long feats"
+
+artifacts, transformer, X_docs = builder.build(cfg, long_df, text_field)
+
+# ---------- write & register ----------
+method_name = save_as  # folder name to write under /index/
+method_dir = write_index_payload(
+    cfg, method_name, artifacts, long_df=long_df, text_field=text_field, impl=impl
+)
+
+update_registry(
+    INDEX_ROOT,
+    cfg["method"]["name"],           # key is the human/run name (name_raw)
+    {
+        "path": str(Path(method_dir).resolve()),
+        "method": cfg["method"]["family"],   # family
+        "impl": impl,                        # python implementation
+        "variant": method_name,              # folder label
+        "collection": COL,
+        "text_field": text_field
+    }
+)
+#--- OUT ---
+Using collection: OEB
+Short feats: /work/data/processed/OEB_short_norm.parquet
+Long  feats: /work/data/processed/OEB_long_norm.parquet
+Meta: None
+builder: index_builders.bge_m3_colbert
+select_field returned: text_norm
+feats_meta.text_fields: {}
+long_df columns sample: ['id', 'item_key', 'parent_key', 'ud', 'concept', 'parameters', 'text', 'text_norm', 'tokens_word', 'text_word', 'text_char', 'numbers', 'parameters_norm', 'param_values_multi_norm', 'param_tokens', 'text_word_params']
+✔ Saved index to: /work/index/bge_m3_colbert
+✔ Registry updated: /work/index/registry.json
+
+
+#===== CELL 2 [code] =====
+if RUN_CONTEXT != "manual":
+    # skip during orchestrated runs
+    raise SystemExit  # or just: pass
+
+#===== CELL 3 [code] =====
+

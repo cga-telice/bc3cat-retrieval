@@ -1,0 +1,696 @@
+
+#===== CELL 0 [markdown] =====
+# 🧠 Hybrid Retrieval Runner (Dynamic Multi-Index)
+
+### Purpose
+This notebook performs **hybrid retrieval runs** by combining results from multiple retrievers (lexical, neural, and hybrid) into a single fused ranking.  
+It is designed for large-scale experiments comparing **BM25, TF–IDF, dense encoders (E5/BGE), and others** within a unified evaluation pipeline.
+
+---
+
+### ⚙️ What It Does
+1. **Auto-loads indexes** from `/work/index/registry.json`:
+   - Supports `bm25_*`, `tfidf_*`, `tfidf_char_*`, `dense_*`, `bge_m3_*`.
+   - Dynamically loads each retriever and its external IDs.
+2. **Selects the correct query text field** for each retriever:
+   - `word` → BM25/TF–IDF  
+   - `char` → char n-gram TF–IDF  
+   - `raw` → dense / BGE encoders
+3. **Retrieves top-K candidates** from each ranker for all queries.
+4. **Normalizes scores** per query and ranker using:
+   - `minmax`, `zscore`, or `rank_rrf`.
+5. **Applies numeric-parameter bonus**  
+   Adds a weighted reward when numeric parameters match between query and document (`β_exact`, `β_overlap`).
+6. **Fuses scores** across rankers using:
+   - `COMBSUM` (default)  
+   - or `WEIGHTED` (optional grid search over weights)
+7. **Computes quick metrics**: `Acc@1`, `Recall@5`, `Recall@10`, `MRR@10`.
+8. **Optionally performs a compact sweep** of fusion weights and numeric bonuses to find the best hybrid configuration.
+9. **Saves all artifacts** to `/work/runs/hybrids/<run_name>`:
+
+
+#===== CELL 1 [code] =====
+# %% [markdown]
+# Hybrid run (multi-index, dynamic): BM25 + Dense E5 + (any others you add)
+# - Resolves paths via /work/index/registry.json
+# - Auto-loads retrievers by index name (bm25_*, tfidf_*, dense_*)
+# - Picks the right query field per index (word/char/raw)
+# - Runs retrieval for ALL indexes you list in CONFIG["indexes"]
+# - Normalizes, fuses (COMBSUM/Weighted), saves metrics + results_topK.jsonl.gz
+
+# %% [code]
+from __future__ import annotations
+import os, sys, json, math, time, random, gzip, importlib
+from pathlib import Path
+from typing import List, Dict, Tuple, Any
+import numpy as np
+import pandas as pd
+
+# ---------------- CONFIG ----------------
+CONFIG = {
+    "run_name": "hyb_bm25_uni__bge_multi__tfidf_char_3_5",
+
+    # Just list the index NAMES you want to use (as registered under /work/index/registry.json)
+    # e.g., add "tfidf_char_3_5" here and it will be picked up automatically.
+    "indexes": ["bm25_unigram", "bge_m3_colbert", "bge_m3_dense", "bge_m3_sparse", "tfidf_char_3_5"],  # ← add more names here
+
+    # Data
+    "data_dir_processed": "/work/data/processed",
+    "collection": "OEB",
+    "raw_short_json": "/work/data/processed/OEB_resumen.json",
+    "raw_long_json":  "/work/data/processed/OEB_texto.json",
+
+    # Sampling
+    "sample_size": 16590,
+    "seed": 1337,
+
+    # Retrieval
+    "topK_per_ranker": 100,
+
+    # Normalization & fusion
+    "normalization": "minmax",         # "minmax" | "zscore" | "rank_rrf"
+    "fusion": "combsum",               # "combsum" | "weighted"
+    "weights": {},                     # if fusion="weighted", provide {"bm25_unigram":0.5, "dense_e5":0.5, ...}
+
+    # Numeric feature bonus
+    "numeric_bonus": {"beta_exact": 0.15, "beta_overlap": 0.05},
+
+    # Final selection
+    "final_topK": 100,
+
+    # IO roots
+    "runs_dir": "/work/runs/hybrids",
+    "index_root": "/work/index",
+}
+
+# ---------------- setup paths & logging ----------------
+RUN_DIR = Path(CONFIG["runs_dir"]) / CONFIG["run_name"]
+RUN_DIR.mkdir(parents=True, exist_ok=True)
+
+def save_json(obj, p: Path):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+
+def log(msg: str):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] {msg}", flush=True)
+
+save_json(CONFIG, RUN_DIR / "config.json")
+
+# ensure we can import local retriever modules
+SRC = Path("/work/src")
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+# ---------------- registry resolver ----------------
+def read_registry(index_root=Path(CONFIG["index_root"])) -> dict:
+    rp = Path(index_root) / "registry.json"
+    return json.load(open(rp, "r", encoding="utf-8")) if rp.exists() else {}
+
+def resolve_index_dir(name: str, index_root=Path(CONFIG["index_root"])) -> Path:
+    reg = read_registry(index_root)
+    if name in reg and reg[name].get("path"):
+        return Path(reg[name]["path"])
+    return Path(index_root) / name  # fallback
+
+# ---------------- data loading (processed + raw) ----------------
+def _load_processed_tables(data_dir: str, collection: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    base = Path(data_dir)
+    s = pd.read_parquet(base / f"{collection}_short_norm.parquet")
+    l = pd.read_parquet(base / f"{collection}_long_norm.parquet")
+    need = {"item_key", "text_word", "text_char", "numbers"}
+    if not need.issubset(s.columns) or not need.issubset(l.columns):
+        raise KeyError(f"Processed parquet must include {need}")
+    return s, l
+
+def _as_record_from_obj(doc: Any) -> Dict[str, Any]:
+    if isinstance(doc, dict):
+        text = doc.get("text") or doc.get("content")
+        md = doc.get("metadata") or {}
+        return {"item_key": (md.get("item_key") or doc.get("item_key")),
+                "text_raw": text if isinstance(text, str) else (md.get("text") or "")}
+    raise TypeError("Unsupported JSON entry")
+
+def _load_raw_json(path: str) -> pd.DataFrame:
+    obj = json.load(open(path, "r", encoding="utf-8"))
+    if isinstance(obj, list):
+        rows = [_as_record_from_obj(d) for d in obj]
+    elif isinstance(obj, dict):
+        container = None
+        for k in ("documents","data","items","records"):
+            if k in obj and isinstance(obj[k], list):
+                container = obj[k]; break
+        if container is None:
+            raise TypeError(f"Unsupported JSON structure in {path}")
+        rows = [_as_record_from_obj(d) for d in container]
+    else:
+        raise TypeError(f"Unsupported JSON root {type(obj)}")
+    df = pd.DataFrame(rows)
+    if "item_key" not in df or "text_raw" not in df:
+        raise KeyError("Raw JSON must contain item_key,text/text_raw")
+    return df[["item_key","text_raw"]]
+
+log("[DATA] Loading processed (normalized) tables …")
+short_df, long_df = _load_processed_tables(CONFIG["data_dir_processed"], CONFIG["collection"])
+log(f"[DATA] Loaded processed: short={len(short_df):,} long={len(long_df):,}")
+
+log("[DATA] Loading raw JSON (short/long) for dense encoders …")
+raw_short = _load_raw_json(CONFIG["raw_short_json"])
+raw_long  = _load_raw_json(CONFIG["raw_long_json"])
+log(f"[DATA] Loaded raw JSON: short={len(raw_short):,} long={len(raw_long):,}")
+
+short_df = short_df.merge(raw_short, on="item_key", how="inner", validate="one_to_one")
+long_df  = long_df.merge(raw_long,  on="item_key", how="inner", validate="one_to_one")
+
+# ---------------- sample aligned pairs ----------------
+def sample_aligned(sd: pd.DataFrame, ld: pd.DataFrame, n: int, seed: int):
+    keys = sorted(set(sd["item_key"]).intersection(ld["item_key"]))
+    if len(keys) < n:
+        raise ValueError(f"Requested {n} > aligned population {len(keys)}")
+    random.Random(seed).shuffle(keys)
+    take = set(keys[:n])
+    return (sd[sd.item_key.isin(take)].copy().sort_values("item_key").reset_index(drop=True),
+            ld[ld.item_key.isin(take)].copy().sort_values("item_key").reset_index(drop=True))
+
+log(f"[SAMPLE] Sampling {CONFIG['sample_size']:,} aligned pairs (seed={CONFIG['seed']}) …")
+short_s, long_s = sample_aligned(short_df, long_df, CONFIG["sample_size"], CONFIG["seed"])
+log(f"[SAMPLE] Done. Sample size = {len(short_s):,}")
+
+# handy lookups
+q_word = dict(zip(short_s.item_key, short_s.text_word))
+q_char = dict(zip(short_s.item_key, short_s.text_char))
+q_raw  = dict(zip(short_s.item_key, short_s.text_raw))
+numbers_short = dict(zip(short_s.item_key, short_s.numbers))
+numbers_long  = dict(zip(long_s.item_key,  long_s.numbers))
+gold_doc_by_q = {k: k for k in short_s.item_key}
+
+all_q_keys = short_s.item_key.tolist()
+
+# ---------------- dynamic retriever loading ----------------
+def import_module_safely(modname: str):
+    try:
+        return importlib.import_module(modname)
+    except Exception:
+        return None
+
+def load_retriever_for_index(index_name: str, index_dir: Path):
+    """
+    Try retrievers.<index_name>.load first; fallback by family:
+     - tfidf_* → retrievers.tfidf_unigram.load
+     - bm25_*  → retrievers.bm25_unigram.load
+     - dense_* → retrievers.dense_e5.load
+     - bge_m3_dense* → retrievers.bge_m3_dense.load
+     - bge_m3_sparse* → retrievers.bge_m3_sàrse.load
+     - bge_m3_colbert* → retrievers.bge_m3_colbert.load
+    """
+    # 1) exact module
+    mod = import_module_safely(f"retrievers.{index_name}")
+    if mod and hasattr(mod, "load"):
+        return mod.load(index_dir)
+
+    # 2) family fallback
+    if index_name.startswith("tfidf"):
+        mod = import_module_safely("retrievers.tfidf_unigram")
+        if not mod or not hasattr(mod, "load"):
+            raise ImportError("Cannot load TF–IDF retriever")
+        return mod.load(index_dir)
+
+    if index_name.startswith("bm25"):
+        mod = import_module_safely("retrievers.bm25_unigram")
+        if not mod or not hasattr(mod, "load"):
+            raise ImportError("Cannot load BM25 retriever")
+        return mod.load(index_dir)
+
+    if index_name.startswith("dense"):
+        mod = import_module_safely("retrievers.dense_e5")
+        if not mod or not hasattr(mod, "load"):
+            raise ImportError("Cannot load Dense E5 retriever")
+        return mod.load(index_dir)
+
+    if index_name.startswith("bge_m3_dense"):
+        mod = import_module_safely("retrievers.bge_m3_dense")
+        if not mod or not hasattr(mod, "load"):
+            raise ImportError("Cannot load BGE_M3_DENSE retriever")
+        return mod.load(index_dir)
+
+    if index_name.startswith("bge_m3_sparse"):
+        mod = import_module_safely("retrievers.bge_m3_sparse")
+        if not mod or not hasattr(mod, "load"):
+            raise ImportError("Cannot load BGE_M3_SPARSE retriever")
+        return mod.load(index_dir)
+
+    if index_name.startswith("bge_m3_colbert"):
+        mod = import_module_safely("retrievers.bge_m3_colbert")
+        if not mod or not hasattr(mod, "load"):
+            raise ImportError("Cannot load BGE_M3_COLBERT retriever")
+        return mod.load(index_dir)
+
+    raise ImportError(f"No retriever found for index '{index_name}'")
+
+def pick_query_text_list(index_name: str) -> List[str]:
+    """
+    Choose which query field to use for this index.
+      - dense_*      → raw text
+      - tfidf_char_* → char view (padded normalized string)
+      - tfidf_*      → word tokens joined (text_word)
+      - bm25_*       → word tokens joined (text_word)
+      - bge_m3_*     → raw text
+    """
+    if index_name.startswith("dense"):
+        return [q_raw[k]  for k in all_q_keys]
+    if index_name.startswith("tfidf_char"):
+        return [q_char[k] for k in all_q_keys]
+    if index_name.startswith("tfidf") or index_name.startswith("bm25"):
+        return [q_word[k] for k in all_q_keys]
+    if index_name.startswith("bge_m3"):
+        return [q_raw[k] for k in all_q_keys]
+    # default: word
+    return [q_word[k] for k in all_q_keys]
+
+def search_batch(searcher, queries: List[str], k: int):
+    return searcher.search_batch(queries, k=k)
+
+# resolve & load ALL requested indexes
+rankers = []  # list of dicts {name, dir, searcher, ext_ids, queries}
+for name in CONFIG["indexes"]:
+    idx_dir = resolve_index_dir(name)
+    log(f"[INDEX] Resolved {name:<16} → {idx_dir}")
+    searcher = load_retriever_for_index(name, idx_dir)
+    try:
+        ext_ids = np.asarray(searcher.external_ids, dtype=object)
+    except Exception:
+        raise AttributeError(f"retriever for '{name}' must expose .external_ids")
+    queries = pick_query_text_list(name)
+    rankers.append({"name": name, "dir": idx_dir, "searcher": searcher, "ext_ids": ext_ids, "queries": queries})
+    log(f"[INDEX] Loaded {name:<16} docs={len(ext_ids):,}")
+
+# ---------------- run retrieval for each ranker ----------------
+K = int(CONFIG["topK_per_ranker"])
+all_runs = []
+for r in rankers:
+    t0 = time.time()
+    top_idx, top_s = search_batch(r["searcher"], r["queries"], k=K)
+    secs = time.time() - t0
+    log(f"[RETRIEVE][{r['name']}] queries={len(r['queries']):,} k={K} time={secs:.1f}s")
+    rows = []
+    for i, qk in enumerate(all_q_keys):
+        for rank in range(top_idx.shape[1]):
+            di = int(top_idx[i, rank])
+            rows.append((qk, str(r["ext_ids"][di]), r["name"], rank+1, float(top_s[i, rank])))
+    df = pd.DataFrame(rows, columns=["query_id","doc_id","ranker","rank","raw_score"])
+    all_runs.append(df)
+
+base_runs = pd.concat(all_runs, ignore_index=True)
+try:
+    base_runs.to_parquet(RUN_DIR / "base_runs.parquet", index=False)
+    log(f"[SAVE] base_runs → {RUN_DIR/'base_runs.parquet'}")
+except Exception:
+    base_runs.to_csv(RUN_DIR / "base_runs.csv", index=False)
+    log(f"[SAVE] base_runs → {RUN_DIR/'base_runs.csv'} (csv fallback)")
+
+# quick coverage
+def coverage_at_k(df: pd.DataFrame, k: int) -> pd.DataFrame:
+    dfk = df[df["rank"] <= k]
+    hits = dfk.assign(hit=(dfk["doc_id"] == dfk["query_id"]).astype(int))
+    cov = hits.groupby(["ranker","query_id"])["hit"].max().groupby("ranker").mean().reset_index(name=f"gold_in_top{k}_ratio")
+    return cov
+
+cov = coverage_at_k(base_runs, K)
+log("[COVERAGE]\n" + cov.to_string(index=False))
+
+# ---------------- numeric feature ----------------
+def _nums(v): 
+    return [float(x) for x in v] if isinstance(v, list) else []
+
+pairs = base_runs[["query_id","doc_id"]].drop_duplicates().to_numpy()
+num_rows = []
+for q, d in pairs:
+    qset = set(_nums(numbers_short.get(q, [])))
+    dset = set(_nums(numbers_long.get(d, [])))
+    shared = qset & dset
+    exact = 1 if (len(qset) > 0 and qset.issubset(dset)) else 0
+    overlap = (len(shared) / max(1, len(qset))) if len(qset) > 0 else 0.0
+    num_rows.append((q, d, exact, overlap))
+numeric_df = pd.DataFrame(num_rows, columns=["query_id","doc_id","numeric_exact","numeric_overlap"])
+try:
+    numeric_df.to_parquet(RUN_DIR / "numeric_features.parquet", index=False)
+    log(f"[SAVE] numeric_features → {RUN_DIR/'numeric_features.parquet'}")
+except Exception:
+    numeric_df.to_csv(RUN_DIR / "numeric_features.csv", index=False)
+    log(f"[SAVE] numeric_features → {RUN_DIR/'numeric_features.csv'} (csv fallback)")
+
+# ---------------- normalization ----------------
+def normalize_scores(df: pd.DataFrame, method: str) -> pd.DataFrame:
+    df = df.copy()
+    if method == "minmax":
+        def _mm(g):
+            s = g["raw_score"].values.astype(float)
+            mn, mx = float(np.min(s)), float(np.max(s))
+            g["norm_score"] = 0.0 if mx - mn < 1e-9 else (s - mn) / (mx - mn)
+            return g
+        return df.groupby(["ranker","query_id"], sort=False, group_keys=False).apply(_mm)
+
+    if method == "zscore":
+        def _zs(g):
+            s = g["raw_score"].values.astype(float)
+            mu, sd = float(np.mean(s)), float(np.std(s))
+            g["norm_score"] = 0.0 if sd < 1e-9 else (s - mu) / sd
+            return g
+        out = df.groupby(["ranker","query_id"], sort=False, group_keys=False).apply(_zs)
+        def _rescale(g):
+            s = g["norm_score"].values
+            mn, mx = float(np.min(s)), float(np.max(s))
+            g["norm_score"] = 0.0 if mx - mn < 1e-9 else (s - mn) / (mx - mn)
+            return g
+        return out.groupby(["ranker","query_id"], sort=False, group_keys=False).apply(_rescale)
+
+    if method == "rank_rrf":
+        tau = 60.0
+        def _rrf(g):
+            r = g["rank"].values.astype(int)
+            g["norm_score"] = 1.0 / (tau + r)
+            return g
+        return df.groupby(["ranker","query_id"], sort=False, group_keys=False).apply(_rrf)
+
+    raise ValueError(f"Unknown normalization: {method}")
+
+log(f"[NORMALIZE] {CONFIG['normalization']} …")
+runs_norm = normalize_scores(base_runs, CONFIG["normalization"])
+try:
+    runs_norm.to_parquet(RUN_DIR / "base_runs_norm.parquet", index=False)
+    log(f"[SAVE] base_runs_norm → {RUN_DIR/'base_runs_norm.parquet'}")
+except Exception:
+    runs_norm.to_csv(RUN_DIR / "base_runs_norm.csv", index=False)
+    log(f"[SAVE] base_runs_norm → {RUN_DIR/'base_runs_norm.csv'} (csv fallback)")
+
+# ---------------- fusion ----------------
+def fuse_candidates(runs_norm: pd.DataFrame,
+                    numeric_df: pd.DataFrame,
+                    fusion: str,
+                    weights: Dict[str, float],
+                    beta_exact: float,
+                    beta_overlap: float,
+                    final_topK: int) -> Tuple[pd.DataFrame, str]:
+    sc = (runs_norm
+          .pivot_table(index=["query_id","doc_id"], columns="ranker", values="norm_score", aggfunc="max")
+          .fillna(0.0)
+          .reset_index())
+    sc = sc.merge(numeric_df, on=["query_id","doc_id"], how="left")
+    sc["numeric_exact"] = sc["numeric_exact"].fillna(0.0).astype(float)
+    sc["numeric_overlap"] = sc["numeric_overlap"].fillna(0.0).astype(float)
+    sc["numeric_bonus"] = beta_exact*sc["numeric_exact"] + beta_overlap*sc["numeric_overlap"]
+
+    ranker_cols = [c for c in sc.columns if c not in {"query_id","doc_id","numeric_exact","numeric_overlap","numeric_bonus"}]
+
+    if fusion == "combsum":
+        sc["fused_score"] = sc[ranker_cols].sum(axis=1) + sc["numeric_bonus"]
+        desc = f"COMBSUM + numeric(β_exact={beta_exact}, β_overlap={beta_overlap})"
+    elif fusion == "weighted":
+        w_vec = np.array([weights.get(c, 0.0) for c in ranker_cols], dtype=float)
+        sc["fused_score"] = sc[ranker_cols].values.dot(w_vec) + sc["numeric_bonus"]
+        desc = f"WEIGHTED{dict(zip(ranker_cols, w_vec))} + numeric(β_exact={beta_exact}, β_overlap={beta_overlap})"
+    else:
+        raise ValueError(f"Unknown fusion: {fusion}")
+
+    sc = sc.sort_values(["query_id","fused_score"], ascending=[True, False])
+    sc["rank"] = sc.groupby("query_id")["fused_score"].rank(method="first", ascending=False).astype(int)
+    fused = sc[sc["rank"] <= final_topK].copy().sort_values(["query_id","rank"])
+    return fused, desc
+
+beta = CONFIG["numeric_bonus"]["beta_exact"]
+betb = CONFIG["numeric_bonus"]["beta_overlap"]
+fused, fuse_desc = fuse_candidates(
+    runs_norm, numeric_df,
+    fusion=CONFIG["fusion"],
+    weights=CONFIG.get("weights", {}),
+    beta_exact=beta, beta_overlap=betb,
+    final_topK=CONFIG["final_topK"]
+)
+log(f"[FUSION] {fuse_desc}")
+
+try:
+    fused.to_parquet(RUN_DIR / "fused.parquet", index=False)
+    log(f"[SAVE] fused → {RUN_DIR/'fused.parquet'}")
+except Exception:
+    fused.to_csv(RUN_DIR / "fused.csv", index=False)
+    log(f"[SAVE] fused → {RUN_DIR/'fused.csv'} (csv fallback)")
+
+# ---------------- quick metrics ----------------
+def metrics_at_k(fused: pd.DataFrame, ks=(5,10)) -> Dict[str, float]:
+    ranks = fused[["query_id","doc_id","rank"]]
+    gold  = pd.DataFrame({"query_id": list(gold_doc_by_q.keys()),
+                          "gold_id":  list(gold_doc_by_q.values())})
+    m = ranks.merge(gold, left_on=["query_id","doc_id"], right_on=["query_id","gold_id"], how="left", indicator=True)
+    gold_rows = m[m["_merge"]=="both"][["query_id","rank"]]
+    gold_ranks = dict(zip(gold_rows["query_id"], gold_rows["rank"]))
+    total = len(gold_doc_by_q)
+    out = {
+        "acc@1":   sum(1 for q in gold_doc_by_q if gold_ranks.get(q, 10**9) == 1) / total,
+        "recall@5":sum(1 for q in gold_doc_by_q if gold_ranks.get(q, 10**9) <= 5) / total,
+        "recall@10":sum(1 for q in gold_doc_by_q if gold_ranks.get(q, 10**9) <= 10) / total,
+        "mrr@10":  sum((1.0/gold_ranks[q]) if (q in gold_ranks and gold_ranks[q] <= 10) else 0.0 for q in gold_doc_by_q) / total,
+    }
+    return out
+
+log("[EVAL] Computing quick metrics …")
+mets = metrics_at_k(fused, ks=(5,10))
+save_json(mets, RUN_DIR / "metrics.json")
+log("[EVAL] " + " | ".join(f"{k}={v:.4f}" for k,v in mets.items()))
+
+# ------------- OPTIONAL: COMPACT SWEEP (turn off by default) -------------
+DO_SWEEP = True
+if DO_SWEEP:
+    log("[SWEEP] Starting compact fusion-weight sweep (any # of rankers) …")
+
+    # 1) discover rankers from the normalized runs we already computed
+    ranker_names = sorted(runs_norm["ranker"].unique().tolist())
+    R = len(ranker_names)
+    log(f"[SWEEP] Rankers detected: {ranker_names}")
+
+    rng = np.random.default_rng(1337)  # reproducible
+
+    def _uniform_weights():
+        return {r: 1.0 / R for r in ranker_names}
+
+    def _single_dominant(primary: str, w_primary: float):
+        assert 0.0 <= w_primary <= 1.0
+        rest = [r for r in ranker_names if r != primary]
+        if not rest:
+            return {primary: 1.0}
+        rem = (1.0 - w_primary) / len(rest)
+        w = {r: rem for r in rest}
+        w[primary] = w_primary
+        return w
+
+    def _pair_dominant(p1: str, p2: str, w_pair_each: float):
+        rest = [r for r in ranker_names if r not in (p1, p2)]
+        rem_total = 1.0 - (2 * w_pair_each)
+        rem_each = (rem_total / len(rest)) if rest else 0.0
+        w = {r: rem_each for r in rest}
+        w[p1] = w_pair_each
+        w[p2] = w_pair_each
+        return w
+
+    def _dirichlet_samples(n_samples: int = 24, alpha: float = 1.0):
+        # random yet compact exploration over the simplex
+        W = rng.dirichlet([alpha] * R, size=n_samples)  # shape (n, R)
+        out = []
+        for row in W:
+            w = {r: float(x) for r, x in zip(ranker_names, row)}
+            out.append(w)
+        return out
+
+    # 2) assemble a compact set of candidate weightings
+    weight_sets = []
+
+    # always include uniform
+    weight_sets.append(_uniform_weights())
+
+    # single-dominant grids (light)
+    for primary in ranker_names:
+        for wp in (0.5, 0.7):
+            weight_sets.append(_single_dominant(primary, wp))
+
+    # pair-dominant (if >=3 rankers)
+    if R >= 3:
+        for i in range(R):
+            for j in range(i + 1, R):
+                for wp in (0.4, 0.45):
+                    weight_sets.append(_pair_dominant(ranker_names[i], ranker_names[j], wp))
+
+    # a few random Dirichlet samples (kept small)
+    weight_sets.extend(_dirichlet_samples(n_samples=16, alpha=1.0))
+
+    # remove near-duplicates by rounding to 2 decimals
+    def _round_w(wmap, nd=2):
+        return tuple((k, round(v, nd)) for k, v in sorted(wmap.items()))
+    dedup = {}
+    for w in weight_sets:
+        key = _round_w(w, nd=2)
+        dedup[key] = w
+    weight_sets = list(dedup.values())
+
+    log(f"[SWEEP] Candidate weight vectors: {len(weight_sets)}")
+
+    # 3) grids for numeric bonus
+    beta_exact_grid = (0.10, 0.15)
+    beta_overlap_grid = (0.00, 0.05)
+
+    # 4) run sweep
+    sweep_rows = []
+    best_row = None
+    best_acc = -1.0
+
+    for wmap in weight_sets:
+        for be in beta_exact_grid:
+            for bo in beta_overlap_grid:
+                fused_s, desc = fuse_candidates(
+                    runs_norm,
+                    numeric_df,
+                    fusion="weighted",
+                    weights=wmap,
+                    beta_exact=be,
+                    beta_overlap=bo,
+                    final_topK=CONFIG["final_topK"],
+                )
+                m = metrics_at_k(fused_s, ks=(5, 10))
+                row = {
+                    **{f"w::{k}": float(v) for k, v in wmap.items()},
+                    "beta_exact": be,
+                    "beta_overlap": bo,
+                    **m,
+                }
+                sweep_rows.append(row)
+                log("[SWEEP] "
+                    + " | ".join([f"{k}={v:.2f}" for k, v in wmap.items()])
+                    + f" | βe={be:.2f} βo={bo:.2f} :: "
+                    + " | ".join(f"{k}={v:.4f}" for k, v in m.items()))
+
+                if m["acc@1"] > best_acc:
+                    best_acc = m["acc@1"]
+                    best_row = (row, fused_s, desc)
+
+    sweep_df = pd.DataFrame(sweep_rows)
+    try:
+        sweep_df.to_parquet(RUN_DIR / "sweep_results.parquet", index=False)
+    except Exception:
+        sweep_df.to_csv(RUN_DIR / "sweep_results.csv", index=False)
+
+    # 5) persist best fused run and best config summary
+    if best_row is not None:
+        best_meta, best_fused, best_desc = best_row
+        try:
+            best_fused.to_parquet(RUN_DIR / "fused_best_from_sweep.parquet", index=False)
+        except Exception:
+            best_fused.to_csv(RUN_DIR / "fused_best_from_sweep.csv", index=False)
+
+        best_cfg = {
+            "weights": {k[3:]: float(v) for k, v in best_meta.items() if k.startswith("w::")},
+            "beta_exact": float(best_meta["beta_exact"]),
+            "beta_overlap": float(best_meta["beta_overlap"]),
+            "metrics": {k: float(v) for k, v in best_meta.items() if k in ("acc@1","recall@5","recall@10","mrr@10")},
+            "desc": best_desc,
+        }
+        save_json(best_cfg, RUN_DIR / "best_from_sweep.json")
+        log("[SWEEP] Best config → best_from_sweep.json")
+        log("[SWEEP] " + " | ".join(f"{k}={v:.4f}" for k, v in best_cfg["metrics"].items()))
+
+    log("[SWEEP] Done.")
+
+# ---------------- results_topK.jsonl.gz ----------------
+out_path = RUN_DIR / f"results_top{CONFIG['final_topK']}.jsonl.gz"
+log(f"[SAVE] Writing {out_path.name} …")
+hybrid_of = {r["name"]: str(r["dir"]) for r in rankers}
+fused_sorted = fused.sort_values(["query_id","rank"])
+with gzip.open(out_path, "wt", encoding="utf-8") as gz:
+    for i, (qkey, grp) in enumerate(fused_sorted.groupby("query_id")):
+        rec = {
+            "meta": {
+                "index_path": str(rankers[0]["dir"]),  # a concrete index path for downstream hooks
+                "hybrid_of": hybrid_of,
+                "fusion": CONFIG["fusion"],
+                "normalization": CONFIG["normalization"],
+                "numeric_bonus": CONFIG["numeric_bonus"],
+                "topK_per_ranker": CONFIG["topK_per_ranker"],
+                "final_topK": CONFIG["final_topK"],
+            },
+            "query_id": f"q_{i:06d}",
+            "query_item_key": str(qkey),
+            "candidates": [
+                {"rank": int(r), "index_item_key": str(d), "score": float(s)}
+                for r, d, s in zip(grp["rank"].tolist(),
+                                   grp["doc_id"].astype(str).tolist(),
+                                   grp["fused_score"].astype(float).tolist())
+            ],
+        }
+        gz.write(json.dumps(rec, ensure_ascii=False) + "\n")
+log(f"[SAVE] Done → {out_path}")
+log(f"[DONE] Hybrid run saved to {RUN_DIR}")
+
+#--- OUT ---
+[2025-10-14 19:19:01] [DATA] Loading processed (normalized) tables …
+[2025-10-14 19:19:03] [DATA] Loaded processed: short=47,513 long=47,513
+[2025-10-14 19:19:03] [DATA] Loading raw JSON (short/long) for dense encoders …
+[2025-10-14 19:19:06] [DATA] Loaded raw JSON: short=47,514 long=47,514
+[2025-10-14 19:19:06] [SAMPLE] Sampling 16,590 aligned pairs (seed=1337) …
+[2025-10-14 19:19:07] [SAMPLE] Done. Sample size = 16,590
+[2025-10-14 19:19:07] [INDEX] Resolved bm25_unigram     → /work/index/bm25_unigram
+[2025-10-14 19:19:07] [INDEX] Loaded bm25_unigram     docs=47,513
+[2025-10-14 19:19:07] [INDEX] Resolved bge_m3_colbert   → /work/index/bge_m3_colbert
+[2025-10-14 19:19:08] [INDEX] Loaded bge_m3_colbert   docs=47,513
+[2025-10-14 19:19:08] [INDEX] Resolved bge_m3_dense     → /work/index/bge_m3_dense
+[2025-10-14 19:19:08] [INDEX] Loaded bge_m3_dense     docs=47,513
+[2025-10-14 19:19:08] [INDEX] Resolved bge_m3_sparse    → /work/index/bge_m3_sparse
+[2025-10-14 19:19:09] [INDEX] Loaded bge_m3_sparse    docs=47,513
+[2025-10-14 19:19:09] [INDEX] Resolved tfidf_char_3_5   → /work/index/tfidf_char_3_5
+[2025-10-14 19:19:10] [INDEX] Loaded tfidf_char_3_5   docs=47,513
+
+/opt/conda/lib/python3.11/site-packages/sklearn/feature_extraction/text.py:555: UserWarning: The parameter 'token_pattern' will not be used since 'analyzer' != 'word'
+  warnings.warn(
+
+[2025-10-14 19:19:41] [RETRIEVE][bm25_unigram] queries=16,590 k=100 time=31.5s
+[2025-10-14 20:26:25] [RETRIEVE][bge_m3_colbert] queries=16,590 k=100 time=4002.6s
+[2025-10-14 20:27:33] [RETRIEVE][bge_m3_dense] queries=16,590 k=100 time=66.8s
+[2025-10-14 20:28:29] [RETRIEVE][bge_m3_sparse] queries=16,590 k=100 time=54.9s
+[2025-10-14 20:33:41] [RETRIEVE][tfidf_char_3_5] queries=16,590 k=100 time=311.2s
+[2025-10-14 20:33:44] [SAVE] base_runs → /work/runs/hybrids/hyb_bm25_uni__bge_multi__tfidf_char_3_5/base_runs.parquet
+[2025-10-14 20:33:46] [COVERAGE]
+        ranker  gold_in_top100_ratio
+bge_m3_colbert              0.781495
+  bge_m3_dense              0.752622
+ bge_m3_sparse              0.871971
+  bm25_unigram              0.993189
+tfidf_char_3_5              0.742254
+[2025-10-14 20:33:55] [SAVE] numeric_features → /work/runs/hybrids/hyb_bm25_uni__bge_multi__tfidf_char_3_5/numeric_features.parquet
+[2025-10-14 20:33:55] [NORMALIZE] minmax …
+
+/tmp/ipykernel_24495/2338513746.py:320: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+  return df.groupby(["ranker","query_id"], sort=False, group_keys=False).apply(_mm)
+
+[2025-10-14 20:34:14] [SAVE] base_runs_norm → /work/runs/hybrids/hyb_bm25_uni__bge_multi__tfidf_char_3_5/base_runs_norm.parquet
+[2025-10-14 20:34:23] [FUSION] COMBSUM + numeric(β_exact=0.15, β_overlap=0.05)
+[2025-10-14 20:3
+...[TRUNC]...
+=0.07 | βe=0.15 βo=0.00 :: acc@1=0.3127 | recall@5=0.6980 | recall@10=0.7615 | mrr@10=0.4714
+[2025-10-14 21:00:06] [SWEEP] bge_m3_colbert=0.51 | bge_m3_dense=0.29 | bge_m3_sparse=0.10 | bm25_unigram=0.03 | tfidf_char_3_5=0.07 | βe=0.15 βo=0.05 :: acc@1=0.3127 | recall@5=0.6980 | recall@10=0.7615 | mrr@10=0.4714
+[2025-10-14 21:00:15] [SWEEP] bge_m3_colbert=0.45 | bge_m3_dense=0.10 | bge_m3_sparse=0.04 | bm25_unigram=0.31 | tfidf_char_3_5=0.09 | βe=0.10 βo=0.00 :: acc@1=0.4512 | recall@5=0.7873 | recall@10=0.8086 | mrr@10=0.5967
+[2025-10-14 21:00:24] [SWEEP] bge_m3_colbert=0.45 | bge_m3_dense=0.10 | bge_m3_sparse=0.04 | bm25_unigram=0.31 | tfidf_char_3_5=0.09 | βe=0.10 βo=0.05 :: acc@1=0.4512 | recall@5=0.7873 | recall@10=0.8086 | mrr@10=0.5967
+[2025-10-14 21:00:33] [SWEEP] bge_m3_colbert=0.45 | bge_m3_dense=0.10 | bge_m3_sparse=0.04 | bm25_unigram=0.31 | tfidf_char_3_5=0.09 | βe=0.15 βo=0.00 :: acc@1=0.4512 | recall@5=0.7873 | recall@10=0.8086 | mrr@10=0.5967
+[2025-10-14 21:00:42] [SWEEP] bge_m3_colbert=0.45 | bge_m3_dense=0.10 | bge_m3_sparse=0.04 | bm25_unigram=0.31 | tfidf_char_3_5=0.09 | βe=0.15 βo=0.05 :: acc@1=0.4512 | recall@5=0.7873 | recall@10=0.8086 | mrr@10=0.5967
+[2025-10-14 21:02:23] [SWEEP] bge_m3_colbert=0.07 | bge_m3_dense=0.18 | bge_m3_sparse=0.04 | bm25_unigram=0.57 | tfidf_char_3_5=0.14 | βe=0.15 βo=0.00 :: acc@1=0.5430 | recall@5=0.9515 | recall@10=0.9681 | mrr@10=0.7165
+[2025-10-14 21:02:33] [SWEEP] bge_m3_colbert=0.07 | bge_m3_dense=0.18 | bge_m3_sparse=0.04 | bm25_unigram=0.57 | tfidf_char_3_5=0.14 | βe=0.15 βo=0.05 :: acc@1=0.5430 | recall@5=0.9515 | recall@10=0.9681 | mrr@10=0.7165
+[2025-10-14 21:02:42] [SWEEP] bge_m3_colbert=0.27 | bge_m3_dense=0.07 | bge_m3_sparse=0.02 | bm25_unigram=0.27 | tfidf_char_3_5=0.37 | βe=0.10 βo=0.00 :: acc@1=0.5517 | recall@5=0.7760 | recall@10=0.8264 | mrr@10=0.6578
+[2025-10-14 21:02:51] [SWEEP] bge_m3_colbert=0.27 | bge_m3_dense=0.07 | bge_m3_sparse=0.02 | bm25_unigram=0.27 | tfidf_char_3_5=0.37 | βe=0.10 βo=0.05 :: acc@1=0.5517 | recall@5=0.7760 | recall@10=0.8264 | mrr@10=0.6578
+[2025-10-14 21:03:00] [SWEEP] bge_m3_colbert=0.27 | bge_m3_dense=0.07 | bge_m3_sparse=0.02 | bm25_unigram=0.27 | tfidf_char_3_5=0.37 | βe=0.15 βo=0.00 :: acc@1=0.5517 | recall@5=0.7760 | recall@10=0.8264 | mrr@10=0.6578
+[2025-10-14 21:03:09] [SWEEP] bge_m3_colbert=0.27 | bge_m3_dense=0.07 | bge_m3_sparse=0.02 | bm25_unigram=0.27 | tfidf_char_3_5=0.37 | βe=0.15 βo=0.05 :: acc@1=0.5517 | recall@5=0.7760 | recall@10=0.8264 | mrr@10=0.6578
+[2025-10-14 21:03:10] [SWEEP] Best config → best_from_sweep.json
+[2025-10-14 21:03:10] [SWEEP] acc@1=0.5899 | recall@5=0.9279 | recall@10=0.9634 | mrr@10=0.7295
+[2025-10-14 21:03:10] [SWEEP] Done.
+[2025-10-14 21:03:10] [SAVE] Writing results_top100.jsonl.gz …
+[2025-10-14 21:03:21] [SAVE] Done → /work/runs/hybrids/hyb_bm25_uni__bge_multi__tfidf_char_3_5/results_top100.jsonl.gz
+[2025-10-14 21:03:21] [DONE] Hybrid run saved to /work/runs/hybrids/hyb_bm25_uni__bge_multi__tfidf_char_3_5
+
+
+#===== CELL 2 [code] =====
+
