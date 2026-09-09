@@ -1,0 +1,22 @@
+# Structured pipeline: oracle Stage 1 + LLM paraaware Stage 2 + catalog lookup Stage 3
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_norm.parquet"
+  long_feats: "{data_dir}/{collection}_long_norm.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_oracle_paraaware
+  impl: structured_pipeline
+  params: {}
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json

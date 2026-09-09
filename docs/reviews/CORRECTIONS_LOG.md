@@ -105,8 +105,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R6 | Métricas parent-level para híbridos y reranking | minutos | pendiente |
 | R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | pendiente |
 | R8 | *(opcional, N10)* GTE sin prefijos | ~10 min | pendiente |
-| R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | pendiente |
-| R10 | **B6** — integrar los baselines estructurados (ya sobre la muestra canónica) | 1 día | pendiente |
+| R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
+| R10 | **B6** — integrar los baselines estructurados (ya sobre la muestra canónica) | 1 día | hecho (código + tabla); falta redactar la sección |
 | R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | pendiente |
 
 ## Bloque F — Reencuadre y difusión
@@ -160,6 +160,56 @@ El componente que §3.2.4 describe como aportación de diseño no influyó en ni
 resultado publicado: `β_exact` y `β_overlap` multiplicaban cero. La frase L857 sobre
 la convergencia en `β_exact = 0,1` describe un desempate por orden de rejilla sobre un
 parámetro inerte.
+
+### Solape consulta-objetivo (A40 / R9)
+
+`scripts/analyze_query_target_overlap.py` sobre los **47.513 pares alineados** del
+catálogo — no sobre la muestra de 20.000 del informe. Los valores coinciden, así que
+la objeción de R2-2.3 queda medida sobre el corpus completo:
+
+| Métrica | Valor |
+|---|---|
+| Cobertura léxica media (tokens de la consulta presentes en el objetivo) | **94,10 %** |
+| Cobertura léxica mediana | 94,74 % |
+| Consultas cuyo conjunto completo de tokens está contenido en el objetivo | 7,79 % |
+| Consultas con al menos un número | 99,83 % |
+| Números por consulta (media) | 2,88 |
+| **Cobertura numérica media** | **99,96 %** |
+| **Consultas en las que todos sus números aparecen en el objetivo** | **99,96 %** |
+| Tokens por consulta (media) | 19,10 |
+
+El objetivo contiene ~94 % de los tokens de la consulta y prácticamente el 100 % de sus
+valores numéricos, literalmente. La tarea es en gran medida contención léxica casi
+verbatim, lo que explica el 97,4 % de BM25 sin necesidad de atribuirlo a una virtud del
+método. Matiz que sí juega a favor: sólo 30 plantillas generan los 47.513 ítems, de
+modo que las variantes comparten vocabulario casi idéntico y difieren en parámetros —
+por eso TF-IDF se queda en 0,56-0,71 y BGE-M3-dense cae a 0,127. Es un benchmark de
+negativos duros legítimo, pero es eso y no una evaluación de consultas de usuario.
+
+### Baselines estructurados (B6 / R10)
+
+Los 13 runs `structured_pipeline*` usan la muestra canónica (verificado por
+`scripts/leaderboard.py`, que se niega a generar una tabla si los runs no la comparten).
+Tabla en `eval/structured/lb_item.tex`:
+
+| Sistema | Acc@1 |
+|---|---|
+| BM25 con frases de parámetros (mejor léxico) | **0,974** |
+| Extracción por reglas + búsqueda estructurada, con extracción oráculo | 0,914 |
+| Extracción por reglas + búsqueda estructurada | 0,903 |
+| Clasificación por LLM + búsqueda estructurada, con oráculo | 0,886 |
+| Clasificación por LLM + búsqueda estructurada | 0,877 |
+| Extracción de esquema + búsqueda estructurada, con oráculo | 0,821 |
+| Extracción de esquema + búsqueda estructurada | 0,809 |
+| BGE-M3 ColBERT (mejor neuronal) | 0,448 |
+| Clasificador entrenado + búsqueda estructurada | 0,209 |
+| Etiquetador BIO + búsqueda estructurada | 0,031 |
+
+Responde a la última pregunta del Revisor 2 y **sale a favor del trabajo**: la
+recuperación textual bien ajustada gana al emparejamiento estructurado por reglas
+incluso concediéndole extracción de parámetros perfecta. Se reportan también los dos
+pipelines fallidos (0,209 y 0,031): omitirlos sería la misma selección de resultados
+que se reprocha al manuscrito con `hiiamsid`.
 
 ---
 

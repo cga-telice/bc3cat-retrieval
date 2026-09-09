@@ -1,0 +1,23 @@
+# Structured pipeline: oracle parent_key + frozen-encoder shared BIO tagger Stage 2 + catalog lookup Stage 3
+# Mirrors LW-07's frozen-CLS variant. Only the head (~21k params) is trained.
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_norm.parquet"
+  long_feats: "{data_dir}/{collection}_long_norm.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_oracle_bio_tagger_frozen
+  impl: structured_pipeline_oracle_bio_tagger_frozen
+  params: {}
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
