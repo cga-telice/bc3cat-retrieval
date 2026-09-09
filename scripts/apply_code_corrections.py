@@ -30,6 +30,9 @@ class Patch:
     old: list[str]
     new: list[str]
     applied_marker: str = field(default="")
+    # Algunos defectos estan copiados en varias celdas del mismo notebook y hay
+    # que corregirlos en todas.
+    all_occurrences: bool = field(default=False)
 
     def __post_init__(self) -> None:
         # Una linea del bloque nuevo que no exista en el viejo sirve para
@@ -131,6 +134,36 @@ PATCHES: list[Patch] = [
         ],
     ),
     Patch(
+        ident="C6",
+        notebook="src/bootstrap_sigtests.ipynb",
+        all_occurrences=True,
+        rationale=(
+            "Alinear los runs sobre la UNION de consultas rellenando con 0 las que un "
+            "run no evaluo cuenta esas ausencias como fallos. Con muestras distintas "
+            "eso deflacta cada Acc@1 por el cociente de denominadores: bm25_unigram "
+            "aparece como 0,569 en eval/bootstrap_global (union de 25.321 consultas) "
+            "en lugar de 0,869. Esas cifras deflactadas llegaron al README publicado."
+        ),
+        old=[
+            "all_queries = sorted(set().union(*[s.index for s in runs.values()]))\n",
+            "X = pd.DataFrame({m: s.reindex(all_queries).fillna(0).astype(int) for m, s in runs.items()})\n",
+        ],
+        new=[
+            "# Interseccion, no union: comparar sistemas exige que hayan visto las mismas\n",
+            "# consultas. Si no coinciden es un error de datos, no algo que rellenar.\n",
+            "_indices = [set(s.index) for s in runs.values()]\n",
+            "all_queries = sorted(set.intersection(*_indices)) if _indices else []\n",
+            "_union = set().union(*_indices) if _indices else set()\n",
+            "if len(all_queries) != len(_union):\n",
+            "    raise ValueError(\n",
+            '        f"Los runs comparados no evaluan la misma muestra: {len(all_queries):,} "\n',
+            '        f"consultas comunes frente a {len(_union):,} en la union. "\n',
+            '        f"Reejecutalos sobre la muestra canonica antes de comparar."\n',
+            "    )\n",
+            "X = pd.DataFrame({m: s.reindex(all_queries).astype(int) for m, s in runs.items()})\n",
+        ],
+    ),
+    Patch(
         ident="C3b",
         notebook="src/hybrid.ipynb",
         rationale=(
@@ -218,9 +251,11 @@ def apply_patch(text: str, patch: Patch, indent: str = " " * 4) -> tuple[str, st
         return text, "ya-aplicado"
 
     if old_block in text:
-        if text.count(old_block) > 1:
+        count = text.count(old_block)
+        if count > 1 and not patch.all_occurrences:
             return text, "ambiguo"
-        return text.replace(old_block, new_block), "aplicado"
+        sufijo = f" ({count} veces)" if count > 1 else ""
+        return text.replace(old_block, new_block), "aplicado" + sufijo
 
     return text, "no-encontrado"
 

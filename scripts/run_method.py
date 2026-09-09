@@ -69,6 +69,17 @@ def main() -> int:
 
     import papermill as pm
 
+    # `retrieve.ipynb` y `index_builder.ipynb` cargan sus implementaciones con
+    # import_module("retrievers.<metodo>") sin tocar sys.path: cuentan con que el
+    # directorio del notebook este en la ruta de busqueda, cosa que ocurre al
+    # abrirlos en Jupyter pero no al ejecutarlos con papermill desde /work.
+    import os
+
+    src = str(SRC)
+    existing = os.environ.get("PYTHONPATH", "")
+    if src not in existing.split(os.pathsep):
+        os.environ["PYTHONPATH"] = os.pathsep.join(filter(None, [src, existing]))
+
     nbs = notebooks()
     missing = [str(p) for p in nbs.values() if not p.exists()]
     if missing:
