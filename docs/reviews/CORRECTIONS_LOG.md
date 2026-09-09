@@ -296,6 +296,70 @@ que se reprocha al manuscrito con `hiiamsid`.
 
 ---
 
+---
+
+## Cómo reanudar
+
+Todo el estado vive en el repositorio, no en ninguna sesión: la rama
+`paper/autcon-r1-revision` y este registro bastan para retomar el trabajo.
+
+### Entorno
+
+```bash
+# Desde el worktree de la revisión
+docker compose up -d jupyter-pytorch bge-m3
+```
+
+`docker-compose.override.yml` **no está versionado** porque contiene rutas
+absolutas de la máquina. Monta `data/`, `index/`, `runs/`, `models/` y
+`hf-cache/` desde el checkout principal, y fija `HF_HOME=/hf-cache` para que los
+modelos no se descarguen en una caché efímera. Si se pierde, hay que recrearlo.
+
+En el host, esos mismos directorios se resuelven mediante junctions de Windows
+creados en el worktree; Docker no los atraviesa, de ahí los montajes explícitos.
+
+`bge-m3` es necesario para cualquier cosa que toque BGE-M3: los rankers se
+sirven por HTTP en `host.docker.internal:8800`. Sin él, los híbridos fallan con
+«Network is unreachable».
+
+GTE necesita un entorno aparte, ya creado dentro del contenedor
+(`/opt/gtevenv`), con `transformers` 4.57 sobre el mismo torch. Si se recrea el
+contenedor hay que rehacerlo:
+
+```bash
+python -m venv --system-site-packages /opt/gtevenv
+/opt/gtevenv/bin/pip install -U "transformers>=4.44,<5"
+```
+
+### Comandos
+
+```bash
+python scripts/build_paper.py                      # compila el manuscrito
+python scripts/check_citations.py                  # citas y duplicados
+python scripts/check_sample_consistency.py         # ¿todos los runs, una muestra?
+python scripts/check_query_sources.py              # ¿las fuentes cubren la muestra?
+python scripts/apply_code_corrections.py --check   # ¿siguen aplicados los parches?
+python scripts/leaderboard.py --preset dissociation --dual   # tabla central
+```
+
+Dentro del contenedor:
+
+```bash
+docker exec jupyter-pytorch python /work/scripts/run_method.py <método>
+docker exec jupyter-pytorch python /work/scripts/run_hybrids.py
+```
+
+### Qué se puede perder
+
+Nada del repositorio. Lo único vulnerable es **el trabajo en vuelo**: un
+`run_hybrids.py` a medias no se reanuda por partes, hay que relanzarlo. La
+recuperación base de ColBERT cuesta ~20 min de codificación más el MaxSim, y el
+barrido otros ~35 min por fusión.
+
+Los resultados publicados están respaldados en `runs/_as_published/` y en
+`index/_as_published_*`, así que toda cifra nueva puede contrastarse con la
+antigua en cualquier momento.
+
 ## Fuera de alcance (decisión explícita)
 
 - **B7 — Consultas realistas** (perturbaciones controladas de los `resumen`; consultas
