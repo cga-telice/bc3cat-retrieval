@@ -141,5 +141,5 @@ def main(tex_path: Path, out_path: Path) -> int:
 
 if __name__ == "__main__":
     tex = Path(sys.argv[1] if len(sys.argv) > 1 else "paper/paper_28.tex")
-    out = Path(sys.argv[2] if len(sys.argv) > 2 else "analysis/baseline_published_numbers.csv")
+    out = Path(sys.argv[2] if len(sys.argv) > 2 else "docs/reviews/baseline_published_numbers.csv")
     raise SystemExit(main(tex, out))

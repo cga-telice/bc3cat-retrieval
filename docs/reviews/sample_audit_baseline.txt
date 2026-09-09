@@ -1,0 +1,30 @@
+
+129 runs analizados, 4 muestras distintas
+
+muestra 884deade9d3c  n=16,590  109 runs
+    bge_m3_colbert/results_top100.jsonl.gz
+    bge_m3_colbert/results_top50_ce_blend.jsonl.gz
+    bge_m3_colbert/results_top50_ce_replace.jsonl.gz
+    bge_m3_dense/results_top100.jsonl.gz
+    bge_m3_sparse/results_top100.jsonl.gz
+    bm25_tiebreak__bm25_unigram__wN-1_0__wP-0_5/results_top100.jsonl.gz
+    ... y 103 mas
+
+muestra 7752be12d220  n=16,590  16 runs
+    hyb_bm25_uni__bge_colbert__tfidf_char_3_5/results_top100.jsonl.gz
+    hyb_bm25_uni__bge_colbert__tfidf_char_3_5/results_top50_ce_blend.jsonl.gz
+    hyb_bm25_uni__bge_colbert__tfidf_char_3_5/results_top50_ce_replace.jsonl.gz
+    hybrids/hyb_bm25_uni__bge_colbert__tfidf_char_3_5/results_top100.jsonl.gz
+    hybrids/hyb_bm25_uni__bge_colbert__tfidf_char_3_5/results_top50_ce_blend.jsonl.gz
+    hybrids/hyb_bm25_uni__bge_colbert__tfidf_char_3_5/results_top50_ce_replace.jsonl.gz
+    ... y 10 mas
+
+muestra 325239c0eff6  n=16,590  3 runs
+    dense_e5/results_top100.jsonl.gz
+    dense_es_hiiamsid/results_top100.jsonl.gz
+    dense_gte/results_top100.jsonl.gz
+
+muestra e3b0c44298fc  n=0  1 runs
+    reranked_tiebreak__bm25_unigram__wN-1_0__wP-0_5/results_top100.jsonl.gz
+
+FALLO: conviven 4 muestras distintas.

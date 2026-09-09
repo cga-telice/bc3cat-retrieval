@@ -88,3 +88,5 @@ paper/*.toc
 paper/*.synctex.gz
 paper/*.fdb_latexmk
 paper/*.fls
+.cache/
+docs/reviews/*.log
