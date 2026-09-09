@@ -60,7 +60,7 @@
 %% use the cortext command for theassociated footnote;
 %% use the ead command for the email address,
 %% and the form \ead[url] for the home page:
-\title{A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches}
+\title{Finding the Family but Not the Variant: Item-Level Retrieval in Parametric Construction Catalogs}
 
 \author[deptA,b]{Cesáreo González-Alvarez\corref{cor1}}
 \cortext[cor1]{Corresponding author}
@@ -85,20 +85,28 @@
 %% Abstract
 \begin{abstract}
 
-Construction projects increasingly rely on large parametric catalogs containing tens
-of thousands of near-identical items, where accurate retrieval is critical for cost
-estimation and procurement. This paper presents a systematic comparison of lexical,
-neural, and hybrid information retrieval methods for matching short work descriptions
-against a large-scale parametric catalog of Spanish railway infrastructure. The
-catalog's hierarchical structure enables a dual evaluation at item level (exact
-variant) and parent level (family). Across 100 configurations evaluated on
-approximately 47,500 catalog items, a tuned BM25 with domain-specific parameter
-phrases achieves 97.4% top-1 accuracy, outperforming the best neural retriever
-(BGE-M3-ColBERT, 44.8%) by over 52 percentage points and all hybrid configurations by
-more than 8 points. Neural embeddings remain competitive at the parent level (up to
-99.7%) but fail to discriminate fine-grained variants; roughly 98% of errors involve
-numeric parameters. Well-tuned lexical retrieval thus provides a strong, interpretable
-baseline for parametric construction catalog search.
+Construction cost estimation relies on parametric catalogs in which tens of thousands
+of items are generated from a small number of templates and differ only in attribute
+values such as diameter, terrain type or work-shift conditions. Retrieving the exact
+item, and not merely its family, is what determines whether a unit price is correct.
+We benchmark lexical, neural, hybrid and structured retrieval on the 47,513 items of
+one subcategory of the Spanish railway infrastructure catalog (ADIF), evaluating every
+system at two levels: the exact parametric variant and its parent family.
+
+The central finding is a systematic dissociation between those two levels.
+Single-vector and learned-sparse multilingual retrievers place the correct family
+first for 96.0--99.8% of queries while placing the correct variant first for only
+7.0--13.6%; for GTE-multilingual-base the gap reaches 92.9 percentage points. The best
+neural system, BGE-M3 with late interaction, reaches 44.8% at item level against 99.7%
+at parent level. A tuned BM25 with domain-specific parameter phrases shows almost no
+such gap (97.4% item, 98.5% parent) and outperforms it by 52.6 points, while a
+rule-based pipeline over extracted structured attributes reaches 90.3%. We also
+quantify what makes the benchmark tractable for literal matching: the target contains
+94.1% of the query's tokens and 99.96% of its numeric values verbatim.
+
+Dense embeddings therefore encode the domain well enough to localise a query within
+the catalog, but not the parametric distinctions that carry cost implications. The
+dataset, the exact query set, per-query outputs and all configurations are released.
 
 \end{abstract}
 
@@ -167,17 +175,16 @@ Figure~\ref{fig:retrieval_workflow} summarizes the retrieval setting considered 
     \label{fig:retrieval_workflow}
 \end{figure}
 
-Our contributions are fourfold:
+Our contributions are the following. The primary contribution is an empirical characterisation of an existing failure mode rather than a new retrieval method.
 
 \begin{itemize}
-    \item We present a systematic comparison of lexical, sparse, dense, and hybrid retrieval methods, including pseudo-relevance feedback and cross-encoder reranking, in a precision-critical technical domain.
-    \item We introduce an evaluation protocol that incorporates multiple metrics, dual target definitions (item- and parent-level), and significance testing, ensuring a rigorous and reproducible assessment.
-    \item We conduct detailed error analysis, identifying numeric mismatches and near-duplicate confusions as dominant error modes, thus offering insights for future research on retrieval in structured domains.
-    \item We create and release a structured benchmark dataset derived from the OEB subcategory of ADIF's parametric railway catalog — a homogeneous yet challenging testbed of nearly 40,000 items exhibiting high parametric variability — including custom parsing tools to convert the raw BC3 catalog format into a standardized retrieval evaluation dataset ~\cite{bc3cat_dataset}.
-    
+    \item We document a systematic dissociation between family-level and variant-level retrieval in parametric catalogs. Every multilingual dense retriever we evaluate identifies the correct parametric family almost perfectly and the correct variant almost never, with gaps of up to 92.9 percentage points. The dual evaluation protocol that exposes this --- scoring each system at both levels of the catalog hierarchy --- is itself transferable to any hierarchically organised technical catalog.
+    \item We quantify the property of the benchmark that governs which methods succeed: how much of each query is already present verbatim in its target, lexically and numerically. Making this explicit is what distinguishes a genuine retrieval result from an artefact of how the evaluation pairs were constructed.
+    \item We compare four families of approach under identical conditions --- lexical, neural, hybrid with reranking, and structured attribute matching over automatically extracted parameters --- and find that textual retrieval outperforms structured matching even when the latter is granted perfect parameter extraction.
+    \item We release a benchmark derived from the OEB subcategory of ADIF's parametric railway catalog: 47,513 items generated from 30 templates, the exact query set as a versioned list of identifiers, per-query outputs for every system, and the parsing tools that convert the raw BC3 format into a standard retrieval collection~\cite{bc3cat_dataset}.
 \end{itemize}
 
-The rest of this paper is organized as follows: Section 2 reviews prior work on construction classification and retrieval methods. Section 3 describes the ADIF dataset, preprocessing pipeline, and the $100$ retrieval configurations evaluated. Section 4 presents results showing that optimized lexical methods consistently outperform neural and hybrid approaches at the item level, while neural models remain competitive at the parent level. Section 5 discusses the implications of these findings for construction catalog deployment, and Section 6 concludes with directions for future research. 
+The rest of this paper is organized as follows: Section 2 reviews prior work on construction classification and retrieval methods. Section 3 describes the ADIF dataset, the preprocessing pipeline, the query--target overlap that characterises the benchmark, and the retrieval configurations evaluated. Section 4 presents the results, organised around the item-to-parent dissociation. Section 5 discusses what the dissociation implies for deploying catalog search, and Section 6 concludes with directions for future research.
 
 \section{Prior Work}
 
