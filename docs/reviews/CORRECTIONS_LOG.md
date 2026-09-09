@@ -20,8 +20,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | # | Línea | Problema | Corrección | Origen | Estado |
 |---|---|---|---|---|---|
 | A1 | 158 | Párrafo idéntico al de la 156 | Eliminar L158 y la línea en blanco 157 | R2-8.1 | hecho |
-| A2 | 518-520 | `HAS_NUM (24,711, 62%)` / `NO_NUM (15,136, 38%)`: cifras de la versión de 39.847 ítems | `16,561 (99.83%)` / `29 (0.17%)` | R2-2.1 | pendiente |
-| A3 | 631 | Caption Tabla 4: *"16,076 queries with numbers"* | `16,561` (el 99,83 % sí es correcto) | R2-2.1 | pendiente |
+| A2 | 518-520 | `HAS_NUM (24,711, 62%)` / `NO_NUM (15,136, 38%)`: cifras de la versión de 39.847 ítems | `16,561 (99.83%)` / `29 (0.17%)` | R2-2.1 | hecho |
+| A3 | 631 | Caption Tabla 4: *"16,076 queries with numbers"* | `16,561` (el 99,83 % sí es correcto) | R2-2.1 | hecho |
 | A4 | 530 | *"We apply Bonferroni correction"* | `Holm--Bonferroni` | R2-3.1 | hecho |
 | A5 | 587 | *"Bonferroni"* + umbral `p < 0.003` | `Holm--Bonferroni`; reportar los `p_holm` de `eval/bootstrap_lexical/bootstrap_sigtests_pairs.csv` | R2-3.1 | hecho |
 | A6 | 534 | *"100 randomly sampled errors from each method family"*: nunca hubo muestreo | Describir el análisis real (todos los fallos, muestra común) | R2-4.2 | pendiente |
@@ -31,7 +31,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A10 | 989 | Caption Tabla 15 sugiere % sobre errores | Son % sobre *todas* las consultas; categorías mutuamente excluyentes | R2-4.3 | pendiente |
 | A11 | 991-1000 | Tabla 15 no suma 100 % | Añadir fila *Correct at rank 1* | R2-4.3 | pendiente |
 | ~~A12~~ | 407 | ~~Prefijo de E5 erróneo~~ | **Descartado**: `src/retrievers/dense_e5.py:101-102` fija `"query: "` a mano e ignora el YAML. El paper es correcto; lo que se corrige es el YAML (→ C7) | informe | descartado |
-| A13 | 731, 735, 743, 837, 1080 | "E5-large" / "multilingual-e5-large" | `multilingual-e5-base` | sesión | pendiente |
+| A13 | 731, 735, 743, 837, 1080 | "E5-large" / "multilingual-e5-large" | `multilingual-e5-base` | sesión | hecho |
 | A14 | 771-772, 776-777, 838 | "GTE-large-en-v1.5", "GTE-Qwen2-instruct": modelos nunca usados, uno de ellos sólo inglés | `GTE-multilingual-base (direct)` / `(instruct)` | sesión | pendiente |
 | A15 | 927 | `MRR@10 = 1.000` con Acc@1 = 0,869: imposible por definición | `0.898`; R@5 `0.931` → `0.932` | sesión | pendiente |
 | A16 | 936-937 | Fila híbrida: etiqueta de 3 vías, cifras de la fusión de 5 vías | Etiqueta y baseline correctos del sistema de 3 vías | sesión | pendiente |
@@ -39,7 +39,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A18 | 457 | *"Reranking depth: Top 20, 50, or 100"*: sólo se ejecutó 50 | Declarar las profundidades realmente evaluadas | sesión | pendiente |
 | A19 | 449 | Rejilla `β_exact ∈ {0.0, 0.05, 0.1}` y selección por MRR@10; el código usa `(0.10, 0.15)` y `acc@1` | Declarar la rejilla y el criterio reales (→ C4, C5) | R2-3.2 | pendiente |
 | A20 | 857, 861 | *"All optimal configurations converged on β_exact=0.1"*: describe un desempate sobre un parámetro inerte | Eliminar la afirmación; rehacer con el bonus ya operativo (→ C3) | sesión | pendiente |
-| A21 | 822 | *"ColBERT and sparse achieved perfect accuracy (1.000)"*: se leyó la columna de Recall | Acc@1 reales: 0,759 / 0,759 / 0,655 sobre las 29 consultas no numéricas | sesión | pendiente |
+| A21 | 822 | *"ColBERT and sparse achieved perfect accuracy (1.000)"*: se leyó la columna de Recall | Acc@1 reales: 0,759 / 0,759 / 0,655 sobre las 29 consultas no numéricas | sesión | hecho |
 | A22 | 849-853, Tabla 12 | `hiiamsid` descrito en Métodos y ausente de resultados | Añadir su fila (item 0,024 / parent 0,395) | sesión | pendiente |
 | A23 | 662 | *"Six configurations each were evaluated"* | Se evaluaron ocho; se reportan seis | sesión | hecho |
 | A24 | 714 vs 1072 | Mejor RM3: `M=10` en Tabla 7, `M=5` en Tabla 16 | Unificar y anotar el empate (ambas 0,8699) | sesión | pendiente |
