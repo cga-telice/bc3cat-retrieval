@@ -57,7 +57,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A36 | 1108-1109 | Falta la limitación de validez externa | Añadir que las consultas no son descripciones independientes de profesionales | R2-7.1 | hecho |
 | A37 | 169-177 | Contribución sin acotar | Declarar que la aportación es una comparación empírica, no un método nuevo | R1-7.1 | hecho |
 | A38 | §4 (555-1086) | Comparaciones numéricas repetidas ya visibles en las tablas | Recortar ~30 %; mover detalle a material suplementario | R2-8.2 | pendiente |
-| A39 | tras 345 | Falta visión general metodológica | Diagrama de flujo dataset → muestreo → indexación → métodos → fusión → evaluación | R2-4.1 | pendiente |
+| A39 | tras 345 | Falta visión general metodológica | Diagrama de flujo dataset → muestreo → indexación → métodos → fusión → evaluación | R2-4.1 | hecho |
 | A40 | §3.1 | Falta cuantificar el solape `resumen`/`texto` | Nueva subsección con la medición (→ Fase 3a) | R2-2.3 | hecho |
 | A41 | 1127-1135 | Fortaleza infravalorada | Destacar la liberación de datos, consultas, etiquetas, salidas y configs | R2-6.1 | pendiente |
 
