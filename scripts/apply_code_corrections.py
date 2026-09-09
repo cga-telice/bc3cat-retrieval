@@ -164,6 +164,64 @@ PATCHES: list[Patch] = [
         ],
     ),
     Patch(
+        ident="C9-hybrid-params",
+        notebook="src/hybrid.ipynb",
+        rationale=(
+            "El notebook tenia el nombre del run y la lista de indices fijados en el "
+            "codigo, asi que cada una de las cuatro fusiones exigia editarlo a mano. "
+            "Leerlos de globals() permite lanzarlas con papermill sin tocar el fichero."
+        ),
+        old=[
+            '    "run_name": "hyb_bm25_uni__bge_multi__tfidf_char_3_5",\n',
+        ],
+        new=[
+            '    "run_name": globals().get("HYBRID_RUN", "hyb_bm25_uni__bge_multi__tfidf_char_3_5"),\n',
+            '    "query_sample": globals().get("QUERY_SAMPLE", "/work/benchmark/query_samples/OEB_query_sample_test_16590.json"),\n',
+        ],
+    ),
+    Patch(
+        ident="C9-hybrid-indexes",
+        notebook="src/hybrid.ipynb",
+        rationale="Ver C9-hybrid-params: la lista de indices tambien estaba fijada.",
+        old=[
+            '    "indexes": ["bm25_unigram", "bge_m3_colbert", "bge_m3_dense", "bge_m3_sparse", "tfidf_char_3_5"],  # ← add more names here\n',
+        ],
+        new=[
+            '    "indexes": globals().get("HYBRID_INDEXES", ["bm25_unigram", "bge_m3_colbert", "bge_m3_dense", "bge_m3_sparse", "tfidf_char_3_5"]),\n',
+        ],
+    ),
+    Patch(
+        ident="C1-hybrid",
+        notebook="src/hybrid.ipynb",
+        rationale=(
+            "hybrid.ipynb muestreaba con `sample_aligned(..., seed=1337)` sobre las "
+            "claves ordenadas, mientras retrieve.ipynb usaba `.sample(n, "
+            "random_state=42)` posicional. Dos criterios distintos sobre marcos "
+            "distintos: de ahi que los hibridos evaluaran un conjunto de consultas "
+            "que solo comparte 5.844 de 16.590 con el de BM25."
+        ),
+        old=[
+            "log(f\"[SAMPLE] Sampling {CONFIG['sample_size']:,} aligned pairs (seed={CONFIG['seed']}) …\")\n",
+            'short_s, long_s = sample_aligned(short_df, long_df, CONFIG["sample_size"], CONFIG["seed"])\n',
+            'log(f"[SAMPLE] Done. Sample size = {len(short_s):,}")\n',
+        ],
+        new=[
+            "# La muestra se carga del fichero versionado, no se re-muestrea aqui.\n",
+            "import hashlib as _hashlib, json as _json\n",
+            '_QUERY_SAMPLE = CONFIG.get("query_sample") or "/work/benchmark/query_samples/OEB_query_sample_test_16590.json"\n',
+            '_payload = _json.loads(Path(_QUERY_SAMPLE).read_text(encoding="utf-8"))\n',
+            '_wanted = set(_payload["query_item_keys"])\n',
+            "_fp = _hashlib.sha256('\\n'.join(sorted(_wanted)).encode('utf-8')).hexdigest()\n",
+            'if _payload.get("sha256") and _fp != _payload["sha256"]:\n',
+            "    raise ValueError(f\"{_QUERY_SAMPLE}: huella {_fp[:12]} != declarada {_payload['sha256'][:12]}\")\n",
+            'short_s = short_df[short_df.item_key.isin(_wanted)].copy().sort_values("item_key").reset_index(drop=True)\n',
+            'long_s  = long_df[long_df.item_key.isin(_wanted)].copy().sort_values("item_key").reset_index(drop=True)\n',
+            "if len(short_s) != len(_wanted) or len(long_s) != len(_wanted):\n",
+            '    raise ValueError(f"la muestra pide {len(_wanted)} consultas y hay {len(short_s)} cortas / {len(long_s)} largas")\n',
+            'log(f"[SAMPLE] {len(short_s):,} consultas de {_QUERY_SAMPLE} (sha256 {_fp[:12]})")\n',
+        ],
+    ),
+    Patch(
         ident="C3b",
         notebook="src/hybrid.ipynb",
         rationale=(
