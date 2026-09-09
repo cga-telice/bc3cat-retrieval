@@ -32,7 +32,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A11 | 991-1000 | Tabla 15 no suma 100 % | Añadir fila *Correct at rank 1* | R2-4.3 | pendiente |
 | ~~A12~~ | 407 | ~~Prefijo de E5 erróneo~~ | **Descartado**: `src/retrievers/dense_e5.py:101-102` fija `"query: "` a mano e ignora el YAML. El paper es correcto; lo que se corrige es el YAML (→ C7) | informe | descartado |
 | A13 | 731, 735, 743, 837, 1080 | "E5-large" / "multilingual-e5-large" | `multilingual-e5-base` | sesión | hecho |
-| A14 | 771-772, 776-777, 838 | "GTE-large-en-v1.5", "GTE-Qwen2-instruct": modelos nunca usados, uno de ellos sólo inglés | `GTE-multilingual-base (direct)` / `(instruct)` | sesión | pendiente |
+| A14 | 771-772, 776-777, 838 | "GTE-large-en-v1.5", "GTE-Qwen2-instruct": modelos nunca usados, uno de ellos sólo inglés | `GTE-multilingual-base (direct)` / `(instruct)` | sesión | hecho |
 | A15 | 927 | `MRR@10 = 1.000` con Acc@1 = 0,869: imposible por definición | `0.898`; R@5 `0.931` → `0.932` | sesión | pendiente |
 | A16 | 936-937 | Fila híbrida: etiqueta de 3 vías, cifras de la fusión de 5 vías | Etiqueta y baseline correctos del sistema de 3 vías | sesión | pendiente |
 | A17 | 914 | *"top-100 candidates"* | `top-50` (o ampliar a 20/50/100, → R5) | sesión | pendiente |
@@ -48,8 +48,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A27 | 944 | *"the highest overall performance"* para el híbrido+blend | Acotar al ámbito de la Tabla 13 | sesión | pendiente |
 | A28 | 1073 | `BM25-unigram (default, k1=0.80, b=0.35)` | Es el óptimo del barrido, no un valor por defecto. **Reformulado**: no cabe invocar los defaults de Lucene porque no se usó Lucene (→ N1) | sesión | hecho |
 | A29 | 568 | "26.6 percentage point gap" | `26.5` (0,9737 − 0,7083) | sesión | hecho |
-| A30 | 195 | "Jacques de Sousa et al." sin `\cite` | Añadir la referencia | R2-8.4 | pendiente |
-| A31 | 189, 193, 195, 197, 203, 205, 207 | `~\cite{...}` como sujeto gramatical | Anteponer el nombre de los autores | R2-8.3 | pendiente |
+| A30 | 195 | "Jacques de Sousa et al." sin `\cite` | Añadir la referencia | R2-8.4 | hecho |
+| A31 | 189, 193, 195, 197, 203, 205, 207 | `~\cite{...}` como sujeto gramatical | Anteponer el nombre de los autores | R2-8.3 | hecho |
 | A32 | 574, 645-646, 767-770, 773, abstract | Cinco términos para tres conceptos | Fijar **template** / **item-variant** / **parent** | R2-8.3 | pendiente |
 | A33 | 221-223, 1108 | Alcance del estudio no delimitado | Explicitar subcategoría, plantillas y procedencia de las consultas | R2-1.2 | pendiente |
 | A34 | 1115 | *"Neural models … consistently fail"* frente a la asimetría admitida en L1094 | Acotar a los modelos zero-shot evaluados en este benchmark | R2-5.2 | pendiente |
@@ -76,10 +76,9 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | N9 | 458 | *"Base retrievers: BM25, **E5-large**, and hybrid"* | El CE se aplicó a BM25, híbrido y BGE-M3-ColBERT | hecho |
 | N10 | 413-417 | GTE evaluado con `doc_prefix: "passage: "` | `gte-multilingual-base` no usa prefijos estilo E5. Afecta a las dos variantes GTE | pendiente |
 | N11 | 914 | Paréntesis suelto: `($\lambda=0.6$))` | — | hecho |
-| N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | **verificado**: mean+prefijos = 0,0000 · CLS sin prefijos = 0,0970 (ver Evidencia). Falta decidir si se reejecuta con la configuración correcta |
-| N14 | 467, 472 | *"retrieve … from 47,513 candidates"*: los índices densos indexan **47.514** documentos | `index/{dense_e5,dense_gte,dense_es_hiiamsid,dense_bge-m3}/meta.json` declaran `num_docs: 47514`, mientras BM25, TF-IDF y BGE-M3 declaran 47.513. La diferencia es el registro raíz `OEB#` ("ZANJAS, CANALIZACIONES Y TUBOS"), que no es un ítem recuperable: los densos lo llevan como distractor extra y los léxicos no. `dense_gte_instrQ` tiene 47.513, así que ni siquiera es consistente dentro de la misma familia. No altera ninguna conclusión, pero el corpus debe declararse igual para todos los métodos | pendiente |
-| N13 | — | `index/*/meta.json` no registra qué backend de codificación se usó | Ni `dense_gte/meta.json` ni los demás guardan si se codificó con sentence-transformers o con el camino alternativo, de modo que N12 no era detectable desde los artefactos. `software.sklearn` es `null` y `corpus_hash` también | pendiente |
-
+| N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | **hecho**: reejecutado con CLS y sin prefijos. Ítem 0,0128 → 0,0696; padre 0,8367 → 0,9982 |
+| N14 | 467, 472 | *"retrieve … from 47,513 candidates"*: los índices densos indexan **47.514** documentos | `index/{dense_e5,dense_gte,dense_es_hiiamsid,dense_bge-m3}/meta.json` declaran `num_docs: 47514`, mientras BM25, TF-IDF y BGE-M3 declaran 47.513. La diferencia es el registro raíz `OEB#` ("ZANJAS, CANALIZACIONES Y TUBOS"), que no es un ítem recuperable: los densos lo llevan como distractor extra y los léxicos no. `dense_gte_instrQ` tiene 47.513, así que ni siquiera es consistente dentro de la misma familia. No altera ninguna conclusión, pero el corpus debe declararse igual para todos los métodos | hecho |
+| N13 | — | `index/*/meta.json` no registra qué backend de codificación se usó | Ni `dense_gte/meta.json` ni los demás guardan si se codificó con sentence-transformers o con el camino alternativo, de modo que N12 no era detectable desde los artefactos. `software.sklearn` es `null` y `corpus_hash` también | hecho |
 ## Bloque C — Correcciones de código
 
 | # | Cambio | Fichero | Estado |
@@ -100,7 +99,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 
 | # | Qué | Coste estimado | Estado |
 |---|---|---|---|
-| R1 | `dense_e5`, `dense_gte`, `dense_es_hiiamsid` sobre la muestra canónica | ~10 min c/u | `dense_e5` y `dense_es_hiiamsid` hechos; `dense_gte` bloqueado por N12 |
+| R1 | `dense_e5`, `dense_gte`, `dense_gte_instrQ`, `dense_es_hiiamsid` sobre la muestra canónica | ~10 min c/u | hecho |
 | R2 | Barrido `(k1,b)` de BM25 sobre validación (62 configs) | ~1 h | pendiente |
 | R3 | Híbridos: una pasada base para los 5 rankers + 4 barridos | ~75 min + barridos | pendiente |
 | R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | pendiente |
@@ -232,6 +231,43 @@ remains an open challenge"* no se sostiene. La conclusión cualitativa sí sobre
 —incluso bien configurado, GTE se queda en ~0,10 a nivel de ítem—, lo que refuerza el
 encuadre elegido: el colapso está en la discriminación de variantes, no en la
 localización de la familia.
+
+### El colapso ítem/padre, con todas las cifras sobre la muestra canónica
+
+| Sistema | Acc@1 ítem | Acc@1 padre | Brecha |
+|---|---|---|---|
+| BM25 + frases de parámetros | 0,9737 | 0,9852 | 1,2 p |
+| BM25 unigram | 0,8691 | 0,9729 | 10,4 p |
+| TF-IDF frases | 0,7083 | 0,9898 | 28,1 p |
+| BGE-M3 ColBERT | 0,4480 | 0,9966 | 54,9 p |
+| multilingual-e5-base | 0,1363 | 0,9817 | 84,5 p |
+| BGE-M3 dense | 0,1269 | 0,9604 | 83,4 p |
+| BGE-M3 sparse | 0,1246 | 0,9943 | 87,0 p |
+| **GTE-multilingual-base** | **0,0696** | **0,9982** | **92,9 p** |
+| sentence-similarity-spanish | 0,0239 | 0,3954 | 37,1 p |
+
+El patrón es monótono y es el titular de la versión revisada: cuanto mejor localiza un
+modelo denso la familia paramétrica, más rotundamente falla al elegir la variante.
+Todos los multilingües se sitúan entre 0,96 y 0,998 a nivel de padre y entre 0,07 y
+0,14 a nivel de ítem. La única excepción, `hiiamsid`, lo es porque es malo en ambos
+niveles: es un modelo monolingüe de similitud semántica, no un recuperador.
+
+### La «degradación inesperada» de GTE-instruct no existe
+
+L783 concluye que *"the instruction-tuned variant unexpectedly degraded to 0.697"*.
+Con la configuración corregida y ambas variantes sobre la misma muestra:
+
+| | Ítem | Padre |
+|---|---|---|
+| GTE directo (publicado) | 0,0128 | 0,8367 |
+| GTE instruct (publicado) | 0,0140 | 0,6971 |
+| **GTE directo (corregido)** | **0,0696** | **0,9982** |
+| **GTE instruct (corregido)** | **0,0728** | **0,9970** |
+
+Las dos formulaciones son indistinguibles. La degradación que el manuscrito interpreta
+como que *"explicit prompts introduce noise in structured technical retrieval tasks"*
+era el resultado de comparar dos muestras de consultas distintas (§3.1 del informe) con
+el *pooling* roto. **El hallazgo desaparece.**
 
 ### Baselines estructurados (B6 / R10)
 
