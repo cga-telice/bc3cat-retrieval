@@ -39,12 +39,29 @@ def main(tex_path: Path, bib_path: Path) -> int:
 
     defined = {m.group(1) for m in ENTRY.finditer(bib)}
 
-    missing = sorted(cited - defined)
-    unused = defined - cited
+    # BibTeX resuelve las claves sin distinguir mayusculas: `\cite{salton1988term}`
+    # encuentra la entrada `@article{salton1988Term`. Compararlas de forma sensible
+    # a mayusculas produce falsos positivos y tienta a anadir entradas duplicadas.
+    defined_lower = {key.lower() for key in defined}
+    missing = sorted(key for key in cited if key.lower() not in defined_lower)
+    cited_lower = {key.lower() for key in cited}
+    unused = {key for key in defined if key.lower() not in cited_lower}
+
+    duplicates = sorted(
+        key for key in defined_lower
+        if sum(1 for d in defined if d.lower() == key) > 1
+    )
 
     print(f"claves citadas    : {len(cited)}")
     print(f"entradas en el bib: {len(defined)}  ({len(unused)} sin citar)")
+    print(f"claves duplicadas : {len(duplicates)}")
     print(f"sin resolver      : {len(missing)}")
+
+    if duplicates:
+        print()
+        print("Entradas repetidas (bibtex avisa y usa una de ellas):")
+        for key in duplicates:
+            print(f"    {key}")
 
     if missing:
         print()
