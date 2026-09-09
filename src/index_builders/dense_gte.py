@@ -50,9 +50,40 @@ def _pick_external_ids(df: pd.DataFrame) -> List[str]:
             return df[c].astype(str).tolist()
     return [str(i) for i in range(len(df))]
 
-def _build_encoder(model_name: str, max_length: int, trust_remote: bool, device: str | None = None):
-    """Returns (encode_fn, meta_backend)."""
+def _build_encoder(
+    model_name: str,
+    max_length: int,
+    trust_remote: bool,
+    device: str | None = None,
+    pooling: str = "cls",
+    force_backend: str | None = None,
+):
+    """Returns (encode_fn, meta_backend).
+
+    `pooling` selecciona CLS o mean sobre el ultimo estado oculto. GTE usa CLS;
+    la version original de este modulo aplicaba mean incondicionalmente en el
+    camino alternativo, lo que anulaba el modelo (ver docs/reviews/CORRECTIONS_LOG.md,
+    N12): con mean no acertaba ni una consulta de 2.000.
+
+    `force_backend="hf"` salta sentence-transformers. Conviene para modelos que
+    exigen `trust_remote_code`, que sentence-transformers 2.2.2 no admite: sin
+    esto la carga fallaba en silencio y se caia al camino alternativo, sin dejar
+    constancia de cual se habia usado.
+    """
+    if pooling not in ("cls", "mean"):
+        raise ValueError(f"pooling debe ser 'cls' o 'mean', no {pooling!r}")
+
+    if force_backend not in (None, "hf", "st"):
+        raise ValueError(f"force_backend debe ser 'hf', 'st' o None, no {force_backend!r}")
+
+    if force_backend == "hf":
+        raise_st = True
+    else:
+        raise_st = False
+
     try:
+        if raise_st:
+            raise RuntimeError("force_backend=hf")
         from sentence_transformers import SentenceTransformer
         st_model = SentenceTransformer(model_name, device=device if device else None)
         st_model.max_seq_length = max_length
@@ -93,13 +124,21 @@ def _build_encoder(model_name: str, max_length: int, trust_remote: bool, device:
                 enc = {k: v.to(use_device, non_blocking=True) for k, v in enc.items()}
                 out = mdl(**enc)
                 last = out.last_hidden_state
-                mask = enc["attention_mask"].unsqueeze(-1)
-                mean = (last * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
-                outs.append(mean.detach().float().cpu().numpy())  # ensure float32 on output
+                if pooling == "cls":
+                    pooled = last[:, 0]
+                else:
+                    mask = enc["attention_mask"].unsqueeze(-1)
+                    pooled = (last * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
+                outs.append(pooled.detach().float().cpu().numpy())  # ensure float32 on output
             hidden = mdl.config.hidden_size
             return np.vstack(outs) if outs else np.zeros((0, hidden), dtype="float32")
 
-        return hf_encode, {"backend": "hf-transformers", "device": use_device, "torch_dtype": str(torch_dtype)}
+        return hf_encode, {
+            "backend": "hf-transformers",
+            "device": use_device,
+            "torch_dtype": str(torch_dtype),
+            "pooling": pooling,
+        }
 
 def build(cfg: Dict[str, Any], long_df: pd.DataFrame, text_field: str):
     p = (cfg.get("method") or {}).get("params") or {}
@@ -111,8 +150,13 @@ def build(cfg: Dict[str, Any], long_df: pd.DataFrame, text_field: str):
     doc_prefix   = str(p.get("doc_prefix", "passage: "))
     trust_remote = bool(p.get("trust_remote_code", True))
     device       = p.get("device") or None
+    pooling      = str(p.get("pooling", "cls"))
+    force_backend = p.get("force_backend") or None
 
-    encode_fn, backend_meta = _build_encoder(model_name, max_length, trust_remote, device=device)
+    encode_fn, backend_meta = _build_encoder(
+        model_name, max_length, trust_remote, device=device,
+        pooling=pooling, force_backend=force_backend,
+    )
 
     corpus = long_df[text_field].fillna("").astype(str).tolist()
     if add_doc_pref and doc_prefix:

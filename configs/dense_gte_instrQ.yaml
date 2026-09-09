@@ -20,13 +20,17 @@ method:
     max_length: 512
     normalize: true
     # Docs (applied at index time):
-    add_doc_prefix: true
-    doc_prefix: "passage: "
+    add_doc_prefix: false
+    doc_prefix: ""
     # Queries (applied at retrieval time):
     add_query_prefix: true # IMPORTANT: "query" prefix for this model
     query_prefix: "query: Busca el documento que más se parezca a la siguiente consulta: "
     device: "cuda"
     trust_remote_code: true
+    # Misma configuracion que dense_gte salvo el prefijo de consulta, que es
+    # justamente la variable que esta comparacion aisla.
+    pooling: cls
+    force_backend: hf
 
 index:
   # Where the index artifacts will be written (same layout as lexical methods)

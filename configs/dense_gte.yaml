@@ -20,13 +20,20 @@ method:
     max_length: 512
     normalize: true
     # Docs (applied at index time):
-    add_doc_prefix: true
-    doc_prefix: "passage: "
+    # gte-multilingual-base no se entreno con prefijos asimetricos estilo E5.
+    # Aplicarselos degradaba el resultado (CORRECTIONS_LOG N10/N12).
+    add_doc_prefix: false
+    doc_prefix: ""
     # Queries (applied at retrieval time):
-    add_query_prefix: true # IMPORTANT: "query" prefix for this model
-    query_prefix: "query: "
+    add_query_prefix: false
+    query_prefix: ""
     device: "cuda"
-    trust_remote_code: true 
+    trust_remote_code: true
+    # El modelo usa CLS; el codigo aplicaba mean incondicionalmente.
+    pooling: cls
+    # sentence-transformers 2.2.2 no admite trust_remote_code y no puede
+    # cargar este modelo: se fuerza el camino explicito de transformers.
+    force_backend: hf
 
 index:
   # Where the index artifacts will be written (same layout as lexical methods)

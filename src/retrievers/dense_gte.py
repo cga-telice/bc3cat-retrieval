@@ -51,11 +51,18 @@ class DenseGTESearcher:
         self.trust_remote    = bool(p.get("trust_remote_code", True))
         self.device          = p.get("device") or None
         self.batch_size      = int(p.get("batch_size", 256))
+        # El pooling y el backend se leen del indice, no del YAML: las consultas
+        # deben codificarse exactamente como se codificaron los documentos, o los
+        # dos conjuntos de vectores no viven en el mismo espacio.
+        self.pooling         = str(p.get("pooling", "cls"))
+        self.force_backend   = p.get("backend") or p.get("force_backend") or None
         self.encode_fn = self._make_encoder()
 
     def _make_encoder(self):
-        # Try ST first
+        # Try ST first, unless the index was built with the explicit HF path.
         try:
+            if self.force_backend in ("hf", "hf-transformers"):
+                raise RuntimeError("el indice se construyo con el camino hf-transformers")
             from sentence_transformers import SentenceTransformer
             # Be explicit about device if provided
             st_model = SentenceTransformer(self.model_name, device=self.device if self.device else None)
@@ -104,13 +111,16 @@ class DenseGTESearcher:
                     enc = {k: v.to(use_device, non_blocking=True) for k, v in enc.items()}
                     out = mdl(**enc)
                     last = out.last_hidden_state
-                    mask = enc["attention_mask"].unsqueeze(-1)
-                    mean = (last * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
-                    outs.append(mean.detach().float().cpu().numpy())   # float32 output
+                    if self.pooling == "cls":
+                        pooled = last[:, 0]
+                    else:
+                        mask = enc["attention_mask"].unsqueeze(-1)
+                        pooled = (last * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
+                    outs.append(pooled.detach().float().cpu().numpy())   # float32 output
                 hidden = mdl.config.hidden_size
                 return np.vstack(outs) if outs else np.zeros((0, hidden), dtype="float32")
-    
-            print(f"[dense_gte:retriever] backend=hf-transformers | device={use_device} | dtype={torch_dtype} | bs={self.batch_size}")
+
+            print(f"[dense_gte:retriever] backend=hf-transformers | pooling={self.pooling} | device={use_device} | dtype={torch_dtype} | bs={self.batch_size}")
             return hf_encode
 
     @staticmethod
