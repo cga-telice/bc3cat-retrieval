@@ -76,7 +76,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | N9 | 458 | *"Base retrievers: BM25, **E5-large**, and hybrid"* | El CE se aplicó a BM25, híbrido y BGE-M3-ColBERT | pendiente |
 | N10 | 413-417 | GTE evaluado con `doc_prefix: "passage: "` | `gte-multilingual-base` no usa prefijos estilo E5. Afecta a las dos variantes GTE | pendiente |
 | N11 | 914 | Paréntesis suelto: `($\lambda=0.6$))` | — | pendiente |
-| N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | pendiente — verificar CLS vs mean empíricamente antes de decidir |
+| N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | **verificado**: mean+prefijos = 0,0000 · CLS sin prefijos = 0,0970 (ver Evidencia). Falta decidir si se reejecuta con la configuración correcta |
 | N13 | — | `index/*/meta.json` no registra qué backend de codificación se usó | Ni `dense_gte/meta.json` ni los demás guardan si se codificó con sentence-transformers o con el camino alternativo, de modo que N12 no era detectable desde los artefactos. `software.sklearn` es `null` y `corpus_hash` también | pendiente |
 
 ## Bloque C — Correcciones de código
@@ -99,7 +99,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 
 | # | Qué | Coste estimado | Estado |
 |---|---|---|---|
-| R1 | `dense_e5`, `dense_gte`, `dense_es_hiiamsid` sobre la muestra canónica | ~10 min c/u | pendiente |
+| R1 | `dense_e5`, `dense_gte`, `dense_es_hiiamsid` sobre la muestra canónica | ~10 min c/u | `dense_e5` y `dense_es_hiiamsid` hechos; `dense_gte` bloqueado por N12 |
 | R2 | Barrido `(k1,b)` de BM25 sobre validación (62 configs) | ~1 h | pendiente |
 | R3 | Híbridos: una pasada base para los 5 rankers + 4 barridos | ~75 min + barridos | pendiente |
 | R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | pendiente |
@@ -187,6 +187,37 @@ método. Matiz que sí juega a favor: sólo 30 plantillas generan los 47.513 ít
 modo que las variantes comparten vocabulario casi idéntico y difieren en parámetros —
 por eso TF-IDF se queda en 0,56-0,71 y BGE-M3-dense cae a 0,127. Es un benchmark de
 negativos duros legítimo, pero es eso y no una evaluación de consultas de usuario.
+
+### GTE: *pooling* y prefijos (N12)
+
+`scripts/probe_gte_pooling.py` codifica los 47.513 documentos y 2.000 consultas de
+la muestra canónica con las cuatro combinaciones de (*pooling*, prefijo) y compara
+Acc@1 a nivel de ítem:
+
+| *pooling* | prefijos | Acc@1 |
+|---|---|---|
+| **mean + `query:`/`passage:`** ← configuración publicada | sí | **0,0000** |
+| mean | no | 0,0000 |
+| CLS | sí | 0,0525 |
+| **CLS, sin prefijos** ← configuración prevista por el modelo | no | **0,0970** |
+
+Con *mean pooling* el sistema no acierta ni una sola consulta de 2.000. Con el CLS
+que el modelo usa y sin los prefijos estilo E5 que nunca vio, sube a 0,097.
+
+Contexto adicional: `transformers` 4.26.0 —la versión que fija `requirements.txt` por
+compatibilidad con torch 2.2.2 y sentence-transformers 2.2.2— **no puede cargar
+`gte-multilingual-base` en absoluto**: la referencia entre repositorios
+`Alibaba-NLP/new-impl--configuration.py` no existía en esa versión. Con
+`transformers` 4.57 sobre el mismo torch, carga sin problema. El índice publicado se
+construyó en 2025-08-21, presumiblemente con otro entorno; `meta.json` no lo registra
+(N13), así que no es reconstruible desde los artefactos.
+
+**Consecuencia:** el 1,3 % de GTE no puede usarse como evidencia sobre modelos densos,
+y la frase de L1109 que lo presenta como prueba de que *"retrieval in technical domains
+remains an open challenge"* no se sostiene. La conclusión cualitativa sí sobrevive
+—incluso bien configurado, GTE se queda en ~0,10 a nivel de ítem—, lo que refuerza el
+encuadre elegido: el colapso está en la discriminación de variantes, no en la
+localización de la familia.
 
 ### Baselines estructurados (B6 / R10)
 

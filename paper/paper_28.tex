@@ -156,9 +156,7 @@ These terminology mismatches are particularly evident in two operational context
 
 Attempts to automate this mapping process predominantly employed rule-based systems and traditional machine learning methods, which often rely on structured data sets and expert-driven input ~\cite{caldasAutomatingHierarchicalDocument2003, natural_wu_2022}. Although these methods have shown limited success, they struggle with the domain-specific variability, nuanced language, and unstructured data prevalent in construction management ~\cite{rampiniArtificialIntelligenceConstruction2022, baekCriticalReviewTextbased2021}. Advances in natural language processing (NLP), particularly transformer-based models such as BERT, have shown promise in addressing these challenges by capturing semantic variability and contextual relationships ~\cite{tangAutomatedConstructionQuantity2022, dezaMachineLearningApproach2022}. However, issues such as data sparsity, domain-specific jargon, and computational resource demands persist ~\cite{chungComparingNaturalLanguage2023, martinez-rojasUsingClassificationTechniques2018}.
 
-This study addresses these challenges through a systematic comparative evaluation of lexical, neural and hybrid retrieval methods for a large-scale construction catalog in the railway infrastructure domain. Using short-format catalog descriptions as queries and long-format entries as retrieval targets, we simulate realistic scenarios in which descriptions are shortened, paraphrased, or reformulated. The task is to retrieve the exact matching item among nearly forty thousand candidates from a single parametric subcategory, a setting where small lexical or numeric differences can determine success or failure.
-
-This study addresses these challenges through a systematic comparative evaluation of lexical, neural and hybrid retrieval methods for a large-scale construction catalog in the railway infrastructure domain. Using short-format catalog descriptions as queries and long-format entries as retrieval targets, we simulate realistic scenarios in which descriptions are shortened, paraphrased, or reformulated. The task is to retrieve the exact matching item among nearly forty thousand candidates from a single parametric subcategory, a setting where small lexical or numeric differences can determine success or failure.
+This study addresses one specific and well-defined part of that challenge through a systematic comparative evaluation of lexical, neural and hybrid retrieval methods on a large-scale parametric catalog from the railway infrastructure domain. The task is to retrieve the exact catalog item corresponding to a short description, among $47{,}513$ candidates that belong to a single subcategory and are generated from only $30$ parametric templates. Entries within a template therefore share almost all of their vocabulary and differ only in attribute values such as terrain type, pipe diameter or work-shift conditions. Queries are the catalog's own short-form descriptions rather than text written independently by practitioners; Section~\ref{subsec:overlap} quantifies exactly how much of each query is contained verbatim in its target. The setting consequently isolates one capability --- discriminating between near-identical parametric variants --- and does not by itself measure the vocabulary-bridging ability that the operational scenarios above would also require.
 
 Figure~\ref{fig:retrieval_workflow} summarizes the retrieval setting considered in this study, from short catalog descriptions, used as proxies for practitioner-oriented queries, to the identification of the corresponding detailed construction item.
 
@@ -370,7 +368,11 @@ Hybrid \& Reranking & 10 & Fusion methods and cross-encoder reranking \\
 
 \paragraph{BM25 Implementation}
 
-We implement BM25 using Pyserini v0.21.0~\citep{lin2021pyserini}, which provides efficient indexing and retrieval through the Lucene backend. We evaluate three tokenization variants, each with its own parameter grid:
+We implement BM25 directly over sparse term--document matrices rather than through an existing retrieval toolkit, so that tokenization and parameter-phrase handling can be controlled explicitly. Term counts are produced with the \texttt{CountVectorizer} of scikit-learn v1.2.2~\citep{pedregosa2011scikit} (accent stripping, lowercasing, token pattern \texttt{\textbackslash b\textbackslash w+\textbackslash b}), and BM25 weights are computed from them following the Okapi formulation~\citep{robertson2009probabilistic}, with Robertson--Sp\"arck Jones inverse document frequency
+\begin{equation}
+\mathrm{idf}(t) = \log\!\left(\frac{N - \mathrm{df}(t) + 0.5}{\mathrm{df}(t) + 0.5} + 1\right)
+\end{equation}
+and the usual term-frequency saturation controlled by $k_1$ and $b$. Scoring is a sparse dot product between the query indicator vector and the weighted document matrix. We evaluate three tokenization variants, each with its own parameter grid:
 \begin{itemize}
     \item \textbf{BM25-unigram}: Standard word tokenization\\
     $k_1 \in \{0.6, 0.8, 1.0, 1.2, 1.4\}$, $b \in \{0.20, 0.35, 0.50, 0.65, 0.80\}$ (25 combinations)
@@ -380,7 +382,7 @@ We implement BM25 using Pyserini v0.21.0~\citep{lin2021pyserini}, which provides
     $k_1 \in \{0.6, 0.8, 1.0, 1.2\}$, $b \in \{0.35, 0.50, 0.65\}$ (12 combinations)
 \end{itemize}
 
-This yields 62 total configurations. Documents and queries undergo identical preprocessing before indexing. Index construction uses default Lucene analyzers with custom stopword lists removed (domain-specific terms like ``of'', ``in'' carry meaning in construction context).
+This yields 62 total configurations. Documents and queries undergo identical preprocessing before indexing. No stopword list is applied, because terms such as ``de'' or ``en'' participate in the parameter phrases that distinguish catalog variants.
 
 \paragraph{TF-IDF Implementation}
 TF-IDF baselines use scikit-learn v1.2.2~\citep{pedregosa2011scikit} with the following configurations:
@@ -455,13 +457,14 @@ To identify optimal fusion configurations, we conducted a systematic parameter s
 We employ a two-stage cascade: efficient first-stage retrieval followed by expensive cross-encoder reranking of top candidates. Cross-encoder implementation uses:
 
 \begin{itemize}
-    \item Model: \texttt{cross-encoder/ms-marco-MiniLM-L-6-v2} (22M parameters)
-    \item Input format: \texttt{[CLS] query [SEP] document [SEP]}
-    \item Reranking depth: Top 20, 50, or 100 candidates from first stage
-    \item Base retrievers: BM25, E5-large, and hybrid configurations
+    \item Model: \texttt{cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}, a multilingual reranker trained on mMARCO, the machine-translated multilingual version of MS MARCO, whose training languages include Spanish
+    \item Input format: \texttt{[CLS] query [SEP] document [SEP]}, truncated to 320 tokens
+    \item Reranking depth: top 50 candidates from the first stage
+    \item Base retrievers: BM25-unigram, BGE-M3-ColBERT, and the three-way hybrid
+    \item Score combination: \textit{replace} (cross-encoder scores only) and \textit{blend} (interpolation with the first-stage score, $\lambda = 0.6$)
 \end{itemize}
 
-The cross-encoder produces a relevance score for each query-document pair through joint encoding and classification head. We evaluate the performance gain versus computational cost across different reranking depths.
+The cross-encoder produces a relevance score for each query--document pair through joint encoding and a classification head.
 
 \subsection{Evaluation Protocol}
 
@@ -497,7 +500,7 @@ The dual-target approach enables nuanced analysis: methods may excel at family i
 
 \subsubsection{Evaluation Metrics}
 
-We employ five complementary metrics to assess retrieval quality:
+We employ four complementary metrics to assess retrieval quality. Because each query has exactly one correct target, Accuracy@1 coincides with Precision@1 and MRR with Mean Average Precision, so the latter is not reported separately:
 
 \begin{enumerate}
     \item \textbf{Accuracy@1 (Success@1)}: Proportion of queries where the correct item appears in rank 1. Critical for automated systems where only the top result is used.
@@ -507,11 +510,9 @@ We employ five complementary metrics to assess retrieval quality:
     \item \textbf{Mean Reciprocal Rank (MRR)}: Average of reciprocal ranks of first correct result.
     
     \item \textbf{Normalized Discounted Cumulative Gain (nDCG@10)}: Accounts for rank position using logarithmic discount
-    
-    \item \textbf{Mean Average Precision (MAP)}: Averaged precision at each relevant result.
 \end{enumerate}
 
-All metrics are computed using the ranx library v0.3.7~\citep{bassani2022ranx}, which provides efficient implementations with built-in significance testing.
+Metrics are computed with a purpose-written evaluator rather than a general-purpose library, because the parent-level criterion requires a non-standard ideal ranking: any of the sibling variants under the correct parent counts as relevant, so the nDCG denominator must be normalized against the number of siblings present in the catalog rather than against a single relevant document. The evaluator is released with the code, and per-query outputs are provided so that any metric can be recomputed independently.
 
 \subsubsection{Query Subset Analysis}
 
@@ -530,7 +531,7 @@ Subset analysis identifies method strengths (e.g., neural models may excel on NO
 
 We employ paired bootstrap resampling to determine whether observed performance differences reflect genuine method advantages rather than random variation~\citep{smucker2007comparison}.
 
-For each system pair $(A, B)$, we compute per-query metric differences, generate $B=10{,}000$ bootstrap samples with replacement, and estimate $p$-values from the empirical distribution of mean differences. We apply Bonferroni correction for multiple comparisons and report improvements as significant only when $p < 0.05$ after correction.
+For each system pair $(A, B)$, we compute per-query metric differences, generate $B=10{,}000$ bootstrap samples with replacement, and estimate $p$-values from the empirical distribution of mean differences. We apply the Holm--Bonferroni step-down correction for multiple comparisons and report improvements as significant only when $p < 0.05$ after correction.
 
 \subsubsection{Error Analysis}
 
@@ -587,7 +588,7 @@ Figure~\ref{fig:bm25_heatmap_panel} visualizes the sensitivity of item-level Acc
 \label{fig:bm25_heatmap_panel}
 \end{figure}
 
-Bootstrap significance testing (10,000 iterations, Bonferroni correction) confirmed all pairwise differences were statistically significant ($p < 0.003$).  
+Bootstrap significance testing (10,000 iterations, Holm--Bonferroni correction) confirmed all pairwise differences were statistically significant ($p < 0.003$).  
 
 Table~\ref{tab:statistical_significance} presents pairwise comparisons. BM25-unigram outperformed all TF-IDF variants by 16.1--31.1 percentage points, and exceeded BM25-unibigram by 4.2 percentage points.
 
@@ -662,7 +663,7 @@ Pseudo-relevance feedback (PRF) methods were evaluated to assess their effective
 
 \subsubsection{RM3 and Rocchio Performance}
 
-Six configurations each were evaluated for RM3 and Rocchio, varying feedback documents ($M \in \{5, 10\}$), expansion terms ($N \in \{20, 40\}$), and interpolation weights. Tables~\ref{tab:rm3_configurations} and~\ref{tab:rocchio_configurations} present detailed results. RM3 showed remarkable stability across configurations (Acc@1: 0.8693--0.8699), while Rocchio performance degraded notably with N=40 terms (Acc@1 dropping from 0.857 to 0.837).
+Eight configurations each were evaluated for RM3 and Rocchio, of which the six best are reported, varying feedback documents ($M \in \{5, 10\}$), expansion terms ($N \in \{20, 40\}$), and interpolation weights. Tables~\ref{tab:rm3_configurations} and~\ref{tab:rocchio_configurations} present detailed results. RM3 showed remarkable stability across configurations (Acc@1: 0.8693--0.8699), while Rocchio performance degraded notably with N=40 terms (Acc@1 dropping from 0.857 to 0.837).
 
 \begin{table}[htbp]
 \centering
@@ -1042,7 +1043,7 @@ OEB110bda & PVC pipe 110mm chamber drainage, \textbf{night shift}, no interval n
 
 \subsubsection{Method-Specific Error Patterns}
 
-Analysis of near-duplicate handling revealed stark differences between methods. BM25 produced 3,276 duplicate documents across 1,602 duplicate groups in its embedding space, while BGE-M3 ColBERT produced zero duplicates. This difference stems from BM25's purely lexical matching, which assigns identical sparse vectors to textual variants with negligible term frequency differences. The hybrid method, incorporating character n-gram features, eliminated these duplicates while attempting to preserve BM25's numeric discrimination capabilities.
+Analysis of near-duplicate handling revealed stark differences between methods. BM25 produced 3,276 duplicate documents across 1,602 duplicate groups among its indexed sparse representations, while BGE-M3 ColBERT produced zero duplicates. This difference stems from BM25's purely lexical matching, which assigns identical sparse vectors to textual variants with negligible term frequency differences. The hybrid method, incorporating character n-gram features, eliminated these duplicates while attempting to preserve BM25's numeric discrimination capabilities.
 
 For the hybrid method, the absence of traditional numeric mismatch or lexical confusion errors suggests that its failures occurred at a different stage of processing. The 36\% right-parent-wrong-item rate indicates that while the method successfully identified relevant categories, the fusion mechanism between lexical and semantic signals did not optimally resolve fine-grained distinctions within those categories.
 
@@ -1073,7 +1074,7 @@ BM25 + ColBERT + TF-IDF (3-way fusion) & 0.890 & 0.908 \\
 BM25 + Dense + TF-IDF (3-way fusion) & 0.889 & 0.907 \\
 BM25 + Sparse + TF-IDF (3-way fusion) & 0.882 & 0.903 \\
 RM3 (M=5, N=20, $\lambda$=0.5) & 0.870 & 0.898 \\
-BM25-unigram (default, k1=0.80, b=0.35) & 0.869 & 0.898 \\
+BM25-unigram (swept optimum, k1=0.80, b=0.35) & 0.869 & 0.898 \\
 Rocchio (M=5, N=20, $\beta$=0.5) & 0.857 & 0.888 \\
 BM25-unibigram (k1=0.80, b=0.35) & 0.827 & 0.844 \\
 5-way fusion + Blend reranking & 0.799 & 0.885 \\
@@ -1109,7 +1110,7 @@ For industry applications, domain-tuned lexical retrieval should be the default.
 Information retrieval benchmarks must also account for latency and hardware constraints ~\cite{santhanam-etal-2023-moving}. BM25 offers sub-100ms latency on standard hardware, while neural retrievers require GPUs with 2–10× overhead. Lexical methods accommodate catalog updates without retraining, and interpretability favors BM25's transparent term matching over opaque neural scores --- though learned sparse retrievers offer a middle ground ~\cite{bruch2023analysis}. Retrieval capabilities should  be integrated in tools like BIM software to support semi-automated 5D workflows.
 
 This study has several limitations that should be considered when interpreting the results. The dataset used in the experiments covers a single subcategory of the ADIF catalog -specifically, the section dedicated to platform conduit systems (designated as chapter 'OEB')—which, while containing nearly 40,000 parametric variants represents a homogeneous domain where all items follow the same structural template and use the same set of descriptive attributes. This homogeneity may favor lexical methods, as BM25 benefits from consistent terminology and predictable parametric vocabulary. At the same time, the near-identical nature of catalog entries positions this homogeneous catalog as a rigorous benchmark for hard-negative retrieval. Validation across other ADIF catalog chapters — such as track infrastructure or electrification systems, which exhibit greater lexical diversity — would strengthen the generalizability of these findings and is a priority for future work.
-Additional limitations include the zero-shot evaluation of neural models. While this setup reflects realistic deployment constraints where annotated domain-specific data is unavailable, it leaves open the question of how much domain-adapted fine-tuning could narrow the performance gap with lexical methods. Furthermore, the cross-encoder employed (ms-marco-MiniLM-L-6-v2) was trained exclusively on English web-search data, and its underperformance may reflect the challenges of cross-lingual domain mismatch, rather than an inherent limitation of the reranking paradigm. The poor performance of GTE model (approximately $1\%$ Acc@1) further illustrates that retrieval in technical domains remains an open challenge ~\cite{jungyeon2024cross-lingual}. Finally, SPLADE was excluded due to limited Spanish language support, and the single-correct-item assumption may oversimplify practical deployment scenarios where multiple catalog entries represent acceptable substitutes.
+Additional limitations include the zero-shot evaluation of neural models. While this setup reflects realistic deployment constraints where annotated domain-specific data is unavailable, it leaves open the question of how much domain-adapted fine-tuning could narrow the performance gap with lexical methods. The cross-encoder employed (mmarco-mMiniLMv2-L12-H384-v1) was trained on mMARCO, which includes Spanish, so its underperformance cannot be attributed to a cross-lingual gap. A more plausible explanation is that its notion of relevance is topical: mMARCO pairs a question with a passage that answers it, a criterion under which every variant of a parametric template is equally relevant to a query naming that template. The reranker is therefore being asked to make a distinction it was never trained to make, which is consistent with the numeric mismatches that dominate its errors. Finally, SPLADE was excluded due to limited Spanish language support, and the single-correct-item assumption may oversimplify practical deployment scenarios where multiple catalog entries represent acceptable substitutes.
 
 
 
