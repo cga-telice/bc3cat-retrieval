@@ -60,6 +60,38 @@ PATCHES: list[Patch] = [
         ],
     ),
     Patch(
+        ident="C5-rungroup-param",
+        notebook="src/retrieve.ipynb",
+        rationale=(
+            "Permite escribir los runs de seleccion de hiperparametros en un "
+            "directorio aparte, para que no sobrescriban los que luego se reportan."
+        ),
+        old=[
+            'METHOD_NAME   = "bge_m3_colbert"\n',
+        ],
+        new=[
+            'METHOD_NAME   = "bge_m3_colbert"\n',
+            "# Subdirectorio bajo runs/. Vacio para el test que se reporta; \"val\" para\n",
+            "# los barridos de seleccion, que no deben mezclarse con aquel.\n",
+            'RUN_GROUP     = ""\n',
+        ],
+    ),
+    Patch(
+        ident="C5-rungroup-dir",
+        notebook="src/retrieve.ipynb",
+        rationale=(
+            "El estudio publicado selecciono (k1,b), pesos de fusion y beta sobre el "
+            "mismo conjunto que despues reporta. Separar los directorios es el primer "
+            "paso para que la seleccion se haga en validacion."
+        ),
+        old=[
+            'RUN_DIR      = Path(f"/work/runs/{METHOD_NAME}")\n',
+        ],
+        new=[
+            'RUN_DIR      = Path(f"/work/runs/{RUN_GROUP}/{METHOD_NAME}" if RUN_GROUP else f"/work/runs/{METHOD_NAME}")\n',
+        ],
+    ),
+    Patch(
         ident="C1-load",
         notebook="src/retrieve.ipynb",
         rationale=(
@@ -176,14 +208,19 @@ def apply_patch(text: str, patch: Patch, indent: str = " " * 4) -> tuple[str, st
     """Devuelve (texto, 'aplicado' | 'ya-aplicado' | 'no-encontrado')."""
     old_block = encode_block(patch.old, indent)
     new_block = encode_block(patch.new, indent)
+    marker = json.dumps(patch.applied_marker, ensure_ascii=False)
+
+    # El marcador se comprueba ANTES que el bloque viejo: cuando `new` conserva
+    # alguna linea de `old` —por ejemplo al insertar un parametro encima de otro
+    # que se mantiene—, el bloque viejo sigue presente tras aplicar el parche y
+    # buscarlo primero lo aplicaria una y otra vez.
+    if marker in text:
+        return text, "ya-aplicado"
 
     if old_block in text:
         if text.count(old_block) > 1:
             return text, "ambiguo"
         return text.replace(old_block, new_block), "aplicado"
-
-    if json.dumps(patch.applied_marker, ensure_ascii=False) in text:
-        return text, "ya-aplicado"
 
     return text, "no-encontrado"
 
