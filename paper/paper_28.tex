@@ -743,14 +743,14 @@ Table~\ref{tab:prf_comparison} presents the performance comparison between the b
 Method & MRR & nDCG@10 & Acc@1 & Significance \\
 \midrule
 Base BM25-unigram & 0.898 & 0.909 & 0.869 & --- \\
-Best RM3 (M=10, N=20, $\lambda$=0.5) & 0.898 & 0.909 & 0.870 & n.s. \\
+Best RM3 (M=5, N=20, $\lambda$=0.5) & 0.898 & 0.909 & 0.870 & n.s. \\
 Best Rocchio (M=5, N=20, $\beta$=0.5) & 0.888 & 0.900 & 0.857 & $p < 0.05$ \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-Table~\ref{tab:prf_comparison} summarizes the comparison. RM3 showed no statistically significant improvement over the baseline (95\% CI: [-0.0005, 0.0021]). Rocchio produced significant degradation ($p < 0.05$, $\Delta=1.26\%$), suggesting that query expansion is ill-suited for this domain where precise numeric matching outweighs semantic expansion.
+Table~\ref{tab:prf_comparison} summarizes the comparison. RM3 showed no statistically significant improvement over the baseline (95\% CI: [-0.0005, 0.0021]). Four RM3 configurations tie at Acc@1 $=0.8699$ --- $M \in \{5, 10\}$ crossed with $N \in \{20, 40\}$ at $\lambda=0.5$ --- so the smallest is reported; the choice among them is immaterial. Rocchio produced significant degradation ($p < 0.05$, $\Delta=1.26\%$), suggesting that query expansion is ill-suited for this domain where precise numeric matching outweighs semantic expansion.
 
 The strong baseline BM25 performance leaves minimal room for improvement through query expansion, indicating limited value of PRF for this technical retrieval task.
 

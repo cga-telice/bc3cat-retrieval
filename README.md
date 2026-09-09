@@ -4,9 +4,9 @@ DOI: 10.5281/zenodo.20277824
 
 This repository contains the retrieval pipeline for creating a evaluation benchmark from ADIF's parametric construction price catalog. The methods are part of the research presented in:
 
-> **A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches**  
+> **Finding the Family but Not the Variant: Item-Level Retrieval in Parametric Construction Catalogs**  
 > González-Alvarez, C., Fernández-Robles, L., Alegre, E., & Castejón-Limas, M.  
-> *Automation in Construction* (under review)
+> Manuscript in revision.
 
 ## Overview
 
@@ -15,14 +15,20 @@ This repository contains the implementation and evaluation framework for constru
 - **Queries**: Short-format descriptions (*resumen*) — condensed summaries of construction work items
 - **Documents**: Long-format descriptions (*texto*) — detailed technical specifications
 
-The study evaluates retrieval methods on the ADIF Spanish railway construction catalog (~40,000 items, 16,590 queries), using a dual-target evaluation protocol that assesses both item-level and parent-category accuracy.
+The study evaluates retrieval methods on the ADIF Spanish railway construction catalog (47,513 items generated from 30 parametric templates, 16,590 queries), using a dual-target evaluation protocol that assesses both item-level and parent-category accuracy.
 
 ### Key Findings
 
-- **Best Method**: BM25 with tuned parameters (k1=0.60, b=0.35) achieves **97.4% Item Acc@1** and **98.5% Parent Acc@1**
-- Lexical methods with parameter values in queries outperform neural embeddings at fine-grained item retrieval
-- Dense neural embeddings show improved consistency at the broader parent-category level
-- Well-tuned BM25 provides a robust, interpretable baseline for construction catalog matching
+- **The item/parent dissociation**: every zero-shot multilingual dense retriever
+  identifies the correct parametric family almost perfectly (96.0-99.8% Acc@1)
+  and the correct variant almost never (7.0-13.6%). The gap reaches 92.9 points.
+- **Best method**: BM25 with domain-specific parameter phrases (k1=0.60, b=0.35)
+  reaches 97.4% item-level Acc@1 and shows almost no gap (98.5% at parent level).
+- A rule-based structured pipeline over extracted attributes reaches 90.3%, below
+  BM25 even when granted perfect parameter extraction.
+- The benchmark rewards literal matching: the target contains 94.1% of the query's
+  tokens and 99.96% of its numeric values verbatim. Queries are the catalog's own
+  short descriptions, not text written independently by practitioners.
 
 ## Repository Structure
 
@@ -70,8 +76,8 @@ bc3cat-retrieval/
 
 ```bash
 # Clone the repository
-git clone https://github.com/cga-telice/bc3cat-dataset.git
-cd bc3cat-dataset
+git clone https://github.com/cga-telice/bc3cat-retrieval.git
+cd bc3cat-retrieval
 
 # Start Jupyter environment
 docker-compose up -d
@@ -98,9 +104,7 @@ jupyter notebook
 
 For full functionality, you may need:
 
-```bash
-pip install pandas pyarrow ranx faiss-cpu scikit-learn tqdm pyyaml matplotlib seaborn
-```
+All dependencies are pinned in `requirements.txt`.
 
 For neural methods:
 ```bash
@@ -151,7 +155,9 @@ Evaluate results using the evaluation notebook:
 metrics = evaluate(results, qrels, targets=['item', 'parent'])
 ```
 
-Metrics computed via [ranx](https://github.com/AmenRa/ranx) v0.3.7:
+Metrics are computed by a purpose-written evaluator (`src/metrics.ipynb`); the
+parent-level criterion needs a non-standard ideal ranking, so no general-purpose
+IR library is used:
 - **Acc@1** (Accuracy at rank 1)
 - **Recall@5, Recall@10**
 - **MRR** (Mean Reciprocal Rank)
@@ -184,13 +190,21 @@ Bootstrap significance tests (10,000 iterations) with Holm-Bonferroni and Benjam
 
 ## Results Summary
 
-| Method | Item Acc@1 | Parent Acc@1 | MRR |
-|--------|------------|--------------|-----|
-| BM25 (k1=0.60, b=0.35) | **0.974** | **0.985** | 0.979 |
-| BM25 (default) | 0.569 | 0.612 | 0.584 |
-| TF-IDF unigram | 0.411 | 0.468 | 0.432 |
-| BGE-M3 ColBERT | 0.294 | 0.412 | 0.341 |
-| Dense E5 | 0.088 | 0.324 | 0.142 |
+| Method | Item Acc@1 | Parent Acc@1 | Gap (pp) |
+|--------|------------|--------------|----------|
+| BM25 + parameter phrases (k1=0.60, b=0.35) | **0.974** | 0.985 | 1.2 |
+| BM25 unigram (k1=0.80, b=0.35) | 0.869 | 0.973 | 10.4 |
+| TF-IDF + parameter phrases | 0.708 | 0.990 | 28.1 |
+| BGE-M3 ColBERT | 0.448 | 0.997 | 54.9 |
+| multilingual-e5-base | 0.136 | 0.982 | 84.5 |
+| BGE-M3 sparse | 0.125 | 0.994 | 87.0 |
+| GTE-multilingual-base | 0.070 | **0.998** | **92.9** |
+| Rule-based structured pipeline | 0.903 | — | — |
+
+All figures are item-level and parent-level Acc@1 over the same 16,590 queries
+(`benchmark/query_samples/OEB_query_sample_test_16590.json`). The gap is the
+headline finding: dense retrievers identify the parametric family almost
+perfectly and the specific variant almost never.
 
 *Full results available in `runs/` and `eval/` directories.*
 
@@ -231,11 +245,10 @@ If you use this code or dataset, please cite:
 
 ```bibtex
 @article{gonzalez2025systematic,
-  title={A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches},
+  title={Finding the Family but Not the Variant: Item-Level Retrieval in Parametric Construction Catalogs},
   author={González-Alvarez, Cesáreo and Fernández-Robles, Laura and Alegre, Enrique and Castejón-Limas, Manuel},
-  journal={Automation in Construction},
-  year={2025},
-  note={Under review}
+  year={2026},
+  note={Manuscript in revision}
 }
 ```
 

@@ -42,7 +42,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A21 | 822 | *"ColBERT and sparse achieved perfect accuracy (1.000)"*: se leyó la columna de Recall | Acc@1 reales: 0,759 / 0,759 / 0,655 sobre las 29 consultas no numéricas | sesión | hecho |
 | A22 | 849-853, Tabla 12 | `hiiamsid` descrito en Métodos y ausente de resultados | Añadir su fila (item 0,024 / parent 0,395) | sesión | hecho |
 | A23 | 662 | *"Six configurations each were evaluated"* | Se evaluaron ocho; se reportan seis | sesión | hecho |
-| A24 | 714 vs 1072 | Mejor RM3: `M=10` en Tabla 7, `M=5` en Tabla 16 | Unificar y anotar el empate (ambas 0,8699) | sesión | pendiente |
+| A24 | 714 vs 1072 | Mejor RM3: `M=10` en Tabla 7, `M=5` en Tabla 16 | Unificar y anotar el empate (ambas 0,8699) | sesión | hecho |
 | A25 | 1042 | *"in its embedding space"* aplicado a BM25 | BM25 no tiene espacio de embeddings | sesión | hecho |
 | A26 | 1086 | Afirmación sobre R@5/MRR no soportada por la Tabla 16 | Reescribir con lo que la tabla sí muestra | sesión | pendiente |
 | A27 | 944 | *"the highest overall performance"* para el híbrido+blend | Acotar al ámbito de la Tabla 13 | sesión | pendiente |
@@ -68,8 +68,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | N1 | 370 | *"We implement BM25 using **Pyserini v0.21.0** … **Lucene** backend"* ~\cite{lin2021pyserini} | Cero ocurrencias de `pyserini`/`lucene` en `src/` y `configs/`. Implementación propia: `sklearn.CountVectorizer` + `scipy.sparse`, idf y saturación k1/b a mano (`src/index_builders/bm25_unigram.py`) | hecho |
 | N2 | 511 | *"All metrics are computed using the **ranx** library v0.3.7"* ~\cite{bassani2022ranx} | `ranx` no aparece en ningún fichero del repositorio. Métricas propias en `src/metrics.ipynb` (`dcg_at_k`, `idcg_at_10_for_target`) | hecho |
 | N3 | 455, 1109 | CE declarado `ms-marco-MiniLM-L-6-v2` (22M, inglés), y su bajo rendimiento se explica por *"cross-lingual domain mismatch"* | El modelo real es `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`, multilingüe, entrenado sobre mMARCO, que incluye español. **El argumento de la Discusión es falso** | hecho |
-| N4 | — | `eval/bootstrap_global/` reporta Acc@1 deflactadas | `bootstrap_sigtests.ipynb:107-108` alinea sobre la unión rellenando con 0 (n = 25.321). 0,869 × 16590/25321 = 0,5694, exactamente lo reportado | pendiente |
-| N5 | README 187-194 | La tabla pública mezcla escalas per-run y deflactadas | 0,974 y 0,411 per-run; 0,569 / 0,294 / 0,088 deflactadas | pendiente |
+| N4 | — | `eval/bootstrap_global/` reporta Acc@1 deflactadas | `bootstrap_sigtests.ipynb:107-108` alinea sobre la unión rellenando con 0 (n = 25.321). 0,869 × 16590/25321 = 0,5694, exactamente lo reportado | hecho |
+| N5 | README 187-194 | La tabla pública mezcla escalas per-run y deflactadas | 0,974 y 0,411 per-run; 0,569 / 0,294 / 0,088 deflactadas | hecho |
 | N6 | 156, 158, 175, 1092, 1108, 1115 | *"nearly forty thousand"* / *"nearly 40,000 items"* | El catálogo son 47.513 ítems; el abstract dice "approximately 47,500". Restos de la versión de 39.847 | hecho |
 | N7 | 508 | Declara **MAP** entre las cinco métricas | No se reporta en ninguna tabla ni se calcula en `metrics.ipynb` | hecho |
 | N8 | 1076 | Tabla 16 etiqueta la fila 0,799 como *"5-way fusion + Blend"* | Tabla 13 la etiqueta como híbrido de 3 vías; el CE corrió sobre `hyb_bm25_uni__bge_colbert__tfidf_char_3_5` (`metrics_ce_blend.json` = 0,79885). Las dos tablas se contradicen | pendiente |
@@ -118,7 +118,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | F1 | Título, abstract y contribuciones: decisión de encuadre pendiente de César | pendiente |
 | F2 | Introducción: los dos escenarios operativos de L152 que nunca se evalúan | pendiente |
 | F3 | Conclusiones alineadas con el encuadre elegido | pendiente |
-| F4 | `README.md`: tabla de resultados, recuento de ítems, URL de clonado, menciones a `ranx`/Pyserini | pendiente |
+| F4 | `README.md`: tabla de resultados, recuento de ítems, URL de clonado, menciones a `ranx`/Pyserini | hecho |
 | F5 | Zenodo: nueva versión del depósito `10.5281/zenodo.20277824` | pendiente |
 
 ---
