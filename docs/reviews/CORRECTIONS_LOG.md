@@ -51,10 +51,10 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A30 | 195 | "Jacques de Sousa et al." sin `\cite` | Añadir la referencia | R2-8.4 | hecho |
 | A31 | 189, 193, 195, 197, 203, 205, 207 | `~\cite{...}` como sujeto gramatical | Anteponer el nombre de los autores | R2-8.3 | hecho |
 | A32 | 574, 645-646, 767-770, 773, abstract | Cinco términos para tres conceptos | Fijar **template** / **item-variant** / **parent** | R2-8.3 | pendiente |
-| A33 | 221-223, 1108 | Alcance del estudio no delimitado | Explicitar subcategoría, plantillas y procedencia de las consultas | R2-1.2 | pendiente |
-| A34 | 1115 | *"Neural models … consistently fail"* frente a la asimetría admitida en L1094 | Acotar a los modelos zero-shot evaluados en este benchmark | R2-5.2 | pendiente |
-| A35 | 1085, 1115-1116, abstract | Generalización excesiva | Acotar a este catálogo y a consultas derivadas del propio catálogo | R1-5.2, R2-5.1 | pendiente |
-| A36 | 1108-1109 | Falta la limitación de validez externa | Añadir que las consultas no son descripciones independientes de profesionales | R2-7.1 | pendiente |
+| A33 | 221-223, 1108 | Alcance del estudio no delimitado | Explicitar subcategoría, plantillas y procedencia de las consultas | R2-1.2 | hecho |
+| A34 | 1115 | *"Neural models … consistently fail"* frente a la asimetría admitida en L1094 | Acotar a los modelos zero-shot evaluados en este benchmark | R2-5.2 | hecho |
+| A35 | 1085, 1115-1116, abstract | Generalización excesiva | Acotar a este catálogo y a consultas derivadas del propio catálogo | R1-5.2, R2-5.1 | hecho |
+| A36 | 1108-1109 | Falta la limitación de validez externa | Añadir que las consultas no son descripciones independientes de profesionales | R2-7.1 | hecho |
 | A37 | 169-177 | Contribución sin acotar | Declarar que la aportación es una comparación empírica, no un método nuevo | R1-7.1 | hecho |
 | A38 | §4 (555-1086) | Comparaciones numéricas repetidas ya visibles en las tablas | Recortar ~30 %; mover detalle a material suplementario | R2-8.2 | pendiente |
 | A39 | tras 345 | Falta visión general metodológica | Diagrama de flujo dataset → muestreo → indexación → métodos → fusión → evaluación | R2-4.1 | pendiente |
