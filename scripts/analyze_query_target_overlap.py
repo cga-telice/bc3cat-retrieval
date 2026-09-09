@@ -28,6 +28,10 @@ import pandas as pd
 SHORT = Path("data/processed/OEB_short_feats.parquet")
 LONG = Path("data/processed/OEB_long_feats.parquet")
 OUT_DIR = Path("eval/overlap")
+# Las tablas que el manuscrito incluye con \input viven dentro de paper/, para
+# que el proyecto LaTeX sea autocontenido: TeX no lee rutas con ".." bajo la
+# configuracion por defecto, y Overleaf tampoco puede salir del proyecto.
+TABLES_DIR = Path("paper/tables")
 
 COLUMNS = ["item_key", "parent_key", "tokens_word", "numbers"]
 
@@ -118,7 +122,11 @@ def main() -> int:
         r"\bottomrule",
         r"\end{tabular}",
     ]
-    (OUT_DIR / "overlap_summary.tex").write_text("\n".join(tex) + "\n", encoding="utf-8")
+    table = "% Generado por scripts/analyze_query_target_overlap.py -- no editar a mano.\n"
+    table += "\n".join(tex) + "\n"
+    (OUT_DIR / "overlap_summary.tex").write_text(table, encoding="utf-8")
+    TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    (TABLES_DIR / "overlap_summary.tex").write_text(table, encoding="utf-8")
 
     print(f"Pares analizados: {n:,}   plantillas: {len(by_parent):,}")
     print()

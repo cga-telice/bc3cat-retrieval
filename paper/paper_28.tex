@@ -341,6 +341,20 @@ The pipeline identifies and normalizes integer quantities, decimal measurements 
 
 Extracted numeric features enable exact numeric matching as a complementary retrieval signal (Section~\ref{subsec:hybrid_fusion}).
 
+\subsubsection{How Much Do Query and Target Share?}
+\label{subsec:overlap}
+
+Because queries are the catalog's own \textit{resumen} field and targets its \textit{texto} field, the two are not independent formulations of the same concept. Characterising the benchmark therefore requires measuring how much of a query is already present in its target. Table~\ref{tab:overlap} reports this over all $47{,}513$ aligned pairs.
+
+\begin{table}[ht]
+\centering
+\caption{Lexical and numeric overlap between each query (\textit{resumen}) and its target document (\textit{texto}), over all 47,513 aligned pairs. Coverage is the fraction of query tokens, or query numeric values, that also occur in the target.}
+\label{tab:overlap}
+\input{tables/overlap_summary.tex}
+\end{table}
+
+Two facts follow. First, the target contains on average $94.10\%$ of the query's tokens and $99.96\%$ of its numeric values verbatim, so the task rewards literal matching and a strong lexical result should not be read as evidence of semantic understanding. Second, full token containment holds for only $7.79\%$ of queries, and the $30$ templates generate on average $1{,}584$ variants each that share nearly all of their vocabulary. The difficulty of the benchmark therefore lies not in bridging a vocabulary gap but in discriminating among near-identical candidates --- which is precisely the regime in which the methods compared here diverge most sharply.
+
 \subsection{Retrieval System Configurations}
 
 We evaluate 100 distinct retrieval configurations organized into four method families. Table~\ref{tab:method_families} summarizes the configuration space.
@@ -569,7 +583,7 @@ At the parent level (Figure~\ref{fig:lexical_performance_parent}), TF-IDF method
 \label{fig:lexical_performance_parent}
 \end{figure}
 
-At the item level (Figure~\ref{fig:lexical_performance_item}), the ranking inverted. BM25-unigram\_params achieved the highest Acc@1 (0.974), while TF-IDF methods dropped substantially (0.558--0.708). This $26.6$ percentage point gap between the best BM25 and best TF-IDF demonstrates that document-length normalization is critical for fine-grained catalog discrimination.
+At the item level (Figure~\ref{fig:lexical_performance_item}), the ranking inverted. BM25-unigram\_params achieved the highest Acc@1 (0.974), while TF-IDF methods dropped substantially (0.558--0.708). This $26.5$ percentage point gap between the best BM25 and best TF-IDF demonstrates that document-length normalization is critical for fine-grained catalog discrimination.
 
 \begin{figure}[htbt]
 \centering
