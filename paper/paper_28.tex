@@ -152,6 +152,18 @@ Information retrieval \ Construction catalog \ BM25 \ Dense retrieval \ Parametr
     
     \item[nDCG] Normalized Discounted Cumulative Gain --- a ranking metric that accounts for graded relevance and result position.
 
+    \item[Template] The parametric definition of a work item: a description with named
+    attributes (terrain type, diameter, work shift) whose values are left open. The OEB
+    chapter contains 30 templates.
+
+    \item[Variant (item)] One instance of a template, with every attribute bound to a
+    concrete value. Variants are the retrieval targets; the catalog holds 47,513 of them.
+
+    \item[Parent] The grouping that collects all variants of one template, identified by a
+    shared six-character code. 	extit{Parametric family} is used interchangeably with
+    	extit{parent}. Note that 	extit{model family} and 	extit{method family} refer to a
+    different axis --- groupings of retrieval approaches --- and never to the catalog.
+
     \item[Parametric Catalog] A structured database where construction items are described by sets of parameters.  Each unique combination of parameter values generates a distinct catalog item.
     
     \item[Pseudo-Relevance Feedback (PRF)] A technique that expands the query using top-ranked documents from an initial retrieval round to improve recall.
@@ -1056,7 +1068,7 @@ Figure~\ref{fig:error_distribution} visualizes the same distribution and makes t
 
 \subsubsection{Hierarchical Error Classification}
 
-Beyond categorical error types, we analyzed failures according to the hierarchical structure of our construction database, where items are organized under parent categories (e.g., OEB280\$ for 40mm polyethylene conduits). Table~\ref{tab:hierarchical_errors} shows three distinct failure patterns: (1) retrieving the correct parent category but wrong specific item variant, (2) retrieving an incorrect parent category entirely, and (3) failing to include the correct parent in the top-10 results.
+Beyond categorical error types, we analyzed failures according to the hierarchical structure of our construction database, where items are organized under parents (e.g., OEB280\$ for 40mm polyethylene conduits). Table~\ref{tab:hierarchical_errors} shows three distinct failure patterns: (1) retrieving the correct parent category but wrong specific item variant, (2) retrieving an incorrect parent category entirely, and (3) failing to include the correct parent in the top-10 results.
 
 \begin{table}[htbp]
 \centering
@@ -1074,7 +1086,7 @@ Parent not in top-10     & 0.1\%   & 0.0\%   & 0.0\%  \\
 \end{tabular}
 \end{table}
 
-The neural method (BGE-M3 ColBERT) demonstrated strong performance at the parent category level, with 54.3\% of errors involving correct parent identification but incorrect item selection --- more than 5× higher than BM25 (10.4\%). This suggests that dense embeddings effectively capture high-level semantic categories but struggle with fine-grained distinctions within categories. Conversely, BM25 exhibited higher wrong-parent rates (2.6\% vs. 0.3\%), indicating occasional failures at the coarse-grained category level. The hybrid approach showed intermediate behavior with 36.0\% right-parent-wrong-item errors.
+The neural method (BGE-M3 ColBERT) demonstrated strong performance at the parent level, with 54.3\% of errors involving correct parent identification but incorrect item selection --- more than 5× higher than BM25 (10.4\%). This suggests that dense embeddings effectively capture high-level semantic categories but struggle with fine-grained distinctions within categories. Conversely, BM25 exhibited higher wrong-parent rates (2.6\% vs. 0.3\%), indicating occasional failures at the coarse-grained category level. The hybrid approach showed intermediate behavior with 36.0\% right-parent-wrong-item errors.
 
 \subsubsection{Representative Error Examples}
 
@@ -1216,12 +1228,16 @@ Research data associated with this article will be made available at the followi
   \item https://doi.org/10.5281/zenodo.20277824
 \end{itemize}
 
-The repository includes:
+The release is intended to make every number in this paper independently checkable, and to let others reuse the benchmark without reconstructing it. It includes:
+
 \begin{itemize}
-  \item The full parametric construction catalog dataset used in the experiments
-  \item Query sets, evaluation labels, and retrieval outputs
-  \item Scripts and configuration files for reproducing the benchmarking results
+  \item The full parametric catalog: 47,513 items with their \textit{resumen} and \textit{texto} fields, parent identifiers, and the parsed parameter values, together with the tools that convert the raw BC3 format into this representation.
+  \item \textbf{The exact query set}, as a versioned list of catalog identifiers with a checksum, rather than a sampling procedure to be re-run. Every system reported here was evaluated on that same list, and the check that enforces it is part of the released code.
+  \item Per-query retrieval outputs (top-100 candidates with scores) for every configuration, so that any metric --- including ones we do not report --- can be recomputed without re-running retrieval.
+  \item The evaluation code, including the dual item/parent scorer, and the YAML configuration of every run.
 \end{itemize}
+
+Releasing per-query outputs rather than only aggregate scores is what allows the two levels of evaluation to be recomputed, error taxonomies to be redefined, and the results to be audited against a different metric or a different notion of relevance.
 
 \section{Technical Background on Retrieval Methods}
 \label{app:technical-background}

@@ -50,7 +50,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A29 | 568 | "26.6 percentage point gap" | `26.5` (0,9737 − 0,7083) | sesión | hecho |
 | A30 | 195 | "Jacques de Sousa et al." sin `\cite` | Añadir la referencia | R2-8.4 | hecho |
 | A31 | 189, 193, 195, 197, 203, 205, 207 | `~\cite{...}` como sujeto gramatical | Anteponer el nombre de los autores | R2-8.3 | hecho |
-| A32 | 574, 645-646, 767-770, 773, abstract | Cinco términos para tres conceptos | Fijar **template** / **item-variant** / **parent** | R2-8.3 | pendiente |
+| A32 | 574, 645-646, 767-770, 773, abstract | Cinco términos para tres conceptos | Fijar **template** / **item-variant** / **parent** | R2-8.3 | hecho |
 | A33 | 221-223, 1108 | Alcance del estudio no delimitado | Explicitar subcategoría, plantillas y procedencia de las consultas | R2-1.2 | hecho |
 | A34 | 1115 | *"Neural models … consistently fail"* frente a la asimetría admitida en L1094 | Acotar a los modelos zero-shot evaluados en este benchmark | R2-5.2 | hecho |
 | A35 | 1085, 1115-1116, abstract | Generalización excesiva | Acotar a este catálogo y a consultas derivadas del propio catálogo | R1-5.2, R2-5.1 | hecho |
@@ -59,8 +59,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A38 | §4 (555-1086) | Comparaciones numéricas repetidas ya visibles en las tablas | Recortar ~30 %; mover detalle a material suplementario | R2-8.2 | pendiente |
 | A39 | tras 345 | Falta visión general metodológica | Diagrama de flujo dataset → muestreo → indexación → métodos → fusión → evaluación | R2-4.1 | hecho |
 | A40 | §3.1 | Falta cuantificar el solape `resumen`/`texto` | Nueva subsección con la medición (→ Fase 3a) | R2-2.3 | hecho |
-| A41 | 1127-1135 | Fortaleza infravalorada | Destacar la liberación de datos, consultas, etiquetas, salidas y configs | R2-6.1 | pendiente |
-
+| A41 | 1127-1135 | Fortaleza infravalorada | Destacar la liberación de datos, consultas, etiquetas, salidas y configs | R2-6.1 | hecho |
 ## Bloque N — Defectos detectados al verificar el informe contra el código
 
 | # | Línea | Problema | Evidencia | Estado |
@@ -90,7 +89,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | C4 | Ampliar la rejilla a `βe ∈ {0, 0.05, 0.10, 0.15}` | `src/hybrid.ipynb` | hecho |
 | C5 | Selección de hiperparámetros en validación, con un único criterio declarado | `src/hybrid.ipynb`, `notebooks/bm25_orchestrator.ipynb` | pendiente |
 | C6 | Bootstrap por intersección, no por unión con `fillna(0)`; parametrizar `RUNS_INCLUDE` | `src/bootstrap_sigtests.ipynb` | pendiente |
-| C7 | Eliminar el `query_prefix` inerte de `dense_e5.yaml` | `configs/dense_e5.yaml` | pendiente |
+| C7 | Eliminar el `query_prefix` inerte de `dense_e5.yaml` | `configs/dense_e5.yaml` | hecho |
 | C8 | Persistir `base_runs_norm.parquet` y separar el barrido de la recuperación base | `src/hybrid.ipynb` | pendiente |
 | C9 | Runner completo build → retrieve → metrics para cualquier config | `scripts/run_all.py` | pendiente |
 | C10 | `requirements.txt` real; eliminar menciones a `ranx` y Pyserini | `requirements.txt`, `README.md` | hecho en `requirements.txt`; falta el README |

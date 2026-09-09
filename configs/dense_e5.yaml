@@ -23,7 +23,10 @@ method:
     doc_prefix: "passage: "
     # Queries (applied at retrieval time):
     add_query_prefix: true # IMPORTANT: "query" prefix for this model
-    query_prefix: "query: Busca el documento que más se parezca a la siguiente consulta: "
+    # El prefijo lo fija a mano src/retrievers/dense_e5.py:101-102, que ignora
+    # este campo. Antes declaraba aqui la instruccion larga de dense_gte_instrQ,
+    # que nunca se aplico: codigo muerto que enganaba a quien auditara el run.
+    query_prefix: "query: "
     device: "cuda"
     trust_remote_code: true
 
