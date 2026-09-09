@@ -134,6 +134,51 @@ PATCHES: list[Patch] = [
         ],
     ),
     Patch(
+        ident="C6-hybdir",
+        notebook="src/error_analysis.ipynb",
+        rationale=(
+            "Las fusiones se escriben en runs/hybrids/<nombre>, pero el analisis las "
+            "buscaba en runs/<nombre>, donde habia quedado una copia obsoleta de la "
+            "ejecucion publicada. Habria analizado los resultados antiguos creyendo que "
+            "eran los nuevos."
+        ),
+        old=[
+            "    run_dir = RUNS_DIR / m\n",
+        ],
+        new=[
+            "    # Las fusiones viven bajo runs/hybrids/; el resto, directamente en runs/.\n",
+            "    run_dir = RUNS_DIR / m\n",
+            '    if not run_dir.exists() and (RUNS_DIR / "hybrids" / m).exists():\n',
+            '        run_dir = RUNS_DIR / "hybrids" / m\n',
+        ],
+    ),
+    Patch(
+        ident="C6-errors",
+        notebook="src/error_analysis.ipynb",
+        rationale=(
+            "El analisis de errores intersectaba en silencio las consultas de los tres "
+            "metodos y acababa trabajando sobre 5.844 de 16.590 sin que nada lo "
+            "advirtiera. El manuscrito nunca lo menciona y sus captions declaran "
+            "n=16.590. Con la muestra unificada la interseccion debe ser la identidad; "
+            "si no lo es, es un error de datos y hay que detenerse."
+        ),
+        old=[
+            "common_q = sorted(common_q)\n",
+            'print(f"Common queries across methods: {len(common_q)}")\n',
+        ],
+        new=[
+            "common_q = sorted(common_q)\n",
+            "_universo = set().union(*[set(df['query_item_key']) for df in method_runs.values()])\n",
+            "if len(common_q) != len(_universo):\n",
+            "    raise ValueError(\n",
+            '        f"Los metodos analizados no comparten muestra: {len(common_q):,} consultas "\n',
+            '        f"comunes frente a {len(_universo):,} en la union. El analisis de errores "\n',
+            '        f"sobre una interseccion parcial no es comparable con las metricas."\n',
+            "    )\n",
+            'print(f"Queries analysed: {len(common_q):,} (identical across all methods)")\n',
+        ],
+    ),
+    Patch(
         ident="C6",
         notebook="src/bootstrap_sigtests.ipynb",
         all_occurrences=True,
