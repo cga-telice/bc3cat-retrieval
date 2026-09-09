@@ -134,6 +134,61 @@ PATCHES: list[Patch] = [
         ],
     ),
     Patch(
+        ident="C9-ce-params",
+        notebook="src/cross_encoder.ipynb",
+        rationale=(
+            "El run a reranquear y la profundidad estaban fijados en el codigo, asi que "
+            "cada combinacion exigia editar el notebook. El manuscrito declara haber "
+            "evaluado K' = 20, 50 y 100 cuando solo existe K' = 50, y esa afirmacion "
+            "solo se puede corregir ejecutando las otras dos."
+        ),
+        old=[
+            '    "input_run_dir": "/work/runs/bge_m3_colbert",\n',
+        ],
+        new=[
+            '    "input_run_dir": globals().get("INPUT_RUN_DIR", "/work/runs/bge_m3_colbert"),\n',
+        ],
+    ),
+    Patch(
+        ident="C9-ce-metrics-replace",
+        notebook="src/cross_encoder.ipynb",
+        rationale=(
+            "Los ficheros de resultados llevan K' en el nombre pero los de metricas no, "
+            "asi que evaluar varias profundidades sobre el mismo run dejaba solo las de "
+            "la ultima ejecucion, silenciosamente."
+        ),
+        old=[
+            'save_json(m_replace, RUN_DIR / "metrics_ce_replace.json")\n',
+        ],
+        new=[
+            "save_json(m_replace, RUN_DIR / f\"metrics_ce_replace_k{CFG['k_prime']}.json\")\n",
+            'save_json(m_replace, RUN_DIR / "metrics_ce_replace.json")  # alias de la ultima\n',
+        ],
+    ),
+    Patch(
+        ident="C9-ce-metrics-blend",
+        notebook="src/cross_encoder.ipynb",
+        rationale="Ver C9-ce-metrics-replace.",
+        old=[
+            '    save_json(m_blend, RUN_DIR / "metrics_ce_blend.json")\n',
+        ],
+        new=[
+            "    save_json(m_blend, RUN_DIR / f\"metrics_ce_blend_k{CFG['k_prime']}.json\")\n",
+            '    save_json(m_blend, RUN_DIR / "metrics_ce_blend.json")  # alias de la ultima\n',
+        ],
+    ),
+    Patch(
+        ident="C9-ce-kprime",
+        notebook="src/cross_encoder.ipynb",
+        rationale="Ver C9-ce-params: la profundidad de reranking tambien estaba fijada.",
+        old=[
+            '    "k_prime": 50,\n',
+        ],
+        new=[
+            '    "k_prime": int(globals().get("K_PRIME", 50)),\n',
+        ],
+    ),
+    Patch(
         ident="C6-hybdir",
         notebook="src/error_analysis.ipynb",
         rationale=(
