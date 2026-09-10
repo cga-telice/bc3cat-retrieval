@@ -703,7 +703,9 @@ At the parent level (Figure~\ref{fig:lexical_performance_parent}), TF-IDF method
 \label{fig:lexical_performance_parent}
 \end{figure}
 
-At the item level (Figure~\ref{fig:lexical_performance_item}), the ranking inverted. BM25-unigram\_params achieved the highest Acc@1 (0.974), while TF-IDF methods dropped substantially (0.558--0.708). This $26.5$ percentage point gap between the best BM25 and best TF-IDF demonstrates that document-length normalization is critical for fine-grained catalog discrimination.
+At the item level (Figure~\ref{fig:lexical_performance_item}), the ranking inverted. BM25-unigram\_params achieved the highest Acc@1 (0.974), while TF-IDF methods dropped to $0.558$--$0.708$. The dissociation of Section~\ref{subsec:cross_family} is therefore already visible inside the lexical family, and in its sharpest form: the configuration that is best at finding the family is not the one that is best at finding the variant.
+
+The $26.5$ point gap between the best BM25 and the best TF-IDF has two separable causes, and Section~\ref{subsec:structured_results} measures both. $10.3$ points come from the parameter tokens, which only the BM25-params configuration carries: the same index queried with text alone scores $0.871$. The remaining $16.2$ points separate the two scoring functions. At matched tokenisation the scoring function is worth more still --- BM25-unigram reaches $0.869$ against TF-IDF-unigram's $0.627$, a gap of $24.3$ points --- of which phrase merging returns $8.2$ to TF-IDF. Attributing the whole $26.5$ to length normalisation, as one might from the figure alone, would conflate three effects that pull in different directions.
 
 \begin{figure}[htbt]
 \centering
@@ -1088,7 +1090,7 @@ Both approaches need the same two artefacts: a machine-readable schema for every
 \subsection{Error Analysis}
 \label{subsec:error_analysis}
 
-To understand the failure modes of each retrieval approach we classified \emph{every} failed query for three representative methods, using the five-category taxonomy of Section~\ref{subsec:error_taxonomy}. All three are evaluated on the same 16,590 queries, so their failure counts are directly comparable: 2,172 for BM25-unigram, 6,388 for the hybrid and 9,158 for BGE-M3-ColBERT.
+To understand the failure modes of each retrieval approach we classified \emph{every} failed query for three representative methods, using the five-category taxonomy of Section~\ref{subsec:error_taxonomy}. All three are evaluated on the same 16,590 queries, so their failure counts are directly comparable: 2,172 for BM25-unigram, 1,781 for the hybrid and 9,158 for BGE-M3-ColBERT.
 
 \subsubsection{Error Type Distribution}
 
@@ -1146,8 +1148,6 @@ Parent not in top-10     & 0.10\%  & 0.00\%  & 0.00\%  \\
 \end{tabular}
 \end{table}
 
-The neural method (BGE-M3 ColBERT) demonstrated strong performance at the parent level, with 54.3\% of errors involving correct parent identification but incorrect item selection --- more than 5× higher than BM25 (10.4\%). This suggests that dense embeddings effectively capture high-level semantic categories but struggle with fine-grained distinctions within categories. Conversely, BM25 exhibited higher wrong-parent rates (2.6\% vs. 0.3\%), indicating occasional failures at the coarse-grained category level. The hybrid approach showed intermediate behavior with 36.0\% right-parent-wrong-item errors.
-
 \subsubsection{Representative Error Examples}
 
 Table~\ref{tab:error_examples} presents representative examples. Numeric mismatches occurred when systems retrieved variants with different specifications (e.g., ``3 tubos'' vs ``5 tubos'') despite matching other attributes. Lexical confusion involved semantically related but distinct terms. ``Other'' errors primarily involved mismatched action verbs or scope modifiers.
@@ -1185,7 +1185,9 @@ OEB110bda & PVC pipe 110mm chamber drainage, \textbf{night shift}, no interval n
 
 \subsubsection{Method-Specific Error Patterns}
 
-Analysis of near-duplicate handling revealed stark differences between methods. BM25 produced 3,276 duplicate documents across 1,602 duplicate groups among its indexed sparse representations, while BGE-M3 ColBERT produced zero duplicates. This difference stems from BM25's purely lexical matching, which assigns identical sparse vectors to textual variants with negligible term frequency differences. The hybrid method, incorporating character n-gram features, eliminated these duplicates while attempting to preserve BM25's numeric discrimination capabilities.
+One limit is imposed by the representation before any scoring happens. After normalisation the whole catalog uses only $337$ distinct word types, and $47{,}513$ items are built from them. Under BM25-unigram's weighting, $3{,}276$ documents in $1{,}602$ groups end up with \emph{identical} sparse vectors: for those items the index cannot tell one from another at all. They cover $6.94\%$ of the test queries, which caps BM25-unigram's attainable Acc@1 at $0.9645$ --- against a measured $0.8691$, so collisions account for about a third of the headroom it leaves.
+
+Adding the $61$ parameter tokens raises the vocabulary to $398$ types and removes every collision: the parameter-token index has no duplicate vectors at all. Part of the $10.3$ points those tokens are worth is therefore not better weighting but a representation that can distinguish the items in the first place. Injectivity alone does not explain the gain, though: the uni+bigram index has $1{,}142$ types and no duplicates either, and scores $0.8267$, below plain unigram. What the parameter tokens add is not vocabulary but the specific $61$ distinctions the catalog is organised around.
 
 The hybrid has the lowest right-parent-wrong-item rate of the three ($8.13\%$ against $10.38\%$ for BM25 and $54.86\%$ for ColBERT), which is where its advantage over BM25 comes from: the character n-gram and neural signals resolve a subset of the within-template confusions that BM25 alone gets wrong. Its wrong-parent rate, however, is essentially BM25's ($2.60\%$ against $2.71\%$), so the fusion helps inside the template and not outside it.
 

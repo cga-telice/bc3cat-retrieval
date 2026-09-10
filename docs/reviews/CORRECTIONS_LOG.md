@@ -56,7 +56,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A35 | 1085, 1115-1116, abstract | Generalización excesiva | Acotar a este catálogo y a consultas derivadas del propio catálogo | R1-5.2, R2-5.1 | hecho |
 | A36 | 1108-1109 | Falta la limitación de validez externa | Añadir que las consultas no son descripciones independientes de profesionales | R2-7.1 | hecho |
 | A37 | 169-177 | Contribución sin acotar | Declarar que la aportación es una comparación empírica, no un método nuevo | R1-7.1 | hecho |
-| A38 | §4 (555-1086) | Comparaciones numéricas repetidas ya visibles en las tablas | Recortar ~30 %; mover detalle a material suplementario | R2-8.2 | pendiente |
+| A38 | §4 (555-1086) | Comparaciones numéricas repetidas ya visibles en las tablas | Recortar ~30 %; mover detalle a material suplementario | R2-8.2 | en curso |
 | A39 | tras 345 | Falta visión general metodológica | Diagrama de flujo dataset → muestreo → indexación → métodos → fusión → evaluación | R2-4.1 | hecho |
 | A40 | §3.1 | Falta cuantificar el solape `resumen`/`texto` | Nueva subsección con la medición (→ Fase 3a) | R2-2.3 | hecho |
 | A41 | 1127-1135 | Fortaleza infravalorada | Destacar la liberación de datos, consultas, etiquetas, salidas y configs | R2-6.1 | hecho |
@@ -316,6 +316,46 @@ en este dominio— se sostiene, y ahora está demostrada sobre el baseline que d
 usado y no usaba. Es más informativo así: sobre el baseline débil cabía la duda de si
 el resultado nulo era una propiedad del PRF o del poco margen que dejaba una primera
 etapa mediocre.
+
+### El vocabulario del catálogo son 337 palabras (N21)
+
+`scripts/probe_vector_collisions.py`. Tras normalizar, los 47.513 ítems se escriben
+con **337 tipos de palabra**. Con tan poco vocabulario hay filas de la matriz BM25 que
+son exactamente iguales:
+
+| Índice | Vocab | Grupos duplicados | Docs | Consultas afectadas | Techo Acc@1 | Medido |
+|---|---|---|---|---|---|---|
+| `bm25_unigram` | 337 | 1.602 | 3.276 | 6,94 % | **0,9645** | 0,8691 |
+| `bm25_unigram_params` | 398 | 0 | 0 | 0 % | 1,0000 | 0,9737 |
+| `bm25_unibigram` | 1.142 | 0 | 0 | 0 % | 1,0000 | 0,8267 |
+
+Para 3.276 documentos el índice unigrama no distingue un ítem de otro: no es que los
+ordene mal, es que son el mismo punto. Eso impone un **techo de 0,9645** sobre el
+0,8691 medido, o sea que las colisiones se comen un tercio del margen que le queda.
+
+Los 61 tokens de parámetro suben el vocabulario a 398 y eliminan **todas** las
+colisiones. Parte de los 10,3 puntos que valen (→ N20) no es mejor ponderación: es que
+la representación pasa a distinguir los ítems. Pero la inyectividad no basta —el índice
+uni+bigrama tiene 1.142 tipos, tampoco tiene colisiones, y saca 0,8267—: lo que aportan
+los tokens no es vocabulario, son las 61 distinciones concretas que organizan el
+catálogo.
+
+Verificada de paso la afirmación de §4.7.4 (*«3.276 duplicate documents across 1.602
+duplicate groups»*), que estaba sin respaldo en los artefactos: es exacta.
+
+### Dos cifras obsoletas en el análisis de errores (N22)
+
+Restos de la época de la fusión COMBSUM sin pesos, que contradecían la tabla que tenían
+encima:
+
+- «6.388 [fallos] for the hybrid» → **1.781**. El 6.388 es 16.590 × (1 − 0,6149), el
+  Acc@1 de la fusión sin pesos; la tabla ya decía 1.781.
+- Un párrafo entero tras la tabla jerárquica: *«54,3 % of errors»* (la tabla dice
+  54,86 % de **todas** las consultas), *«hybrid showed intermediate behavior with
+  36,0 % right-parent-wrong-item»* (la tabla dice 8,13 %). Eliminado: el párrafo
+  anterior ya lo dice bien y con las cifras de la tabla.
+
+---
 
 ### Selección en validación (C5 / R2 / B3)
 
