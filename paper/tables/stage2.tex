@@ -1,0 +1,17 @@
+% Generado por scripts/probe_stage2_extractors.py -- no editar a mano.
+\begin{table}[ht]
+\centering
+\caption{What stage 2 gets right, and what it costs. Axis-level figures are measured on 500 queries of the canonical test set against the parameter tuple that generated the target item; the candidate set is measured on all $16{,}590$ queries of the corresponding run. An unresolved axis acts as a wildcard and keeps the target in the set; a wrong value removes it.}
+\label{tab:stage2}
+\begin{tabular}{lccccc}
+\toprule
+ & \multicolumn{3}{c}{\textbf{Axes}} & \multicolumn{2}{c}{\textbf{Candidate set}} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-6}
+\textbf{Stage 2} & \textbf{Correct} & \textbf{Unresolved} & \textbf{Wrong} & \textbf{Mean size} & \textbf{Contains target} \\
+\midrule
+Rule-based & 98.0\% & 1.4\% & 0.5\% & 1.32 & 96.7\% \\
+Fine-tuned classifier & 76.1\% & 0.0\% & 23.9\% & 0.98 & 20.9\% \\
+Fine-tuned BIO tagger & 45.4\% & 54.1\% & 0.4\% & 65.54 & 69.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}

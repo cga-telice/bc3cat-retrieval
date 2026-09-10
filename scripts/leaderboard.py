@@ -30,14 +30,18 @@ METRICS = ["Acc@1", "Recall@5", "Recall@10", "MRR", "nDCG@10"]
 
 # Etiquetas para el manuscrito. Sin entrada aqui se usa el nombre del run.
 LABELS = {
+    # Ojo: `oracle` en estos runs sustituye la etapa 1 (identificacion de la
+    # plantilla) por la verdad de campo. NO es extraccion perfecta de parametros:
+    # la etapa 2 sigue siendo la misma. Se comprueba en que su Acc@1 de padre es
+    # exactamente 1.0000 mientras la etapa 2 mantiene su tasa de error.
     "structured_pipeline_rules": "Rule-based extraction + structured lookup",
-    "structured_pipeline_oracle_rules": r"\quad with oracle extraction",
-    "structured_pipeline_phi4_classify": "LLM classification + structured lookup",
-    "structured_pipeline_oracle_phi4_classify": r"\quad with oracle extraction",
-    "structured_pipeline": "Schema extraction + structured lookup",
-    "structured_pipeline_oracle": r"\quad with oracle extraction",
-    "structured_pipeline_classifier": "Trained classifier + structured lookup",
-    "structured_pipeline_bio_tagger": "BIO tagger + structured lookup",
+    "structured_pipeline_oracle_rules": r"\quad given the correct template",
+    "structured_pipeline_phi4_classify": "Phi-4 classification + structured lookup",
+    "structured_pipeline_oracle_phi4_classify": r"\quad given the correct template",
+    "structured_pipeline": "Llama-3.1-8B extraction + structured lookup",
+    "structured_pipeline_oracle": r"\quad given the correct template",
+    "structured_pipeline_classifier": "Fine-tuned classifier + structured lookup",
+    "structured_pipeline_bio_tagger": "Fine-tuned BIO tagger + structured lookup",
     "bm25_unigram_params__k1-0.60__b-0.35": "BM25 with parameter phrases (best lexical)",
     "bm25_unigram__k1-0.80__b-0.35": "BM25 unigram",
     "tfidf_unigram_phrases_replace": "TF-IDF with parameter phrases",

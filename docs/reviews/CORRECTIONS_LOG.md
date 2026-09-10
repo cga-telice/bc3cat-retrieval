@@ -78,6 +78,10 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | hecho |
 | N15 | 908-909 | Tabla 10, nivel de padre: la negrita marca `BGE-M3-sparse` (0,994) como mejor Acc@1 cuando `BGE-M3-colbert` alcanza 0,997 | Los treinta valores de la tabla coinciden con los artefactos; sólo el énfasis está mal puesto, y sugiere lo contrario de lo que dicen las cifras | hecho |
 | N14 | 467, 472 | *"retrieve … from 47,513 candidates"*: los índices densos indexan **47.514** documentos | `index/{dense_e5,dense_gte,dense_es_hiiamsid,dense_bge-m3}/meta.json` declaran `num_docs: 47514`, mientras BM25, TF-IDF y BGE-M3 declaran 47.513. La diferencia es el registro raíz `OEB#` ("ZANJAS, CANALIZACIONES Y TUBOS"), que no es un ítem recuperable: los densos lo llevan como distractor extra y los léxicos no. `dense_gte_instrQ` tiene 47.513, así que ni siquiera es consistente dentro de la misma familia. No altera ninguna conclusión, pero el corpus debe declararse igual para todos los métodos | hecho |
+| N16 | — | Las filas «oráculo» de la tabla de baselines estructurados se etiquetaron como *extracción de parámetros perfecta*. `oracle: true` sustituye la etapa 1 (la plantilla), no la etapa 2 | `structured_pipeline.py:97-101`; su Acc@1 de padre es exactamente 1,0000 y el de ítem sube sólo un punto. La afirmación correcta es más fuerte: BM25 gana aun regalándole la plantilla | hecho |
+| N17 | — | El clasificador afinado (0,209) y el etiquetador BIO (0,031) parecían modelos rotos frente a su propio 0,996 / 0,974 de validación | No lo están: `data_prep.py:8` los entrena sobre el texto largo y el pipeline los evalúa sobre el corto. Es un test entre distribuciones deliberado. Medido eje a eje en `scripts/probe_stage2_extractors.py` | hecho |
+| N18 | — | Los `structured_pipeline*` declaran `text_field: "text_norm"` y consultan un índice denso construido sobre `text` | Es la causa de que su Acc@1 de padre sea 0,9848 y el de `dense_e5` suelto 0,9817. Reejecutado con texto crudo: reproduce 0,9817 exacto y el ítem se mueve 0,29 puntos | hecho (declarado en el manuscrito) |
+| N19 | Tabla 1 | *«Single-item templates 25 (0 %)»* son **5**; el factor de expansión medio (1583,8) no representa a ninguna plantilla (mediana 144, máximo 6.336); los porcentajes 99 % / 0 % son 99,8 % / 0,2 % | Recontado sobre `OEB_long_norm.parquet`: 30 `parent_key`, 25 paramétricos con 47.508 ítems, 5 ítems sueltos | hecho |
 | N13 | — | `index/*/meta.json` no registra qué backend de codificación se usó | Ni `dense_gte/meta.json` ni los demás guardan si se codificó con sentence-transformers o con el camino alternativo, de modo que N12 no era detectable desde los artefactos. `software.sklearn` es `null` y `corpus_hash` también | hecho |
 ## Bloque C — Correcciones de código
 
@@ -108,7 +112,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | análisis de errores hecho; falta bootstrap y leaderboards |
 | R8 | *(N10)* GTE sin prefijos | ~10 min | hecho junto con la reejecución de GTE |
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
-| R10 | **B6** — baselines estructurados | 1 día | código y tabla hechos; falta redactar la sección de resultados |
+| R10 | **B6** — baselines estructurados | 1 día | hecho (§3.2.5 y §4.8 redactadas, dos tablas generadas) |
+| R12 | Sensibilidad del pipeline estructurado al texto de consulta (N18) | ~15 min | hecho (`*_rawq`) |
 | R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | pendiente |
 
 ## Bloque F — Reencuadre y difusión
@@ -332,9 +337,90 @@ Tabla en `eval/structured/lb_item.tex`:
 
 Responde a la última pregunta del Revisor 2 y **sale a favor del trabajo**: la
 recuperación textual bien ajustada gana al emparejamiento estructurado por reglas
-incluso concediéndole extracción de parámetros perfecta. Se reportan también los dos
-pipelines fallidos (0,209 y 0,031): omitirlos sería la misma selección de resultados
-que se reprocha al manuscrito con `hiiamsid`.
+incluso regalándole la plantilla correcta. Se reportan también los dos pipelines
+fallidos (0,209 y 0,031): omitirlos sería la misma selección de resultados que se
+reprocha al manuscrito con `hiiamsid`.
+
+**Corrección a la primera versión de esta tabla (N16).** Las filas «oráculo» se
+etiquetaron como *extracción de parámetros perfecta*. Es falso: `oracle: true`
+sustituye la **etapa 1** (identificar la plantilla) por la verdad de campo y deja la
+etapa 2 intacta (`src/retrievers/structured_pipeline.py:97-101`). Se comprueba en que
+su Acc@1 de padre es exactamente **1,0000** mientras el ítem sólo sube un punto. La
+afirmación correcta es más fuerte y más precisa: el pipeline estructurado no alcanza a
+BM25 ni cuando se le dice a qué plantilla pertenece la consulta. Corregido en
+`scripts/leaderboard.py`, en la contribución 3 y en el pie de la tabla.
+
+**Las cinco configuraciones comparten Acc@1 de padre: 0,9848 exacto.** Es la prueba
+mecánica de la disociación: la etapa 1 decide la familia y las etapas 2-3 la variante,
+así que el nivel de padre no distingue a ningún sistema de la familia y el nivel de
+ítem los separa de 0,031 a 0,903.
+
+### La etapa 2, medida por separado (N17)
+
+`scripts/probe_stage2_extractors.py` (n=500, semilla 20260910) compara lo que extrae
+la etapa 2 contra la tupla de parámetros que generó el ítem consultado, y lo cruza con
+el tamaño del conjunto que devuelve la etapa 3, leído de los runs persistidos:
+
+| Etapa 2 | Ejes correctos | Sin resolver | Erróneos | Conjunto medio | Contiene el objetivo |
+|---|---|---|---|---|---|
+| Reglas | 98,0 % | 1,4 % | 0,5 % | 1,32 | 96,7 % |
+| Clasificador afinado | 76,1 % | 0,0 % | 23,9 % | 0,98 | 20,9 % |
+| Etiquetador BIO | 45,4 % | 54,1 % | 0,4 % | 65,54 | 69,5 % |
+
+Tres cosas que no se veían en el Acc@1:
+
+1. **Los dos modelos supervisados no están rotos.** El *checkpoint* carga entero
+   (194/194 tensores de cabeza, verificado) y sus valores son sensatos. Su
+   `training_log.json` declara 0,996 de acierto por consulta y 0,974 de F1 de span
+   porque `src/pipeline/training/data_prep.py:8` los entrena sobre el **texto largo** y
+   el pipeline los aplica sobre el **texto corto**. Es un test entre distribuciones,
+   deliberado y documentado en el propio código. Lo que mide es que un modelo que lee
+   los parámetros en una redacción no los lee en la otra, aunque la larga contenga el
+   94,1 % de los tokens de la corta.
+2. **Los dos modos de fallo tienen consecuencias opuestas**, porque la etapa 3 filtra y
+   no puntúa. Un eje sin resolver es un comodín y el objetivo sigue en el conjunto; un
+   eje erróneo lo saca y no lo recupera ninguna profundidad. Se ve en la tabla de
+   resultados: el clasificador tiene Recall@10 0,213 contra Acc@1 0,209 (no hay nada
+   que recuperar) y el etiquetador BIO 0,258 contra 0,031 (ocho veces).
+3. **Un filtro no es un ranking.** Con reglas el conjunto contiene el objetivo el
+   96,7 % de las veces y el Acc@1 es 0,903: los 6,4 puntos de diferencia son consultas
+   en las que el objetivo está en el conjunto pero no primero, porque dentro del
+   conjunto sólo queda el orden del catálogo. Es la imagen especular del fallo
+   neuronal, alcanzada desde el otro lado.
+
+### El texto de consulta de los pipelines estructurados (N18)
+
+Los `structured_pipeline*` declaran `text_field: "text_norm"` y por tanto alimentan la
+etapa 1 con el texto normalizado, mientras el índice denso que consultan (`dense_e5`)
+se construyó sobre `text`. Es la única forma en que esta familia no corre exactamente
+como el resto del estudio, y explica la diferencia de 0,3 puntos entre el Acc@1 de
+padre del pipeline (0,9848) y el del `dense_e5` suelto (0,9817), que hasta ahora no
+tenía explicación.
+
+Medido, no supuesto: `structured_pipeline_rules_rawq` es el mismo pipeline con
+`text_field: "text"`.
+
+| Run | Ítem Acc@1 | Recall@5 | Padre Acc@1 |
+|---|---|---|---|
+| `structured_pipeline_rules` (texto normalizado) | 0,9033 | 0,9667 | 0,9848 |
+| `structured_pipeline_rules_rawq` (texto crudo) | 0,9004 | 0,9637 | **0,9817** |
+
+El padre reproduce exactamente el 0,9817 del `dense_e5` suelto, lo que confirma el
+diagnóstico, y el ítem se mueve 0,29 puntos. Se mantienen los runs normalizados en la
+tabla (la familia es internamente consistente) y se declara la sensibilidad medida en
+el manuscrito, en vez de absorberla.
+
+### Estadísticas del dataset: dos cifras mal (N19)
+
+- Tabla 1, fila *«Single-item templates ($=$1 variants) 25 (0 %)»*: son **5**, no 25.
+  El 25 es el número de plantillas **paramétricas**, mal etiquetado. De los 30
+  `parent_key` del corpus, 25 acaban en `$` y generan 47.508 ítems; los otros 5
+  (`OEB060`, `OEB210`, `OEB220`, `OEB260`, `OEB270`) son ítems sueltos que son su
+  propio padre.
+- El *«factor de expansión medio 1583,8»* es 47.513/30 y no representa a ninguna
+  plantilla: la mediana de variantes por plantilla paramétrica es **144** y el máximo
+  **6.336**. Sustituido por media/mediana/mín/máx sobre las 25 paramétricas.
+- «Queries with numeric parameters 47.430 (99 %)» → 99,8 %; «83 (0 %)» → 0,2 %.
 
 ---
 

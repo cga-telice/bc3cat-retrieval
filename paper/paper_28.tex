@@ -196,7 +196,7 @@ Our contributions are the following. The primary contribution is an empirical ch
 \begin{itemize}
     \item We document a systematic dissociation between family-level and variant-level retrieval in parametric catalogs. Every multilingual dense retriever we evaluate identifies the correct parametric family almost perfectly and the correct variant almost never, with gaps of up to 92.9 percentage points. The dual evaluation protocol that exposes this --- scoring each system at both levels of the catalog hierarchy --- is itself transferable to any hierarchically organised technical catalog.
     \item We quantify the property of the benchmark that governs which methods succeed: how much of each query is already present verbatim in its target, lexically and numerically. Making this explicit is what distinguishes a genuine retrieval result from an artefact of how the evaluation pairs were constructed.
-    \item We compare four families of approach under identical conditions --- lexical, neural, hybrid with reranking, and structured attribute matching over automatically extracted parameters --- and find that textual retrieval outperforms structured matching even when the latter is granted perfect parameter extraction.
+    \item We compare four families of approach under identical conditions --- lexical, neural, hybrid with reranking, and structured attribute matching over automatically extracted parameters --- and find that textual retrieval outperforms structured matching even when the latter is handed the correct template for free.
     \item We release a benchmark derived from the OEB subcategory of ADIF's parametric railway catalog: 47,513 items generated from 30 templates, the exact query set as a versioned list of identifiers, per-query outputs for every system, and the parsing tools that convert the raw BC3 format into a standard retrieval collection~\cite{bc3cat_dataset}.
 \end{itemize}
 
@@ -262,7 +262,10 @@ Table~\ref{tab:dataset_statistics} presents key characteristics of the processed
 \hline
 Total unique items & 47,513 \\
 Base templates & 30 \\
-Average expansion factor & 1583.8 \\
+\quad of which parametric & 25 (47,508 items) \\
+\quad of which single-item & 5 \\
+Variants per parametric template (mean / median) & 1900.3 / 144 \\
+Variants per parametric template (min / max) & 3 / 6,336 \\
 \hline
 \textit{Short-Format description (`resumen')} (query) & \\
 \quad Mean length (words) & 19.7 \\
@@ -274,9 +277,8 @@ Average expansion factor & 1583.8 \\
 \quad Median length (words) & 83 \\
 \quad Std deviation (words) & 15.0 \\
 \hline
-Queries with numeric parameters & 47,430 (99\%) \\
-Queries without numeric parameters & 83 (0\%) \\
-Single-item templates ($=$1 variants) & 25 (0\%) \\
+Queries with numeric parameters & 47,430 (99.8\%) \\
+Queries without numeric parameters & 83 (0.2\%) \\
 \hline
 \end{tabular}
 \end{table}
@@ -376,7 +378,7 @@ Because queries are the catalog's own \textit{resumen} field and targets its \te
 \input{tables/overlap_summary.tex}
 \end{table}
 
-Two facts follow. First, the target contains on average $94.10\%$ of the query's tokens and $99.96\%$ of its numeric values verbatim, so the task rewards literal matching and a strong lexical result should not be read as evidence of semantic understanding. Second, full token containment holds for only $7.79\%$ of queries, and the $30$ templates generate on average $1{,}584$ variants each that share nearly all of their vocabulary. The difficulty of the benchmark therefore lies not in bridging a vocabulary gap but in discriminating among near-identical candidates --- which is precisely the regime in which the methods compared here diverge most sharply.
+Two facts follow. First, the target contains on average $94.10\%$ of the query's tokens and $99.96\%$ of its numeric values verbatim, so the task rewards literal matching and a strong lexical result should not be read as evidence of semantic understanding. Second, full token containment holds for only $7.79\%$ of queries, and the $25$ parametric templates each generate a set of variants that share nearly all of their vocabulary --- $144$ for the median template, $6{,}336$ for each of the six largest. The difficulty of the benchmark therefore lies not in bridging a vocabulary gap but in discriminating among near-identical candidates --- which is precisely the regime in which the methods compared here diverge most sharply.
 
 \subsubsection{Methodological Overview}
 
@@ -543,12 +545,41 @@ We employ a two-stage cascade: efficient first-stage retrieval followed by expen
 \begin{itemize}
     \item Model: \texttt{cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}, a multilingual reranker trained on mMARCO, the machine-translated multilingual version of MS MARCO, whose training languages include Spanish
     \item Input format: \texttt{[CLS] query [SEP] document [SEP]}, truncated to 320 tokens
-    \item Reranking depth: top 50 candidates from the first stage
+    \item Reranking depth: top 20, 50 and 100 candidates from the first stage
     \item Base retrievers: BM25-unigram, BGE-M3-ColBERT, and the three-way hybrid
     \item Score combination: \textit{replace} (cross-encoder scores only) and \textit{blend} (interpolation with the first-stage score, $\lambda = 0.6$)
 \end{itemize}
 
 The cross-encoder produces a relevance score for each query--document pair through joint encoding and a classification head.
+
+\subsubsection{Structured Attribute Matching}
+\label{subsec:structured}
+
+Every system described so far treats the catalog as free text. A parametric catalog invites the opposite treatment: if an item is a template plus a tuple of attribute values, the natural tool is not ranking but extraction followed by an exact lookup. We implement that alternative as a baseline family, so that the comparison in Section~\ref{subsec:structured_results} is between methods and not between a method and an assumption.
+
+The pipeline has three stages:
+
+\begin{enumerate}
+    \item \textbf{Template identification.} The query is encoded with multilingual-e5-base and matched against the item-level dense index; the template of the top-ranked item is taken as the query's template.
+    \item \textbf{Parameter extraction.} Given that template, its schema --- the set of axes and the closed list of admissible values for each --- is used to assign a value to every axis from the query text. An axis that cannot be resolved is left unset.
+    \item \textbf{Catalog lookup.} The extracted tuple is matched against the items of that template. A fully resolved tuple identifies exactly one item; an unset axis acts as a wildcard, so a partially resolved tuple identifies the subset consistent with whatever was resolved.
+\end{enumerate}
+
+The output is assembled into a ranking of $K$ items in three tiers: the items returned by the lookup, then the remaining items of the same template, then the dense ranking of stage~1 as filler. Within a tier the order is the catalog's own, because the lookup returns set membership and not a graded score. That property is not incidental --- Section~\ref{subsec:structured_results} shows it governs how these systems fail.
+
+Stages 1 and 3 are held fixed across configurations, which differ only in how stage 2 assigns values:
+
+\begin{itemize}
+    \item \textbf{Rule-based:} normalised string matching of each admissible value against the query, plus a small set of regular expressions for numeric axes written in running text (\textit{``de 2 tubos''}, \textit{``3 T,''}).
+    \item \textbf{Phi-4 classification:} the admissible values of each axis are presented to Phi-4 (14B, served through Ollama) as a closed set, with the instruction to copy one of them verbatim or answer \texttt{null}.
+    \item \textbf{Llama-3.1-8B extraction:} the same schema is shown, but the model is asked to extract the value of each axis from the query rather than to select from the list, so its answers must afterwards be normalised back onto the admissible set.
+    \item \textbf{Fine-tuned classifier:} multilingual-e5-base with one linear classification head per (template, axis) pair --- 97 heads over the 25 parametric templates --- each predicting one admissible value or \texttt{null}.
+    \item \textbf{Fine-tuned BIO tagger:} token-level sequence labelling over the same encoder, tagging value spans that are then normalised against the schema.
+\end{itemize}
+
+The two supervised extractors are trained on the long-form item description and applied to the short form that serves as query. This is deliberate: the query text is never seen in training, so their evaluation here is a cross-distribution test rather than a re-reading of the training distribution. Section~\ref{subsec:structured_results} reports what that costs.
+
+Because stage 1 is a dense retriever, it is being asked for exactly what Section~\ref{sec:results} shows dense retrievers do well --- the family, not the variant. To separate its contribution from the rest, the three strongest configurations are also run with stage 1 replaced by the ground-truth template. Those variants do not grant perfect extraction; stage 2 is unchanged. They bound only what template identification costs.
 
 \subsection{Evaluation Protocol}
 
@@ -647,6 +678,7 @@ All experiments run under Python 3.11.8 in a single container image. Lexical ret
 For reproducibility, the exact set of $16{,}590$ evaluation queries is released as a versioned list of catalog identifiers rather than regenerated by sampling, model versions are pinned, and complete configurations are stored in YAML files. Code, data, per-query outputs and configurations are openly available at~\cite{bc3cat_software,bc3cat_dataset}.
 
 \section{Results}
+\label{sec:results}
 The results across all evaluated configurations converge on a consistent finding: lexical methods, when properly tuned with domain-specific parameter phrases, outperform neural and hybrid approaches at the item level by a substantial margin. The following subsections detail the performance of each method family, culminating in a cross-method comparison in Section~\ref{sec:4.7_Overall Performance Summary}.
 
 \subsection{Lexical Methods Comparative Analysis}
@@ -1024,6 +1056,38 @@ Second, \textbf{blend always beats replace, by a wide margin}: $+0.33$ to $+0.39
 Third, \textbf{depth barely matters, and what effect it has runs in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$, the hybrid from $0.451$ to $0.426$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend the three depths are within $0.004$ of each other for every system, with a slight preference for the deepest. The declared choice of depth, in other words, was never the decision it appeared to be: what determines the outcome is whether the first-stage score is kept, not how many candidates are rescored.
 
 The practical reading is that a general-purpose reranker has nothing to add here. Its training objective --- is this passage about this question --- is satisfied equally by every variant of a template, which is precisely the distinction the task requires. Reranking would only help if the reranker were trained to compare parameter values, and no off-the-shelf model is.
+
+\subsection{Structured Attribute Matching}
+\label{subsec:structured_results}
+
+If the catalog is generated from templates and attribute tuples, the obvious objection to everything above is that retrieval is the wrong tool: extract the attributes and look the item up. Table~\ref{tab:structured_baselines} reports that alternative, built as described in Section~\ref{subsec:structured} and measured on the same queries as every other system in this study.
+
+\input{tables/structured_baselines.tex}
+
+The answer to the objection is that structured matching is competitive but does not win. The best configuration --- rule-based extraction --- reaches $0.903$ at item level, above every neural system and above the best hybrid ($0.893$), and still $7.0$ points below BM25 with parameter phrases ($0.974$). Replacing stage 1 with the ground-truth template adds only $1.0$ point, to $0.914$: even told which template the query belongs to, structured matching does not catch a lexical retriever that is told nothing.
+
+\paragraph{The pipeline is the dissociation, made mechanical.}
+This family separates the two levels of the task by construction: stage 1 decides the family, stages 2 and 3 decide the variant. The measurements follow exactly. All five configurations share stage 1, and all five score \emph{identically} at parent level, $0.9848$; the three variants given the ground-truth template score $1.0000$ by construction. At item level the same five span $0.031$ to $0.903$. Nothing about the family-level task distinguishes these systems, and everything about the variant-level task does.
+
+The comparison with the dense retriever they all contain makes the point sharper. Multilingual-e5-base alone scores $0.982$ at parent level and $0.136$ at item level. Attaching an exact lookup over extracted attributes to that same retriever leaves the parent level where it was and moves the item level to $0.903$. The dense encoder was never the part that was failing to find the family.
+
+The residual difference between those two parent-level figures --- $0.9848$ for the pipelines against $0.9817$ for the standalone run --- is not noise and is worth stating, because it is the one respect in which this family is not run exactly like the rest of the study. Each index in this work supplies queries in the text form it was built on, and the structured pipelines declare the normalised form while the dense index they call declares the raw one. Re-running the rule-based pipeline so that stage 1 receives the same raw text as the standalone dense run reproduces $0.9817$ at parent level exactly, and moves item-level accuracy from $0.9033$ to $0.9004$. The choice is therefore worth $0.3$ points and is reported here rather than absorbed.
+
+\paragraph{Where the variants differ is stage 2, and how they fail differs more than how often.}
+Table~\ref{tab:stage2} decomposes it. The rule-based extractor resolves $98.0\%$ of axes correctly, leaves $1.4\%$ unresolved and is outright wrong on $0.5\%$. The fine-tuned classifier is never uncertain --- it abstains on no axis at all --- and is wrong on $23.9\%$. The BIO tagger is almost never wrong ($0.4\%$) but leaves $54.1\%$ of axes unresolved.
+
+\input{tables/stage2.tex}
+
+Those two failure modes have opposite consequences, because stage 3 is a filter and not a scorer. An unresolved axis is a wildcard: the target stays in the candidate set, which merely grows. A wrong value removes the target from the set, and no reranking depth recovers it. The table of results shows this directly: the classifier's Recall@10 ($0.213$) is indistinguishable from its Acc@1 ($0.209$), while the BIO tagger's Recall@10 ($0.258$) is eight times its Acc@1 ($0.031$). One system fails by committing, the other by declining to.
+
+\paragraph{Supervised extraction does not survive the change of text.}
+The two fine-tuned extractors are trained on the long-form item description and applied to the short form used as query. Their own training logs report $0.996$ query-level accuracy and $0.974$ span $F_1$ on held-out data from the long form. Applied to the query text, the classifier produces a fully correct tuple for $22.4\%$ of queries. The drop is not a defect of the models but the result of the test they were set: the two texts describe the same item, and Section~\ref{subsec:overlap} shows the long form contains $94.1\%$ of the short form's tokens, yet a model that reads parameter values reliably in one does not read them in the other. The rule-based matcher, which learns nothing and only looks for the admissible values as literal strings, transfers without loss.
+
+\paragraph{A filter is not a ranking.}
+One further cost is visible only by comparing columns. For the rule-based pipeline the candidate set contains the target for $96.7\%$ of queries, but Acc@1 is $0.903$. The missing $6.4$ points are queries where the target is in the set and not at the top: with several items consistent with a partially resolved tuple, the pipeline has no basis for ordering them and falls back on catalog order. A retrieval model would use the rest of the query text to break that tie; this pipeline has thrown that text away by stage 3. It is the mirror image of the neural failure documented above --- a system with perfect family-level behaviour and no way to discriminate inside the family --- arrived at from the opposite direction.
+
+\paragraph{What this costs to build.}
+The rule-based pipeline requires a machine-readable schema for every template, listing each axis and its admissible values, plus hand-written patterns for numeric axes expressed in running text. That schema exists here because the catalog is generated from it. BM25 with parameter phrases requires the catalog text, a tokenisation rule that keeps parameter phrases intact, and two scalars. The structured pipeline is the more expensive artefact and the less accurate one, and it degrades discontinuously when the schema and the text disagree, which is what the classifier and tagger rows measure.
 
 \subsection{Error Analysis}
 \label{subsec:error_analysis}

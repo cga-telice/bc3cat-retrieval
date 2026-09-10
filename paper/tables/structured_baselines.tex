@@ -1,7 +1,7 @@
 % Generado por scripts/leaderboard.py -- no editar a mano.
 \begin{table}[ht]
 \centering
-\caption{Structured attribute matching versus textual retrieval at item level ($n=16{,}590$). Oracle rows are given perfect parameter extraction and therefore upper-bound each pipeline.}
+\caption{Structured attribute matching versus textual retrieval, at item level on the canonical test set ($n=16{,}590$). Every structured pipeline shares Stage 1 and Stage 3 and differs only in how Stage 2 extracts parameter values. Indented rows replace Stage 1 with the ground-truth template and therefore upper-bound each pipeline.}
 \label{tab:structured_baselines}
 \begin{tabular}{lccccc}
 \toprule
@@ -10,13 +10,13 @@
 BM25 with parameter phrases (best lexical) & \textbf{0.974} & 0.985 & 0.985 & 0.979 & 0.980 \\
 BGE-M3 ColBERT (best neural) & 0.448 & 0.753 & 0.785 & 0.580 & 0.630 \\
 Rule-based extraction + structured lookup & 0.903 & 0.967 & 0.967 & 0.917 & 0.929 \\
-\quad with oracle extraction & 0.914 & 0.977 & 0.978 & 0.927 & 0.939 \\
-LLM classification + structured lookup & 0.877 & 0.878 & 0.878 & 0.877 & 0.877 \\
-\quad with oracle extraction & 0.886 & 0.887 & 0.888 & 0.887 & 0.887 \\
-Schema extraction + structured lookup & 0.809 & 0.954 & 0.972 & 0.857 & 0.884 \\
-\quad with oracle extraction & 0.821 & 0.968 & 0.987 & 0.869 & 0.898 \\
-Trained classifier + structured lookup & 0.209 & 0.211 & 0.213 & 0.211 & 0.211 \\
-BIO tagger + structured lookup & 0.031 & 0.154 & 0.258 & 0.103 & 0.126 \\
+\quad given the correct template & 0.914 & 0.977 & 0.978 & 0.927 & 0.939 \\
+Phi-4 classification + structured lookup & 0.877 & 0.878 & 0.878 & 0.877 & 0.877 \\
+\quad given the correct template & 0.886 & 0.887 & 0.888 & 0.887 & 0.887 \\
+Llama-3.1-8B extraction + structured lookup & 0.809 & 0.954 & 0.972 & 0.857 & 0.884 \\
+\quad given the correct template & 0.821 & 0.968 & 0.987 & 0.869 & 0.898 \\
+Fine-tuned classifier + structured lookup & 0.209 & 0.211 & 0.213 & 0.211 & 0.211 \\
+Fine-tuned BIO tagger + structured lookup & 0.031 & 0.154 & 0.258 & 0.103 & 0.126 \\
 \bottomrule
 \end{tabular}
 \end{table}
