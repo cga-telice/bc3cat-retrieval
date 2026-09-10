@@ -114,7 +114,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
 | R10 | **B6** — baselines estructurados | 1 día | hecho (§3.2.5 y §4.8 redactadas, dos tablas generadas) |
 | R12 | Sensibilidad del pipeline estructurado al texto de consulta (N18) | ~15 min | hecho (`*_rawq`) |
-| R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | pendiente |
+| R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | pendiente (generador listo, 1,2 s/consulta con 4 en paralelo) |
+| R13 | **N20** — qué aporta la firma de parámetros y cuánto cuesta calcularla | ~30 min | hecho |
 
 ## Bloque F — Reencuadre y difusión
 
@@ -390,6 +391,64 @@ BM25 ni cuando se le dice a qué plantilla pertenece la consulta. Corregido en
 mecánica de la disociación: la etapa 1 decide la familia y las etapas 2-3 la variante,
 así que el nivel de padre no distingue a ningún sistema de la familia y el nivel de
 ítem los separa de 0,031 a 0,903.
+
+### Qué es de verdad «BM25 + frases de parámetros» (N20)
+
+El índice `bm25_unigram_params` no indexa una variante de tokenización. Indexa el
+campo `text_word_params`, que `src/data.ipynb` construye así:
+
+```python
+df["param_tokens"]     = df["parameters_norm"].map(build_param_tokens)
+df["text_word_params"] = df["text_word"] + " " + " ".join(df["param_tokens"])
+```
+
+Los `param_tokens` (`param_terreno_blando`, `param_pavimento_con_reposición`, …) no
+salen del texto: salen del campo `parameters` del registro. Y como la consulta y el
+objetivo son el mismo ítem, la consulta llega con **la misma firma que su objetivo**:
+idéntica en los 47.513 pares, y única dentro de su plantilla en los 47.513 casos.
+
+Es decir: el sistema principal del estudio recibe con cada consulta la tupla de
+parámetros ya resuelta contra el esquema — exactamente el paso que el pipeline
+estructurado tiene que ejecutar. El manuscrito lo describía como una de tres
+«variantes de tokenización».
+
+**Cuánto vale y cuánto cuesta**, medido con `scripts/probe_param_tokens.py` y
+`scripts/probe_computed_params.py` sobre el mismo índice, cambiando sólo la consulta:
+
+| Consulta | Ítem Acc@1 | R@5 | Padre Acc@1 |
+|---|---|---|---|
+| Sólo el texto | 0,8706 | 0,9343 | 0,9733 |
+| Sólo la firma | 0,2193 | 0,7602 | 0,2193 |
+| Texto + firma **leída del registro** (lo publicado) | 0,9737 | 0,9849 | 0,9852 |
+| Texto + firma **extraída del texto de la consulta** | **0,9744** | 0,9843 | 0,9860 |
+
+Las dos primeras filas acotan el problema: la firma vale 10,3 puntos y por sí sola no
+vale nada, porque el vocabulario de ejes se repite entre plantillas.
+
+La cuarta fila lo resuelve. Calcular la tupla en vez de leerla —plantilla propuesta por
+E5, valores asignados por el extractor por reglas, las etapas 1 y 2 del pipeline
+estructurado— da **0,9744**, ligeramente por encima de lo publicado. La tupla calculada
+coincide con la del registro en el 93,5 % de las consultas y la diferencia no cuesta
+nada en agregado. **La cifra publicada no es un artefacto**: es reproducible por un
+sistema realizable.
+
+Lo que sí había que corregir es la descripción, y lo que sale de corregirla es un
+resultado mejor que el que había:
+
+> Los dos sistemas necesitan la misma tupla y la obtienen igual. Se diferencian sólo en
+> qué hacen con ella. Usada como evidencia de consulta da 0,974; usada como filtro
+> exacto da 0,903. Los siete puntos son el precio de la restricción dura.
+
+La recomendación deja de ser «usa recuperación léxica en vez de emparejamiento
+estructurado» y pasa a ser «extrae los atributos, y luego ordena con ellos en vez de
+filtrar por ellos», que es más estrecha y más útil.
+
+Verificación del propio script: `probe_computed_params.py` reconstruye los
+`param_tokens` almacenados desde `parameters_norm` en los 47.513 ítems antes de medir
+nada, y la formulación `stored` reproduce exactamente el run oficial (0,9737 / 0,9852).
+
+Corregido en §3.2.1 (qué son los tokens y de dónde salen), §4.8 (la comparación y la
+tabla), la Discusión (la asimetría de la comparación) y las Conclusiones.
 
 ### La etapa 2, medida por separado (N17)
 

@@ -1,0 +1,18 @@
+% Generado por scripts/probe_computed_params.py -- no editar a mano.
+\begin{table}[ht]
+\centering
+\caption{What the parameter tuple contributes, and how it is used. All rows share one BM25 index over the catalog text plus the parameter tokens ($k_1{=}0.60$, $b{=}0.35$) and differ only in how the query is formed, except the last, which uses the same extracted tuple as an exact filter instead of as query terms. Canonical test set, $n=16{,}590$.}
+\label{tab:param_tokens}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Query representation} & \textbf{Acc@1} & \textbf{Recall@5} & \textbf{MRR@10} & \textbf{Parent Acc@1} \\
+\midrule
+Query text alone & 0.871 & 0.934 & 0.898 & 0.973 \\
+Parameter tuple alone & 0.219 & 0.760 & 0.431 & 0.219 \\
+Query text + tuple read from the catalog record & 0.974 & 0.985 & 0.979 & 0.985 \\
+Query text + tuple extracted from the query & 0.974 & 0.984 & 0.979 & 0.986 \\
+\midrule
+Same extracted tuple, as an exact filter & 0.903 & 0.967 & 0.917 & 0.985 \\
+\bottomrule
+\end{tabular}
+\end{table}
