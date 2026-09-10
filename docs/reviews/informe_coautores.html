@@ -334,7 +334,7 @@ footer{
 <header class="masthead">
   <p class="eyebrow">AUTCON-D-26-03592 · Revisión</p>
   <h1>Qué nos dijeron, qué había de verdad, y qué hemos hecho</h1>
-  <p class="standfirst">Un recorrido por la revisión del artículo antes de que leáis el borrador. La conclusión corta: los revisores tenían razón casi siempre, encontramos veintiún defectos más que ellos no vieron, y el resultado principal sobrevive intacto.</p>
+  <p class="standfirst">Un recorrido por la revisión antes de que leáis el borrador. La conclusión corta: los revisores tenían razón casi siempre, aparecieron veintiún defectos que ninguno vio, y el resultado principal sobrevive intacto. Lo que más ha cambiado no son las cifras, sino cómo está contado lo que perseguíamos.</p>
   <div class="byline">
     <span><b>Manuscrito</b> · rechazado en Automation in Construction</span>
     <span><b>Rama</b> · <code>paper/autcon-r1-revision</code></span>
@@ -343,13 +343,15 @@ footer{
 </header>
 
 <section>
-  <p class="lede">Lo que os pido no es que verifiquéis las correcciones —eso está trazado una por una en el registro del repositorio—, sino que reviséis <strong>lo que ha cambiado el artículo al corregirlas</strong>. Hay cosas que ya no dicen lo mismo, y llevan vuestro nombre.</p>
-
   <div class="figures">
     <div class="fig"><span class="n">91</span><span class="k">defectos en el registro, 89 cerrados</span></div>
     <div class="fig"><span class="n">21</span><span class="k">no los vio ningún revisor</span></div>
     <div class="fig"><span class="n">3</span><span class="k">experimentos nuevos</span></div>
     <div class="fig"><span class="n">0,974</span><span class="k">el resultado principal, sin moverse</span></div>
+  </div>
+
+  <div class="col">
+    <p class="lede">Las correcciones de erratas están trazadas una a una en el registro del repositorio y no necesitan que nadie las revise. Lo que sí conviene mirar con calma es la Parte 4: hay cosas del artículo que ya no dicen lo mismo.</p>
   </div>
 </section>
 
@@ -366,7 +368,7 @@ footer{
     <p>Inconsistencias numéricas, tablas mal etiquetadas, terminología, formato de citas. No cuestionan el trabajo, sólo cómo está contado. Todos verificados; todos corregidos.</p>
 
     <h3>Objeciones al objetivo del banco de pruebas (7 puntos)</h3>
-    <p>Éstas sí son de fondo, y cuatro de las siete son la misma vista desde ángulos distintos.</p>
+    <p>Éstas son de fondo, y cuatro de las siete son la misma vista desde ángulos distintos.</p>
   </div>
 
   <div class="scroll">
@@ -385,6 +387,8 @@ footer{
   </div>
 
   <div class="col">
+    <p>B1, B5, B6 y B7 dicen todas lo mismo: <em>vuestro montaje le pone las cosas fáciles a lo léxico y no se parece a una búsqueda real</em>. Y es cierto. La Parte 4 explica por qué eso era el control del experimento y no un descuido, y por qué el artículo no lo estaba contando así.</p>
+
     <h3>Decisión editorial (2 puntos)</h3>
     <p>El Editor Asociado habla de <em>«limited alignment with the domain of construction, little novelty»</em>. Eso no es un defecto que se corrija: es un juicio de encaje con la revista. Y los dos revisores discrepan sobre si hace falta edición lingüística.</p>
   </div>
@@ -397,8 +401,8 @@ footer{
   </div>
 
   <div class="col">
-    <p class="lede">Verificamos cada objeción contra el código y los artefactos, no contra el manuscrito. Los revisores tenían razón en todas las que comprobamos. Y por el camino aparecieron veintiún defectos que ninguno de los dos había visto.</p>
-    <p>Éstos son los que importan. La lista completa está en <code>docs/reviews/CORRECTIONS_LOG.md</code>.</p>
+    <p class="lede">Cada objeción se verificó contra el código y los artefactos, no contra el manuscrito. Los revisores tenían razón en todas las comprobadas. Y por el camino aparecieron veintiún defectos que ninguno de los dos había visto.</p>
+    <p>Éstos son los que importan. La lista completa, con cifra antigua y cifra nueva, está en <code>docs/reviews/CORRECTIONS_LOG.md</code>.</p>
   </div>
 
   <div class="register">
@@ -408,7 +412,7 @@ footer{
       <div class="body">
         <span class="chip ours">peor de lo que decía</span>
         <p class="what">El revisor detectó que los conteos de consultas no cuadraban entre tablas.</p>
-        <p class="found">Al comprobarlo apareció algo mayor: <b>el estudio usó tres muestras distintas de 16.590 consultas presentándolas como una sola.</b> Los solapes entre ellas eran del 47 % y del 35 %. Es decir, tablas que se comparaban entre sí estaban medidas sobre poblaciones diferentes.</p>
+        <p class="found">Al comprobarlo apareció algo mayor: <b>el estudio usó tres muestras distintas de 16.590 consultas presentándolas como una sola.</b> Los solapes entre ellas eran del 47 % y del 35 %. Tablas que se comparaban entre sí estaban medidas sobre poblaciones diferentes.</p>
       </div>
     </div>
 
@@ -417,7 +421,7 @@ footer{
       <div class="body">
         <span class="chip ours">hallazgo propio</span>
         <p class="what">El <em>numeric parameter bonus</em>, uno de los elementos de diseño del sistema híbrido, era código muerto.</p>
-        <p class="found">Una comprobación de tipo <code>isinstance(v, list)</code> que no aceptaba <code>numpy.ndarray</code> dejaba el bonus permanentemente a cero. <b>El manuscrito discutía sus valores óptimos y explicaba por qué convergían en 0,1.</b> Nunca se aplicó.</p>
+        <p class="found">Una comprobación de tipo <code>isinstance(v, list)</code> que no aceptaba <code>numpy.ndarray</code> dejaba el bonus permanentemente a cero. <b>El manuscrito discutía sus valores óptimos y explicaba por qué convergían en 0,1.</b> Nunca llegó a aplicarse.</p>
       </div>
     </div>
 
@@ -449,19 +453,19 @@ footer{
     </div>
 
     <div class="entry">
-      <div class="ref">§3.2.1<span>nadie lo vio</span></div>
+      <div class="ref">§3.2.1<span>corregido dos veces</span></div>
       <div class="body">
-        <span class="chip ours">el más delicado</span>
-        <p class="what">«BM25 + frases de parámetros», el sistema estrella, no es una variante de tokenización.</p>
-        <p class="found">La consulta lleva pegados unos tokens sintéticos que salen del campo <code>parameters</code> del registro, no de su texto. Como consulta y objetivo son el mismo ítem, <b>la consulta llegaba con la tupla de parámetros ya resuelta</b>. Sin esos tokens, el mismo índice baja de 0,974 a 0,871.</p>
-        <p class="found">Lo medimos hasta el final antes de alarmarnos: calcular la tupla desde el texto de la consulta, en vez de leerla del registro, da <b>0,9744</b>. La cifra publicada no era un artefacto —es reproducible por un sistema realizable—, pero la descripción sí estaba mal.</p>
+        <span class="chip open">y una equivocación mía</span>
+        <p class="what">«BM25 + frases de parámetros» está descrito como una variante de tokenización, y no lo es: la consulta lleva unos tokens que salen del campo <code>parameters</code> del registro, no de su texto.</p>
+        <p class="found">Mi primera lectura fue que eso era una ventaja indebida. <b>Es incorrecta.</b> Esos parámetros son campos declarados del formato BC3, y en un emparejamiento catálogo-contra-catálogo los dos lados <em>son</em> registros de catálogo: usarlos es usar los datos que el formato da. Lo que sí hacía falta era describirlo bien, porque «word tokens + parameter-derived phrases» no le dice al lector que la consulta lleva metadatos estructurados.</p>
+        <p class="found">Medido, que es lo que queda: los tokens valen <b>10,3 puntos</b> (sin ellos, el mismo índice baja de 0,974 a 0,871) y por sí solos no valen nada (0,219 sin texto). Y calcular la tupla desde el texto en vez de leerla del registro da 0,974 igualmente, lo que deja limpia la comparación de la Parte 4.</p>
       </div>
     </div>
 
   </div>
 
   <div class="col">
-    <p>Hay más de este tenor: un baseline de la Tabla 13 que procedía de otro sistema, un MRR@10 de 1,000 acompañando a un Acc@1 de 0,869 (imposible por definición), un modelo descrito en Métodos y ausente de Resultados, y varias cifras heredadas de una versión anterior del dataset que tenía 39.847 ítems en vez de 47.513.</p>
+    <p>Hay más de este tenor: un baseline de la Tabla 13 que procedía de otro sistema, un MRR@10 de 1,000 acompañando a un Acc@1 de 0,869 (imposible por definición), un modelo descrito en Métodos y ausente de Resultados, y varias cifras heredadas de cuando el dataset tenía 39.847 ítems en vez de 47.513.</p>
   </div>
 </section>
 
@@ -478,12 +482,12 @@ footer{
         <tr>
           <td class="ref">B1 · B5<br>B6 · B7</td>
           <td>El escenario no es el que promete la Introducción</td>
-          <td>Cuantificado el solape: <strong>el objetivo contiene el 94,1 % de las palabras de la consulta y el 99,96 % de sus números</strong>. La Introducción separa ahora las dos capacidades que exigen los escenarios operativos y dice cuál mide el trabajo. Limitaciones lo declara sin rodeos.</td>
+          <td>Cuantificado el solape: <strong>el objetivo contiene el 94,1 % de las palabras de la consulta y el 99,96 % de sus números</strong>. Y reescrito el encuadre: eso no es un defecto del montaje, es su control. Ver Parte 4.</td>
         </tr>
         <tr>
           <td class="ref">B4</td>
           <td>Un baseline de filtrado por reglas sobre los atributos</td>
-          <td>Sección nueva con cinco <em>pipelines</em> estructurados. Es el bloque que más ha dado de sí, y está en la Parte 4.</td>
+          <td>Sección nueva con cinco <em>pipelines</em> estructurados. Es el bloque que más ha dado de sí.</td>
         </tr>
         <tr>
           <td class="ref">B3</td>
@@ -508,19 +512,19 @@ footer{
         <tr>
           <td class="ref">R2-8.2</td>
           <td>Recortar la sección de Resultados</td>
-          <td>Cinco tablas fuera y la prosa que las recitaba. Es el único punto donde nos quedamos cortos: −10 % en vez del 30 % que pedía, porque el resto de peticiones suyas han añadido secciones.</td>
+          <td>Cinco tablas fuera y la prosa que las recitaba. Es el único punto donde nos quedamos cortos: −10 % en vez del 30 %, porque el resto de sus peticiones han añadido secciones.</td>
         </tr>
         <tr>
           <td class="ref">B2</td>
           <td>No hay método nuevo</td>
-          <td>Las contribuciones lo declaran explícitamente: la aportación es la caracterización empírica de un modo de fallo, no un método. Ver Parte 4.</td>
+          <td>Las contribuciones lo declaran: la aportación es la caracterización empírica de un modo de fallo. Con el segundo hallazgo de la Parte 4, además, ya no es sólo un benchmark.</td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <div class="col">
-    <p>Además: 41 correcciones de texto del anexo del informe, 11 correcciones de código, 13 reejecuciones, y todas las tablas de resultados se generan ahora desde los artefactos con <code>\input{}</code>. Ninguna cifra del artículo está tecleada a mano.</p>
+    <p>Además: 41 correcciones de texto del anexo del informe, 11 de código, 13 reejecuciones, y todas las tablas de resultados se generan ahora desde los artefactos con <code>\input{}</code>. Ninguna cifra del artículo está tecleada a mano.</p>
   </div>
 </section>
 
@@ -531,11 +535,14 @@ footer{
   </div>
 
   <div class="col">
-    <p class="lede">Esto es lo que necesita vuestro criterio. No son correcciones de errores: son cambios en lo que el artículo afirma.</p>
+    <p class="lede">Aquí es donde el artículo dice cosas distintas. No son correcciones de errores: son elecciones sobre qué estamos afirmando.</p>
 
-    <h3>El titular ya no es «BM25 gana a los neuronales»</h3>
-    <p>Es cierto, pero es poco útil y ya se sabía. Ahora el artículo se organiza sobre dos hallazgos.</p>
-    <p><strong>El primero es la disociación ítem/padre.</strong> Todos los recuperadores densos encuentran la familia paramétrica casi perfectamente y la variante concreta casi nunca. En GTE la brecha llega a 92,9 puntos. La consecuencia es incómoda para la literatura del campo: <em>una cifra de acierto sobre un catálogo paramétrico no dice nada hasta que se declara a qué nivel está medida</em>, y buena parte del trabajo previo reporta acierto por categoría, que es la parte fácil.</p>
+    <h3>El montaje era el control, y no lo estábamos contando así</h3>
+    <p>Que <code>resumen</code> y <code>texto</code> salgan del mismo catálogo, que <code>resumen</code> no sean consultas realistas y que la comparación favorezca a lo léxico: los tres revisores lo señalan como defecto, y el manuscrito les daba la razón disculpándose. Pero eso era la decisión de diseño. Se fija la capacidad de salvar el vocabulario y se varía sólo la de discriminar la variante, porque de otro modo una única cifra de acierto no dice en cuál de las dos falló el sistema.</p>
+    <p>La Introducción lo dice ahora de frente: <em>el diseño le pone las cosas fáciles al emparejamiento léxico por construcción, y ése es el objetivo — quitada la variable del vocabulario, la dificultad que queda es paramétrica.</em> Limitaciones y Conclusiones hablan de «dos cosas que acotan estas conclusiones, las dos por diseño», en vez de dos salvedades.</p>
+
+    <h3>El colapso paramétrico, que es lo que se quería enseñar</h3>
+    <p>Es el titular del artículo revisado. Y una parte que antes se perdía: <strong>no es sólo cosa de los densos</strong>. En los léxicos cuesta más verlo porque las cifras de ítem son altas, pero está.</p>
   </div>
 
   <div class="scroll">
@@ -544,6 +551,8 @@ footer{
       <tbody>
         <tr><td>BM25 con tokens de parámetro</td><td class="num">0,974</td><td class="num">0,985</td><td class="num">1,2</td></tr>
         <tr><td>Pipeline estructurado por reglas</td><td class="num">0,903</td><td class="num">0,985</td><td class="num">8,1</td></tr>
+        <tr><td>BM25 unigrama</td><td class="num">0,869</td><td class="num">0,973</td><td class="num">10,4</td></tr>
+        <tr><td>TF-IDF con frases de parámetros</td><td class="num">0,708</td><td class="num">0,990</td><td class="num">28,1</td></tr>
         <tr><td>BGE-M3 ColBERT</td><td class="num">0,448</td><td class="num">0,997</td><td class="num">54,9</td></tr>
         <tr><td>multilingual-e5-base</td><td class="num">0,136</td><td class="num">0,982</td><td class="num">84,5</td></tr>
         <tr><td>GTE-multilingual-base</td><td class="num">0,070</td><td class="num">0,998</td><td class="num">92,9</td></tr>
@@ -552,7 +561,11 @@ footer{
   </div>
 
   <div class="col">
-    <p><strong>El segundo salió de responder a B4</strong>, y es el que más me gusta. El pipeline estructurado y BM25 <em>necesitan exactamente la misma tupla de parámetros y la obtienen igual</em>. Se diferencian sólo en qué hacen con ella: usada como evidencia de consulta da 0,974; usada como filtro exacto, 0,903. Los siete puntos son el precio de la restricción dura, y el mecanismo está medido —el extractor se equivoca en un eje de cada doscientos, y bajo filtro exacto ese error saca el objetivo del conjunto para siempre.</p>
+    <p>TF-IDF con frases se deja <strong>28,1 puntos</strong> entre los dos niveles: más, respecto a su propio nivel de ítem, que ColBERT. Y hay una prueba en la representación misma, no en el ranking: para el <strong>6,94 % de las consultas, BM25-unigrama asigna al objetivo y a una variante hermana vectores idénticos</strong>. No es que los ordene mal, es que son el mismo punto. Eso le pone un techo de 0,9645 antes de que ninguna función de puntuación entre en juego.</p>
+    <p>La consecuencia es incómoda para la literatura del campo, y es la que hace que esto no sea sólo un benchmark: <em>una cifra de acierto sobre un catálogo paramétrico no dice nada hasta que se declara a qué nivel está medida</em>, y buena parte del trabajo previo reporta acierto por categoría, que es la parte fácil.</p>
+
+    <h3>El segundo hallazgo salió de responder a B4</h3>
+    <p>El pipeline estructurado y BM25 trabajan sobre <em>la misma información estructurada</em>. Se diferencian sólo en qué hacen con ella: usada como evidencia de consulta da 0,974; usada como filtro exacto, 0,903. Y el mecanismo está medido — el extractor se equivoca en un eje de cada doscientos, y bajo filtro exacto ese error saca el objetivo del conjunto para siempre, mientras que en BM25 sólo resta un poco de puntuación y el texto decide el resto.</p>
   </div>
 
   <div class="callout">
@@ -563,13 +576,13 @@ footer{
   <div class="col">
     <h3>Tres cosas más que ya no dicen lo mismo</h3>
     <ul>
-      <li><strong>Las recomendaciones al profesional decían lo contrario de lo que habíamos medido.</strong> Recomendaban un cross-encoder como etapa de precisión; en este banco el reranking degrada todos los sistemas que ya son fuertes y sólo mejora el más débil. Corregido, con la advertencia explícita.</li>
-      <li><strong>La comparación se declara asimétrica.</strong> El mejor sistema léxico no es un recuperador desnudo: es un pipeline corto que resuelve los parámetros contra el esquema. Los neuronales corrieron en zero-shot y sin ese paso. Es defendible, pero había que decirlo.</li>
+      <li><strong>Las recomendaciones al profesional decían lo contrario de lo que habíamos medido.</strong> Recomendaban un cross-encoder como etapa de precisión; en este banco el reranking degrada todos los sistemas que ya son fuertes y sólo mejora el más débil.</li>
+      <li><strong>La asimetría de la comparación se declara como diseño.</strong> Los sistemas léxicos consumen los parámetros que el formato BC3 declara; los neuronales corrieron en zero-shot sobre prosa. Nada impide dar esos mismos tokens a un recuperador denso, y el artículo dice que ése es el experimento siguiente.</li>
       <li><strong>La explicación de los errores numéricos no se sostenía.</strong> Atribuía el ~98 % de fallos a la tokenización por subpalabras de BERT, cuando BM25 —que no tiene tokenizador de subpalabras— tiene el 98,0 %. Lo que comparten los tres sistemas no es un codificador, es la tarea.</li>
     </ul>
 
     <h3>El título se queda</h3>
-    <p>Propuse cambiarlo y decidimos mantener el original. Mi única reserva, menor: el subtítulo <em>«From Lexical to Neural Approaches»</em> describe el recorrido de la versión rechazada, no el del artículo actual.</p>
+    <p>Se propuso cambiarlo y se decidió mantener el original.</p>
   </div>
 </section>
 
@@ -582,10 +595,11 @@ footer{
   <div class="col">
     <p>Por si alguien lo busca en el borrador y no lo encuentra.</p>
     <ul>
-      <li><strong>Consultas escritas por profesionales.</strong> Es la objeción de fondo del Editor y sigue sin resolverse. El artículo ya no promete lo que no evalúa, pero la validación con consultas reales no existe, y así se declara en Limitaciones y en Trabajo futuro.</li>
-      <li><strong>El barrido de fusión híbrida sigue eligiéndose sobre el test.</strong> Está declarado en el manuscrito en vez de corregido: arreglarlo obliga a rehacer el barrido y a mover las cifras híbridas. Es una hora de cómputo si lo queremos.</li>
+      <li><strong>Consultas escritas por profesionales.</strong> Es la objeción de fondo del Editor y sigue sin resolverse. El artículo ya no promete lo que no evalúa, y declara que un conjunto de consultas recogido de estimadores es lo más útil que se le podría añadir.</li>
+      <li><strong>El barrido de fusión híbrida sigue eligiéndose sobre el test.</strong> Está declarado en el manuscrito en vez de corregido: arreglarlo obliga a rehacer el barrido y a mover las cifras híbridas. Es una hora de cómputo.</li>
       <li><strong>Los índices densos siguen con 47.514 documentos</strong> frente a los 47.513 de los léxicos: llevan un registro raíz extra como distractor. No cambia ninguna conclusión, pero el corpus debería declararse igual para todos.</li>
       <li><strong>El recorte de Resultados se queda en el 10 %.</strong> Llegar al 30 % exigiría borrar las secciones nuevas que responden a las otras peticiones de los mismos revisores.</li>
+      <li><strong>Dar los tokens de parámetro a un recuperador denso.</strong> Es el experimento que el artículo deja planteado y no ejecuta.</li>
     </ul>
   </div>
 </section>
@@ -593,26 +607,18 @@ footer{
 <section>
   <div class="part">
     <span class="part-no">PARTE 6</span>
-    <h2>Qué necesito de vosotros</h2>
-  </div>
-
-  <div class="callout ask">
-    <ol class="ask-list">
-      <li><strong>El encuadre de la Parte 4.</strong> ¿Os convence llevar el artículo sobre la disociación y sobre «ordenar con los atributos en vez de filtrar»? Es el cambio de fondo y todo lo demás cuelga de ahí.</li>
-      <li><strong>La Discusión y las Conclusiones.</strong> Las he reescrito bastante. Son elecciones de redacción, no correcciones, y conviene que las leáis con ese ojo.</li>
-      <li><strong>Qué revista.</strong> El Editor de AiC dice que un benchmark sin propuesta metodológica encaja mal. Con el segundo hallazgo esto ya no es sólo un benchmark, pero la conversación sigue abierta.</li>
-      <li><strong>Dónde nos plantamos con el recorte.</strong> Quedan dos palancas: la tabla de ejemplos de error (ocupa una página) y la tabla detallada de BGE-M3. Las dos responden a peticiones concretas, así que es criterio editorial y no lo he tocado.</li>
-    </ol>
+    <h2>Qué viene después</h2>
   </div>
 
   <div class="col">
-    <p>Cuando deis el visto bueno, etiqueto la <em>release</em> y Zenodo genera la versión nueva con su DOI, que es el que citará el manuscrito revisado. El DOI antiguo se queda donde está apuntando a la versión vieja —es lo que hace un DOI— y eso es lo correcto: es lo que citaba el artículo rechazado.</p>
+    <p>Cuando el borrador esté visto, se etiqueta la <em>release</em> y Zenodo genera la versión nueva con su DOI, que será el que cite el manuscrito revisado. El DOI antiguo se queda apuntando a la versión vieja —es lo que hace un DOI— y eso es lo correcto: es lo que citaba el artículo rechazado.</p>
+    <p>Queda abierta la conversación sobre la revista. El Editor de AiC dice que un benchmark sin propuesta metodológica encaja mal; con el segundo hallazgo de la Parte 4 esto ya no es sólo un benchmark, pero es una decisión que no depende de las correcciones.</p>
   </div>
 </section>
 
 <footer>
   Registro completo de los 91 defectos con su estado, cifra antigua y cifra nueva: <code>docs/reviews/CORRECTIONS_LOG.md</code><br>
-  Rama <code>paper/autcon-r1-revision</code> · 53 commits sobre <code>bc3-ir-paper-v1.0.0</code> · toda cifra del artículo procede de un script del repositorio
+  Rama <code>paper/autcon-r1-revision</code> · 55 commits sobre <code>bc3-ir-paper-v1.0.0</code> · toda cifra del artículo procede de un script del repositorio
 </footer>
 
 </div>
