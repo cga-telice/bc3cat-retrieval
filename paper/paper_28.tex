@@ -650,6 +650,7 @@ For reproducibility, the exact set of $16{,}590$ evaluation queries is released 
 The results across all evaluated configurations converge on a consistent finding: lexical methods, when properly tuned with domain-specific parameter phrases, outperform neural and hybrid approaches at the item level by a substantial margin. The following subsections detail the performance of each method family, culminating in a cross-method comparison in Section~\ref{sec:4.7_Overall Performance Summary}.
 
 \subsection{Lexical Methods Comparative Analysis}
+\label{subsec:lexical_results}
 
 The performance of all lexical retrieval configurations was evaluated at two hierarchical levels: parent-level and item-level retrieval. Figure~\ref{fig:lexical_performance_parent} presents parent-level results, where the task is to retrieve the correct parent document, while Figure~\ref{fig:lexical_performance_item} shows item-level results for retrieving specific document items. Both evaluations used the same test set of 16,590 queries.
 
@@ -747,12 +748,15 @@ TF-IDF-char\_3\_5 & 0.558 & 1.000 & 0.647 & 1.000 \\
 }
 \end{table}
 
-Based on item-level results, BM25 with optimized parameters (k1=0.60, b=0.35) was selected as the best-performing lexical method for subsequent pseudo-relevance feedback experiments, demonstrating superior item-level performance across all evaluation metrics with statistical significance.
+Based on item-level results, BM25 with parameter phrases ($k_1=0.60$, $b=0.35$) is the best-performing lexical configuration, ahead of every other lexical variant on all evaluation metrics with statistical significance. It is used as the strong base for the pseudo-relevance feedback experiments of Section~\ref{subsec:prf}.
 
 \FloatBarrier
 \subsection{Pseudo-Relevance Feedback Methods}
+\label{subsec:prf}
 
-Pseudo-relevance feedback (PRF) methods were evaluated to assess their effectiveness in enhancing retrieval performance beyond the base lexical retriever. Two PRF approaches were tested: RM3 (Relevance Model 3) and Rocchio feedback. Both methods leveraged BM25-unigram (k1=0.80, b=0.35) as their base retriever, which achieved Acc@1 of 0.869, Recall@5 of 0.932, Recall@10 of 0.950, MRR of 0.898, and nDCG@10 of 0.909 at the item level.
+Pseudo-relevance feedback (PRF) was evaluated to assess whether query expansion can improve on a lexical retriever in this domain. Two approaches were tested, RM3 and Rocchio, over two base retrievers: BM25-unigram ($k_1=0.80$, $b=0.35$; Acc@1 $=0.869$), and the best lexical configuration of Section~\ref{subsec:lexical_results}, BM25 with parameter phrases ($k_1=0.60$, $b=0.35$; Acc@1 $=0.974$). Expanding only the weaker base would leave open whether the null result is a property of PRF or of the headroom left by a mediocre first stage.
+
+Over the strong base, neither method helps. The best RM3 configuration reaches $0.9732$ against a baseline of $0.9737$, a difference of $-0.04$ percentage points; the best Rocchio configuration reaches $0.9672$, a degradation of $0.64$ points. The result over the weak base, reported in detail below, is the same in direction: RM3 neutral, Rocchio harmful.
 
 \subsubsection{RM3 and Rocchio Performance}
 

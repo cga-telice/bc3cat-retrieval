@@ -102,9 +102,9 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R1 | `dense_e5`, `dense_gte`, `dense_gte_instrQ`, `dense_es_hiiamsid` sobre la muestra canónica | ~10 min c/u | hecho |
 | R2 | Barrido `(k1,b)` de BM25 sobre validación (62 configs) | ~1 h | pendiente |
 | R3 | Híbridos: una pasada base para los 5 rankers + 4 barridos | ~75 min + barridos | hecho |
-| R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | pendiente |
+| R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | hecho |
 | R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | hecho |
-| R6 | Métricas parent-level para híbridos y reranking | minutos | pendiente |
+| R6 | Métricas parent-level para híbridos y reranking | minutos | hecho (`scripts/eval_dual.py`) |
 | R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | análisis de errores hecho; falta bootstrap y leaderboards |
 | R8 | *(N10)* GTE sin prefijos | ~10 min | hecho junto con la reejecución de GTE |
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
@@ -292,6 +292,24 @@ aportación de diseño, y se reporta como tal. La afirmación de L857 —«todas
 configuraciones óptimas convergieron en β_exact = 0,1 y β_overlap = 0,0»— queda
 refutada por partida doble: describía un parámetro inerte, y con el parámetro
 operativo el óptimo es prácticamente el contrario.
+
+### PRF sobre el baseline fuerte (R2-2.2)
+
+El Revisor 2 señala que §4.1 declara haber construido el PRF sobre BM25 con parámetros
+optimizados (0,9737) mientras los dieciséis runs usan el BM25 débil (0,8691), y pide
+corregirlo o rehacerlo. Rehecho: dieciséis runs nuevos sobre el baseline fuerte.
+
+| | Acc@1 | Δ frente al baseline |
+|---|---|---|
+| BM25 con frases de parámetros (baseline) | 0,9737 | — |
+| Mejor RM3 (M=5, N=20, λ=0,7) | 0,9732 | −0,04 pp |
+| Mejor Rocchio (M=10, N=20, β=0,7) | 0,9672 | −0,64 pp |
+
+Ninguno mejora. La conclusión del manuscrito —que la expansión de consultas no encaja
+en este dominio— se sostiene, y ahora está demostrada sobre el baseline que decía haber
+usado y no usaba. Es más informativo así: sobre el baseline débil cabía la duda de si
+el resultado nulo era una propiedad del PRF o del poco margen que dejaba una primera
+etapa mediocre.
 
 ### Baselines estructurados (B6 / R10)
 
