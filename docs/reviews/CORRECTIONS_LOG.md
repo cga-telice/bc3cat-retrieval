@@ -128,6 +128,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | F3 | Conclusiones alineadas con el encuadre elegido | hecho |
 | F4 | `README.md`: tabla de resultados, recuento de ítems, URL de clonado, menciones a `ranx`/Pyserini | hecho |
 | F5 | Zenodo: nueva versión del depósito | pendiente — depósitos mapeados (ver abajo); esperando visto bueno de los coautores |
+| F6 | Informe para los coautores: qué dijeron los revisores, qué había de verdad, qué hemos hecho | hecho (`docs/reviews/informe_coautores.html`, publicado como artefacto) |
 
 ---
 

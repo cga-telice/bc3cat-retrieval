@@ -1,0 +1,618 @@
+<title>Registro de revisión AUTCON</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --paper:#F5F7F7;
+  --surface:#FFFFFF;
+  --sunk:#EBEFF0;
+  --ink:#152029;
+  --ink-soft:#4A5C68;
+  --ink-faint:#7C8C96;
+  --rule:#D9DEE0;
+  --rule-strong:#B7C0C5;
+  --accent:#0F5C7A;
+  --accent-soft:#E2EDF2;
+  --ok:#2F6B4F;
+  --ok-soft:#E1EFE8;
+  --ours:#98401F;
+  --ours-soft:#F6E7DF;
+  --open:#785C11;
+  --open-soft:#F2ECD8;
+  --shadow:0 1px 2px rgba(21,32,41,.05), 0 10px 26px -14px rgba(21,32,41,.22);
+  --serif:"Spectral", Georgia, "Times New Roman", serif;
+  --sans:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0D1418;
+    --surface:#151F25;
+    --sunk:#101A20;
+    --ink:#DFE7EA;
+    --ink-soft:#A3B3BB;
+    --ink-faint:#748690;
+    --rule:#26343B;
+    --rule-strong:#3B4D56;
+    --accent:#68B7D6;
+    --accent-soft:#122B37;
+    --ok:#78C8A2;
+    --ok-soft:#112620;
+    --ours:#E39068;
+    --ours-soft:#2C1A12;
+    --open:#D8BC63;
+    --open-soft:#241D0B;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 26px -14px rgba(0,0,0,.65);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0D1418;
+  --surface:#151F25;
+  --sunk:#101A20;
+  --ink:#DFE7EA;
+  --ink-soft:#A3B3BB;
+  --ink-faint:#748690;
+  --rule:#26343B;
+  --rule-strong:#3B4D56;
+  --accent:#68B7D6;
+  --accent-soft:#122B37;
+  --ok:#78C8A2;
+  --ok-soft:#112620;
+  --ours:#E39068;
+  --ours-soft:#2C1A12;
+  --open:#D8BC63;
+  --open-soft:#241D0B;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 10px 26px -14px rgba(0,0,0,.65);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px;margin:0 auto;padding:0 24px 96px}
+.col{max-width:66ch}
+
+/* ---------- cabecera ---------- */
+.masthead{
+  border-bottom:2px solid var(--ink);
+  padding:56px 0 22px;
+  margin-bottom:40px;
+}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11.5px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin:0 0 14px;
+}
+h1{
+  font-family:var(--serif);
+  font-weight:700;
+  font-size:clamp(30px,4.6vw,44px);
+  line-height:1.12;
+  letter-spacing:-.015em;
+  margin:0 0 16px;
+  text-wrap:balance;
+}
+.standfirst{
+  font-family:var(--serif);
+  font-size:clamp(17px,2vw,19.5px);
+  line-height:1.55;
+  color:var(--ink-soft);
+  margin:0;
+  max-width:60ch;
+}
+.byline{
+  display:flex;flex-wrap:wrap;gap:8px 28px;
+  margin-top:26px;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-faint);
+}
+.byline b{color:var(--ink-soft);font-weight:500}
+
+/* ---------- estructura ---------- */
+section{margin:0 0 60px}
+h2{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:clamp(22px,2.8vw,28px);
+  line-height:1.22;
+  letter-spacing:-.01em;
+  margin:0 0 6px;
+  text-wrap:balance;
+}
+.part{
+  display:flex;align-items:baseline;gap:14px;
+  border-top:1px solid var(--rule-strong);
+  padding-top:14px;
+  margin-bottom:22px;
+}
+.part-no{
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.1em;
+  color:var(--accent);
+  white-space:nowrap;
+  padding-top:4px;
+}
+h3{
+  font-family:var(--sans);
+  font-weight:600;
+  font-size:16.5px;
+  letter-spacing:.005em;
+  margin:34px 0 10px;
+}
+p{margin:0 0 16px}
+.lede{font-family:var(--serif);font-size:18px;line-height:1.6;color:var(--ink-soft)}
+strong{font-weight:600}
+em{font-style:italic}
+code{
+  font-family:var(--mono);
+  font-size:.87em;
+  background:var(--sunk);
+  border:1px solid var(--rule);
+  border-radius:3px;
+  padding:.08em .34em;
+  word-break:break-word;
+}
+a{color:var(--accent)}
+ul{margin:0 0 16px;padding-left:0;list-style:none}
+ul li{position:relative;padding-left:20px;margin-bottom:9px}
+ul li::before{
+  content:"";position:absolute;left:2px;top:.72em;
+  width:6px;height:1.5px;background:var(--rule-strong);
+}
+
+/* ---------- cifras ---------- */
+.figures{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:1px;
+  background:var(--rule);
+  border:1px solid var(--rule);
+  margin:28px 0 34px;
+}
+.fig{background:var(--surface);padding:18px 18px 16px}
+.fig .n{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:30px;
+  line-height:1;
+  letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;
+  display:block;
+  margin-bottom:7px;
+}
+.fig .k{
+  font-size:12.5px;
+  line-height:1.42;
+  color:var(--ink-soft);
+}
+
+/* ---------- registro ---------- */
+.register{
+  border-top:1px solid var(--rule-strong);
+  margin:22px 0 28px;
+}
+.entry{
+  display:grid;
+  grid-template-columns:96px 1fr;
+  gap:0 20px;
+  border-bottom:1px solid var(--rule);
+  padding:16px 0;
+}
+.entry .ref{
+  font-family:var(--mono);
+  font-size:12px;
+  line-height:1.5;
+  color:var(--accent);
+  padding-top:2px;
+}
+.entry .ref span{display:block;color:var(--ink-faint);font-size:11px;margin-top:3px}
+.entry .body p{margin:0 0 9px}
+.entry .body p:last-child{margin-bottom:0}
+.entry .body p.what{color:var(--ink)}
+.entry .body p.found{color:var(--ink-soft)}
+.entry .body p.found b{color:var(--ink);font-weight:600}
+
+.chip{
+  display:inline-block;
+  font-family:var(--mono);
+  font-size:10.5px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:2px 7px;
+  border-radius:2px;
+  margin-bottom:8px;
+  white-space:nowrap;
+}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.ours{background:var(--ours-soft);color:var(--ours)}
+.chip.open{background:var(--open-soft);color:var(--open)}
+
+/* ---------- tablas ---------- */
+.scroll{overflow-x:auto;margin:20px 0 30px;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ink-faint);
+  font-weight:500;
+  background:var(--sunk);
+  border-bottom:1px solid var(--rule-strong);
+}
+tbody tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+td.ref{font-family:var(--mono);font-size:12.5px;color:var(--accent);white-space:nowrap}
+.was{color:var(--ink-faint);text-decoration:line-through;text-decoration-thickness:1px}
+
+/* ---------- destacados ---------- */
+.callout{
+  background:var(--surface);
+  border:1px solid var(--rule);
+  border-left:3px solid var(--accent);
+  padding:20px 22px;
+  margin:26px 0;
+  box-shadow:var(--shadow);
+}
+.callout h3{margin-top:0}
+.callout p:last-child{margin-bottom:0}
+.callout.ask{border-left-color:var(--ours)}
+.callout.quiet{box-shadow:none;border-left-color:var(--rule-strong);background:var(--sunk)}
+
+blockquote{
+  margin:20px 0;
+  padding:0 0 0 18px;
+  border-left:2px solid var(--rule-strong);
+  font-family:var(--serif);
+  font-style:italic;
+  font-size:17px;
+  color:var(--ink-soft);
+}
+blockquote cite{
+  display:block;
+  font-family:var(--mono);
+  font-style:normal;
+  font-size:11.5px;
+  letter-spacing:.05em;
+  color:var(--ink-faint);
+  margin-top:8px;
+}
+
+.ask-list{counter-reset:ask;margin:18px 0 0;padding:0;list-style:none}
+.ask-list li{
+  position:relative;
+  padding-left:34px;
+  margin-bottom:16px;
+}
+.ask-list li::before{
+  counter-increment:ask;
+  content:counter(ask);
+  position:absolute;left:0;top:1px;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--accent);
+  border:1px solid var(--rule-strong);
+  width:22px;height:22px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);
+}
+.ask-list li::after{display:none}
+
+footer{
+  border-top:2px solid var(--ink);
+  margin-top:20px;
+  padding-top:20px;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--ink-faint);
+  line-height:1.7;
+}
+
+@media (max-width:640px){
+  .entry{grid-template-columns:1fr;gap:6px}
+  .entry .ref span{display:inline;margin-left:8px}
+  .part{flex-direction:column;gap:4px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">AUTCON-D-26-03592 · Revisión</p>
+  <h1>Qué nos dijeron, qué había de verdad, y qué hemos hecho</h1>
+  <p class="standfirst">Un recorrido por la revisión del artículo antes de que leáis el borrador. La conclusión corta: los revisores tenían razón casi siempre, encontramos veintiún defectos más que ellos no vieron, y el resultado principal sobrevive intacto.</p>
+  <div class="byline">
+    <span><b>Manuscrito</b> · rechazado en Automation in Construction</span>
+    <span><b>Rama</b> · <code>paper/autcon-r1-revision</code></span>
+    <span><b>Lectura</b> · 12 minutos</span>
+  </div>
+</header>
+
+<section>
+  <p class="lede">Lo que os pido no es que verifiquéis las correcciones —eso está trazado una por una en el registro del repositorio—, sino que reviséis <strong>lo que ha cambiado el artículo al corregirlas</strong>. Hay cosas que ya no dicen lo mismo, y llevan vuestro nombre.</p>
+
+  <div class="figures">
+    <div class="fig"><span class="n">91</span><span class="k">defectos en el registro, 89 cerrados</span></div>
+    <div class="fig"><span class="n">21</span><span class="k">no los vio ningún revisor</span></div>
+    <div class="fig"><span class="n">3</span><span class="k">experimentos nuevos</span></div>
+    <div class="fig"><span class="n">0,974</span><span class="k">el resultado principal, sin moverse</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="part">
+    <span class="part-no">PARTE 1</span>
+    <h2>Lo que dijeron los revisores</h2>
+  </div>
+
+  <div class="col">
+    <p>Los comentarios se reparten en tres grupos que exigen respuestas muy distintas.</p>
+
+    <h3>Defectos de ejecución (26 puntos)</h3>
+    <p>Inconsistencias numéricas, tablas mal etiquetadas, terminología, formato de citas. No cuestionan el trabajo, sólo cómo está contado. Todos verificados; todos corregidos.</p>
+
+    <h3>Objeciones al objetivo del banco de pruebas (7 puntos)</h3>
+    <p>Éstas sí son de fondo, y cuatro de las siete son la misma vista desde ángulos distintos.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Ref.</th><th>Quién</th><th>Objeción</th></tr></thead>
+      <tbody>
+        <tr><td class="ref">B1</td><td>R1-2, R1-3, R2-1.1, R2-7.1</td><td>La consulta y el objetivo salen del mismo registro del catálogo, así que el escenario no es el que promete la Introducción</td></tr>
+        <tr><td class="ref">B5</td><td>R1-2, R2-5.1</td><td>El diseño favorece a los métodos léxicos, y las conclusiones se generalizan de más</td></tr>
+        <tr><td class="ref">B6</td><td>R2-1.2</td><td>El alcance de la «guía para profesionales» no está delimitado</td></tr>
+        <tr><td class="ref">B7</td><td>R2-2.3</td><td>Falta cuantificar cuánta información comparten <code>resumen</code> y <code>texto</code></td></tr>
+        <tr><td class="ref">B4</td><td>R2-final</td><td>Si los atributos son estructurados, ¿por qué no un baseline de filtrado por reglas?</td></tr>
+        <tr><td class="ref">B3</td><td>R1-4</td><td>Falta comparar con HyDE o reescritura de consultas</td></tr>
+        <tr><td class="ref">B2</td><td>R1-1, Editor</td><td>No hay método nuevo: la contribución es un benchmark</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <h3>Decisión editorial (2 puntos)</h3>
+    <p>El Editor Asociado habla de <em>«limited alignment with the domain of construction, little novelty»</em>. Eso no es un defecto que se corrija: es un juicio de encaje con la revista. Y los dos revisores discrepan sobre si hace falta edición lingüística.</p>
+  </div>
+</section>
+
+<section>
+  <div class="part">
+    <span class="part-no">PARTE 2</span>
+    <h2>Lo que había de verdad</h2>
+  </div>
+
+  <div class="col">
+    <p class="lede">Verificamos cada objeción contra el código y los artefactos, no contra el manuscrito. Los revisores tenían razón en todas las que comprobamos. Y por el camino aparecieron veintiún defectos que ninguno de los dos había visto.</p>
+    <p>Éstos son los que importan. La lista completa está en <code>docs/reviews/CORRECTIONS_LOG.md</code>.</p>
+  </div>
+
+  <div class="register">
+
+    <div class="entry">
+      <div class="ref">R2-2.1<span>tenía razón</span></div>
+      <div class="body">
+        <span class="chip ours">peor de lo que decía</span>
+        <p class="what">El revisor detectó que los conteos de consultas no cuadraban entre tablas.</p>
+        <p class="found">Al comprobarlo apareció algo mayor: <b>el estudio usó tres muestras distintas de 16.590 consultas presentándolas como una sola.</b> Los solapes entre ellas eran del 47 % y del 35 %. Es decir, tablas que se comparaban entre sí estaban medidas sobre poblaciones diferentes.</p>
+      </div>
+    </div>
+
+    <div class="entry">
+      <div class="ref">—<span>nadie lo vio</span></div>
+      <div class="body">
+        <span class="chip ours">hallazgo propio</span>
+        <p class="what">El <em>numeric parameter bonus</em>, uno de los elementos de diseño del sistema híbrido, era código muerto.</p>
+        <p class="found">Una comprobación de tipo <code>isinstance(v, list)</code> que no aceptaba <code>numpy.ndarray</code> dejaba el bonus permanentemente a cero. <b>El manuscrito discutía sus valores óptimos y explicaba por qué convergían en 0,1.</b> Nunca se aplicó.</p>
+      </div>
+    </div>
+
+    <div class="entry">
+      <div class="ref">§3.2.1<span>nadie lo vio</span></div>
+      <div class="body">
+        <span class="chip ours">hallazgo propio</span>
+        <p class="what">Tres afirmaciones sobre qué software usamos son falsas, y las tres citan trabajos que no se emplearon.</p>
+        <p class="found">BM25 no usa <b>Pyserini</b> ni <b>Lucene</b>: es implementación propia sobre scikit-learn. Las métricas no usan <b>ranx</b>: están escritas a mano. El PRF no usa Pyserini ni scikit-learn: expande repitiendo palabras, y el propio código lo llama <em>«RM3-ish»</em>.</p>
+      </div>
+    </div>
+
+    <div class="entry">
+      <div class="ref">§3.2.4<span>nadie lo vio</span></div>
+      <div class="body">
+        <span class="chip ours">se cae un argumento</span>
+        <p class="what">El cross-encoder declarado no es el que se ejecutó.</p>
+        <p class="found">El manuscrito dice <code>ms-marco-MiniLM-L-6-v2</code> (inglés, 22M) y explica su mal rendimiento por un <em>«cross-lingual domain mismatch»</em>. El modelo real es <code>mmarco-mMiniLMv2-L12</code>, <b>multilingüe y entrenado con español</b>. El argumento de la Discusión era falso entero.</p>
+      </div>
+    </div>
+
+    <div class="entry">
+      <div class="ref">§4.3.2<span>nadie lo vio</span></div>
+      <div class="body">
+        <span class="chip ours">cifra artefactual</span>
+        <p class="what">GTE se codificó con el <em>pooling</em> equivocado y con prefijos que ese modelo nunca vio en entrenamiento.</p>
+        <p class="found">Bajo esa configuración el modelo no recupera prácticamente nada, y el 1,3 % resultante se presentaba como prueba de que <em>«la recuperación en dominios técnicos sigue siendo un reto abierto»</em>. Reejecutado bien: <b>7,0 %</b>. Sigue siendo malo, pero por motivos reales.</p>
+      </div>
+    </div>
+
+    <div class="entry">
+      <div class="ref">§3.2.1<span>nadie lo vio</span></div>
+      <div class="body">
+        <span class="chip ours">el más delicado</span>
+        <p class="what">«BM25 + frases de parámetros», el sistema estrella, no es una variante de tokenización.</p>
+        <p class="found">La consulta lleva pegados unos tokens sintéticos que salen del campo <code>parameters</code> del registro, no de su texto. Como consulta y objetivo son el mismo ítem, <b>la consulta llegaba con la tupla de parámetros ya resuelta</b>. Sin esos tokens, el mismo índice baja de 0,974 a 0,871.</p>
+        <p class="found">Lo medimos hasta el final antes de alarmarnos: calcular la tupla desde el texto de la consulta, en vez de leerla del registro, da <b>0,9744</b>. La cifra publicada no era un artefacto —es reproducible por un sistema realizable—, pero la descripción sí estaba mal.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="col">
+    <p>Hay más de este tenor: un baseline de la Tabla 13 que procedía de otro sistema, un MRR@10 de 1,000 acompañando a un Acc@1 de 0,869 (imposible por definición), un modelo descrito en Métodos y ausente de Resultados, y varias cifras heredadas de una versión anterior del dataset que tenía 39.847 ítems en vez de 47.513.</p>
+  </div>
+</section>
+
+<section>
+  <div class="part">
+    <span class="part-no">PARTE 3</span>
+    <h2>Qué hemos hecho con cada objeción</h2>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Ref.</th><th>Qué pedían</th><th>Qué hemos hecho</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="ref">B1 · B5<br>B6 · B7</td>
+          <td>El escenario no es el que promete la Introducción</td>
+          <td>Cuantificado el solape: <strong>el objetivo contiene el 94,1 % de las palabras de la consulta y el 99,96 % de sus números</strong>. La Introducción separa ahora las dos capacidades que exigen los escenarios operativos y dice cuál mide el trabajo. Limitaciones lo declara sin rodeos.</td>
+        </tr>
+        <tr>
+          <td class="ref">B4</td>
+          <td>Un baseline de filtrado por reglas sobre los atributos</td>
+          <td>Sección nueva con cinco <em>pipelines</em> estructurados. Es el bloque que más ha dado de sí, y está en la Parte 4.</td>
+        </tr>
+        <tr>
+          <td class="ref">B3</td>
+          <td>Comparar con HyDE</td>
+          <td>Sección nueva. Perjudica, como esperábamos, pero el mecanismo no era el que suponíamos.</td>
+        </tr>
+        <tr>
+          <td class="ref">R2-2.2</td>
+          <td>El PRF se prueba sobre un baseline débil</td>
+          <td>Reejecutado sobre el fuerte. El resultado nulo se sostiene sobre las dos bases, que es lo que lo hace interpretable.</td>
+        </tr>
+        <tr>
+          <td class="ref">R2-3.2</td>
+          <td>No hay conjunto de validación separado</td>
+          <td>Creado uno de 5.000 consultas disjuntas. Las 62 configuraciones reevaluadas: <strong>validación elige exactamente la misma casilla</strong> que el test. El 0,9737 pasa a ser una cifra fuera de muestra.</td>
+        </tr>
+        <tr>
+          <td class="ref">R2-3.1</td>
+          <td>Corrección por comparaciones múltiples</td>
+          <td>Holm–Bonferroni sobre los 28 pares léxicos, sin selección. Todos significativos.</td>
+        </tr>
+        <tr>
+          <td class="ref">R2-8.2</td>
+          <td>Recortar la sección de Resultados</td>
+          <td>Cinco tablas fuera y la prosa que las recitaba. Es el único punto donde nos quedamos cortos: −10 % en vez del 30 % que pedía, porque el resto de peticiones suyas han añadido secciones.</td>
+        </tr>
+        <tr>
+          <td class="ref">B2</td>
+          <td>No hay método nuevo</td>
+          <td>Las contribuciones lo declaran explícitamente: la aportación es la caracterización empírica de un modo de fallo, no un método. Ver Parte 4.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p>Además: 41 correcciones de texto del anexo del informe, 11 correcciones de código, 13 reejecuciones, y todas las tablas de resultados se generan ahora desde los artefactos con <code>\input{}</code>. Ninguna cifra del artículo está tecleada a mano.</p>
+  </div>
+</section>
+
+<section>
+  <div class="part">
+    <span class="part-no">PARTE 4</span>
+    <h2>Lo que ha cambiado el mensaje</h2>
+  </div>
+
+  <div class="col">
+    <p class="lede">Esto es lo que necesita vuestro criterio. No son correcciones de errores: son cambios en lo que el artículo afirma.</p>
+
+    <h3>El titular ya no es «BM25 gana a los neuronales»</h3>
+    <p>Es cierto, pero es poco útil y ya se sabía. Ahora el artículo se organiza sobre dos hallazgos.</p>
+    <p><strong>El primero es la disociación ítem/padre.</strong> Todos los recuperadores densos encuentran la familia paramétrica casi perfectamente y la variante concreta casi nunca. En GTE la brecha llega a 92,9 puntos. La consecuencia es incómoda para la literatura del campo: <em>una cifra de acierto sobre un catálogo paramétrico no dice nada hasta que se declara a qué nivel está medida</em>, y buena parte del trabajo previo reporta acierto por categoría, que es la parte fácil.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Sistema</th><th>Ítem Acc@1</th><th>Padre Acc@1</th><th>Brecha</th></tr></thead>
+      <tbody>
+        <tr><td>BM25 con tokens de parámetro</td><td class="num">0,974</td><td class="num">0,985</td><td class="num">1,2</td></tr>
+        <tr><td>Pipeline estructurado por reglas</td><td class="num">0,903</td><td class="num">0,985</td><td class="num">8,1</td></tr>
+        <tr><td>BGE-M3 ColBERT</td><td class="num">0,448</td><td class="num">0,997</td><td class="num">54,9</td></tr>
+        <tr><td>multilingual-e5-base</td><td class="num">0,136</td><td class="num">0,982</td><td class="num">84,5</td></tr>
+        <tr><td>GTE-multilingual-base</td><td class="num">0,070</td><td class="num">0,998</td><td class="num">92,9</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p><strong>El segundo salió de responder a B4</strong>, y es el que más me gusta. El pipeline estructurado y BM25 <em>necesitan exactamente la misma tupla de parámetros y la obtienen igual</em>. Se diferencian sólo en qué hacen con ella: usada como evidencia de consulta da 0,974; usada como filtro exacto, 0,903. Los siete puntos son el precio de la restricción dura, y el mecanismo está medido —el extractor se equivoca en un eje de cada doscientos, y bajo filtro exacto ese error saca el objetivo del conjunto para siempre.</p>
+  </div>
+
+  <div class="callout">
+    <h3>La recomendación pasa a ser otra</h3>
+    <p>De <em>«usa recuperación léxica en vez de emparejamiento estructurado»</em> —que era comparar peras con manzanas— a <strong>«extrae los atributos, y luego ordena con ellos en vez de filtrar por ellos»</strong>. Más estrecha, accionable, y responde a la pregunta del Revisor 2 mejor que la versión anterior.</p>
+  </div>
+
+  <div class="col">
+    <h3>Tres cosas más que ya no dicen lo mismo</h3>
+    <ul>
+      <li><strong>Las recomendaciones al profesional decían lo contrario de lo que habíamos medido.</strong> Recomendaban un cross-encoder como etapa de precisión; en este banco el reranking degrada todos los sistemas que ya son fuertes y sólo mejora el más débil. Corregido, con la advertencia explícita.</li>
+      <li><strong>La comparación se declara asimétrica.</strong> El mejor sistema léxico no es un recuperador desnudo: es un pipeline corto que resuelve los parámetros contra el esquema. Los neuronales corrieron en zero-shot y sin ese paso. Es defendible, pero había que decirlo.</li>
+      <li><strong>La explicación de los errores numéricos no se sostenía.</strong> Atribuía el ~98 % de fallos a la tokenización por subpalabras de BERT, cuando BM25 —que no tiene tokenizador de subpalabras— tiene el 98,0 %. Lo que comparten los tres sistemas no es un codificador, es la tarea.</li>
+    </ul>
+
+    <h3>El título se queda</h3>
+    <p>Propuse cambiarlo y decidimos mantener el original. Mi única reserva, menor: el subtítulo <em>«From Lexical to Neural Approaches»</em> describe el recorrido de la versión rechazada, no el del artículo actual.</p>
+  </div>
+</section>
+
+<section>
+  <div class="part">
+    <span class="part-no">PARTE 5</span>
+    <h2>Lo que no hemos hecho</h2>
+  </div>
+
+  <div class="col">
+    <p>Por si alguien lo busca en el borrador y no lo encuentra.</p>
+    <ul>
+      <li><strong>Consultas escritas por profesionales.</strong> Es la objeción de fondo del Editor y sigue sin resolverse. El artículo ya no promete lo que no evalúa, pero la validación con consultas reales no existe, y así se declara en Limitaciones y en Trabajo futuro.</li>
+      <li><strong>El barrido de fusión híbrida sigue eligiéndose sobre el test.</strong> Está declarado en el manuscrito en vez de corregido: arreglarlo obliga a rehacer el barrido y a mover las cifras híbridas. Es una hora de cómputo si lo queremos.</li>
+      <li><strong>Los índices densos siguen con 47.514 documentos</strong> frente a los 47.513 de los léxicos: llevan un registro raíz extra como distractor. No cambia ninguna conclusión, pero el corpus debería declararse igual para todos.</li>
+      <li><strong>El recorte de Resultados se queda en el 10 %.</strong> Llegar al 30 % exigiría borrar las secciones nuevas que responden a las otras peticiones de los mismos revisores.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="part">
+    <span class="part-no">PARTE 6</span>
+    <h2>Qué necesito de vosotros</h2>
+  </div>
+
+  <div class="callout ask">
+    <ol class="ask-list">
+      <li><strong>El encuadre de la Parte 4.</strong> ¿Os convence llevar el artículo sobre la disociación y sobre «ordenar con los atributos en vez de filtrar»? Es el cambio de fondo y todo lo demás cuelga de ahí.</li>
+      <li><strong>La Discusión y las Conclusiones.</strong> Las he reescrito bastante. Son elecciones de redacción, no correcciones, y conviene que las leáis con ese ojo.</li>
+      <li><strong>Qué revista.</strong> El Editor de AiC dice que un benchmark sin propuesta metodológica encaja mal. Con el segundo hallazgo esto ya no es sólo un benchmark, pero la conversación sigue abierta.</li>
+      <li><strong>Dónde nos plantamos con el recorte.</strong> Quedan dos palancas: la tabla de ejemplos de error (ocupa una página) y la tabla detallada de BGE-M3. Las dos responden a peticiones concretas, así que es criterio editorial y no lo he tocado.</li>
+    </ol>
+  </div>
+
+  <div class="col">
+    <p>Cuando deis el visto bueno, etiqueto la <em>release</em> y Zenodo genera la versión nueva con su DOI, que es el que citará el manuscrito revisado. El DOI antiguo se queda donde está apuntando a la versión vieja —es lo que hace un DOI— y eso es lo correcto: es lo que citaba el artículo rechazado.</p>
+  </div>
+</section>
+
+<footer>
+  Registro completo de los 91 defectos con su estado, cifra antigua y cifra nueva: <code>docs/reviews/CORRECTIONS_LOG.md</code><br>
+  Rama <code>paper/autcon-r1-revision</code> · 53 commits sobre <code>bc3-ir-paper-v1.0.0</code> · toda cifra del artículo procede de un script del repositorio
+</footer>
+
+</div>
