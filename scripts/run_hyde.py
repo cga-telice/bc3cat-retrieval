@@ -147,6 +147,51 @@ def parameter_survival(rows: list[dict], parents: dict[str, str],
     return out
 
 
+def idf_mass(rows: list[dict], index_name: str = "bm25_unigram") -> dict:
+    """Cuanto peso idf mete el documento generado en la consulta.
+
+    Es la explicacion del resultado de BM25, y no es la que uno esperaria. El
+    catalogo entero usa 337 tipos de palabra, todos tecnicos y todos frecuentes.
+    La prosa que escribe un LLM esta hecha en su mayor parte de palabras que en
+    esta coleccion son **rarisimas** --funcionales como "se", genericas como
+    "conexion"-- y a las que BM25 asigna por tanto un idf maximo. El documento
+    hipotetico no diluye la consulta: la sepulta bajo terminos que el modelo
+    considera muy discriminantes y que no discriminan nada.
+    """
+    import unicodedata
+
+    index_dir = INDEX / index_name
+    vocab = json.loads((index_dir / "data" / "vocab.json").read_text(encoding="utf-8"))
+    idf = np.load(index_dir / "data" / "idf.npy")
+
+    def strip_accents(text: str) -> str:
+        return "".join(c for c in unicodedata.normalize("NFD", text)
+                       if unicodedata.category(c) != "Mn")
+
+    # El CountVectorizer del indice normaliza acentos; hay que hacer lo mismo
+    # para mirar el vocabulario, o no se encuentra ningun termino.
+    lookup = {strip_accents(k): v for k, v in vocab.items()}
+
+    def terms(text: str) -> set[str]:
+        return {t for t in (strip_accents(w) for w in text_word(text).split())
+                if t in lookup}
+
+    q_mass, h_mass, added = [], [], []
+    for row in rows:
+        tq, th = terms(row["query"]), terms(row["hypothetical"])
+        q_mass.append(sum(idf[lookup[t]] for t in tq))
+        h_mass.append(sum(idf[lookup[t]] for t in th))
+        added.append(len(th - tq))
+
+    return {
+        "vocabulary": len(vocab),
+        "query_idf_mass": float(np.mean(q_mass)),
+        "hyde_idf_mass": float(np.mean(h_mass)),
+        "terms_added": float(np.mean(added)),
+        "max_idf": float(idf.max()),
+    }
+
+
 def render_tex(summary: dict, survival: dict, n: int) -> str:
     labels = {"query": "Original query", "hyde": "Hypothetical document only",
               "query_hyde": "Query + hypothetical document"}
@@ -190,6 +235,8 @@ def main() -> int:
     parser.add_argument("--k", type=int, default=100)
     parser.add_argument("--batch", type=int, default=500)
     parser.add_argument("--save-runs", action="store_true")
+    parser.add_argument("--reuse", action="store_true",
+                        help="reutiliza los rankings ya persistidos en vez de recuperar")
     parser.add_argument("--tex", type=Path)
     parser.add_argument("--out", type=Path, default=WORK / "eval" / "hyde" / "results.json")
     args = parser.parse_args()
@@ -227,6 +274,12 @@ def main() -> int:
               f"{100*s['unresolved']:5.1f}% ausente  {100*s['wrong']:5.1f}% erroneo   "
               f"tupla completa: {100*s['complete_tuple']:5.1f}%")
 
+    mass = idf_mass(rows)
+    print(f"[idf] vocabulario {mass['vocabulary']} tipos, idf maximo {mass['max_idf']:.2f}. "
+          f"Masa idf media: consulta {mass['query_idf_mass']:.1f}, "
+          f"hipotetico {mass['hyde_idf_mass']:.1f} "
+          f"(+{mass['terms_added']:.1f} terminos nuevos del vocabulario)")
+
     formulations = {
         "query": [by_key.at[k, "text"] for k in keys],
         "hyde": [r["hypothetical"] for r in rows],
@@ -251,21 +304,37 @@ def main() -> int:
 
         for name, raw in formulations.items():
             texts = [prepare(t) for t in raw]
-            tops, scores = [], []
-            for start in range(0, len(texts), args.batch):
-                idx, sc = searcher.search_batch(texts[start:start + args.batch], k=args.k)
-                tops.append(idx)
-                scores.append(sc)
-            top_idx = np.vstack(tops)
-            top_sc = np.vstack(scores)
-            top_keys = ext[top_idx]
+            saved = RUNS / "hyde" / f"{retriever}__{name}" / f"results_top{args.k}.jsonl.gz"
+            if args.reuse and saved.exists():
+                # Recuperar con ColBERT sobre documentos generados cuesta ~45 min
+                # por formulacion; releer el ranking persistido cuesta segundos y
+                # da exactamente lo mismo.
+                ranking = {}
+                with gzip.open(saved, "rt", encoding="utf-8") as fh:
+                    for line in fh:
+                        record = json.loads(line)
+                        ranking[record["query_item_key"]] = [
+                            c["index_item_key"] for c in record["candidates"]
+                        ]
+                top_keys = np.array([ranking[k] for k in gold], dtype=object)
+                top_idx = top_sc = None
+                print(f"  {name:11s} (reutilizado {saved.name})")
+            else:
+                tops, scores = [], []
+                for start in range(0, len(texts), args.batch):
+                    idx, sc = searcher.search_batch(texts[start:start + args.batch], k=args.k)
+                    tops.append(idx)
+                    scores.append(sc)
+                top_idx = np.vstack(tops)
+                top_sc = np.vstack(scores)
+                top_keys = ext[top_idx]
             metrics = evaluate(top_keys, gold)
             summary[f"{retriever}::{name}"] = metrics
             print(f"  {name:11s} item Acc@1={metrics['item']['Acc@1']:.4f}  "
                   f"R@10={metrics['item']['Recall@10']:.4f}  "
                   f"parent Acc@1={metrics['parent']['Acc@1']:.4f}")
 
-            if args.save_runs:
+            if args.save_runs and top_idx is not None:
                 run_dir = RUNS / "hyde" / f"{retriever}__{name}"
                 run_dir.mkdir(parents=True, exist_ok=True)
                 with gzip.open(run_dir / f"results_top{args.k}.jsonl.gz", "wt",
@@ -285,7 +354,8 @@ def main() -> int:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({"queries": len(gold), "survival": survival,
-                                    "results": summary}, indent=2, ensure_ascii=False),
+                                    "idf": mass, "results": summary},
+                                   indent=2, ensure_ascii=False),
                         encoding="utf-8")
     print(f"\n-> {args.out}")
     if args.tex:

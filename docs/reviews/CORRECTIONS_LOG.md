@@ -116,7 +116,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
 | R10 | **B6** — baselines estructurados | 1 día | hecho (§3.2.5 y §4.8 redactadas, dos tablas generadas) |
 | R12 | Sensibilidad del pipeline estructurado al texto de consulta (N18) | ~15 min | hecho (`*_rawq`) |
-| R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | 1.976 documentos hipotéticos generados con Phi-4 (40 min, 0 fallos); recuperación en curso |
+| R11 | **B8** — HyDE sobre BM25 y BGE-M3-ColBERT | ~3 h | hecho (§3.2.6 y §4.7 redactadas, tabla generada) |
 | R13 | **N20** — qué aporta la firma de parámetros y cuánto cuesta calcularla | ~30 min | hecho |
 
 ## Bloque F — Reencuadre y difusión
@@ -460,6 +460,57 @@ BM25 ni cuando se le dice a qué plantilla pertenece la consulta. Corregido en
 mecánica de la disociación: la etapa 1 decide la familia y las etapas 2-3 la variante,
 así que el nivel de padre no distingue a ningún sistema de la familia y el nivel de
 ítem los separa de 0,031 a 0,903.
+
+### HyDE: la predicción se cumple, pero por un motivo distinto (B8 / R11)
+
+1.976 consultas estratificadas por plantilla, un documento hipotético por consulta
+generado con Phi-4 (40 min, 0 fallos). `scripts/hyde_generate.py`, `scripts/run_hyde.py`.
+Los baselines se recalculan sobre la submuestra: la comparación es pareada.
+
+| Recuperador | Consulta | Ítem Acc@1 | R@10 | Padre Acc@1 |
+|---|---|---|---|---|
+| BM25 unigrama | original | 0,814 | 0,906 | 0,955 |
+| | sólo hipotético | 0,014 | 0,058 | **0,092** |
+| | consulta + hipotético | 0,048 | 0,109 | 0,099 |
+| BGE-M3 ColBERT | original | 0,493 | 0,819 | 0,988 |
+| | sólo hipotético | 0,085 | 0,271 | **0,963** |
+| | consulta + hipotético | 0,331 | 0,746 | 0,964 |
+
+**1. El documento generado no contiene los parámetros.** Pasando el extractor por
+reglas sobre el texto generado en vez de sobre la consulta: de la consulta recupera el
+97,3 % de los ejes y la tupla completa en el 87,5 % de los casos; del hipotético
+recupera el 35,9 %, deja el 61,3 % sin mencionar, y produce la tupla completa en
+**cero de 1.976**. El modelo parafrasea con fiabilidad la cabecera —concepto, material,
+diámetro— y tira con la misma fiabilidad el bloque entre paréntesis que lleva turno,
+banda de mantenimiento y volumen.
+
+**2. Para el denso es la disociación otra vez.** ColBERT mantiene 0,963 de padre con
+sólo el hipotético (contra 0,988 con la consulta real) y se hunde a 0,085 en ítem. HyDE
+conserva justo lo que la recuperación densa ya hace bien y destruye justo lo que ya
+hace mal: está apuntada a la mitad equivocada del problema.
+
+**3. Para BM25 el fallo es de otro tipo, y es el hallazgo bueno.** Pierde también la
+familia (0,092 de padre). No es dilución, es idf, y las cifras invierten la intuición
+habitual:
+
+| Término | df | idf |
+|---|---|---|
+| `canalizacion` | 46.117 / 47.513 | 0,03 |
+| `tubos` | 45.739 / 47.513 | 0,04 |
+| `se` | **1** / 47.513 | **10,36** (el máximo del índice) |
+
+Las palabras de contenido de este catálogo no pesan nada, y un clítico castellano pesa
+el máximo. La masa idf media de una consulta es 17,9; la de un hipotético, 56,1, con
+14,4 términos del vocabulario que la consulta no tenía. **`se` solo, presente en el
+76 % de los documentos generados, pesa más que media consulta original.** BM25 ordena
+entonces por qué documentos contienen esas palabras, que es casi aleatorio respecto a
+lo que se preguntaba.
+
+La lección se puede enunciar sin este catálogo: el texto generado es fluido, y la
+fluidez es anómala en una colección de registros técnicos escuetos. Un modelo que pesa
+los términos por su rareza en la colección leerá la fluidez como evidencia.
+
+---
 
 ### Qué es de verdad «BM25 + frases de parámetros» (N20)
 

@@ -560,6 +560,13 @@ We employ a two-stage cascade: efficient first-stage retrieval followed by expen
 
 The cross-encoder produces a relevance score for each query--document pair through joint encoding and a classification head.
 
+\subsubsection{Query Expansion with Generated Documents}
+\label{subsec:hyde_method}
+
+HyDE~\citep{gao2023precise} addresses the opposite problem to the one this benchmark poses: it asks a language model to write the document that would answer the query, and retrieves with that text instead, on the assumption that a generated document shares more vocabulary with real documents than a short query does. Here the query already contains most of its target's vocabulary (Section~\ref{subsec:overlap}), so the expected effect is negative. We evaluate it anyway, because a negative result with a measured mechanism says more about the benchmark than an omission would.
+
+One hypothetical document is generated per query by Phi-4 (14B, greedy decoding, $110$ tokens) from the query alone, with no retrieved context. Three query formulations are compared on the same retrievers and the same queries: the original query, the hypothetical document alone, and the two concatenated. Because generation costs about a second per query, this experiment runs on a subsample of $1{,}976$ test queries stratified by template, and the baselines are recomputed on that subsample so that every comparison is paired.
+
 \subsubsection{Structured Attribute Matching}
 \label{subsec:structured}
 
@@ -1034,6 +1041,24 @@ Second, \textbf{blend always beats replace, by a wide margin}: $+0.33$ to $+0.39
 Third, \textbf{depth barely matters, and what effect it has runs in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$, the hybrid from $0.451$ to $0.426$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend the three depths are within $0.004$ of each other for every system, with a slight preference for the deepest. The declared choice of depth, in other words, was never the decision it appeared to be: what determines the outcome is whether the first-stage score is kept, not how many candidates are rescored.
 
 The practical reading is that a general-purpose reranker has nothing to add here. Its training objective --- is this passage about this question --- is satisfied equally by every variant of a template, which is precisely the distinction the task requires. Reranking would only help if the reranker were trained to compare parameter values, and no off-the-shelf model is.
+
+\subsection{Query Expansion with Generated Documents}
+\label{subsec:hyde_results}
+
+Table~\ref{tab:hyde} reports HyDE on both families. The prediction was that it would hurt. It does, by more than expected, and the two retrievers fail in different ways --- which is what makes the result worth reporting.
+
+\input{tables/hyde.tex}
+
+\paragraph{The generated document does not contain the parameters.}
+Applying the rule-based extractor of Section~\ref{subsec:structured} to the hypothetical documents instead of to the queries measures directly what survives generation. From the query it recovers $97.3\%$ of axes correctly and a complete tuple for $87.5\%$ of queries. From the hypothetical document it recovers $35.9\%$ of axes, leaves $61.3\%$ unmentioned, and produces a complete tuple for \emph{none} of the $1{,}976$ queries. The model reliably paraphrases the opening of the query --- concept, material, diameter --- and reliably drops the parenthetical block that carries work shift, maintenance window and execution volume. It writes a plausible specification for the family and discards the variant.
+
+\paragraph{For the dense retriever, that is exactly the dissociation again.}
+BGE-M3-ColBERT keeps $0.963$ at parent level with the hypothetical document alone, barely below its $0.988$ on the real query, while item-level accuracy falls from $0.493$ to $0.085$. HyDE preserves precisely what dense retrieval on this catalog already does well and destroys precisely what it already does badly. As an intervention it is not neutral-to-harmful; it is aimed at the wrong half of the problem.
+
+\paragraph{For BM25 the failure is of a different kind, and it is instructive.}
+BM25 loses the family as well: parent accuracy falls from $0.955$ to $0.092$. The cause is not dilution but inverse document frequency, and the numbers are worth spelling out because they invert the usual intuition. This catalog's vocabulary is $337$ word types, and its content words are in almost every record: \textit{canalización} occurs in $46{,}117$ of the $47{,}513$ items and therefore carries an idf of $0.03$; \textit{tubos} occurs in $45{,}739$ and carries $0.04$. Meanwhile the Spanish clitic \textit{se} occurs in exactly one item, and carries the maximum idf in the index, $10.36$. Generated prose is full of such words. Summed over its terms the average query carries $17.9$ of idf mass; the average hypothetical document carries $56.1$, adding $14.4$ in-vocabulary terms the query did not have, and \textit{se} alone --- present in $76\%$ of the generated documents --- outweighs half of the original query on its own. BM25 then ranks by which documents happen to contain those words, which is close to arbitrary with respect to what was asked.
+
+This is worth stating as a general caution rather than a curiosity. Generated text is fluent, and fluency in a collection of terse technical records is anomalous. A retrieval model that weights terms by their rarity in the collection will read fluency as evidence. Concatenating the query with the hypothetical document does not repair it for BM25 ($0.048$), and only partly for ColBERT ($0.331$ against $0.493$), because the added mass does not go away by adding the original query back.
 
 \subsection{Structured Attribute Matching}
 \label{subsec:structured_results}
