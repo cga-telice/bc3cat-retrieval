@@ -42,7 +42,7 @@ LABELS = {
     "structured_pipeline_oracle": r"\quad given the correct template",
     "structured_pipeline_classifier": "Fine-tuned classifier + structured lookup",
     "structured_pipeline_bio_tagger": "Fine-tuned BIO tagger + structured lookup",
-    "bm25_unigram_params__k1-0.60__b-0.35": "BM25 with parameter phrases (best lexical)",
+    "bm25_unigram_params__k1-0.60__b-0.35": "BM25 with parameter tokens (best lexical)",
     "bm25_unigram__k1-0.80__b-0.35": "BM25 unigram",
     "tfidf_unigram_phrases_replace": "TF-IDF with parameter phrases",
     "dense_e5": "multilingual-e5-base",
@@ -72,8 +72,9 @@ PRESETS = {
     # Baselines estructurados: la respuesta a la ultima pregunta del Revisor 2,
     # que pregunta si un filtrado por reglas sobre los atributos no seria un
     # baseline mas fuerte que la recuperacion textual.
-    # Cada pipeline va seguido de su variante con extraccion perfecta, que es
-    # su cota superior: separa el error de extraccion del error de busqueda.
+    # Cada pipeline va seguido de su variante con la plantilla dada (oracle de
+    # etapa 1, no de extraccion), que separa el error de identificar la familia
+    # del error de resolver la variante.
     "structured": [
         "bm25_unigram_params__k1-0.60__b-0.35",
         "bge_m3_colbert",
