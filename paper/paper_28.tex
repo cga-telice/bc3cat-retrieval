@@ -899,11 +899,12 @@ GTE-multilingual-base (instruct) & 0.997 & 1.000 & 1.000 & 0.998 & 0.997 \\
 
 The two formulations are indistinguishable: $0.070$ versus $0.073$ at item level and $0.998$ versus $0.997$ at parent level. Adding a natural-language instruction to the query neither helps nor hurts on this task, which is consistent with queries that consist almost entirely of technical terms and numeric values, where an instruction prefix adds no disambiguating signal.
 
-The pair also exhibits the largest item-to-parent gap of any system evaluated here: GTE places the correct parametric family first for $99.8\%$ of queries while placing the correct variant first for only $7.0\%$. The model has learned the domain well enough to localise a query within the catalog almost perfectly, and is nonetheless unable to choose among the roughly $1{,}584$ variants that a template generates.
+The pair also exhibits the largest item-to-parent gap of any system evaluated here: GTE places the correct parametric family first for $99.8\%$ of queries while placing the correct variant first for only $7.0\%$. The model has learned the domain well enough to localise a query within the catalog almost perfectly, and is nonetheless unable to choose among the variants that template generates --- $144$ of them for the median template, $6{,}336$ for the largest.
+
+The same model reaches $0.586$ on the $29$ queries that contain no numeric value, against $0.069$ on the $16{,}561$ that do. The subset is far too small ($0.17\%$ of the test set) to carry a quantitative claim, and is reported only because the direction is unambiguous and identical for every neural system evaluated here: what these models fail to represent is the numbers.
 
 \paragraph{A note on configuration} These figures differ substantially from those we initially obtained. \texttt{gte-multilingual-base} requires \texttt{trust\_remote\_code}, which the sentence-transformers version used for the other models does not support; the fallback encoder applied mean pooling, whereas this model is trained for CLS pooling, and the E5-style \texttt{query:}/\texttt{passage:} prefixes were applied to a model never trained with them. Under that configuration the model retrieves the correct item for essentially no query at all. We therefore evaluate GTE with CLS pooling, without prefixes, and with a newer \texttt{transformers} release; all other models use the environment described in Section~\ref{subsec:implementation}. We report this explicitly because the failure was silent: the encoder fell back without raising an error, and the index metadata did not record which encoding path had been taken.
 
-Non-numeric queries showed substantial improvements (GTE-Qwen2: 37.9\% vs 1.4\% overall), reinforcing the numeric precision challenge observed with E5.
 
 \subsubsection{BGE-M3 Multi-Representation Architecture}
 
@@ -951,13 +952,7 @@ Three observations follow. First, the ordering at item level is almost exactly r
 
 The dissociation is not an artefact of any single architecture. It holds for single-vector dense encoders, for learned sparse representations, and, in attenuated form, for late interaction. What separates the methods is not whether they understand the domain --- at parent level almost all of them are close to ceiling --- but whether their representation preserves the parameter values that distinguish one variant from another.
 
-The performance hierarchy is clear: BGE-M3-ColBERT (44.8\%) outperformed E5-large by 31.4 percentage points and GTE-large by 43.5 percentage points. These substantial differences are meaningful for practical retrieval applications.
-
-\subsubsection{Best Neural Models Selected}
-
-BGE-M3-ColBERT emerged as the best neural approach (Acc@1=44.8\%), achieving 3.3-fold and 34-fold improvements over multilingual-e5-base and GTE-multilingual-base respectively. However, even this best neural method retrieved the correct item in less than half of queries.
-
-At the parent level, all neural approaches exceeded 96\% Acc@1, confirming that neural models capture broad semantic categories effectively but struggle with fine-grained item-level distinctions.
+BGE-M3-ColBERT is therefore the neural system carried forward into the fusion and reranking experiments: at $0.448$ it is $3.3$ times more accurate than multilingual-e5-base and $6.4$ times more accurate than GTE, and it is still wrong on more than half of the queries.
 
 \subsection{Hybrid Fusion Results}
 \label{subsec:hybrid_results}
@@ -970,7 +965,7 @@ This is a negative result about a design element we expected to help. In a catal
 
 \begin{table}[h]
 \centering
-\caption{Performance of hybrid fusion methods with optimized weights. All configurations use $\beta_{\text{exact}}=0.1$ and $\beta_{\text{overlap}}=0.0$.}
+\caption{Best configuration of each fusion strategy, selected on item-level Acc@1 over the weight grid and the two numeric bonuses. The three-way fusions select $\beta_{\text{exact}}=0$ with $\beta_{\text{overlap}}=0.05$; the five-way fusion selects $\beta_{\text{exact}}=0.15$ with $\beta_{\text{overlap}}=0.05$.}
 \label{tab:hybrid_fusion}
 \small
 \resizebox{\textwidth}{!}{%
