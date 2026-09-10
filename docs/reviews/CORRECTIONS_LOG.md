@@ -56,7 +56,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A35 | 1085, 1115-1116, abstract | Generalización excesiva | Acotar a este catálogo y a consultas derivadas del propio catálogo | R1-5.2, R2-5.1 | hecho |
 | A36 | 1108-1109 | Falta la limitación de validez externa | Añadir que las consultas no son descripciones independientes de profesionales | R2-7.1 | hecho |
 | A37 | 169-177 | Contribución sin acotar | Declarar que la aportación es una comparación empírica, no un método nuevo | R1-7.1 | hecho |
-| A38 | §4 (555-1086) | Comparaciones numéricas repetidas ya visibles en las tablas | Recortar ~30 %; mover detalle a material suplementario | R2-8.2 | en curso |
+| A38 | §4 (555-1086) | Comparaciones numéricas repetidas ya visibles en las tablas | Recortar ~30 %; mover detalle a material suplementario | R2-8.2 | hecho parcialmente (~10 % de §4 y 5 tablas fuera); ver nota abajo |
 | A39 | tras 345 | Falta visión general metodológica | Diagrama de flujo dataset → muestreo → indexación → métodos → fusión → evaluación | R2-4.1 | hecho |
 | A40 | §3.1 | Falta cuantificar el solape `resumen`/`texto` | Nueva subsección con la medición (→ Fase 3a) | R2-2.3 | hecho |
 | A41 | 1127-1135 | Fortaleza infravalorada | Destacar la liberación de datos, consultas, etiquetas, salidas y configs | R2-6.1 | hecho |
@@ -123,7 +123,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 
 | # | Qué | Estado |
 |---|---|---|
-| F1 | Título, abstract y contribuciones: decisión de encuadre pendiente de César | hecho |
+| F1 | Título, abstract y contribuciones: decisión de encuadre pendiente de César | hecho. **Título: César decide mantener el original.** Revertido en el `.tex` |
 | F2 | Introducción: los dos escenarios operativos de L152 que nunca se evalúan | hecho |
 | F3 | Conclusiones alineadas con el encuadre elegido | hecho |
 | F4 | `README.md`: tabla de resultados, recuento de ítems, URL de clonado, menciones a `ranx`/Pyserini | hecho |
@@ -356,6 +356,39 @@ encima:
   54,86 % de **todas** las consultas), *«hybrid showed intermediate behavior with
   36,0 % right-parent-wrong-item»* (la tabla dice 8,13 %). Eliminado: el párrafo
   anterior ya lo dice bien y con las cifras de la tabla.
+
+---
+
+### Qué se pudo recortar de §4, y qué no (A38)
+
+El Revisor 2 pide un ~30 % menos de Resultados. Lo hecho:
+
+| Fuera | Palabras |
+|---|---|
+| Tablas de rejilla de RM3 y de Rocchio (12 filas dentro de 0,03 entre sí) | 513 → 202, y una tabla generada que cubre **las dos bases** en vez de tres tablas sobre la débil |
+| Tabla de E5 (un modelo, 2 filas, íntegras en la tabla de disociación) | 67 |
+| Tabla de GTE (2 filas, ídem) | 94 |
+| Tabla de estratificación numérica (8×5 para un subconjunto de 29 consultas) | 135 |
+| Párrafo de fusión que recitaba la tabla | 220 → 180, y ahora dice lo que la tabla no dice (el barrido apaga la señal neuronal: 1,2 % del peso) |
+| Párrafo duplicado tras la figura de errores, y otro tras la tabla jerárquica | ~120 |
+| Del apéndice: lista de E5/GTE/BGE, historia de BERT, cross-encoder, significancia, fórmula de RRF (que nunca ejecutamos) | 339 |
+
+**Resultado: §4 pasa de 8.844 a 7.985 palabras (−10 %) y de 10 a 5 tablas tecleadas
+a mano. El documento, de 73 a 69 páginas.**
+
+**Por qué no llega al 30 %.** De las 7.079 palabras de prosa que quedan en §4, unas
+2.700 son secciones nuevas que responden a otras peticiones de los mismos revisores:
+los baselines estructurados (B6, 1.624), HyDE (B8, 536), la selección en validación
+(B3, ~350) y la descomposición de los tokens de parámetro (N20). Recortar un 30 %
+exigiría borrar justo eso.
+
+Lo que sí se ha hecho por completo es el defecto que el revisor describe: **ya no
+queda prosa en §4 que se limite a recitar una tabla.** Cada párrafo que quedó dice
+algo que su tabla no dice. Si aun así hace falta bajar el volumen, la palanca que
+queda es mover a material suplementario la tabla de ejemplos de error (una página
+completa) y la tabla detallada de BGE-M3, pero las dos responden a peticiones
+concretas (A6-A8 y la comparación entre modos), así que es decisión editorial y no
+de corrección.
 
 ---
 

@@ -44,6 +44,11 @@ LABELS = {
     "structured_pipeline_bio_tagger": "Fine-tuned BIO tagger + structured lookup",
     "bm25_unigram_params__k1-0.60__b-0.35": "BM25 with parameter tokens (best lexical)",
     "bm25_unigram__k1-0.80__b-0.35": "BM25 unigram",
+    "bm25_unigram": "BM25 unigram (weak base)",
+    "prf_rm3__bm25_unigram__M5__N20__beta0_5": r"\quad + RM3 ($M{=}5$, $N{=}20$, $\lambda{=}0.5$)",
+    "prf_rocchio__bm25_unigram__M5__N20__beta0_5": r"\quad + Rocchio ($M{=}5$, $N{=}20$, $\beta{=}0.5$)",
+    "prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7": r"\quad + RM3 ($M{=}5$, $N{=}20$, $\lambda{=}0.7$)",
+    "prf_rocchio__bm25_unigram_params__k1-0.60__b-0.35__M10__N20__beta0_7": r"\quad + Rocchio ($M{=}10$, $N{=}20$, $\beta{=}0.7$)",
     "tfidf_unigram_phrases_replace": "TF-IDF with parameter phrases",
     "dense_e5": "multilingual-e5-base",
     "dense_gte": "GTE-multilingual-base (direct)",
@@ -68,6 +73,16 @@ PRESETS = {
         "dense_gte",
         "dense_gte_instrQ",
         "dense_es_hiiamsid",
+    ],
+    # PRF sobre las dos bases. Expandir solo la debil dejaria abierto si el
+    # resultado nulo es del PRF o del margen que deja una primera etapa mediocre.
+    "prf": [
+        "bm25_unigram_params__k1-0.60__b-0.35",
+        "prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7",
+        "prf_rocchio__bm25_unigram_params__k1-0.60__b-0.35__M10__N20__beta0_7",
+        "bm25_unigram",
+        "prf_rm3__bm25_unigram__M5__N20__beta0_5",
+        "prf_rocchio__bm25_unigram__M5__N20__beta0_5",
     ],
     # Baselines estructurados: la respuesta a la ultima pregunta del Revisor 2,
     # que pregunta si un filtrado por reglas sobre los atributos no seria un

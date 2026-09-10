@@ -1,0 +1,18 @@
+% Generado por scripts/leaderboard.py -- no editar a mano.
+\begin{table}[ht]
+\centering
+\caption{Pseudo-relevance feedback over two base retrievers, item level on the canonical test set ($n=16{,}590$). Each base is followed by the best RM3 and the best Rocchio configuration found over it. Neither method improves either base.}
+\label{tab:prf_comparison}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{System} & \textbf{Acc@1} & \textbf{Recall@5} & \textbf{Recall@10} & \textbf{MRR} & \textbf{nDCG@10} \\
+\midrule
+BM25 with parameter tokens (best lexical) & \textbf{0.974} & 0.985 & 0.985 & 0.979 & 0.980 \\
+\quad + RM3 ($M{=}5$, $N{=}20$, $\lambda{=}0.7$) & 0.973 & 0.985 & 0.985 & 0.979 & 0.980 \\
+\quad + Rocchio ($M{=}10$, $N{=}20$, $\beta{=}0.7$) & 0.967 & 0.984 & 0.985 & 0.975 & 0.977 \\
+BM25 unigram (weak base) & 0.869 & 0.932 & 0.950 & 0.898 & 0.909 \\
+\quad + RM3 ($M{=}5$, $N{=}20$, $\lambda{=}0.5$) & 0.870 & 0.933 & 0.950 & 0.898 & 0.909 \\
+\quad + Rocchio ($M{=}5$, $N{=}20$, $\beta{=}0.5$) & 0.856 & 0.927 & 0.943 & 0.888 & 0.900 \\
+\bottomrule
+\end{tabular}
+\end{table}

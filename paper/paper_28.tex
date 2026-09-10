@@ -63,7 +63,7 @@
 %% use the cortext command for theassociated footnote;
 %% use the ead command for the email address,
 %% and the form \ead[url] for the home page:
-\title{Finding the Family but Not the Variant: Item-Level Retrieval in Parametric Construction Catalogs}
+\title{A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches}
 
 \author[deptA,b]{Cesáreo González-Alvarez\corref{cor1}}
 \cortext[cor1]{Corresponding author}
@@ -499,6 +499,7 @@ Both are implemented directly over the BM25 retriever described above, and share
 The expansion is applied at the level of the query string: each selected term is repeated a number of times proportional to its weight, and the repeated terms are appended to the original query, which is left intact. The parameter $\beta$ therefore scales the repetition budget rather than interpolating two score distributions, which is how it functions in the canonical formulations~\citep{abdul2004umass, rocchio1971relevance}. The mechanism is equivalent in effect --- more repetitions give the expansion terms more weight in the BM25 score --- but it is an approximation, and the results in Section~\ref{subsec:prf} should be read as such: they bound what term-based query expansion achieves on this benchmark rather than certifying a particular estimator.
 
 \subsubsection{Neural Dense Retrieval Methods}
+\label{subsec:neural_methods}
 
 All neural models are used in zero-shot mode without fine-tuning on construction text, testing their transfer capabilities to domain-specific Spanish technical language.
 
@@ -722,7 +723,7 @@ The $26.5$ point gap between the best BM25 and the best TF-IDF has two separable
 \end{figure}
 
 
-Figure~\ref{fig:bm25_heatmap_panel} visualizes the sensitivity of item-level Acc@1 to the BM25 hyperparameters $(k_1, b)$ across the three tokenization variants. The parameter-phrase variant dominates the entire explored grid, not only at its optimum, indicating that domain-aware phrase tokenization provides a structural advantage that is robust to hyperparameter choice. All three variants converge on a preference for low $b$ ($\approx 0.35$), suggesting that aggressive length normalization is counterproductive in this catalog where short and long fields differ systematically rather than randomly.
+Figure~\ref{fig:bm25_heatmap_panel} shows the sensitivity of item-level Acc@1 to $(k_1, b)$ across the three tokenization variants. Two features matter. The parameter-token variant dominates the entire grid and not only at its optimum, so the advantage does not depend on the hyperparameters being right. And all three variants prefer low $b$ ($\approx 0.35$): aggressive length normalisation is counterproductive here, because the short and long forms of an item differ in length systematically rather than randomly.
 
 \begin{figure}[htbp]
 \centering
@@ -744,31 +745,9 @@ Table~\ref{tab:statistical_significance} reports every pairwise comparison among
 
 \input{tables/significance.tex}
 
-Stratification by query type (Table~\ref{tab:performance_by_numbers}) revealed that BM25-params achieved perfect accuracy on non-numeric queries (0.17\% of test set) while maintaining 0.974 on numeric ones. TF-IDF variants showed the inverse: perfect non-numeric but weaker numeric performance (0.558--0.708).
+Every lexical configuration is more accurate on the $29$ queries that contain no numeric value than on the $16{,}561$ that do, and for the five TF-IDF variants the difference is the difference between $1.000$ and $0.558$--$0.708$. The subset is too small to carry a claim on its own; it is consistent with the numeric mismatches that Section~\ref{subsec:error_analysis} finds to be almost the only failure mode of every system here. Per-subset metrics for all configurations are in the released artefacts.
 
-\begin{table}[htbp]
-\centering
-\caption{Item-level performance stratification by query type. The test set comprises 16,561 queries with numbers (99.83\%) and 29 queries without numbers (0.17\%).}
-\label{tab:performance_by_numbers}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrr}
-\toprule
- & \multicolumn{2}{c}{Acc@1} & \multicolumn{2}{c}{Recall@10} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5}
-Method & Numeric & Non-numeric & Numeric & Non-numeric \\
-\midrule
-BM25-unigram\_params (k1=0.60, b=0.35) & 0.974 & 1.000 & 0.985 & 1.000 \\
-BM25-unigram (k1=0.80, b=0.35) & 0.869 & 0.931 & 0.950 & 1.000 \\
-BM25-unibigram (k1=0.80, b=0.35) & 0.826 & 0.966 & 0.870 & 0.966 \\
-TF-IDF-unigram\_phrases\_replace & 0.708 & 1.000 & 0.850 & 1.000 \\
-TF-IDF-unigram\_phrases\_add & 0.649 & 1.000 & 0.919 & 1.000 \\
-TF-IDF-unigram\_nostop & 0.641 & 1.000 & 0.829 & 1.000 \\
-TF-IDF-unigram & 0.626 & 1.000 & 0.807 & 1.000 \\
-TF-IDF-char\_3\_5 & 0.558 & 1.000 & 0.647 & 1.000 \\
-\bottomrule
-\end{tabular}
-}
-\end{table}
+
 
 Based on item-level results, BM25 with parameter tokens ($k_1=0.60$, $b=0.35$) is the best-performing lexical configuration, ahead of every other lexical variant on all evaluation metrics with statistical significance. It is used as the strong base for the pseudo-relevance feedback experiments of Section~\ref{subsec:prf}.
 
@@ -780,70 +759,13 @@ Pseudo-relevance feedback (PRF) was evaluated to assess whether query expansion 
 
 Over the strong base, neither method helps. The best RM3 configuration reaches $0.9732$ against a baseline of $0.9737$, a difference of $-0.04$ percentage points; the best Rocchio configuration reaches $0.9672$, a degradation of $0.64$ points. The result over the weak base, reported in detail below, is the same in direction: RM3 neutral, Rocchio harmful.
 
-\subsubsection{RM3 and Rocchio Performance}
+Table~\ref{tab:prf_comparison} reports the best RM3 and the best Rocchio configuration over each base, from grids of eight configurations each ($M \in \{5, 10\}$, $N \in \{20, 40\}$, two interpolation weights).
 
-Eight configurations each were evaluated for RM3 and Rocchio, of which the six best are reported, varying feedback documents ($M \in \{5, 10\}$), expansion terms ($N \in \{20, 40\}$), and interpolation weights. Tables~\ref{tab:rm3_configurations} and~\ref{tab:rocchio_configurations} present detailed results. RM3 showed remarkable stability across configurations (Acc@1: 0.8693--0.8699), while Rocchio performance degraded notably with N=40 terms (Acc@1 dropping from 0.857 to 0.837).
+\input{tables/prf.tex}
 
-\begin{table}[htbp]
-\centering
-\caption{Performance of RM3 configurations at item level on the test set (n=16,590 queries). All configurations use BM25-unigram as the base retriever.}
-\label{tab:rm3_configurations}
-\begin{tabular}{cccccc}
-\toprule
-M & N & $\lambda$ & MRR & nDCG@10 & Acc@1 \\
-\midrule
-5 & 20 & 0.5 & 0.8983 & 0.9093 & 0.8699 \\
-5 & 20 & 0.7 & 0.8982 & 0.9092 & 0.8698 \\
-5 & 40 & 0.5 & 0.8982 & 0.9092 & 0.8699 \\
-10 & 20 & 0.5 & 0.8983 & 0.9093 & 0.8699 \\
-10 & 20 & 0.7 & 0.8978 & 0.9089 & 0.8693 \\
-10 & 40 & 0.5 & 0.8982 & 0.9092 & 0.8699 \\
-\bottomrule
-\end{tabular}
-\end{table}
+The result is the same on both bases and in both directions. RM3 is neutral: it moves the weak base by $+0.08$ points and the strong one by $-0.05$, neither of them significant. Rocchio degrades both, by $1.3$ and $0.7$ points respectively. Within each grid the configurations are almost indistinguishable --- the six reported RM3 runs over the weak base span $0.8693$ to $0.8699$ --- with one exception worth noting: Rocchio loses about two points whenever $N=40$, which is the only place in these grids where a hyperparameter matters, and it matters by making things worse.
 
-\begin{table}[htbp]
-\centering
-\caption{Performance of Rocchio configurations at item level on the test set (n=16,590 queries). All configurations use BM25-unigram as the base retriever.}
-\label{tab:rocchio_configurations}
-\begin{tabular}{cccccc}
-\toprule
-M & N & $\beta$ & MRR & nDCG@10 & Acc@1 \\
-\midrule
-5 & 20 & 0.5 & 0.8875 & 0.9000 & 0.8565 \\
-5 & 20 & 0.7 & 0.8874 & 0.8999 & 0.8563 \\
-5 & 40 & 0.5 & 0.8718 & 0.8877 & 0.8373 \\
-10 & 20 & 0.5 & 0.8873 & 0.9000 & 0.8559 \\
-10 & 20 & 0.7 & 0.8872 & 0.8999 & 0.8559 \\
-10 & 40 & 0.5 & 0.8713 & 0.8873 & 0.8361 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsubsection{Comparative Analysis and Statistical Significance}
-
-Table~\ref{tab:prf_comparison} presents the performance comparison between the best PRF methods and their base retriever. Statistical significance testing was conducted using paired bootstrap resampling with 10,000 iterations and $\alpha$=0.05, with multiple testing correction using the Holm--Bonferroni method.
-
-\begin{table}[htbp]
-\centering
-\caption{Comparison of best PRF methods versus base retriever at item level. Statistical significance was assessed using bootstrap resampling (10,000 iterations) with Holm--Bonferroni correction.}
-\label{tab:prf_comparison}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lcccc}
-\toprule
-Method & MRR & nDCG@10 & Acc@1 & Significance \\
-\midrule
-Base BM25-unigram & 0.898 & 0.909 & 0.869 & --- \\
-Best RM3 (M=5, N=20, $\lambda$=0.5) & 0.898 & 0.909 & 0.870 & n.s. \\
-Best Rocchio (M=5, N=20, $\beta$=0.5) & 0.888 & 0.900 & 0.857 & $p < 0.05$ \\
-\bottomrule
-\end{tabular}
-}
-\end{table}
-
-Table~\ref{tab:prf_comparison} summarizes the comparison. RM3 showed no statistically significant improvement over the baseline (95\% CI: [-0.0005, 0.0021]). Four RM3 configurations tie at Acc@1 $=0.8699$ --- $M \in \{5, 10\}$ crossed with $N \in \{20, 40\}$ at $\lambda=0.5$ --- so the smallest is reported; the choice among them is immaterial. Rocchio produced significant degradation ($p < 0.05$, $\Delta=1.26\%$), suggesting that query expansion is ill-suited for this domain where precise numeric matching outweighs semantic expansion.
-
-The strong baseline BM25 performance leaves minimal room for improvement through query expansion, indicating limited value of PRF for this technical retrieval task.
+Reporting both bases is what makes the null result interpretable. Over a mediocre first stage one could argue that expansion had nothing to work with; over a first stage at $0.974$ one could argue there was no headroom. Getting the same answer over both leaves neither explanation standing. In a collection where the target already contains $94.1\%$ of the query's terms, adding more terms to the query cannot help, and adding the wrong ones hurts.
 
 \subsection{Neural Dense Retrieval Methods}
 
@@ -851,26 +773,7 @@ This subsection presents the comparative performance of neural dense retrieval m
 
 \subsubsection{E5 Model Family Performance}
 
-Table~\ref{tab:e5_performance} presents the performance comparison across E5 model variants. The multilingual-e5-base model achieved item-level Acc@1 of 0.136 (13.6\%), meaning roughly 1 in 7 queries retrieved the correct item as the top result. At the parent level the same model reaches 0.982 (98.2\%).
-
-\begin{table}[htbp]
-\centering
-\caption{Performance comparison of E5 model variants. Evaluated on the canonical test set ($n=16{,}590$).}
-\label{tab:e5_performance}
-\begin{tabular}{lccccc}
-\hline
-\textbf{Model} & \textbf{Acc@1} & \textbf{Recall@5} & \textbf{Recall@10} & \textbf{MRR} & \textbf{nDCG@10} \\
-\hline
-\multicolumn{6}{c}{\textit{Item-Level Retrieval}} \\
-\hline
-multilingual-e5-base & 0.136 & 0.371 & 0.516 & 0.252 & 0.303 \\
-\hline
-\multicolumn{6}{c}{\textit{Parent-Level Retrieval}} \\
-\hline
-multilingual-e5-base & 0.982 & 0.993 & 0.997 & 0.986 & 0.968 \\
-\hline
-\end{tabular}
-\end{table}
+Multilingual-e5-base retrieves the correct item first for $0.136$ of queries --- roughly one in seven --- and the correct family for $0.982$.
 
 The two levels differ by a factor of $7.2$: from $13.6\%$ at item level to $98.2\%$ at parent level, a gap of $84.5$ percentage points. The embeddings capture enough of the domain to place a query under the right template, and almost none of what separates the variants within it.
 
@@ -879,30 +782,7 @@ Stratification by query type points to where the loss occurs: on the 29 queries 
 \subsubsection{GTE Model Family Performance}
 \label{subsec:gte}
 
-Table~\ref{tab:gte_performance} isolates the effect of query formulation: both rows use \texttt{Alibaba-NLP/gte-multilingual-base} with identical document encoding, and differ only in whether the query carries a natural-language instruction prefix.
-
-\begin{table}[htbp]
-\centering
-\caption{Performance comparison of GTE model variants with different query formulations.}
-\label{tab:gte_performance}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lccccc}
-\hline
-\textbf{Model} & \textbf{Acc@1} & \textbf{Recall@5} & \textbf{Recall@10} & \textbf{MRR} & \textbf{nDCG@10} \\
-\hline
-\multicolumn{6}{c}{\textit{Item-Level Retrieval}} \\
-\hline
-GTE-multilingual-base (direct) & 0.070 & 0.235 & 0.327 & 0.152 & 0.183 \\
-GTE-multilingual-base (instruct) & 0.073 & 0.237 & 0.325 & 0.155 & 0.185 \\
-\hline
-\multicolumn{6}{c}{\textit{Parent-Level Retrieval}} \\
-\hline
-GTE-multilingual-base (direct) & 0.998 & 1.000 & 1.000 & 0.999 & 0.995 \\
-GTE-multilingual-base (instruct) & 0.997 & 1.000 & 1.000 & 0.998 & 0.997 \\
-\hline
-\end{tabular}
-}
-\end{table}
+Two GTE runs isolate the effect of query formulation: both use \texttt{Alibaba-NLP/gte-multilingual-base} with identical document encoding, and differ only in whether the query carries a natural-language instruction prefix. Their five metrics at both levels are in Table~\ref{tab:dissociation} and in the released artefacts.
 
 The two formulations are indistinguishable: $0.070$ versus $0.073$ at item level and $0.998$ versus $0.997$ at parent level. Adding a natural-language instruction to the query neither helps nor hurts on this task, which is consistent with queries that consist almost entirely of technical terms and numeric values, where an instruction prefix adds no disambiguating signal.
 
@@ -1018,11 +898,9 @@ TF-IDF: 0.450
 }
 \end{table}
 
-The three-way fusions yielded Acc@1 between $0.885$ and $0.893$, with MRR@10 between $0.906$ and $0.910$. BM25 + ColBERT + TF-IDF achieved the highest Acc@1 ($0.893$) and MRR@10 ($0.910$). All three remain below the best lexical configuration alone ($0.974$).
+What the sweep does with the weights is more informative than the scores it reaches. In every three-way fusion the optimiser assigns BM25 $87.9\%$ of the weight, character-level TF-IDF $11.0\%$, and the neural ranker $1.2\%$ --- whichever of the three BGE-M3 modes it is. Given free rein over the weight space, the procedure turns the neural signal off. The five-way fusion is the exception that shows why: forced to accommodate all three BGE-M3 modes, it gives them $9.9\%$ between them and splits the remainder evenly between BM25 and TF-IDF, and it loses $28.5$ points of Acc@1 against the best three-way configuration ($0.608$ against $0.893$). It does, however, reach the highest Recall@10 of any fusion ($0.971$). The neural signal is not worthless here; it is worth something at depth and negative at rank one, which is the same dissociation seen from the fusion side.
 
-The five-way fusion produced an Acc@1 of $0.608$ and MRR@10 of $0.756$, some $28.5$ and $15.4$ percentage points below the best three-way configuration. It does, however, achieve the highest Recall@10 ($0.971$), about $1.6$ points above the three-way fusions. The optimal weight distribution for the five-way fusion allocated $45.0\%$ each to BM25 and TF-IDF, with the three BGE-M3 variants receiving equal $3.3\%$ weights.
-This weight distribution is itself revealing: the optimizer heavily constrained the neural signals, assigning a collective weight of only $9.9\%$ to the three BGE-M3 variants combined. This distribution suggests that within this highly homogeneous domain, dense neural embeddings offer limited discriminative information beyond what lexical models (BM25 and TF-IDF) capture at the granular item level. Furthermore, given the significant drop in Acc@1, even this minor contribution of neural scores appears sufficient to disrupt top-rank precision. Conversely, the elevated Recall@10 of the five-way fusion confirms that neural signals remain valuable for broader retrieval. This behavior is consistent with the parent-level performance observed across all neural configurations, demonstrating that dense embeddings are effective for coarse-grained localization but struggle with fine-grained item discrimination.
-
+None of the four fusions reaches the best lexical configuration alone ($0.974$). Fusion buys about two points over BM25-unigram ($0.893$ against $0.869$) and costs a second ranker, an embedding index and a weight sweep to do it.
 
 \subsection{Cross-Encoder Reranking}
 \label{subsec:reranking}
@@ -1074,7 +952,7 @@ This family separates the two levels of the task by construction: stage 1 decide
 
 The comparison with the dense retriever they all contain makes the point sharper. Multilingual-e5-base alone scores $0.982$ at parent level and $0.136$ at item level. Attaching an exact lookup over extracted attributes to that same retriever leaves the parent level where it was and moves the item level to $0.903$. The dense encoder was never the part that was failing to find the family.
 
-The residual difference between those two parent-level figures --- $0.9848$ for the pipelines against $0.9817$ for the standalone run --- is not noise and is worth stating, because it is the one respect in which this family is not run exactly like the rest of the study. Each index in this work supplies queries in the text form it was built on, and the structured pipelines declare the normalised form while the dense index they call declares the raw one. Re-running the rule-based pipeline so that stage 1 receives the same raw text as the standalone dense run reproduces $0.9817$ at parent level exactly, and moves item-level accuracy from $0.9033$ to $0.9004$. Under the ground-truth template the two runs are identical to four decimals in every metric, which localises the difference precisely: it is stage 1, and nothing else, that is sensitive to the choice. The effect is worth $0.3$ points and is reported here rather than absorbed.
+The residual difference between those two parent-level figures --- $0.9848$ against $0.9817$ --- is the one respect in which this family is not run exactly like the rest of the study: the structured pipelines feed stage 1 the normalised query text, while the dense index they call was built on the raw form. Re-running the rule-based pipeline on raw text reproduces $0.9817$ exactly and moves item-level accuracy from $0.9033$ to $0.9004$, and under the ground-truth template the two runs are identical to four decimals. The choice is therefore worth $0.3$ points, all of it in stage 1, and is reported rather than absorbed.
 
 \paragraph{Where the variants differ is stage 2, and how they fail differs more than how often.}
 Table~\ref{tab:stage2} decomposes it. The rule-based extractor resolves $98.0\%$ of axes correctly, leaves $1.4\%$ unresolved and is outright wrong on $0.5\%$. The fine-tuned classifier is never uncertain --- it abstains on no axis at all --- and is wrong on $23.9\%$. The BIO tagger is almost never wrong ($0.4\%$) but leaves $54.1\%$ of axes unresolved.
@@ -1133,7 +1011,7 @@ Failed queries ($n$) & 2,172   & 9,158   & 1,781   \\
 }
 \end{table}
 
-Figure~\ref{fig:error_distribution} visualizes the same distribution. The three profiles are nearly identical, which is the point: fusing a lexical and a neural ranker changes how often the system fails but not the nature of the failure. The hybrid removes about a fifth of BM25's errors and none of their character.
+Figure~\ref{fig:error_distribution} shows the same distribution. The hybrid removes about a fifth of BM25's errors and none of their character.
 
 \begin{figure}[ht]
 \centering
@@ -1338,20 +1216,9 @@ where $\vec{q}$ and $\vec{q'}$ are the original and modified query vectors, $\ve
 
 \subsubsection{Neural Retrieval Methods}
 
-Modern neural approaches transform the retrieval problem into dense vector similarity search. Bi-encoder architectures independently encode queries and documents into fixed-dimensional representations, enabling efficient similarity computation through inner products or cosine similarity ~\cite{karpukhin2020dense}.
+Modern neural approaches transform the retrieval problem into dense vector similarity search. Bi-encoder architectures independently encode queries and documents into fixed-dimensional representations, enabling efficient similarity computation through inner products or cosine similarity ~\cite{karpukhin2020dense}. The models evaluated in this study --- E5, GTE and BGE-M3 --- are described in Section~\ref{subsec:neural_methods}.
 
-The advent of transformer-based models revolutionized dense retrieval, with BERT-based encoders capturing richer semantic relationships ~\cite{devlin2019bert}. Models like Sentence-BERT adapt BERT for efficient sentence-level encoding through siamese and triplet networks ~\cite{reimers2019sentence}.
-
-Contemporary dense retrieval models include:
-\begin{itemize}
-\item \textbf{E5 (EmbEddings from bidirEctional Encoder rEpresentations):} Trained with contrastive learning on large-scale pairs, showing strong zero-shot performance ~\cite{wang2024text}
-\item \textbf{GTE (General Text Embeddings):} Optimized for diverse retrieval tasks through multi-stage training ~\cite{li2023towards}
-\item \textbf{BGE (BAAI General Embedding):} Combines contrastive and distillation learning for robust representations ~\cite{chen2024bge}
-\end{itemize}
-
-Sparse neural methods like SPLADE learn term importance weights while maintaining the interpretability of lexical matching ~\cite{formal2021splade}. These models use transformer architectures to predict term weights, effectively learning context-aware term expansion and reweighting.
-
-Late-interaction models balance effectiveness and efficiency through token-level interactions. ColBERT (Contextualized Late Interaction over BERT) encodes queries and documents into bags of contextualized embeddings, computing relevance through the sum of maximum similarities ~\cite{khattab2020colbert}:
+Sparse neural methods like SPLADE learn term importance weights while maintaining the interpretability of lexical matching ~\cite{formal2021splade}. Late-interaction models balance effectiveness and efficiency through token-level interactions. ColBERT (Contextualized Late Interaction over BERT) encodes queries and documents into bags of contextualized embeddings, computing relevance through the sum of maximum similarities ~\cite{khattab2020colbert}:
 \begin{equation}
 \text{Score}(q,d) = \sum_{t_q \in q} \max_{t_d \in d} \text{sim}(E_q(t_q), E_d(t_d))
 \end{equation}
@@ -1360,28 +1227,11 @@ Recent multi-representation models, such as BGE-M3, combine dense, sparse, and m
 
 \subsection{Hybrid and Reranking Approaches}
 
-\subsubsection{Fusion Methods}
+\subsubsection{Fusion and Reranking}
 
-Combining multiple retrieval signals often improves performance by leveraging complementary strengths. Reciprocal Rank Fusion (RRF) merges rankings without requiring score calibration ~\cite{cormack2009reciprocal}:
-\begin{equation}
-\text{RRF}(d) = \sum_{r \in R} \frac{1}{k + \text{rank}_r(d)}
-\end{equation}
-where $\text{rank}_r(d)$ is document $d$'s position in ranking $r$, and $k$ (typically 60) mitigates the impact of high rankings ~\cite{lin2021pretrained}.
+Combining multiple retrieval signals often improves performance by leveraging complementary strengths. This study uses weighted linear combination of min-max-normalised scores, defined in Section~\ref{subsec:hybrid_fusion}; rank-level alternatives such as Reciprocal Rank Fusion avoid score calibration altogether ~\cite{cormack2009reciprocal, lin2021pretrained}, and learned combination weights are also possible ~\cite{macdonald2013learning}.
 
-Linear combination methods directly interpolate scores after normalization:
-\begin{equation}
-\text{Score}(d) = \alpha \cdot \text{Score}_{\text{lexical}}(d) + (1-\alpha) \cdot \text{Score}_{\text{dense}}(d)
-\end{equation}
-More sophisticated approaches learn combination weights through supervised learning or employ rank-level fusion considering score distributions ~\cite{macdonald2013learning}. In technical domains, hybrid methods show particular value when lexical precision and semantic understanding are both critical ~\cite{lin2021pretrained}.
-
-\subsubsection{Cross-Encoder Reranking}
-
-While bi-encoders encode queries and documents independently for efficiency, cross-encoders jointly encode query-document pairs, enabling richer interaction between query and document terms ~\cite{nogueira2020passage}. The cross-attention mechanism in transformers allows fine-grained matching:
-\begin{equation}
-\text{Score}(q,d) = \text{CrossEncoder}([q; \text{SEP}; d])
-\end{equation}
-
-Cross-encoders consistently outperform bi-encoders in effectiveness but require computing scores for each query-document pair, making them impractical for large collections. The standard approach employs cross-encoders to rerank top-$k$ candidates (typically 20--100) from efficient first-stage retrievers ~\cite{nogueira2020passage}. Studies show that cross-encoder reranking provides consistent improvements across diverse domains ~\cite{zhuang2023rankt5}.
+Cross-encoders differ from bi-encoders in encoding the query and the document jointly, so that cross-attention can match their terms directly ~\cite{nogueira2020passage}. This is more effective and far more expensive, which is why they are applied only to rerank the top $K'$ candidates of a cheaper first stage. The literature reports consistent gains across domains ~\cite{zhuang2023rankt5}; Section~\ref{subsec:reranking} reports that this benchmark is an exception.
 
 \subsection{Evaluation in Technical Domains}
 
@@ -1400,17 +1250,6 @@ Normalized Discounted Cumulative Gain (nDCG) accounts for graded relevance and p
 where $k$ is the cutoff rank, $\text{rel}_i$ is the relevance score of the document at position $i$, and $\text{IDCG@k}$ is the ideal DCG obtained from a perfect ranking.
 
 For technical domains where users expect exact matches, Precision@1 (Success@1) becomes critical, while Recall@k measures the system's ability to retrieve relevant items within reasonable examination depth ~\cite{baeza-yates_riberio-neto_1999}.
-
-\subsubsection{Statistical Significance Testing}
-
-Proper significance testing is essential when comparing retrieval methods, as metrics computed over different query sets can show high variance. Paired statistical tests account for per-query correlations between systems ~\cite{savoy1997statistical}. The paired bootstrap test, sampling queries with replacement, provides robust significance estimates without distributional assumptions ~\cite{smucker2007comparison}:
-\begin{enumerate}
-\item Resample queries with replacement $B$ times (typically 10,000)
-\item Compute metric differences for each bootstrap sample
-\item Estimate $p$-values from the empirical distribution
-\end{enumerate}
-
-Multiple comparison corrections become necessary when testing numerous system pairs. The Bonferroni correction divides the significance threshold by the number of comparisons, while less conservative methods like Holm-Bonferroni maintain statistical power ~\cite{carterette2012multiple}.
 
 \subsubsection{Domain-Specific Evaluation Challenges}
 
