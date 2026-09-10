@@ -546,6 +546,58 @@ los términos por su rareza en la colección leerá la fluidez como evidencia.
 
 ---
 
+### Corrección de encuadre: N20 estaba mal planteado (2026-09-10)
+
+**César corrige, y tiene razón.** Los parámetros son los del catálogo, están
+especificados en el formato BC3 y son campos declarados del registro. En un
+emparejamiento catálogo-contra-catálogo los dos lados **son** registros de catálogo,
+así que usar sus parámetros no es filtrarse nada: es usar los datos que el formato
+da. Yo lo planteé como si la consulta llegase con una ventaja indebida —«la tupla ya
+resuelta, el paso que el pipeline estructurado tiene que ejecutar»— y eso presupone
+que la consulta es texto libre, que no es la tarea.
+
+Lo que sí seguía haciendo falta, y se mantiene:
+
+- **La descripción.** «Word tokens + parameter-derived phrases» no le dice al lector
+  que la consulta lleva metadatos estructurados. Ahora §3.2.1 dice qué son los
+  tokens, de dónde salen y que se aplican a los dos lados.
+- **La descomposición medida** (sólo texto 0,871; sólo tupla 0,219; ambos 0,974).
+- **El run `computed`**, que cambia de papel: ya no es un rescate sino el **control**
+  que elimina el origen de la tupla como variable, y deja la comparación
+  evidencia-contra-filtro limpia: con la extracción constante, 0,974 contra 0,903.
+
+Retirado del manuscrito todo el andamiaje defensivo que había montado alrededor:
+la «comparación asimétrica» de la Discusión, el «no debe leerse como una comparación
+desnuda de BM25 contra codificadores neuronales» y el aviso del README planteado como
+salvedad. La asimetría real —los léxicos consumen la estructura paramétrica y los
+neuronales sólo prosa— se declara como decisión de diseño y como el experimento
+siguiente, que es dar esos tokens a un recuperador denso.
+
+### El encuadre del banco de pruebas era una disculpa, y era una decisión (2026-09-10)
+
+**Segunda corrección de César.** Sabíamos desde el principio que `resumen` y `texto`
+salen del mismo catálogo, que `resumen` no son consultas realistas y que la
+comparación favorece a los métodos léxicos. **No era un descuido: era el control.**
+Lo que se quería enseñar es el colapso paramétrico, más evidente en los densos pero
+presente también en los léxicos.
+
+El manuscrito lo estaba contando como limitación de la que disculparse. Reescrito
+como lo que es:
+
+- **Introducción:** se fija la primera capacidad (salvar el vocabulario) y se varía
+  sólo la segunda (discriminar la variante). «El diseño le pone las cosas fáciles al
+  emparejamiento léxico por construcción, y ése es el objetivo: quitada la variable
+  del vocabulario, la dificultad que queda es paramétrica.»
+- **§4.3.4:** el colapso **también en los léxicos**, con las cifras que lo prueban.
+  TF-IDF con frases: 0,708 de ítem contra 0,990 de padre, 28,1 puntos de brecha,
+  mayor que la de ColBERT respecto a su propio nivel. BM25-unigrama, 10,4. Y en la
+  representación misma: para el 6,94 % de las consultas, BM25-unigrama asigna al
+  objetivo y a una variante hermana **vectores idénticos**.
+- **Limitaciones y Conclusiones:** «dos cosas acotan estas conclusiones, las dos por
+  diseño», en vez de dos salvedades.
+
+---
+
 ### Qué es de verdad «BM25 + frases de parámetros» (N20)
 
 El índice `bm25_unigram_params` no indexa una variante de tokenización. Indexa el

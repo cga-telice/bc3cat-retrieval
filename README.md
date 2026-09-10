@@ -4,7 +4,7 @@ DOI: 10.5281/zenodo.20277824
 
 This repository contains the retrieval pipeline for creating a evaluation benchmark from ADIF's parametric construction price catalog. The methods are part of the research presented in:
 
-> **Finding the Family but Not the Variant: Item-Level Retrieval in Parametric Construction Catalogs**  
+> **A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches**  
 > González-Alvarez, C., Fernández-Robles, L., Alegre, E., & Castejón-Limas, M.  
 > Manuscript in revision.
 
@@ -15,7 +15,7 @@ This repository contains the implementation and evaluation framework for constru
 - **Queries**: Short-format descriptions (*resumen*) — condensed summaries of construction work items
 - **Documents**: Long-format descriptions (*texto*) — detailed technical specifications
 
-The study evaluates retrieval methods on the ADIF Spanish railway construction catalog (47,513 items generated from 30 parametric templates, 16,590 queries), using a dual-target evaluation protocol that assesses both item-level and parent-category accuracy.
+The study evaluates retrieval methods on the ADIF Spanish railway construction catalog (47,513 items, 47,508 of them generated from 25 parametric templates; 16,590 queries), using a dual-target evaluation protocol that assesses both item-level and parent-category accuracy.
 
 ### Key Findings
 
@@ -24,11 +24,16 @@ The study evaluates retrieval methods on the ADIF Spanish railway construction c
   and the correct variant almost never (7.0-13.6%). The gap reaches 92.9 points.
 - **Best method**: BM25 with domain-specific parameter phrases (k1=0.60, b=0.35)
   reaches 97.4% item-level Acc@1 and shows almost no gap (98.5% at parent level).
-- A rule-based structured pipeline over extracted attributes reaches 90.3%, below
-  BM25 even when granted perfect parameter extraction.
-- The benchmark rewards literal matching: the target contains 94.1% of the query's
-  tokens and 99.96% of its numeric values verbatim. Queries are the catalog's own
-  short descriptions, not text written independently by practitioners.
+- **Evidence beats filtering**: given the same extracted parameter tuple, using it as
+  query terms reaches 97.4% and using it as an exact filter reaches 90.3%. The seven
+  points are the cost of a hard constraint over an extractor that is wrong once in
+  two hundred axes.
+- **The collapse is not only neural.** TF-IDF with parameter phrases gives up 28.1
+  points between the two levels, BM25-unigram 10.4. For 6.94% of queries,
+  BM25-unigram assigns the target and a sibling variant identical vectors.
+- **By design**, queries are the catalog's own short descriptions, so the target
+  contains 94.1% of the query's tokens and 99.96% of its numeric values verbatim.
+  Removing the vocabulary gap is what isolates the parametric one.
 
 ## Repository Structure
 
@@ -61,7 +66,7 @@ bc3cat-retrieval/
 - **Late Interaction**: BGE-M3 ColBERT
 
 ### Hybrid & Advanced
-- **RRF Fusion**: Combining lexical and neural rankings
+- **Weighted fusion**: min-max normalised scores combined over a weight sweep
 - **PRF** (Pseudo-Relevance Feedback): RM3 and Rocchio query expansion
 - **Reranking**: Cross-encoder and tiebreaking strategies
 
@@ -207,29 +212,30 @@ All figures are item-level and parent-level Acc@1 over the same 16,590 queries
 headline finding: dense retrievers identify the parametric family almost
 perfectly and the specific variant almost never.
 
-### Read the top row carefully
+### What the top row actually is
 
-`bm25_unigram_params` does **not** index plain text. It indexes `text_word_params`,
-which is the normalised text plus one synthetic token per resolved parameter axis
-(`param_terreno_blando`, `param_no_tubos_6`, …), and the same representation is used
-for the query. Those tokens come from the record's `parameters` field, not from its
-text, and within a template they identify each of the 47,513 items uniquely.
+`bm25_unigram_params` does not index plain text. It indexes `text_word_params`: the
+normalised text plus one token per parameter axis (`param_terreno_blando`,
+`param_no_tubos_6`, ...), built from the `parameters` field that the BC3 format
+declares for every catalog item. The same representation is used on both sides,
+because in a catalog-to-catalog match both sides are catalog records.
 
-So the top row is not "BM25 beats neural retrieval". It is a two-stage system:
-resolve the query's parameter values against the template schema, then rank with them
-as ordinary query terms. Measured on the same index, varying only the query
+So the top row is not "BM25 beats neural retrieval". It is a term-weighting model
+that has been given the catalog's parametric structure, against sentence encoders
+that were given only prose. Measured on the same index, varying only the query
 (`scripts/probe_param_tokens.py`, `scripts/probe_computed_params.py`):
 
 | Query | Item Acc@1 |
 |---|---|
 | Text only | 0.871 |
 | Parameter tuple only | 0.219 |
-| Text + tuple read from the catalog record | 0.974 |
+| Text + tuple from the catalog record | 0.974 |
 | Text + tuple **extracted from the query text** | 0.974 |
 
-The last row matters: computing the tuple instead of reading it costs nothing, so the
-figure is reproducible by a system that only sees the query. If you reuse this
-benchmark, decide explicitly whether your queries are allowed to carry the tuple.
+The last row is the control: where the tuple comes from does not matter, so the
+figure is not an artefact of reading it rather than deriving it. If you reuse this
+benchmark, the choice to make explicitly is whether your queries are catalog records
+(and therefore carry the tuple) or free text (and therefore do not).
 
 *Full results available in `runs/` and `eval/` directories.*
 
