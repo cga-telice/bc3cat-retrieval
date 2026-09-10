@@ -62,13 +62,31 @@
 
 ## Method: hyb_bm25_uni__bge_colbert__tfidf_char_3_5
 
+### Lexical Confusion
+- **Query** `OEB250abaec`: Suministro de canalización de 4 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.(Diurno Excepcional/No aplica/Cualquier condición de ejecución)
+  - **Retrieved** `OEB250abcec`: Suministro de canalización de 4 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.  Trabajo: No aplica Banda de mantenimiento: No aplica Condiciones de ejecución: Cualquier condición de ejecución
+  - **Error type:** Lexical Confusion
+
+- **Query** `OEB250acaea`: Suministro de canalización de 6 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.(Diurno Excepcional/No aplica/Volumen relevante)
+  - **Retrieved** `OEB250accea`: Suministro de canalización de 6 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.  Trabajo: No aplica Banda de mantenimiento: No aplica Condiciones de ejecución: Volumen relevante
+  - **Error type:** Lexical Confusion
+
+### Numeric Mismatch
+- **Query** `OEB040edaca`: Canalización hormigonada  5  T, polietileno libre de halógenos de 160 mm, en cruce de carretera. (Diurno/i < "3" horas/Volumen relevante)
+  - **Retrieved** `OEB040edaba`: Canalización hormigonada de  5  tubos de polietileno libre de halógenos de 160 mm de diámetro en cruce de carretera, incluso  la demolición y reposición del firme y del pavimento, el relleno y compactado de la zanja,  el suministro y montaje de los tubos y hormigón tipo HE-20 sin vibrar, la prueba de los conductos, el transporte y la retirada de los productos al lugar de empleo  Trabajo: Diurno Banda de mantenimiento: 3 <= i < 5 horas Condiciones de ejecución: Volumen relevante
+  - **Error type:** Numeric Mismatch
+
+- **Query** `OEB290cbdaa`: Canalización hormigonada  3  T, polietileno libre de halógenos de 50 mm, bajo vías. (Nocturno excepcional/i >== 5 horas/Volumen relevante)
+  - **Retrieved** `OEB290cbdba`: Canalización hormigonada de  3  tubos de polietileno libre de halógenos de 50 mm de diámetro en cruce bajo vías, incluso el descerne y la entibación de los costados y la posterior reposición del balasto retirado, el relleno y compactado de la zanja,  el suministro y montaje de los tubos y hormigón tipo HE-20 sin vibrar, la prueba de los conductos, el transporte y la retirada de los productos al lugar de empleo  Trabajo: Nocturno Excepcional Banda de mantenimiento: 3 <= i < 5 horas Condiciones de ejecución: Volumen relevante
+  - **Error type:** Numeric Mismatch
+
 ### Other
-- **Query** `OEB030gfdbb`: 
-  - **Retrieved** `OEB030gadab`: Canalización hormigonada de  8  tubos de polietileno libre de halógenos de 110 mm de diámetro en cualquier clase de terreno, excepto roca, incluso  el relleno y compactado de la zanja,  el suministro y montaje de los tubos y hormigón tipo HE-20 sin vibrar, la prueba de los conductos, el transporte y la retirada de los productos al lugar de empleo  Trabajo: Nocturno Excepcional Banda de mantenimiento:  i >= 5 horas Condiciones de ejecución: Volumen escaso
+- **Query** `OEB250bbacc`: Suministro y montaje de canalización de 4 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.(Diurno Excepcional/i < "3" horas/Cualquier condición de ejecución)
+  - **Retrieved** `OEB250abacc`: Suministro de canalización de 4 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.  Trabajo: Diurno Excepcional Banda de mantenimiento: i < 3 horas Condiciones de ejecución: Cualquier condición de ejecución
   - **Error type:** Other
 
-- **Query** `OEB300ifdda`: 
-  - **Retrieved** `OEB300iadda`: Canalización hormigonada de  16  tubos de polietileno libre de halógenos de 90 mm de diámetro en cualquier clase de terreno, excepto roca, incluso  el relleno y compactado de la zanja,  el suministro y montaje de los tubos y hormigón tipo HE-20 sin vibrar, la prueba de los conductos, el transporte y la retirada de los productos al lugar de empleo  Trabajo: Nocturno Excepcional Banda de mantenimiento: No necesita intervalo Condiciones de ejecución: Volumen relevante
+- **Query** `OEB250bbabb`: Suministro y montaje de canalización de 4 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.(Diurno Excepcional/3 <== i < "5" horas/Voumen escaso)
+  - **Retrieved** `OEB250ababb`: Suministro de canalización de 4 tubos de acero galvanizado de 100mm de diámetro para instalaciones CMS en transiciones entre diferentes plataformas.  Trabajo: Diurno Excepcional Banda de mantenimiento: 3 <= i < 5 horas Condiciones de ejecución: Volumen escaso
   - **Error type:** Other
 
 

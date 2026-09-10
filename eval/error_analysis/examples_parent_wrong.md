@@ -56,28 +56,28 @@
 
 ## hyb_bm25_uni__bge_colbert__tfidf_char_3_5
 
-- **query** `OEB030bbacb`: 
-  - gold parent: `OEB030$` | pred parent: `OEB070$`
-  - top1 item: `OEB070bacb` | gold item: `OEB030bbacb`
-  - top5: ['OEB070bacb', 'OEB070babb', 'OEB070bccb', 'OEB070baab', 'OEB030bbacb']
-
-- **query** `OEB200abcba`: 
+- **query** `OEB200cbeaa`: Zanja para cables de 1,10 m de profundidad a máquina, rocoso, en material rocoso. (Cualquier franja horaria/i >== 5 horas/Volumen relevante)
   - gold parent: `OEB200$` | pred parent: `OEB190$`
-  - top1 item: `OEB190accba` | gold item: `OEB200abcba`
-  - top5: ['OEB190accba', 'OEB200abcba', 'OEB190accaa', 'OEB190accca', 'OEB190acdba']
+  - top1 item: `OEB190cceaa` | gold item: `OEB200cbeaa`
+  - top5: ['OEB190cceaa', 'OEB190cceba', 'OEB190ccfaa', 'OEB190ccfba', 'OEB190cceca']
 
-- **query** `OEB040bhddb`: 
-  - gold parent: `OEB040$` | pred parent: `OEB070$`
-  - top1 item: `OEB070bddb` | gold item: `OEB040bhddb`
-  - top5: ['OEB070bddb', 'OEB040baddb', 'OEB070bbdb', 'OEB040bhddb', 'OEB040bhbdb']
-
-- **query** `OEB030ahcca`: 
+- **query** `OEB030ahfab`: Canalización hormigonada  1  T, polietileno libre de halógenos de 110 mm, con topo. (Cualquier franja horaria excepcional/i >==5 horas/Volumen escaso)
   - gold parent: `OEB030$` | pred parent: `OEB070$`
-  - top1 item: `OEB070acca` | gold item: `OEB030ahcca`
-  - top5: ['OEB070acca', 'OEB070acba', 'OEB070acaa', 'OEB070aaca', 'OEB070adca']
+  - top1 item: `OEB070afab` | gold item: `OEB030ahfab`
+  - top5: ['OEB070afab', 'OEB070afbb', 'OEB070afcb', 'OEB070afdb', 'OEB070aeab']
 
-- **query** `OEB300bhdbb`: 
-  - gold parent: `OEB300$` | pred parent: `OEB070$`
-  - top1 item: `OEB070bdcb` | gold item: `OEB300bhdbb`
-  - top5: ['OEB070bdcb', 'OEB070bdbb', 'OEB300badab', 'OEB300badbb', 'OEB070bdab']
+- **query** `OEB030cafda`: Canalización hormigonada  3  T, polietileno libre de halógenos de 110 mm, normal. (Cualquier franja horaria excepcional/No necesita intervalo/Volumen relevante)
+  - gold parent: `OEB030$` | pred parent: `OEB070$`
+  - top1 item: `OEB070bfda` | gold item: `OEB030cafda`
+  - top5: ['OEB070bfda', 'OEB070afda', 'OEB030cafda', 'OEB110fda', 'OEB070beda']
+
+- **query** `OEB030abcac`: Canalización hormigonada  1  T, polietileno libre de halógenos de 110 mm, bajo vías. (Diurno Excepcional/i >==5 horas/Cualquier condición de ejecución)
+  - gold parent: `OEB030$` | pred parent: `OEB070$`
+  - top1 item: `OEB070acac` | gold item: `OEB030abcac`
+  - top5: ['OEB070acac', 'OEB070acbc', 'OEB070accc', 'OEB070acdc', 'OEB070aaac']
+
+- **query** `OEB200cabdc`: Zanja para cables de 1,10 m de profundidad a máquina, normal, en material normal. (Nocturno/No necesita intervalo/Cualquier condición de ejecución)
+  - gold parent: `OEB200$` | pred parent: `OEB190$`
+  - top1 item: `OEB190ccbdc` | gold item: `OEB200cabdc`
+  - top5: ['OEB190ccbdc', 'OEB190ccddc', 'OEB190ccadc', 'OEB190ccedc', 'OEB190ccbdb']
 

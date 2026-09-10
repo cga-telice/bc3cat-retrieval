@@ -56,28 +56,28 @@
 
 ## hyb_bm25_uni__bge_colbert__tfidf_char_3_5
 
-- **query** `OEB190abeaa`: 
-  - gold parent: `OEB190$` | pred parent: `OEB190$`
-  - top1 item: `OEB190aceaa` | gold item: `OEB190abeaa`
-  - top5: ['OEB190aceaa', 'OEB190aceba', 'OEB190acfaa', 'OEB190acfba', 'OEB190aceca']
+- **query** `OEB170afcac`: Canalización metálica superficial con  1  tubos de acero galvanizado de 5'' de diámetro. (Diurno excepcional/i >== 5 horas/Cualquier condición de ejecución)
+  - gold parent: `OEB170$` | pred parent: `OEB170$`
+  - top1 item: `OEB170aacac` | gold item: `OEB170afcac`
+  - top5: ['OEB170aacac', 'OEB170aacbc', 'OEB170adcac', 'OEB170adcbc', 'OEB170aaccc']
 
-- **query** `OEB040iafac`: 
-  - gold parent: `OEB040$` | pred parent: `OEB040$`
-  - top1 item: `OEB040iafbc` | gold item: `OEB040iafac`
-  - top5: ['OEB040iafbc', 'OEB040iafac', 'OEB040iafcc', 'OEB040iaeac', 'OEB040iaebc']
+- **query** `OEB280chaac`: Canalización hormigonada  3  T, polietileno libre de halógenos de 40 mm, con topo. (Diurno/i >== 5 horas/Cualquier condición de ejecución)
+  - gold parent: `OEB280$` | pred parent: `OEB280$`
+  - top1 item: `OEB280ehabc` | gold item: `OEB280chaac`
+  - top5: ['OEB280ehabc', 'OEB280chabc', 'OEB280ehcbc', 'OEB280chcbc', 'OEB280chaac']
 
-- **query** `OEB190cbcbc`: 
-  - gold parent: `OEB190$` | pred parent: `OEB190$`
-  - top1 item: `OEB190cccbc` | gold item: `OEB190cbcbc`
-  - top5: ['OEB190cccbc', 'OEB190ccfbc', 'OEB190cccac', 'OEB190ccccc', 'OEB190ccfac']
+- **query** `OEB170cgccb`: Canalización metálica superficial con  3  tubos de acero galvanizado de 6'' de diámetro. (Diurno excepcional/i < "3" horas/Volumen escaso)
+  - gold parent: `OEB170$` | pred parent: `OEB170$`
+  - top1 item: `OEB170egccb` | gold item: `OEB170cgccb`
+  - top5: ['OEB170egccb', 'OEB170egcbb', 'OEB170egacb', 'OEB170egcab', 'OEB170egabb']
 
-- **query** `OEB190cbfca`: 
-  - gold parent: `OEB190$` | pred parent: `OEB190$`
-  - top1 item: `OEB190ccfca` | gold item: `OEB190cbfca`
-  - top5: ['OEB190ccfca', 'OEB190ccfba', 'OEB190ccfaa', 'OEB190cceca', 'OEB190cceba']
+- **query** `OEB170bccbb`: Canalización metálica superficial con  2  tubos de acero galvanizado de 3'' de diámetro. (Diurno excepcional/3 <== i < "5" horas/Volumen escaso)
+  - gold parent: `OEB170$` | pred parent: `OEB170$`
+  - top1 item: `OEB170bbcbb` | gold item: `OEB170bccbb`
+  - top5: ['OEB170bbcbb', 'OEB170bdcbb', 'OEB170bdcab', 'OEB170bbcab', 'OEB170bbccb']
 
-- **query** `OEB040jfcdb`: 
-  - gold parent: `OEB040$` | pred parent: `OEB040$`
-  - top1 item: `OEB040jacdb` | gold item: `OEB040jfcdb`
-  - top5: ['OEB040jacdb', 'OEB040jaddb', 'OEB040jaadb', 'OEB040jacda', 'OEB040jccdb']
+- **query** `OEB280edecc`: Canalización hormigonada  5  T, polietileno libre de halógenos de 40 mm, en cruce de carretera. (Cualquier franja horaria/i < "3" horas/Cualquier condición de ejecución)
+  - gold parent: `OEB280$` | pred parent: `OEB280$`
+  - top1 item: `OEB280edebc` | gold item: `OEB280edecc`
+  - top5: ['OEB280edebc', 'OEB280cdebc', 'OEB280edfbc', 'OEB280edecc', 'OEB280cdeac']
 

@@ -1013,11 +1013,13 @@ Table~\ref{tab:reranking_results} presents all eighteen combinations together wi
 
 Three patterns emerge, and none of them is the one usually expected of a reranking cascade.
 
-First, \textbf{reranking does not improve the systems that are already strong}. BM25-unigram falls from $0.869$ to $0.766$ under the best blend configuration, and the hybrid from $0.893$ to $0.812$. The only system that benefits is the weakest, BGE-M3-ColBERT, which rises from $0.448$ to $0.475$. A cross-encoder trained on topical relevance can repair a ranking that has the right family in the wrong order; it cannot improve one that is already discriminating variants correctly, because it does not represent the distinction being made.
+First, \textbf{reranking does not improve the systems that are already strong}. BM25-unigram falls from $0.869$ to $0.766$ under the best blend configuration, and the hybrid from $0.893$ to $0.706$. The only system that benefits is the weakest, BGE-M3-ColBERT, which rises from $0.448$ to $0.475$. A cross-encoder trained on topical relevance can repair a ranking that has the right family in the wrong order; it cannot improve one that is already discriminating variants correctly, because it does not represent the distinction being made.
 
 Second, \textbf{blend always beats replace, by a wide margin}: $+0.33$ to $+0.39$ in Acc@1. Ranking by cross-encoder score alone discards precisely the lexical evidence that resolves parametric variants. The gap is a direct measure of how much of the useful signal lives in the first stage.
 
-Third, \textbf{depth matters in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend, deeper reranking is mildly beneficial for recall: the hybrid reaches Recall@5 $=0.990$ and Recall@10 $=0.993$ at $K'=100$, the highest of any configuration in this study. If the deployment scenario places a human in front of the first few results rather than automating the top-1 decision, that configuration is the strongest we measured --- while remaining, at $0.812$ Acc@1, well below a tuned BM25 used alone.
+Third, \textbf{depth barely matters, and what effect it has runs in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$, the hybrid from $0.451$ to $0.426$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend the three depths are within $0.004$ of each other for every system, with a slight preference for the deepest. The declared choice of depth, in other words, was never the decision it appeared to be: what determines the outcome is whether the first-stage score is kept, not how many candidates are rescored.
+
+The practical reading is that a general-purpose reranker has nothing to add here. Its training objective --- is this passage about this question --- is satisfied equally by every variant of a template, which is precisely the distinction the task requires. Reranking would only help if the reranker were trained to compare parameter values, and no off-the-shelf model is.
 
 \subsection{Error Analysis}
 \label{subsec:error_analysis}
@@ -1026,7 +1028,7 @@ To understand the failure modes of each retrieval approach we classified \emph{e
 
 \subsubsection{Error Type Distribution}
 
-Table~\ref{tab:error_distribution} presents the distribution of error types across the three representative methods. BM25 and BGE-M3-ColBERT have almost identical failure profiles --- numeric mismatches account for $97.97\%$ and $98.21\%$ of their failures respectively --- despite differing by $42$ percentage points in accuracy and sharing no architectural component. What separates them is how often they fail, not how. The hybrid shows a different profile, with every failure falling in the ``Other'' category, which we examine below.
+Table~\ref{tab:error_distribution} presents the distribution of error types across the three representative methods. The three profiles are almost indistinguishable: numeric mismatches account for $97.97\%$, $98.21\%$ and $97.53\%$ of failures for BM25-unigram, BGE-M3-ColBERT and the hybrid respectively, even though the three differ by up to $44$ percentage points in accuracy and share little architecture. What separates these systems is how often they fail, not how. Whatever the representation --- sparse term weights, late-interaction token embeddings, or a weighted combination of both --- the residual errors are the same errors: a parameter value read wrong.
 
 \begin{table}[htbp]
 \centering
@@ -1037,22 +1039,22 @@ Table~\ref{tab:error_distribution} presents the distribution of error types acro
 \toprule
 \textbf{Error Type} & \textbf{BM25 Unigram} & \textbf{BGE-M3 ColBERT} & \textbf{Hybrid} \\
 \midrule
-Numeric Mismatch     & 97.97\% & 98.21\% & ---      \\
-Lexical Confusion    & 0.55\%  & 0.37\%  & ---      \\
-Other                & 1.47\%  & 1.42\%  & 100.00\% \\
+Numeric Mismatch     & 97.97\% & 98.21\% & 97.53\% \\
+Lexical Confusion    & 0.55\%  & 0.37\%  & 0.22\%  \\
+Other                & 1.47\%  & 1.42\%  & 2.25\%  \\
 \midrule
-Failed queries ($n$) & 2,172   & 9,158   & 6,388    \\
+Failed queries ($n$) & 2,172   & 9,158   & 1,781   \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-Figure~\ref{fig:error_distribution} visualizes the same distribution and makes the asymmetry between methods immediately apparent: BM25 and BGE-M3-ColBERT share a near-identical failure profile dominated by numeric mismatches, whereas the hybrid method's failures concentrate entirely in the ``Other'' category. The hybrid fusion thus appears to resolve the numeric- and lexical-confusion failure modes that affect each component method in isolation, but at the cost of introducing a new failure mode analyzed in the following subsections.
+Figure~\ref{fig:error_distribution} visualizes the same distribution. The three profiles are nearly identical, which is the point: fusing a lexical and a neural ranker changes how often the system fails but not the nature of the failure. The hybrid removes about a fifth of BM25's errors and none of their character.
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=\textwidth]{error_distribution.pdf}
-\caption{Error type distribution across the three representative retrieval methods ($n=100$ sampled errors per method). Numeric mismatches dominate both lexical (BM25) and neural (BGE-M3-ColBERT) failures ($\sim 98\%$), revealing a shared blind spot. The hybrid method's failures concentrate entirely in the ``Other'' category, a qualitatively different failure mode discussed in Sec.~\ref{subsec:error_analysis}.}
+\caption{Error type distribution across the three representative retrieval methods, over \emph{all} failed queries of each (no sampling). Numeric mismatches account for ${\sim}98\%$ of failures in all three, whether the ranker is lexical, neural or a fusion of both: the blind spot is shared, and fusion does not change its nature.}
 \label{fig:error_distribution}
 \end{figure}
 
@@ -1071,10 +1073,10 @@ Read this way the table makes the dissociation concrete at the level of individu
 \textbf{Error Pattern} & \textbf{BM25} & \textbf{BGE-M3} & \textbf{Hybrid} \\
  & \textbf{Unigram} & \textbf{ColBERT} & \\
 \midrule
-Correct at rank 1        & 86.91\% & 44.80\% & 61.49\% \\
+Correct at rank 1        & 86.91\% & 44.80\% & 89.26\% \\
 \midrule
-Right parent, wrong item & 10.38\% & 54.86\% & 36.14\% \\
-Wrong parent             & 2.71\%  & 0.34\%  & 2.37\%  \\
+Right parent, wrong item & 10.38\% & 54.86\% & 8.13\%  \\
+Wrong parent             & 2.71\%  & 0.34\%  & 2.60\%  \\
 Parent not in top-10     & 0.10\%  & 0.00\%  & 0.00\%  \\
 \bottomrule
 \end{tabular}
@@ -1121,7 +1123,7 @@ OEB110bda & PVC pipe 110mm chamber drainage, \textbf{night shift}, no interval n
 
 Analysis of near-duplicate handling revealed stark differences between methods. BM25 produced 3,276 duplicate documents across 1,602 duplicate groups among its indexed sparse representations, while BGE-M3 ColBERT produced zero duplicates. This difference stems from BM25's purely lexical matching, which assigns identical sparse vectors to textual variants with negligible term frequency differences. The hybrid method, incorporating character n-gram features, eliminated these duplicates while attempting to preserve BM25's numeric discrimination capabilities.
 
-For the hybrid method, the absence of traditional numeric mismatch or lexical confusion errors suggests that its failures occurred at a different stage of processing. The 36\% right-parent-wrong-item rate indicates that while the method successfully identified relevant categories, the fusion mechanism between lexical and semantic signals did not optimally resolve fine-grained distinctions within those categories.
+The hybrid has the lowest right-parent-wrong-item rate of the three ($8.13\%$ against $10.38\%$ for BM25 and $54.86\%$ for ColBERT), which is where its advantage over BM25 comes from: the character n-gram and neural signals resolve a subset of the within-template confusions that BM25 alone gets wrong. Its wrong-parent rate, however, is essentially BM25's ($2.60\%$ against $2.71\%$), so the fusion helps inside the template and not outside it.
 
 \subsection{Overall Performance Summary}
 \label{sec:4.7_Overall Performance Summary}

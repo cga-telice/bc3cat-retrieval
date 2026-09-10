@@ -296,6 +296,34 @@ PATCHES: list[Patch] = [
         ],
     ),
     Patch(
+        ident="C6-qtext",
+        notebook="src/error_analysis.ipynb",
+        rationale=(
+            "El texto de la consulta se leia del fichero de resultados, que las fusiones "
+            "no escriben. Sin `qtext` el clasificador no extrae numeros, la rama de "
+            "Numeric Mismatch nunca se activa y todos los fallos caen en 'Other'. De ahi "
+            "el 100 % de 'Other' del hibrido que el manuscrito interpreta como un modo "
+            "de fallo cualitativamente distinto: era un artefacto."
+        ),
+        old=[
+            "    df_run = load_run_df(res_path)\n",
+            "    method_runs[m] = df_run\n",
+        ],
+        new=[
+            "    df_run = load_run_df(res_path)\n",
+            "    # Las fusiones no guardan el texto de la consulta en sus resultados; se\n",
+            "    # recupera del corpus para que el clasificador de errores pueda leerlo.\n",
+            '    if "query_text" in df_run.columns and (df_run["query_text"].fillna("") == "").all():\n',
+            '        _qmap = dict(zip(df_q["item_key"].astype(str), df_q["text"].astype(str)))\n',
+            '        df_run["query_text"] = df_run["query_item_key"].astype(str).map(_qmap).fillna("")\n',
+            '        _faltan = int((df_run["query_text"] == "").sum())\n',
+            "        if _faltan:\n",
+            "            raise ValueError(f\"{m}: {_faltan} consultas sin texto tras el respaldo\")\n",
+            '        print(f"{m}: query_text recuperado del corpus")\n',
+            "    method_runs[m] = df_run\n",
+        ],
+    ),
+    Patch(
         ident="C6-errors",
         notebook="src/error_analysis.ipynb",
         rationale=(
