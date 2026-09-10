@@ -12,20 +12,20 @@
   - top1 item: `OEB190ccbcb` | gold item: `OEB200cabcb`
   - top5: ['OEB190ccbcb', 'OEB190ccbbb', 'OEB190ccdcb', 'OEB190ccbab', 'OEB190ccdbb']
 
-- **query** `OEB200cacac`: zanja para cables de 1.10 m de profundidad a máquina normal en material normal diurno excepcional i 5 horas cualquier condición de ejecución
+- **query** `OEB200cadca`: zanja para cables de 1.10 m de profundidad a máquina normal en material normal nocturno excepcional i 3 horas volumen relevante
   - gold parent: `OEB200$` | pred parent: `OEB190$`
-  - top1 item: `OEB190cccac` | gold item: `OEB200cacac`
-  - top5: ['OEB190cccac', 'OEB190cccbc', 'OEB190ccaac', 'OEB190ccccc', 'OEB190ccabc']
+  - top1 item: `OEB190ccdca` | gold item: `OEB200cadca`
+  - top5: ['OEB190ccdca', 'OEB190ccdba', 'OEB190ccbca', 'OEB190ccdaa', 'OEB190ccbba']
 
-- **query** `OEB200caecc`: zanja para cables de 1.10 m de profundidad a máquina normal en material normal cualquier franja horaria i 3 horas cualquier condición de ejecución
+- **query** `OEB200caaab`: zanja para cables de 1.10 m de profundidad a máquina normal en material normal diurno i 5 horas volumen escaso
   - gold parent: `OEB200$` | pred parent: `OEB190$`
-  - top1 item: `OEB190ccecc` | gold item: `OEB200caecc`
-  - top5: ['OEB190ccecc', 'OEB190ccebc', 'OEB190ccfcc', 'OEB190cceac', 'OEB190ccfbc']
+  - top1 item: `OEB190ccaab` | gold item: `OEB200caaab`
+  - top5: ['OEB190ccaab', 'OEB190cccab', 'OEB190ccabb', 'OEB190ccacb', 'OEB190cccbb']
 
-- **query** `OEB200cadba`: zanja para cables de 1.10 m de profundidad a máquina normal en material normal nocturno excepcional 3 i 5 horas volumen relevante
+- **query** `OEB200cabbb`: zanja para cables de 1.10 m de profundidad a máquina normal en material normal nocturno 3 i 5 horas volumen escaso
   - gold parent: `OEB200$` | pred parent: `OEB190$`
-  - top1 item: `OEB190ccdba` | gold item: `OEB200cadba`
-  - top5: ['OEB190ccdba', 'OEB190ccdaa', 'OEB190ccdca', 'OEB190ccbba', 'OEB190ccbaa']
+  - top1 item: `OEB190ccbbb` | gold item: `OEB200cabbb`
+  - top5: ['OEB190ccbbb', 'OEB190ccbab', 'OEB190ccbcb', 'OEB190ccdbb', 'OEB190ccdab']
 
 ## bge_m3_colbert
 

@@ -2,15 +2,15 @@
 
 ## bm25_unigram
 
-- Lexical Confusion: 0.5%
-- Numeric Mismatch: 98.1%
-- Other: 1.3%
+- Lexical Confusion: 0.6%
+- Numeric Mismatch: 98.0%
+- Other: 1.5%
 
 ## bge_m3_colbert
 
-- Lexical Confusion: 0.5%
-- Numeric Mismatch: 97.9%
-- Other: 1.6%
+- Lexical Confusion: 0.4%
+- Numeric Mismatch: 98.2%
+- Other: 1.4%
 
 ## hyb_bm25_uni__bge_colbert__tfidf_char_3_5
 

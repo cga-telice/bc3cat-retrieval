@@ -24,12 +24,12 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A3 | 631 | Caption Tabla 4: *"16,076 queries with numbers"* | `16,561` (el 99,83 % sí es correcto) | R2-2.1 | hecho |
 | A4 | 530 | *"We apply Bonferroni correction"* | `Holm--Bonferroni` | R2-3.1 | hecho |
 | A5 | 587 | *"Bonferroni"* + umbral `p < 0.003` | `Holm--Bonferroni`; reportar los `p_holm` de `eval/bootstrap_lexical/bootstrap_sigtests_pairs.csv` | R2-3.1 | hecho |
-| A6 | 534 | *"100 randomly sampled errors from each method family"*: nunca hubo muestreo | Describir el análisis real (todos los fallos, muestra común) | R2-4.2 | pendiente |
-| A7 | 951 | Ídem + taxonomía de 4 categorías | Unificar con L536-544: cinco categorías, dos con frecuencia cero | R2-4.2 | pendiente |
-| A8 | 959 | Caption Tabla 14: `$n=100$ per method` | `%` de fallos reales, con los `n` por método | R2-4.2 | pendiente |
-| A9 | 966-968 | Suman 99,9 % por redondeo a un decimal | Dos decimales + nota de categorías vacías | R2-4.2 | pendiente |
-| A10 | 989 | Caption Tabla 15 sugiere % sobre errores | Son % sobre *todas* las consultas; categorías mutuamente excluyentes | R2-4.3 | pendiente |
-| A11 | 991-1000 | Tabla 15 no suma 100 % | Añadir fila *Correct at rank 1* | R2-4.3 | pendiente |
+| A6 | 534 | *"100 randomly sampled errors from each method family"*: nunca hubo muestreo | Describir el análisis real (todos los fallos, muestra común) | R2-4.2 | hecho |
+| A7 | 951 | Ídem + taxonomía de 4 categorías | Unificar con L536-544: cinco categorías, dos con frecuencia cero | R2-4.2 | hecho |
+| A8 | 959 | Caption Tabla 14: `$n=100$ per method` | `%` de fallos reales, con los `n` por método | R2-4.2 | hecho |
+| A9 | 966-968 | Suman 99,9 % por redondeo a un decimal | Dos decimales + nota de categorías vacías | R2-4.2 | hecho |
+| A10 | 989 | Caption Tabla 15 sugiere % sobre errores | Son % sobre *todas* las consultas; categorías mutuamente excluyentes | R2-4.3 | hecho |
+| A11 | 991-1000 | Tabla 15 no suma 100 % | Añadir fila *Correct at rank 1* | R2-4.3 | hecho |
 | ~~A12~~ | 407 | ~~Prefijo de E5 erróneo~~ | **Descartado**: `src/retrievers/dense_e5.py:101-102` fija `"query: "` a mano e ignora el YAML. El paper es correcto; lo que se corrige es el YAML (→ C7) | informe | descartado |
 | A13 | 731, 735, 743, 837, 1080 | "E5-large" / "multilingual-e5-large" | `multilingual-e5-base` | sesión | hecho |
 | A14 | 771-772, 776-777, 838 | "GTE-large-en-v1.5", "GTE-Qwen2-instruct": modelos nunca usados, uno de ellos sólo inglés | `GTE-multilingual-base (direct)` / `(instruct)` | sesión | hecho |
@@ -105,7 +105,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | pendiente |
 | R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | pendiente |
 | R6 | Métricas parent-level para híbridos y reranking | minutos | pendiente |
-| R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | pendiente |
+| R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | análisis de errores hecho; falta bootstrap y leaderboards |
 | R8 | *(opcional, N10)* GTE sin prefijos | ~10 min | pendiente |
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
 | R10 | **B6** — integrar los baselines estructurados (ya sobre la muestra canónica) | 1 día | hecho (código + tabla); falta redactar la sección |

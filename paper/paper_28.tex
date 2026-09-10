@@ -621,20 +621,23 @@ We employ paired bootstrap resampling to determine whether observed performance 
 For each system pair $(A, B)$, we compute per-query metric differences, generate $B=10{,}000$ bootstrap samples with replacement, and estimate $p$-values from the empirical distribution of mean differences. We apply the Holm--Bonferroni step-down correction for multiple comparisons and report improvements as significant only when $p < 0.05$ after correction.
 
 \subsubsection{Error Analysis}
+\label{subsec:error_taxonomy}
 
-To understand failure modes, we analyze 100 randomly sampled errors from each method family. Errors are categorized into:
+To understand failure modes we classify \emph{every} failed query --- not a sample --- for three representative systems: BM25-unigram, BGE-M3-ColBERT and the three-way hybrid. All three are evaluated on the same 16,590 queries, so their failure sets are directly comparable. A rule-based classifier assigns each failure to exactly one of five categories:
 
 \begin{enumerate}
-    \item \textbf{Numeric Mismatch}: Retrieved item differs from target in quantitative parameters (e.g., ``110 mm'' vs ``160 mm'', ``2 tubos'' vs ``4 tubos'')
-    
-    \item \textbf{Lexical Confusion}: High lexical overlap masks critical distinctions, particularly in work condition modifiers (e.g., standard vs exceptional shifts) or scope descriptors (e.g., supply-only vs supply-and-installation)
-    
-    \item \textbf{Near-Duplicate Error}: Correct item exists but parametric sibling ranks higher due to high lexical similarity
-    
-    \item \textbf{Ranking Failure}: Correct item retrieved but ranks beyond typical examination depth (position 11+)
+    \item \textbf{Numeric Mismatch}: the retrieved item differs from the target in a quantitative parameter (e.g. ``110 mm'' vs ``160 mm'', ``2 tubos'' vs ``4 tubos'').
+
+    \item \textbf{Near-Duplicate Error}: the retrieved item is a parametric sibling that differs only in non-numeric attributes.
+
+    \item \textbf{Lexical Confusion}: high lexical overlap masks a critical distinction, particularly in work-condition modifiers (standard vs exceptional shifts) or scope descriptors (supply-only vs supply-and-installation).
+
+    \item \textbf{Ranking Failure}: the correct item is retrieved but ranks beyond the examination depth considered (position 11 or later).
+
+    \item \textbf{Other}: failures matching none of the above.
 \end{enumerate}
 
-Error distribution reveals systematic failure patterns that guide method selection for different deployment contexts.
+Two of the five --- Near-Duplicate Error and Ranking Failure --- have zero frequency in every method, and are omitted from the results tables rather than reported as rows of zeros.
 
 \subsection{Implementation Details}
 \label{subsec:implementation}
@@ -1038,24 +1041,26 @@ The blend strategy consistently outperformed replace across all systems, demonst
 \subsection{Error Analysis}
 \label{subsec:error_analysis}
 
-To understand the failure modes of each retrieval approach, we conducted a detailed error analysis on 100 randomly sampled failures per method. Errors were classified into four categories: \textit{Numeric Mismatch} (different specifications), \textit{Lexical Confusion} (similar terms), \textit{Near-Duplicate Error} (ambiguous entries), and \textit{Other}.
+To understand the failure modes of each retrieval approach we classified \emph{every} failed query for three representative methods, using the five-category taxonomy of Section~\ref{subsec:error_taxonomy}. All three are evaluated on the same 16,590 queries, so their failure counts are directly comparable: 2,172 for BM25-unigram, 6,388 for the hybrid and 9,158 for BGE-M3-ColBERT.
 
 \subsubsection{Error Type Distribution}
 
-Table~\ref{tab:error_distribution} presents the distribution of error types across the three primary retrieval methods. Both BM25 and BGE-M3 ColBERT showed similar profiles, with numeric mismatches accounting for approximately 98\% of failures. The hybrid method showed a distinct profile, with all errors in the ``Other'' category.
+Table~\ref{tab:error_distribution} presents the distribution of error types across the three representative methods. BM25 and BGE-M3-ColBERT have almost identical failure profiles --- numeric mismatches account for $97.97\%$ and $98.21\%$ of their failures respectively --- despite differing by $42$ percentage points in accuracy and sharing no architectural component. What separates them is how often they fail, not how. The hybrid shows a different profile, with every failure falling in the ``Other'' category, which we examine below.
 
 \begin{table}[htbp]
 \centering
-\caption{Error type distribution across retrieval methods (\% of failed queries, $n=100$ per method)}
+\caption{Error type distribution across retrieval methods, as a percentage of \emph{all} failed queries for each method (no sampling). The two categories with zero frequency in every method --- Near-Duplicate Error and Ranking Failure --- are omitted.}
 \label{tab:error_distribution}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lccc}
 \toprule
 \textbf{Error Type} & \textbf{BM25 Unigram} & \textbf{BGE-M3 ColBERT} & \textbf{Hybrid} \\
 \midrule
-Numeric Mismatch    & 98.1\%  & 97.9\%  & ---     \\
-Lexical Confusion   & 0.5\%   & 0.5\%   & ---     \\
-Other               & 1.3\%   & 1.6\%   & 100.0\% \\
+Numeric Mismatch     & 97.97\% & 98.21\% & ---      \\
+Lexical Confusion    & 0.55\%  & 0.37\%  & ---      \\
+Other                & 1.47\%  & 1.42\%  & 100.00\% \\
+\midrule
+Failed queries ($n$) & 2,172   & 9,158   & 6,388    \\
 \bottomrule
 \end{tabular}
 }
@@ -1072,20 +1077,24 @@ Figure~\ref{fig:error_distribution} visualizes the same distribution and makes t
 
 \subsubsection{Hierarchical Error Classification}
 
-Beyond categorical error types, we analyzed failures according to the hierarchical structure of our construction database, where items are organized under parents (e.g., OEB280\$ for 40mm polyethylene conduits). Table~\ref{tab:hierarchical_errors} shows three distinct failure patterns: (1) retrieving the correct parent category but wrong specific item variant, (2) retrieving an incorrect parent category entirely, and (3) failing to include the correct parent in the top-10 results.
+Beyond categorical error types, we analyzed outcomes according to the hierarchical structure of the catalog, where items are organized under parents (e.g. OEB280\$ for 40\,mm polyethylene conduits). Table~\ref{tab:hierarchical_errors} partitions \emph{all} queries into four mutually exclusive outcomes: correct at rank 1; correct parent but wrong variant; wrong parent; and correct parent absent from the top 10. The four columns therefore sum to $100\%$ for each method, and the complement of the first row is that method's error rate.
+
+Read this way the table makes the dissociation concrete at the level of individual failures. For BGE-M3-ColBERT, $54.86\%$ of all queries land on a wrong variant of the \emph{right} parent, against $0.34\%$ that land on a wrong parent altogether: when this model fails, it has almost always found the right family and picked the wrong member of it. BM25-unigram shows the same asymmetry in miniature ($10.38\%$ against $2.71\%$), and the hybrid sits between them.
 
 \begin{table}[htbp]
 \centering
-\caption{Hierarchical error patterns across retrieval methods}
+\caption{Hierarchical outcome patterns, as a percentage of \emph{all} queries ($n=16{,}590$, identical for the three methods). The four categories are mutually exclusive and sum to 100\%; the complement of the first row is the method's error rate.}
 \label{tab:hierarchical_errors}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Error Pattern} & \textbf{BM25} & \textbf{BGE-M3} & \textbf{Hybrid} \\
  & \textbf{Unigram} & \textbf{ColBERT} & \\
 \midrule
-Right parent, wrong item & 10.4\%  & 54.3\%  & 36.0\% \\
-Wrong parent             & 2.6\%   & 0.3\%   & 3.0\%  \\
-Parent not in top-10     & 0.1\%   & 0.0\%   & 0.0\%  \\
+Correct at rank 1        & 86.91\% & 44.80\% & 61.49\% \\
+\midrule
+Right parent, wrong item & 10.38\% & 54.86\% & 36.14\% \\
+Wrong parent             & 2.71\%  & 0.34\%  & 2.37\%  \\
+Parent not in top-10     & 0.10\%  & 0.00\%  & 0.00\%  \\
 \bottomrule
 \end{tabular}
 \end{table}
