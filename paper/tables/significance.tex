@@ -1,0 +1,43 @@
+% Generado por scripts/bootstrap_sigtests.py -- no editar a mano.
+\begin{table}[ht]
+\centering
+\caption{Paired bootstrap on item-level Acc@1 over the $16{,}590$ queries of the canonical test set, $10{,}000$ resamples, with $p$-values corrected across the whole family of comparisons by the Holm--Bonferroni step-down procedure. $\Delta$ is in percentage points.}
+\label{tab:statistical_significance}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccccc}
+\toprule
+\textbf{System A} & \textbf{System B} & \textbf{Acc@1 A} & \textbf{Acc@1 B} & \textbf{$\Delta$ (pp)} & \textbf{95\% CI} & \textbf{$p_{\text{Holm}}$} \\
+\midrule
+BM25 + parameter phrases & TF-IDF char 3--5 & 0.974 & 0.558 & +41.5 & [+40.8, +42.3] & $<$0.0001$^{***}$ \\
+BM25 + parameter phrases & TF-IDF unigram & 0.974 & 0.627 & +34.7 & [+34.0, +35.4] & $<$0.0001$^{***}$ \\
+BM25 + parameter phrases & TF-IDF no stopwords & 0.974 & 0.642 & +33.2 & [+32.5, +33.9] & $<$0.0001$^{***}$ \\
+BM25 + parameter phrases & TF-IDF phrases (add) & 0.974 & 0.650 & +32.4 & [+31.7, +33.1] & $<$0.0001$^{***}$ \\
+BM25 unigram & TF-IDF char 3--5 & 0.869 & 0.558 & +31.1 & [+30.3, +31.9] & $<$0.0001$^{***}$ \\
+BM25 uni+bigram & TF-IDF char 3--5 & 0.827 & 0.558 & +26.8 & [+26.1, +27.6] & $<$0.0001$^{***}$ \\
+BM25 + parameter phrases & TF-IDF phrases (replace) & 0.974 & 0.708 & +26.5 & [+25.8, +27.2] & $<$0.0001$^{***}$ \\
+BM25 unigram & TF-IDF unigram & 0.869 & 0.627 & +24.3 & [+23.5, +25.0] & $<$0.0001$^{***}$ \\
+BM25 unigram & TF-IDF no stopwords & 0.869 & 0.642 & +22.7 & [+22.0, +23.5] & $<$0.0001$^{***}$ \\
+BM25 unigram & TF-IDF phrases (add) & 0.869 & 0.650 & +21.9 & [+21.1, +22.7] & $<$0.0001$^{***}$ \\
+BM25 uni+bigram & TF-IDF unigram & 0.827 & 0.627 & +20.0 & [+19.3, +20.7] & $<$0.0001$^{***}$ \\
+BM25 uni+bigram & TF-IDF no stopwords & 0.827 & 0.642 & +18.5 & [+17.9, +19.2] & $<$0.0001$^{***}$ \\
+BM25 uni+bigram & TF-IDF phrases (add) & 0.827 & 0.650 & +17.7 & [+17.0, +18.4] & $<$0.0001$^{***}$ \\
+BM25 unigram & TF-IDF phrases (replace) & 0.869 & 0.708 & +16.1 & [+15.3, +16.9] & $<$0.0001$^{***}$ \\
+TF-IDF phrases (replace) & TF-IDF char 3--5 & 0.708 & 0.558 & +15.0 & [+14.3, +15.7] & $<$0.0001$^{***}$ \\
+BM25 + parameter phrases & BM25 uni+bigram & 0.974 & 0.827 & +14.7 & [+14.1, +15.3] & $<$0.0001$^{***}$ \\
+BM25 uni+bigram & TF-IDF phrases (replace) & 0.827 & 0.708 & +11.8 & [+11.2, +12.5] & $<$0.0001$^{***}$ \\
+BM25 + parameter phrases & BM25 unigram & 0.974 & 0.869 & +10.5 & [+10.0, +11.0] & $<$0.0001$^{***}$ \\
+TF-IDF phrases (add) & TF-IDF char 3--5 & 0.650 & 0.558 & +9.2 & [+8.5, +9.8] & $<$0.0001$^{***}$ \\
+TF-IDF no stopwords & TF-IDF char 3--5 & 0.642 & 0.558 & +8.3 & [+7.7, +9.0] & $<$0.0001$^{***}$ \\
+TF-IDF phrases (replace) & TF-IDF unigram & 0.708 & 0.627 & +8.2 & [+7.6, +8.7] & $<$0.0001$^{***}$ \\
+TF-IDF unigram & TF-IDF char 3--5 & 0.627 & 0.558 & +6.8 & [+6.2, +7.4] & $<$0.0001$^{***}$ \\
+TF-IDF phrases (replace) & TF-IDF no stopwords & 0.708 & 0.642 & +6.7 & [+6.1, +7.2] & $<$0.0001$^{***}$ \\
+TF-IDF phrases (replace) & TF-IDF phrases (add) & 0.708 & 0.650 & +5.8 & [+5.3, +6.4] & $<$0.0001$^{***}$ \\
+BM25 unigram & BM25 uni+bigram & 0.869 & 0.827 & +4.2 & [+3.6, +4.8] & $<$0.0001$^{***}$ \\
+TF-IDF phrases (add) & TF-IDF unigram & 0.650 & 0.627 & +2.3 & [+1.9, +2.7] & $<$0.0001$^{***}$ \\
+TF-IDF no stopwords & TF-IDF unigram & 0.642 & 0.627 & +1.5 & [+1.0, +2.0] & $<$0.0001$^{***}$ \\
+TF-IDF phrases (add) & TF-IDF no stopwords & 0.650 & 0.642 & +0.8 & [+0.3, +1.4] & 0.0065$^{**}$ \\
+\bottomrule
+\end{tabular}
+}
+\\[2pt]{\footnotesize $^{***}\,p<0.001$; $^{**}\,p<0.01$; $^{*}\,p<0.05$; n.s.\ = not significant after correction.}
+\end{table}

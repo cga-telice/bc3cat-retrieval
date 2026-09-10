@@ -109,7 +109,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | hecho |
 | R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | hecho |
 | R6 | Métricas parent-level para híbridos y reranking | minutos | hecho (`scripts/eval_dual.py`) |
-| R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | análisis de errores hecho; falta bootstrap y leaderboards |
+| R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | hecho (`scripts/bootstrap_sigtests.py`) |
 | R8 | *(N10)* GTE sin prefijos | ~10 min | hecho junto con la reejecución de GTE |
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
 | R10 | **B6** — baselines estructurados | 1 día | hecho (§3.2.5 y §4.8 redactadas, dos tablas generadas) |
@@ -121,7 +121,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | # | Qué | Estado |
 |---|---|---|
 | F1 | Título, abstract y contribuciones: decisión de encuadre pendiente de César | hecho |
-| F2 | Introducción: los dos escenarios operativos de L152 que nunca se evalúan | pendiente |
+| F2 | Introducción: los dos escenarios operativos de L152 que nunca se evalúan | hecho |
 | F3 | Conclusiones alineadas con el encuadre elegido | hecho |
 | F4 | `README.md`: tabla de resultados, recuento de ítems, URL de clonado, menciones a `ranx`/Pyserini | hecho |
 | F5 | Zenodo: nueva versión del depósito `10.5281/zenodo.20277824` | pendiente |
@@ -404,9 +404,13 @@ Medido, no supuesto: `structured_pipeline_rules_rawq` es el mismo pipeline con
 |---|---|---|---|
 | `structured_pipeline_rules` (texto normalizado) | 0,9033 | 0,9667 | 0,9848 |
 | `structured_pipeline_rules_rawq` (texto crudo) | 0,9004 | 0,9637 | **0,9817** |
+| `structured_pipeline_oracle_rules` (normalizado) | 0,9136 | 0,9773 | 1,0000 |
+| `structured_pipeline_oracle_rules_rawq` (crudo) | 0,9136 | 0,9773 | 1,0000 |
 
 El padre reproduce exactamente el 0,9817 del `dense_e5` suelto, lo que confirma el
-diagnóstico, y el ítem se mueve 0,29 puntos. Se mantienen los runs normalizados en la
+diagnóstico, y el ítem se mueve 0,29 puntos. Con la plantilla dada, los dos runs son
+idénticos a cuatro decimales en todas las métricas: la sensibilidad está en la etapa 1
+y sólo en ella, porque el extractor por reglas normaliza el texto por su cuenta. Se mantienen los runs normalizados en la
 tabla (la familia es internamente consistente) y se declara la sensibilidad medida en
 el manuscrito, en vez de absorberla.
 

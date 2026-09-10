@@ -178,9 +178,11 @@ The challenge is compounded by terminology variability across stakeholders. Fiel
 
 These terminology mismatches are particularly evident in two operational contexts. First, during cost estimation for design-bid-build tenders, estimators must map project specifications—often drafted with company-specific or region-specific wording—to standardized catalog entries. A project item description related to pipes must be matched to the precise catalog variant that accounts for terrain type, pipe diameter, and work-shift conditions, yet the source document may omit or paraphrase critical parameters. Second, during project execution, field engineers produce daily progress reports using abbreviated or colloquial item descriptions that must be reconciled with contractual line items for billing and compliance. A site note should map unambiguously to a specific catalog entry, but the terse phrasing and implicit context challenge both manual lookup and automated systems. In both scenarios, failure to retrieve the correct item carries tangible consequences: cost overruns from misquoted unit prices, contractual disputes over scope interpretation, or delays in payment certification. Robust retrieval methods that tolerate terminological variation while preserving numeric and parametric precision are therefore essential to practical construction workflows.
 
+Both scenarios require two distinct capabilities, and it is worth separating them at the outset because this study measures only one. The first is bridging vocabulary: recognising that an independently worded description refers to a given family of catalog concepts at all. The second is discriminating within that family: choosing, among hundreds or thousands of variants that differ only in attribute values, the one whose unit price applies. The evaluation reported here holds the first capability fixed --- queries are the catalog's own short-form descriptions, so the vocabulary gap is small and quantified in Section~\ref{subsec:overlap} --- and measures the second in isolation. That choice is a limitation with respect to the scenarios above, and it is also what makes the central result legible: the systems evaluated here are, with few exceptions, already competent at the first capability and fail at the second. A benchmark that varied both at once would not have shown which of them was the bottleneck.
+
 Attempts to automate this mapping process predominantly employed rule-based systems and traditional machine learning methods, which often rely on structured data sets and expert-driven input ~\cite{caldasAutomatingHierarchicalDocument2003, natural_wu_2022}. Although these methods have shown limited success, they struggle with the domain-specific variability, nuanced language, and unstructured data prevalent in construction management ~\cite{rampiniArtificialIntelligenceConstruction2022, baekCriticalReviewTextbased2021}. Advances in natural language processing (NLP), particularly transformer-based models such as BERT, have shown promise in addressing these challenges by capturing semantic variability and contextual relationships ~\cite{tangAutomatedConstructionQuantity2022, dezaMachineLearningApproach2022}. However, issues such as data sparsity, domain-specific jargon, and computational resource demands persist ~\cite{chungComparingNaturalLanguage2023, martinez-rojasUsingClassificationTechniques2018}.
 
-This study addresses one specific and well-defined part of that challenge through a systematic comparative evaluation of lexical, neural and hybrid retrieval methods on a large-scale parametric catalog from the railway infrastructure domain. The task is to retrieve the exact catalog item corresponding to a short description, among $47{,}513$ candidates that belong to a single subcategory and are generated from only $30$ parametric templates. Entries within a template therefore share almost all of their vocabulary and differ only in attribute values such as terrain type, pipe diameter or work-shift conditions. Queries are the catalog's own short-form descriptions rather than text written independently by practitioners; Section~\ref{subsec:overlap} quantifies exactly how much of each query is contained verbatim in its target. The setting consequently isolates one capability --- discriminating between near-identical parametric variants --- and does not by itself measure the vocabulary-bridging ability that the operational scenarios above would also require.
+This study addresses one specific and well-defined part of that challenge through a systematic comparative evaluation of lexical, neural and hybrid retrieval methods on a large-scale parametric catalog from the railway infrastructure domain. The task is to retrieve the exact catalog item corresponding to a short description, among $47{,}513$ candidates that belong to a single subcategory and are generated from only $30$ parametric templates. Entries within a template therefore share almost all of their vocabulary and differ only in attribute values such as terrain type, pipe diameter or work-shift conditions. Queries are the catalog's own short-form descriptions rather than text written independently by practitioners; Section~\ref{subsec:overlap} quantifies exactly how much of each query is contained verbatim in its target.
 
 Figure~\ref{fig:retrieval_workflow} summarizes the retrieval setting considered in this study, from short catalog descriptions, used as proxies for practitioner-oriented queries, to the identification of the corresponding detailed construction item.
 
@@ -714,45 +716,9 @@ Figure~\ref{fig:bm25_heatmap_panel} visualizes the sensitivity of item-level Acc
 \label{fig:bm25_heatmap_panel}
 \end{figure}
 
-Bootstrap significance testing (10,000 iterations, Holm--Bonferroni correction) confirmed all pairwise differences were statistically significant ($p < 0.003$).  
+Table~\ref{tab:statistical_significance} reports every pairwise comparison among the eight lexical configurations, without selection: $28$ pairs, all significant after correcting across the whole family. The narrowest gap in the table is $0.8$ points, between the two weakest TF-IDF variants, and it is the only comparison whose corrected $p$ exceeds $0.001$. With $16{,}590$ paired observations, differences of this size are resolvable; the substantive question is which of them matter, not which of them are detectable. BM25 with parameter phrases leads the next best configuration, BM25-unigram, by $10.5$ points, and the best TF-IDF variant by $26.5$; BM25-unigram in turn exceeds the TF-IDF family by $16.1$ to $31.1$ points and BM25-unibigram by $4.2$.
 
-Table~\ref{tab:statistical_significance} presents pairwise comparisons. BM25-unigram outperformed all TF-IDF variants by 16.1--31.1 percentage points, and exceeded BM25-unibigram by 4.2 percentage points.
-
-\begin{table}[htbp]
-\centering
-\caption{Pairwise statistical significance testing results for item-level lexical method performance. Bootstrap test with 10,000 iterations; p-values corrected using Holm-Bonferroni method. All comparisons show significant differences ($p < 0.003$).}
-\label{tab:statistical_significance}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{llrrrr}
-\toprule
-Method 1 & Method 2 & $\Delta$ Acc@1 & 95\% CI & p-value & Sig. \\
-\midrule
-BM25-unigram & BM25-unibigram & 0.042 & [0.036, 0.048] & $< 0.001$ & *** \\
-BM25-unigram & TF-IDF-phrases\_replace & 0.161 & [0.153, 0.169] & $< 0.001$ & *** \\
-BM25-unigram & TF-IDF-phrases\_add & 0.219 & [0.211, 0.227] & $< 0.001$ & *** \\
-BM25-unigram & TF-IDF-nostop & 0.227 & [0.220, 0.235] & $< 0.001$ & *** \\
-BM25-unigram & TF-IDF-unigram & 0.243 & [0.235, 0.250] & $< 0.001$ & *** \\
-BM25-unigram & TF-IDF-char\_3\_5 & 0.311 & [0.303, 0.319] & $< 0.001$ & *** \\
-\midrule
-BM25-unibigram & TF-IDF-phrases\_replace & 0.118 & [0.112, 0.125] & $< 0.001$ & *** \\
-BM25-unibigram & TF-IDF-phrases\_add & 0.177 & [0.170, 0.184] & $< 0.001$ & *** \\
-BM25-unibigram & TF-IDF-nostop & 0.185 & [0.178, 0.192] & $< 0.001$ & *** \\
-BM25-unibigram & TF-IDF-unigram & 0.200 & [0.193, 0.207] & $< 0.001$ & *** \\
-BM25-unibigram & TF-IDF-char\_3\_5 & 0.268 & [0.261, 0.276] & $< 0.001$ & *** \\
-\midrule
-TF-IDF-phrases\_replace & TF-IDF-phrases\_add & 0.058 & [0.053, 0.064] & $< 0.001$ & *** \\
-TF-IDF-phrases\_replace & TF-IDF-nostop & 0.067 & [0.061, 0.072] & $< 0.001$ & *** \\
-TF-IDF-phrases\_replace & TF-IDF-unigram & 0.082 & [0.076, 0.088] & $< 0.001$ & *** \\
-TF-IDF-phrases\_replace & TF-IDF-char\_3\_5 & 0.150 & [0.143, 0.157] & $< 0.001$ & *** \\
-\midrule
-TF-IDF-nostop & TF-IDF-phrases\_add & 0.008 & [0.003, 0.014] & $< 0.003$ & ** \\
-TF-IDF-unigram & TF-IDF-nostop & 0.015 & [0.010, 0.020] & $< 0.001$ & *** \\
-TF-IDF-unigram & TF-IDF-phrases\_add & 0.023 & [0.019, 0.027] & $< 0.001$ & *** \\
-\bottomrule
-\multicolumn{6}{l}{\small *** $p < 0.001$; ** $p < 0.01$ (Holm-Bonferroni corrected)}
-\end{tabular}
-}
-\end{table}
+\input{tables/significance.tex}
 
 Stratification by query type (Table~\ref{tab:performance_by_numbers}) revealed that BM25-params achieved perfect accuracy on non-numeric queries (0.17\% of test set) while maintaining 0.974 on numeric ones. TF-IDF variants showed the inverse: perfect non-numeric but weaker numeric performance (0.558--0.708).
 
@@ -1064,14 +1030,14 @@ If the catalog is generated from templates and attribute tuples, the obvious obj
 
 \input{tables/structured_baselines.tex}
 
-The answer to the objection is that structured matching is competitive but does not win. The best configuration --- rule-based extraction --- reaches $0.903$ at item level, above every neural system and above the best hybrid ($0.893$), and still $7.0$ points below BM25 with parameter phrases ($0.974$). Replacing stage 1 with the ground-truth template adds only $1.0$ point, to $0.914$: even told which template the query belongs to, structured matching does not catch a lexical retriever that is told nothing.
+The answer to the objection is that structured matching is competitive but does not win. The best configuration --- rule-based extraction --- reaches $0.903$ at item level, above every neural system and above the best hybrid ($0.893$), and still $7.0$ points below BM25 with parameter phrases ($0.974$; paired bootstrap $95\%$ CI $[6.6, 7.5]$ points, $p < 0.0001$). Replacing stage 1 with the ground-truth template adds only $1.0$ point, to $0.914$: even told which template the query belongs to, structured matching does not catch a lexical retriever that is told nothing.
 
 \paragraph{The pipeline is the dissociation, made mechanical.}
 This family separates the two levels of the task by construction: stage 1 decides the family, stages 2 and 3 decide the variant. The measurements follow exactly. All five configurations share stage 1, and all five score \emph{identically} at parent level, $0.9848$; the three variants given the ground-truth template score $1.0000$ by construction. At item level the same five span $0.031$ to $0.903$. Nothing about the family-level task distinguishes these systems, and everything about the variant-level task does.
 
 The comparison with the dense retriever they all contain makes the point sharper. Multilingual-e5-base alone scores $0.982$ at parent level and $0.136$ at item level. Attaching an exact lookup over extracted attributes to that same retriever leaves the parent level where it was and moves the item level to $0.903$. The dense encoder was never the part that was failing to find the family.
 
-The residual difference between those two parent-level figures --- $0.9848$ for the pipelines against $0.9817$ for the standalone run --- is not noise and is worth stating, because it is the one respect in which this family is not run exactly like the rest of the study. Each index in this work supplies queries in the text form it was built on, and the structured pipelines declare the normalised form while the dense index they call declares the raw one. Re-running the rule-based pipeline so that stage 1 receives the same raw text as the standalone dense run reproduces $0.9817$ at parent level exactly, and moves item-level accuracy from $0.9033$ to $0.9004$. The choice is therefore worth $0.3$ points and is reported here rather than absorbed.
+The residual difference between those two parent-level figures --- $0.9848$ for the pipelines against $0.9817$ for the standalone run --- is not noise and is worth stating, because it is the one respect in which this family is not run exactly like the rest of the study. Each index in this work supplies queries in the text form it was built on, and the structured pipelines declare the normalised form while the dense index they call declares the raw one. Re-running the rule-based pipeline so that stage 1 receives the same raw text as the standalone dense run reproduces $0.9817$ at parent level exactly, and moves item-level accuracy from $0.9033$ to $0.9004$. Under the ground-truth template the two runs are identical to four decimals in every metric, which localises the difference precisely: it is stage 1, and nothing else, that is sensitive to the choice. The effect is worth $0.3$ points and is reported here rather than absorbed.
 
 \paragraph{Where the variants differ is stage 2, and how they fail differs more than how often.}
 Table~\ref{tab:stage2} decomposes it. The rule-based extractor resolves $98.0\%$ of axes correctly, leaves $1.4\%$ unresolved and is outright wrong on $0.5\%$. The fine-tuned classifier is never uncertain --- it abstains on no axis at all --- and is wrong on $23.9\%$. The BIO tagger is almost never wrong ($0.4\%$) but leaves $54.1\%$ of axes unresolved.
@@ -1217,7 +1183,7 @@ These rankings are based on Acc@1, which reflects automated deployment, where on
 \section{Discussion}
 \label{sec:discussion}
 
-Our results reaffirm the strength of lexical methods in specialized technical domains. A well-tuned BM25 configuration significantly outperformed all neural retrievers at the item level, achieving approximately 97.4\% Acc@1 on a 40,000-item catalog. This aligns with prior findings that optimized lexical models often surpass neural approaches in domain-specific settings with consistent terminology ~\cite{thakur2021beir}, and echoes work showing that term dictionaries improve AEC search precision ~\cite{fan2015project}. For practitioners, the implications are clear: BM25 offers high accuracy with minimal infrastructure and sub-second latency, making it a cost-effective and scalable solution for catalog retrieval.
+Our results reaffirm the strength of lexical methods in specialized technical domains. A well-tuned BM25 configuration significantly outperformed all neural retrievers at the item level, achieving $97.4\%$ Acc@1 on a catalog of $47{,}513$ items. This aligns with prior findings that optimized lexical models often surpass neural approaches in domain-specific settings with consistent terminology ~\cite{thakur2021beir}, and echoes work showing that term dictionaries improve AEC search precision ~\cite{fan2015project}. For practitioners, the implications are clear: BM25 offers high accuracy with minimal infrastructure and sub-second latency, making it a cost-effective and scalable solution for catalog retrieval.
 
 Neural retrievers, by contrast, excel at high-level semantic categorization but struggle with fine-grained item matching. At the parent level, models like BGE-M3-ColBERT achieved approximately 99.7\% accuracy, rivaling lexical methods; however, at the item level, their performance lagged due to vocabulary mismatch and lack of domain adaptation. General-purpose embeddings underperform on specialized tasks because they handle rare terms poorly ~\cite{tang2024we}, and dense retrievers generalize poorly without fine-tuning ~\cite{li2022domain}. Construction catalogs combine technical jargon, codes, and measurements infrequent in general corpora—terms BM25 handles well via inverse document frequency. It is worth noting that this comparison is intentionally asymmetric in one respect: while BM25 was tuned with domain-specific parameter phrases and optimized hyperparameters, neural models were evaluated in zero-shot mode without any domain adaptation. This reflects a realistic deployment scenario where labeled training data is unavailable, and where lexical methods can be configured with modest domain knowledge at low cost. Even if domain adaptation were to narrow this gap, practitioners would still need to weigh the added complexity and computational cost of neural retrievers against the simplicity and transparency of a well-tuned BM25 system.
 
