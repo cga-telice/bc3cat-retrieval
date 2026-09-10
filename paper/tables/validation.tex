@@ -1,0 +1,15 @@
+% Generado por scripts/select_on_validation.py -- no editar a mano.
+\begin{table}[ht]
+\centering
+\caption{Hyperparameter selection for the BM25 families. The grid is scored on a validation set of $5{,}000$ queries disjoint from the test set, and the selected configuration is then scored once on the test set. The last column is the optimism that selecting on the test set would have introduced: the difference between the best test cell of the grid and the test score of the cell chosen on validation. Criterion: item-level Acc@1.}
+\label{tab:validation_selection}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Family} & \textbf{Selected $(k_1, b)$} & \textbf{Validation} & \textbf{Test} & \textbf{Best test cell} & \textbf{Optimism (pp)} \\
+\midrule
+BM25 uni+bigram & $(0.80, 0.35)$ & 0.8296 & 0.8267 & 0.8267 & +0.00 \\
+BM25 unigram & $(1.00, 0.35)$ & 0.8776 & 0.8681 & 0.8696 & +0.14 \\
+BM25 + parameter phrases & $(0.60, 0.35)$ & 0.9756 & 0.9737 & 0.9737 & +0.00 \\
+\bottomrule
+\end{tabular}
+\end{table}

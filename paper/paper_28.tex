@@ -472,6 +472,8 @@ and the usual term-frequency saturation controlled by $k_1$ and $b$. Scoring is 
 
 This yields 62 total configurations. Documents and queries undergo identical preprocessing before indexing. No stopword list is applied, because terms such as ``de'' or ``en'' participate in the parameter phrases that distinguish catalog variants.
 
+All 62 configurations are scored on a validation set of $5{,}000$ queries that is disjoint from the test set, and the configuration reported for each family is the one that maximises item-level Acc@1 there. The validation queries are sampled (seed 20260909) from the $30{,}923$ catalog items that are never used as test queries, so the test set remains the same $16{,}590$ queries used by every other system in this study and no comparison in the paper is affected by the split. Section~\ref{subsec:lexical_results} reports what selecting on the test set instead would have been worth.
+
 \paragraph{TF-IDF Implementation}
 TF-IDF baselines use scikit-learn v1.2.2~\citep{pedregosa2011scikit} with the following configurations:
 \begin{itemize}
@@ -539,7 +541,7 @@ s_{\text{final}}(d) = \sum_{r \in R} w_r \cdot s'_{d,r}
 
 where $w_r$ represents the fusion weight for ranker $r$, and $\sum_{r} w_r = 1$.
 
-To identify optimal fusion configurations, we conducted a systematic parameter sweep over the weight space for several hybrid strategies: (1) three-way fusions combining BM25 with one BGE-M3 variant and character-level TF-IDF, and (2) a five-way fusion incorporating BM25, all three BGE-M3 variants (dense, sparse, ColBERT), and TF-IDF. For each configuration, we evaluated combinations of $\beta_{\text{exact}} \in \{0.0, 0.05, 0.1\}$ and $\beta_{\text{overlap}} \in \{0.0, 0.05\}$ across a grid of weight distributions. The optimal configuration for each strategy was selected based on MRR@10 performance on the test set.
+To identify optimal fusion configurations, we conducted a systematic parameter sweep over the weight space for several hybrid strategies: (1) three-way fusions combining BM25 with one BGE-M3 variant and character-level TF-IDF, and (2) a five-way fusion incorporating BM25, all three BGE-M3 variants (dense, sparse, ColBERT), and TF-IDF. For each configuration, we evaluated combinations of $\beta_{\text{exact}} \in \{0.0, 0.05, 0.10, 0.15\}$ and $\beta_{\text{overlap}} \in \{0.0, 0.05\}$ across a grid of weight distributions. The optimal configuration for each strategy was selected on item-level Acc@1. Unlike the lexical grids, the fusion sweep is selected on the test set; the validation experiment of Section~\ref{subsec:lexical_results} bounds what that is worth for the lexical families, and the hybrid results should be read as an upper bound on what fusion achieves here rather than as an out-of-sample estimate.
 
 \paragraph{Cross-Encoder Reranking}
 We employ a two-stage cascade: efficient first-stage retrieval followed by expensive cross-encoder reranking of top candidates. Cross-encoder implementation uses:
@@ -715,6 +717,15 @@ Figure~\ref{fig:bm25_heatmap_panel} visualizes the sensitivity of item-level Acc
 \caption{Acc@1 sensitivity to BM25 hyperparameters ($k_1$, $b$) across three tokenization variants on the item-level retrieval task ($n=16{,}590$ queries). A shared color scale highlights the systematic dominance of the parameter-phrase variant (right panel) across the explored grid. The optimum of each panel is highlighted with a red border.}
 \label{fig:bm25_heatmap_panel}
 \end{figure}
+
+\paragraph{What the grid search was worth.}
+Reporting the best cell of a grid that was scored on the test set makes the reported figure optimistic by an unknown amount. Table~\ref{tab:validation_selection} replaces the unknown with a measurement: the same 62 configurations were scored on the disjoint validation set of $5{,}000$ queries, the winning cell of each family was taken from there, and only then was it scored on the test set.
+
+\input{tables/validation.tex}
+
+For the two families that carry the paper's claims the two splits choose the same cell, so the optimism is exactly zero: BM25 with parameter phrases is $(k_1{=}0.60, b{=}0.35)$ under either criterion, and its $0.9737$ is an out-of-sample figure. For BM25-unigram the validation set prefers $(1.00, 0.35)$ where the test set prefers $(0.60, 0.35)$, a difference of $0.14$ points --- smaller than the gap between any two systems compared in this paper. The reported BM25-unigram runs keep $(0.80, 0.35)$, the configuration on which the hybrid fusions and the reranking cascades of Sections~\ref{subsec:hybrid_results} and~\ref{subsec:reranking} were built; on the test set it scores $0.8691$, between the two.
+
+Two properties of the grid explain why selection turns out to be so cheap here. First, the two splits order the configurations almost identically: Spearman's $\rho$ between validation and test scores is $0.995$ for the uni+bigram grid, $0.993$ for the unigram grid and $0.972$ for the parameter-phrase grid. Where the two splits do disagree it is among cells that are already tied for practical purposes: the five best uni+bigram cells appear in the same order on both, and the three best parameter-phrase cells do, while the unigram grid --- whose top four cells span $0.17$ points on the test set --- is the one that reorders. Second, the validation split is uniformly easier --- every one of the 62 configurations scores higher on it than on the test set, by between $0.10$ and $1.16$ points --- so the offset shifts all cells together instead of reordering them. This is what makes the split usable for selection and unusable as an estimate of absolute performance, and it is why the test figures are reported separately rather than being read off the validation column.
 
 Table~\ref{tab:statistical_significance} reports every pairwise comparison among the eight lexical configurations, without selection: $28$ pairs, all significant after correcting across the whole family. The narrowest gap in the table is $0.8$ points, between the two weakest TF-IDF variants, and it is the only comparison whose corrected $p$ exceeds $0.001$. With $16{,}590$ paired observations, differences of this size are resolvable; the substantive question is which of them matter, not which of them are detectable. BM25 with parameter phrases leads the next best configuration, BM25-unigram, by $10.5$ points, and the best TF-IDF variant by $26.5$; BM25-unigram in turn exceeds the TF-IDF family by $16.1$ to $31.1$ points and BM25-unibigram by $4.2$.
 
@@ -944,6 +955,7 @@ BGE-M3-ColBERT emerged as the best neural approach (Acc@1=44.8\%), achieving 3.3
 At the parent level, all neural approaches exceeded 96\% Acc@1, confirming that neural models capture broad semantic categories effectively but struggle with fine-grained item-level distinctions.
 
 \subsection{Hybrid Fusion Results}
+\label{subsec:hybrid_results}
 
 Table~\ref{tab:hybrid_fusion} presents the best configuration found by the parameter sweep for each fusion strategy.
 

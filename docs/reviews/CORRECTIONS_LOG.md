@@ -104,7 +104,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | # | Qué | Coste estimado | Estado |
 |---|---|---|---|
 | R1 | `dense_e5`, `dense_gte`, `dense_gte_instrQ`, `dense_es_hiiamsid` sobre la muestra canónica | ~10 min c/u | hecho |
-| R2 | Barrido `(k1,b)` de BM25 sobre validación (62 configs) | ~1 h | pendiente |
+| R2 | Barrido `(k1,b)` de BM25 sobre validación (62 configs) | ~1 h | hecho |
 | R3 | Híbridos: una pasada base para los 5 rankers + 4 barridos | ~75 min + barridos | hecho |
 | R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | hecho |
 | R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | hecho |
@@ -315,6 +315,42 @@ en este dominio— se sostiene, y ahora está demostrada sobre el baseline que d
 usado y no usaba. Es más informativo así: sobre el baseline débil cabía la duda de si
 el resultado nulo era una propiedad del PRF o del poco margen que dejaba una primera
 etapa mediocre.
+
+### Selección en validación (C5 / R2 / B3)
+
+Las 62 configuraciones de la rejilla, evaluadas sobre las 5.000 consultas de
+validación (disjuntas del test, semilla 20260909). `scripts/select_on_validation.py`.
+
+| Familia | Elige validación | Val | Test | Mejor casilla en test | Optimismo |
+|---|---|---|---|---|---|
+| BM25 uni+bigrama | (0,80 · 0,35) | 0,8296 | 0,8267 | 0,8267 | **+0,00 pp** |
+| BM25 unigrama | (1,00 · 0,35) | 0,8776 | 0,8681 | 0,8696 | +0,14 pp |
+| BM25 + frases de parámetros | (0,60 · 0,35) | 0,9756 | 0,9737 | 0,9737 | **+0,00 pp** |
+
+**El sistema principal sobrevive intacto.** Validación elige exactamente la
+configuración reportada, así que el 0,9737 pasa a ser una cifra fuera de muestra sin
+tocar ni un run. Era el riesgo real del plan —«el 0,9737 puede moverse al
+seleccionarse en validación»— y no se ha materializado.
+
+Por qué sale tan barato, medido y no supuesto:
+
+- **El orden apenas cambia.** Spearman entre validación y test: 0,995 (uni+bigrama),
+  0,993 (unigrama), 0,972 (frases).
+- **El nivel sí cambia, y de forma uniforme.** Las 62 casillas puntúan más alto en
+  validación, entre +0,10 y +1,16 puntos. El desplazamiento mueve toda la rejilla a la
+  vez en lugar de reordenarla. Por eso la partición sirve para elegir y no sirve para
+  estimar: las cifras de test se reportan aparte.
+
+Los runs de BM25-unigrama se quedan en (0,80 · 0,35) —0,8691 en test, entre las dos
+casillas candidatas— porque es el índice sobre el que están construidas las fusiones
+híbridas y las cascadas de reranking. Declarado en el manuscrito.
+
+**Lo que sigue seleccionado en test:** el barrido de fusión de `hybrid.ipynb`. Además
+el manuscrito declaraba que el criterio era MRR@10 y el código usa `acc@1`
+(`if m["acc@1"] > best_acc`); corregido, y los híbridos se presentan ahora como cota
+superior de lo que consigue la fusión, no como estimación fuera de muestra.
+
+---
 
 ### Baselines estructurados (B6 / R10)
 
