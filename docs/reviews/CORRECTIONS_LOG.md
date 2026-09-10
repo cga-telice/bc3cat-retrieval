@@ -127,7 +127,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | F2 | Introducción: los dos escenarios operativos de L152 que nunca se evalúan | hecho |
 | F3 | Conclusiones alineadas con el encuadre elegido | hecho |
 | F4 | `README.md`: tabla de resultados, recuento de ítems, URL de clonado, menciones a `ranx`/Pyserini | hecho |
-| F5 | Zenodo: nueva versión del depósito `10.5281/zenodo.20277824` | pendiente |
+| F5 | Zenodo: nueva versión del depósito | pendiente — depósitos mapeados (ver abajo); esperando visto bueno de los coautores |
 
 ---
 
@@ -739,6 +739,48 @@ barrido otros ~35 min por fusión.
 Los resultados publicados están respaldados en `runs/_as_published/` y en
 `index/_as_published_*`, así que toda cifra nueva puede contrastarse con la
 antigua en cualquier momento.
+
+## Zenodo: el mapa real de depósitos (F5)
+
+Consultado en la API de Zenodo el 2026-09-10. **No se ha modificado nada.**
+
+### `bc3cat-retrieval` (el código)
+
+| | DOI | Etiqueta | Fecha | ¿La última? |
+|---|---|---|---|---|
+| **Concept DOI** | `10.5281/zenodo.20277823` | — | — | apunta siempre a la última |
+| v1 | `10.5281/zenodo.20277824` | `bc3-ir-paper-v1.0.0` | 2026-05-18 | **no** |
+| v2 | `10.5281/zenodo.20533039` | `sepln2026-submission` | 2026-06-03 | sí |
+
+Tres consecuencias que había que saber antes de tocar nada:
+
+1. **El DOI antiguo no desaparece ni se mueve.** `…20277824` seguirá resolviendo
+   siempre al depósito v1 exactamente como está. Es lo que hace un DOI.
+2. **Ya existe una v2**, creada por la integración GitHub↔Zenodo al etiquetar la
+   *release* de SEPLN 2026. Es decir: quien resuelva hoy el **concept DOI** aterriza en
+   material de otro artículo, no en el de AUTCON.
+3. **El concept DOI no está citado en ninguna parte** — ni en el manuscrito ni en el
+   README, que citan la versión v1.
+
+La integración GitHub↔Zenodo está activa, así que **etiquetar una release nueva crea
+sola una v3** con su propio DOI. No hace falta subida manual, pero conviene saber que
+ocurre como efecto secundario de etiquetar.
+
+### `bc3cat-dataset` (los datos)
+
+Concept DOI `10.5281/zenodo.20277800`, versión única `10.5281/zenodo.20277801`
+(`bc3-ir-paper-v1.0.0`, 2026-05-18), marcada como la última. Los datos no han
+cambiado en esta revisión, así que aquí no hay nada que hacer.
+
+### Lo que queda por decidir
+
+- Etiquetar la release nueva **cuando los coautores den el visto bueno**, y citar en
+  el manuscrito revisado el DOI de versión que genere.
+- Opcional: añadir una nota en los metadatos de la v1 apuntando a la versión
+  corregida. Zenodo permite editar metadatos de un registro publicado (los ficheros
+  no). Es una acción de cara al exterior: requiere confirmación explícita.
+
+---
 
 ## Fuera de alcance (decisión explícita)
 
