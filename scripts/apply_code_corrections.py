@@ -134,6 +134,94 @@ PATCHES: list[Patch] = [
         ],
     ),
     Patch(
+        ident="C1-prf-base",
+        notebook="src/prf_bm25_orchestrator.ipynb",
+        rationale=(
+            "El manuscrito (L653) afirma que el PRF se construyo sobre BM25 con "
+            "parametros optimizados, k1=0.60 b=0.35, que alcanza 0,9737. Los dieciseis "
+            "runs existentes usan bm25_unigram con k1=0.80 b=0.35, que alcanza 0,8691. "
+            "El Revisor 2 lo señala (2.2) y pide corregirlo o rehacerlo."
+        ),
+        old=[
+            'BASE_METHODS = ["bm25_unigram"]  # base indexes to PRF\n',
+        ],
+        new=[
+            "# Indice base sobre el que expandir. El manuscrito declaraba el optimizado\n",
+            "# y los runs usaban el debil (CORRECTIONS_LOG, R2-2.2).\n",
+            'BASE_METHODS = globals().get("BASE_METHODS", ["bm25_unigram"])\n',
+        ],
+    ),
+    Patch(
+        ident="C1-prf-loader",
+        notebook="src/prf_bm25_orchestrator.ipynb",
+        rationale=(
+            "Este cargador importaba `retrievers.<nombre_de_run>` literalmente, mientras "
+            "que retrieve.ipynb recorta el nombre en el primer '__' para quedarse con la "
+            "implementacion. Con un run parametrizado como "
+            "bm25_unigram_params__k1-0.60__b-0.35 el nombre de modulo es invalido, asi "
+            "que el PRF solo podia construirse sobre indices sin sufijo: de ahi que los "
+            "dieciseis runs usen el BM25 debil y no el optimizado."
+        ),
+        old=[
+            "    # Exactly like your runner’s aliasing concept\n",
+            '    mod = import_module(f"retrievers.{method_name}")\n',
+        ],
+        new=[
+            "    # Mismo aliasing que src/retrieve.ipynb: los nombres de run llevan los\n",
+            "    # hiperparametros tras '__', y la implementacion es la parte previa.\n",
+            '    base = method_name.split("__", 1)[0]\n',
+            '    alias = {"tfidf_unigram_nostop": "tfidf_unigram", "tfidf_char_3_5": "tfidf_unigram",\n',
+            '             "dense_gte_instrQ": "dense_gte"}\n',
+            '    mod = import_module(f"retrievers.{alias.get(base, base)}")\n',
+        ],
+    ),
+    Patch(
+        ident="C1-prf-sample",
+        notebook="src/prf_bm25_orchestrator.ipynb",
+        rationale=(
+            "Como los demas notebooks: la muestra se carga de un fichero versionado en "
+            "vez de re-sortearse en memoria."
+        ),
+        old=[
+            "RANDOM_SAMPLE = 16590  # e.g., 5000\n",
+        ],
+        new=[
+            'QUERY_SAMPLE  = globals().get("QUERY_SAMPLE", "/work/benchmark/query_samples/OEB_query_sample_test_16590.json")\n',
+            "RANDOM_SAMPLE = 16590  # solo se usa si QUERY_SAMPLE queda vacio\n",
+        ],
+    ),
+    Patch(
+        ident="C1-prf-load",
+        notebook="src/prf_bm25_orchestrator.ipynb",
+        rationale="Ver C1-prf-sample: sustituye el muestreo posicional por la carga del fichero.",
+        old=[
+            "    # sample/shuffle like the runner\n",
+            "    if RANDOM_SAMPLE is not None:\n",
+            "        df_q = df_q.sample(n=int(RANDOM_SAMPLE), random_state=42).copy()\n",
+            "    elif SHUFFLE:\n",
+            "        df_q = df_q.sample(frac=1.0, random_state=42).copy()\n",
+        ],
+        new=[
+            "    # Muestra fija, cargada del fichero versionado y verificada por huella.\n",
+            "    if QUERY_SAMPLE:\n",
+            "        import hashlib as _hashlib, json as _json\n",
+            "        _payload = _json.loads(Path(QUERY_SAMPLE).read_text(encoding='utf-8'))\n",
+            "        _wanted = set(_payload['query_item_keys'])\n",
+            "        _fp = _hashlib.sha256('\\n'.join(sorted(_wanted)).encode('utf-8')).hexdigest()\n",
+            "        if _payload.get('sha256') and _fp != _payload['sha256']:\n",
+            "            raise ValueError(f\"{QUERY_SAMPLE}: huella {_fp[:12]} != declarada\")\n",
+            "        df_q = df_q[df_q['item_key'].astype(str).isin(_wanted)].copy()\n",
+            "        if len(df_q) != len(_wanted):\n",
+            "            raise ValueError(f'la muestra pide {len(_wanted)} consultas y hay {len(df_q)}')\n",
+            "        df_q = df_q.sort_values('item_key').reset_index(drop=True)\n",
+            "        print(f'[SAMPLE] {len(df_q):,} consultas de {QUERY_SAMPLE} (sha256 {_fp[:12]})')\n",
+            "    elif RANDOM_SAMPLE is not None:\n",
+            "        df_q = df_q.sample(n=int(RANDOM_SAMPLE), random_state=42).copy()\n",
+            "    elif SHUFFLE:\n",
+            "        df_q = df_q.sample(frac=1.0, random_state=42).copy()\n",
+        ],
+    ),
+    Patch(
         ident="C9-ce-params",
         notebook="src/cross_encoder.ipynb",
         rationale=(

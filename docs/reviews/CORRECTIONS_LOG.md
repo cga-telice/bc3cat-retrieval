@@ -73,9 +73,9 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | N7 | 508 | Declara **MAP** entre las cinco métricas | No se reporta en ninguna tabla ni se calcula en `metrics.ipynb` | hecho |
 | N8 | 1076 | Tabla 16 etiqueta la fila 0,799 como *"5-way fusion + Blend"* | Tabla 13 la etiqueta como híbrido de 3 vías; el CE corrió sobre `hyb_bm25_uni__bge_colbert__tfidf_char_3_5` (`metrics_ce_blend.json` = 0,79885). Las dos tablas se contradicen | pendiente |
 | N9 | 458 | *"Base retrievers: BM25, **E5-large**, and hybrid"* | El CE se aplicó a BM25, híbrido y BGE-M3-ColBERT | hecho |
-| N10 | 413-417 | GTE evaluado con `doc_prefix: "passage: "` | `gte-multilingual-base` no usa prefijos estilo E5. Afecta a las dos variantes GTE | pendiente |
+| N10 | 413-417 | GTE evaluado con `doc_prefix: "passage: "` | `gte-multilingual-base` no usa prefijos estilo E5. Afecta a las dos variantes GTE | hecho |
 | N11 | 914 | Paréntesis suelto: `($\lambda=0.6$))` | — | hecho |
-| N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | **hecho**: reejecutado con CLS y sin prefijos. Ítem 0,0128 → 0,0696; padre 0,8367 → 0,9982 |
+| N12 | 771-786, 1109 | **GTE se codificó con *mean pooling***, no con el CLS que el modelo usa. `sentence-transformers` 2.2.2 no admite `trust_remote_code`, así que no puede cargar `gte-multilingual-base`; tanto `index_builders/dense_gte.py:73-98` como `retrievers/dense_gte.py:77-105` caen al camino alternativo `AutoModel` + *mean pooling*. Reproducido al reejecutar. Sumado a los prefijos `query: `/`passage: ` que el modelo nunca vio (N10), el 1,3 % de Acc@1 puede ser un artefacto de configuración. El paper lo presenta (L1109) como prueba de que *"retrieval in technical domains remains an open challenge"* | hecho |
 | N15 | 908-909 | Tabla 10, nivel de padre: la negrita marca `BGE-M3-sparse` (0,994) como mejor Acc@1 cuando `BGE-M3-colbert` alcanza 0,997 | Los treinta valores de la tabla coinciden con los artefactos; sólo el énfasis está mal puesto, y sugiere lo contrario de lo que dicen las cifras | hecho |
 | N14 | 467, 472 | *"retrieve … from 47,513 candidates"*: los índices densos indexan **47.514** documentos | `index/{dense_e5,dense_gte,dense_es_hiiamsid,dense_bge-m3}/meta.json` declaran `num_docs: 47514`, mientras BM25, TF-IDF y BGE-M3 declaran 47.513. La diferencia es el registro raíz `OEB#` ("ZANJAS, CANALIZACIONES Y TUBOS"), que no es un ítem recuperable: los densos lo llevan como distractor extra y los léxicos no. `dense_gte_instrQ` tiene 47.513, así que ni siquiera es consistente dentro de la misma familia. No altera ninguna conclusión, pero el corpus debe declararse igual para todos los métodos | hecho |
 | N13 | — | `index/*/meta.json` no registra qué backend de codificación se usó | Ni `dense_gte/meta.json` ni los demás guardan si se codificó con sentence-transformers o con el camino alternativo, de modo que N12 no era detectable desde los artefactos. `software.sklearn` es `null` y `corpus_hash` también | hecho |
@@ -83,7 +83,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 
 | # | Cambio | Fichero | Estado |
 |---|---|---|---|
-| C1 | Persistir la muestra de consultas y cargarla en todos los notebooks en lugar de re-muestrear en memoria | `scripts/build_query_samples.py`, `src/retrieve.ipynb` | parcial — hecho en `retrieve.ipynb`; faltan `prf_bm25_orchestrator`, `hybrid` y `bm25_orchestrator` |
+| C1 | Persistir la muestra de consultas y cargarla en todos los notebooks | `scripts/build_query_samples.py`, `src/retrieve.ipynb`, `src/hybrid.ipynb` | hecho en `retrieve` e `hybrid`; falta `prf_bm25_orchestrator` |
 | C2 | Conjunto de validación disjunto de 5.000 consultas | `scripts/build_query_samples.py` | hecho |
 | C3a | `_nums` acepta `np.ndarray` además de `list` | `src/hybrid.ipynb` | hecho |
 | C3b | `numbers_long` sobre los 47.513 documentos del corpus, no sobre los muestreados | `src/hybrid.ipynb` | hecho |
@@ -92,8 +92,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | C6 | Bootstrap por intersección, no por unión con `fillna(0)`; parametrizar `RUNS_INCLUDE` | `src/bootstrap_sigtests.ipynb` | pendiente |
 | C7 | Eliminar el `query_prefix` inerte de `dense_e5.yaml` | `configs/dense_e5.yaml` | hecho |
 | C8 | Persistir `base_runs_norm.parquet` y separar el barrido de la recuperación base | `src/hybrid.ipynb` | pendiente |
-| C9 | Runner completo build → retrieve → metrics para cualquier config | `scripts/run_all.py` | pendiente |
-| C10 | `requirements.txt` real; eliminar menciones a `ranx` y Pyserini | `requirements.txt`, `README.md` | hecho en `requirements.txt`; falta el README |
+| C9 | Runners para cualquier método, fusiones y cross-encoder | `scripts/run_method.py`, `run_hybrids.py`, `run_cross_encoder.py` | hecho |
+| C10 | `requirements.txt` real; eliminar menciones a `ranx` y Pyserini | `requirements.txt`, `README.md` | hecho |
 
 ## Bloque R — Reejecuciones y experimentos
 
@@ -106,18 +106,18 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | hecho |
 | R6 | Métricas parent-level para híbridos y reranking | minutos | pendiente |
 | R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | análisis de errores hecho; falta bootstrap y leaderboards |
-| R8 | *(opcional, N10)* GTE sin prefijos | ~10 min | pendiente |
+| R8 | *(N10)* GTE sin prefijos | ~10 min | hecho junto con la reejecución de GTE |
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
-| R10 | **B6** — integrar los baselines estructurados (ya sobre la muestra canónica) | 1 día | hecho (código + tabla); falta redactar la sección |
+| R10 | **B6** — baselines estructurados | 1 día | código y tabla hechos; falta redactar la sección de resultados |
 | R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | pendiente |
 
 ## Bloque F — Reencuadre y difusión
 
 | # | Qué | Estado |
 |---|---|---|
-| F1 | Título, abstract y contribuciones: decisión de encuadre pendiente de César | pendiente |
+| F1 | Título, abstract y contribuciones: decisión de encuadre pendiente de César | hecho |
 | F2 | Introducción: los dos escenarios operativos de L152 que nunca se evalúan | pendiente |
-| F3 | Conclusiones alineadas con el encuadre elegido | pendiente |
+| F3 | Conclusiones alineadas con el encuadre elegido | hecho |
 | F4 | `README.md`: tabla de resultados, recuento de ítems, URL de clonado, menciones a `ranx`/Pyserini | hecho |
 | F5 | Zenodo: nueva versión del depósito `10.5281/zenodo.20277824` | pendiente |
 
