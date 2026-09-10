@@ -192,19 +192,44 @@ Bootstrap significance tests (10,000 iterations) with Holm-Bonferroni and Benjam
 
 | Method | Item Acc@1 | Parent Acc@1 | Gap (pp) |
 |--------|------------|--------------|----------|
-| BM25 + parameter phrases (k1=0.60, b=0.35) | **0.974** | 0.985 | 1.2 |
+| BM25 + parameter tokens (k1=0.60, b=0.35) | **0.974** | 0.985 | 1.2 |
+| Rule-based structured pipeline | 0.903 | 0.985 | 8.1 |
+| Hybrid: BM25 + ColBERT + TF-IDF char | 0.893 | 0.974 | 8.1 |
 | BM25 unigram (k1=0.80, b=0.35) | 0.869 | 0.973 | 10.4 |
 | TF-IDF + parameter phrases | 0.708 | 0.990 | 28.1 |
 | BGE-M3 ColBERT | 0.448 | 0.997 | 54.9 |
 | multilingual-e5-base | 0.136 | 0.982 | 84.5 |
 | BGE-M3 sparse | 0.125 | 0.994 | 87.0 |
 | GTE-multilingual-base | 0.070 | **0.998** | **92.9** |
-| Rule-based structured pipeline | 0.903 | — | — |
 
 All figures are item-level and parent-level Acc@1 over the same 16,590 queries
 (`benchmark/query_samples/OEB_query_sample_test_16590.json`). The gap is the
 headline finding: dense retrievers identify the parametric family almost
 perfectly and the specific variant almost never.
+
+### Read the top row carefully
+
+`bm25_unigram_params` does **not** index plain text. It indexes `text_word_params`,
+which is the normalised text plus one synthetic token per resolved parameter axis
+(`param_terreno_blando`, `param_no_tubos_6`, …), and the same representation is used
+for the query. Those tokens come from the record's `parameters` field, not from its
+text, and within a template they identify each of the 47,513 items uniquely.
+
+So the top row is not "BM25 beats neural retrieval". It is a two-stage system:
+resolve the query's parameter values against the template schema, then rank with them
+as ordinary query terms. Measured on the same index, varying only the query
+(`scripts/probe_param_tokens.py`, `scripts/probe_computed_params.py`):
+
+| Query | Item Acc@1 |
+|---|---|
+| Text only | 0.871 |
+| Parameter tuple only | 0.219 |
+| Text + tuple read from the catalog record | 0.974 |
+| Text + tuple **extracted from the query text** | 0.974 |
+
+The last row matters: computing the tuple instead of reading it costs nothing, so the
+figure is reproducible by a system that only sees the query. If you reuse this
+benchmark, decide explicitly whether your queries are allowed to carry the tuple.
 
 *Full results available in `runs/` and `eval/` directories.*
 
