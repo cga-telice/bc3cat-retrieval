@@ -94,10 +94,10 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | C3a | `_nums` acepta `np.ndarray` además de `list` | `src/hybrid.ipynb` | hecho |
 | C3b | `numbers_long` sobre los 47.513 documentos del corpus, no sobre los muestreados | `src/hybrid.ipynb` | hecho |
 | C4 | Ampliar la rejilla a `βe ∈ {0, 0.05, 0.10, 0.15}` | `src/hybrid.ipynb` | hecho |
-| C5 | Selección de hiperparámetros en validación, con un único criterio declarado | `src/hybrid.ipynb`, `notebooks/bm25_orchestrator.ipynb` | pendiente |
-| C6 | Bootstrap por intersección, no por unión con `fillna(0)`; parametrizar `RUNS_INCLUDE` | `src/bootstrap_sigtests.ipynb` | pendiente |
+| C5 | Selección de hiperparámetros en validación, con un único criterio declarado | `src/hybrid.ipynb`, `notebooks/bm25_orchestrator.ipynb` | hecho para BM25 (`scripts/select_on_validation.py`, R2); el barrido de fusión sigue seleccionado en test y **así se declara** en §3.2.4 |
+| C6 | Bootstrap por intersección, no por unión con `fillna(0)`; parametrizar `RUNS_INCLUDE` | `src/bootstrap_sigtests.ipynb` | hecho, pero **fuera del notebook**: `scripts/bootstrap_sigtests.py` lo sustituye para todo lo que va al manuscrito, con intersección y verificación de huella. El notebook se deja como está y ya no alimenta ninguna cifra |
 | C7 | Eliminar el `query_prefix` inerte de `dense_e5.yaml` | `configs/dense_e5.yaml` | hecho |
-| C8 | Persistir `base_runs_norm.parquet` y separar el barrido de la recuperación base | `src/hybrid.ipynb` | pendiente |
+| C8 | Persistir `base_runs_norm.parquet` y separar el barrido de la recuperación base | `src/hybrid.ipynb` | hecho (verificado: `runs/hybrids/*/base_runs_norm.parquet`, 49 MB, escrito en la reejecución R3) |
 | C9 | Runners para cualquier método, fusiones y cross-encoder | `scripts/run_method.py`, `run_hybrids.py`, `run_cross_encoder.py` | hecho |
 | C10 | `requirements.txt` real; eliminar menciones a `ranx` y Pyserini | `requirements.txt`, `README.md` | hecho |
 
@@ -116,7 +116,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R9 | **A40** — solape léxico y numérico `resumen`/`texto` sobre el corpus completo | ~30 min | hecho |
 | R10 | **B6** — baselines estructurados | 1 día | hecho (§3.2.5 y §4.8 redactadas, dos tablas generadas) |
 | R12 | Sensibilidad del pipeline estructurado al texto de consulta (N18) | ~15 min | hecho (`*_rawq`) |
-| R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | pendiente (generador listo, 1,2 s/consulta con 4 en paralelo) |
+| R11 | **B8** — HyDE sobre BM25-params y BGE-M3-ColBERT | ~2 h | 1.976 documentos hipotéticos generados con Phi-4 (40 min, 0 fallos); recuperación en curso |
 | R13 | **N20** — qué aporta la firma de parámetros y cuánto cuesta calcularla | ~30 min | hecho |
 
 ## Bloque F — Reencuadre y difusión
