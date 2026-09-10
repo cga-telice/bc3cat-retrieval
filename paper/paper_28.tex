@@ -940,7 +940,11 @@ At the parent level, all neural approaches exceeded 96\% Acc@1, confirming that 
 
 \subsection{Hybrid Fusion Results}
 
-Table~\ref{tab:hybrid_fusion} presents the performance of the best-performing configurations identified through the parameter sweep for each fusion strategy. All optimal configurations converged on $\beta_{\text{exact}}=0.1$ and $\beta_{\text{overlap}}=0.0$.
+Table~\ref{tab:hybrid_fusion} presents the best configuration found by the parameter sweep for each fusion strategy.
+
+The numeric bonuses behave in a way worth reporting. Three of the four fusions select $\beta_{\text{exact}}=0$ --- that is, they discard the exact-containment bonus entirely --- and all four select $\beta_{\text{overlap}}=0.05$. The reason is visible in the candidate pool: exact containment holds for the correct document in $99.8\%$ of queries, but also for $32.1\%$ of the retrieved distractors. A binary bonus that fires for roughly a third of the candidate list raises them all equally and cannot separate the correct variant from its siblings. Partial numeric overlap, being graded, does discriminate, though its contribution is small: it improves Acc@1 by between $0.3$ and $1.9$ percentage points depending on the fusion.
+
+This is a negative result about a design element we expected to help. In a catalog where almost every target already contains all of the query's numeric values, the presence of those values carries little information; what would carry information is their \emph{absence} from the competing variants, which a containment bonus does not measure.
 
 \begin{table}[h]
 \centering
@@ -959,21 +963,21 @@ BM25 + ColBERT + TF-IDF &
 BM25: 0.879\\
 ColBERT: 0.012\\
 TF-IDF: 0.110
-\end{tabular} & 0.890 & 0.941 & 0.954 & 0.908 \\
+\end{tabular} & 0.893 & 0.944 & 0.955 & 0.910 \\
 \addlinespace
 BM25 + Dense + TF-IDF & 
 \begin{tabular}[t]{@{}l@{}}
 BM25: 0.879\\
 Dense: 0.012\\
 TF-IDF: 0.110
-\end{tabular} & 0.889 & 0.939 & 0.953 & 0.907 \\
+\end{tabular} & 0.892 & 0.942 & 0.954 & 0.909 \\
 \addlinespace
 BM25 + Sparse + TF-IDF & 
 \begin{tabular}[t]{@{}l@{}}
 BM25: 0.879\\
 Sparse: 0.012\\
 TF-IDF: 0.110
-\end{tabular} & 0.882 & 0.940 & 0.953 & 0.903 \\
+\end{tabular} & 0.885 & 0.942 & 0.955 & 0.906 \\
 \midrule
 \multicolumn{6}{l}{\textit{Five-way fusion (BM25 + all BGE-M3 variants + TF-IDF)}} \\
 \midrule
@@ -984,16 +988,16 @@ ColBERT: 0.033\\
 Dense: 0.033\\
 Sparse: 0.033\\
 TF-IDF: 0.450
-\end{tabular} & 0.590 & 0.928 & 0.963 & 0.730 \\
+\end{tabular} & 0.608 & 0.947 & 0.971 & 0.756 \\
 \bottomrule
 \end{tabular}
 }
 \end{table}
 
-The three-way fusion configurations yielded Acc@1 scores ranging from $0.882$ to $0.890$, with MRR@10 values between $0.903$ and $0.908$. The BM25 + ColBERT + TF-IDF combination achieved the highest Acc@1 ($0.890$) and MRR@10 ($0.908$). 
+The three-way fusions yielded Acc@1 between $0.885$ and $0.893$, with MRR@10 between $0.906$ and $0.910$. BM25 + ColBERT + TF-IDF achieved the highest Acc@1 ($0.893$) and MRR@10 ($0.910$). All three remain below the best lexical configuration alone ($0.974$).
 
-The five-way fusion produced an Acc@1 of $0.590$ and MRR@10 of $0.730$, representing substantial decreases of $32.8\%$ and $19.6\%$ respectively compared to the best three-way configuration. However, this strategy achieved the highest Recall@10 ($0.963$), exceeding the three-way fusions by approximately 1 percentage point. The optimal weight distribution for the five-way fusion allocated $45.0\%$ each to BM25 and TF-IDF, with the three BGE-M3 variants receiving equal $3.3\%$ weights.
-This weight distribution is itself revealing: the optimizer heavily constrained the neural signals, assigning a collective weight of only $9.9\%$ to all three BGE-M3 variants combined. This distribution suggests that within this highly homogeneous domain, dense neural embeddings offer limited discriminative information beyond what lexical models (BM25 and TF-IDF) capture at the granular item level. Furthermore, given the significant drop in Acc@1, even this minor contribution of neural scores appears sufficient to disrupt top-rank precision. Conversely, the elevated Recall@10 of the five-way fusion confirms that neural signals remain valuable for broader retrieval. This behavior is consistent with the parent-level performance observed across all neural configurations, demonstrating that dense embeddings are effective for coarse-grained localization but struggle with fine-grained item discrimination.
+The five-way fusion produced an Acc@1 of $0.608$ and MRR@10 of $0.756$, some $28.5$ and $15.4$ percentage points below the best three-way configuration. It does, however, achieve the highest Recall@10 ($0.971$), about $1.6$ points above the three-way fusions. The optimal weight distribution for the five-way fusion allocated $45.0\%$ each to BM25 and TF-IDF, with the three BGE-M3 variants receiving equal $3.3\%$ weights.
+This weight distribution is itself revealing: the optimizer heavily constrained the neural signals, assigning a collective weight of only $9.9\%$ to the three BGE-M3 variants combined. This distribution suggests that within this highly homogeneous domain, dense neural embeddings offer limited discriminative information beyond what lexical models (BM25 and TF-IDF) capture at the granular item level. Furthermore, given the significant drop in Acc@1, even this minor contribution of neural scores appears sufficient to disrupt top-rank precision. Conversely, the elevated Recall@10 of the five-way fusion confirms that neural signals remain valuable for broader retrieval. This behavior is consistent with the parent-level performance observed across all neural configurations, demonstrating that dense embeddings are effective for coarse-grained localization but struggle with fine-grained item discrimination.
 
 
 \subsection{Cross-Encoder Reranking}

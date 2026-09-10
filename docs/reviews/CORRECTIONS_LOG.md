@@ -37,8 +37,8 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A16 | 936-937 | Fila híbrida: etiqueta de 3 vías, cifras de la fusión de 5 vías | Etiqueta y baseline correctos del sistema de 3 vías | sesión | pendiente |
 | A17 | 914 | *"top-100 candidates"* | `top-50` (o ampliar a 20/50/100, → R5) | sesión | pendiente |
 | A18 | 457 | *"Reranking depth: Top 20, 50, or 100"*: sólo se ejecutó 50 | Declarar las profundidades realmente evaluadas | sesión | pendiente |
-| A19 | 449 | Rejilla `β_exact ∈ {0.0, 0.05, 0.1}` y selección por MRR@10; el código usa `(0.10, 0.15)` y `acc@1` | Declarar la rejilla y el criterio reales (→ C4, C5) | R2-3.2 | pendiente |
-| A20 | 857, 861 | *"All optimal configurations converged on β_exact=0.1"*: describe un desempate sobre un parámetro inerte | Eliminar la afirmación; rehacer con el bonus ya operativo (→ C3) | sesión | pendiente |
+| A19 | 449 | Rejilla `β_exact ∈ {0.0, 0.05, 0.1}` y selección por MRR@10; el código usa `(0.10, 0.15)` y `acc@1` | Declarar la rejilla y el criterio reales (→ C4, C5) | R2-3.2 | hecho |
+| A20 | 857, 861 | *"All optimal configurations converged on β_exact=0.1"*: describe un desempate sobre un parámetro inerte | Eliminar la afirmación; rehacer con el bonus ya operativo (→ C3) | sesión | hecho |
 | A21 | 822 | *"ColBERT and sparse achieved perfect accuracy (1.000)"*: se leyó la columna de Recall | Acc@1 reales: 0,759 / 0,759 / 0,655 sobre las 29 consultas no numéricas | sesión | hecho |
 | A22 | 849-853, Tabla 12 | `hiiamsid` descrito en Métodos y ausente de resultados | Añadir su fila (item 0,024 / parent 0,395) | sesión | hecho |
 | A23 | 662 | *"Six configurations each were evaluated"* | Se evaluaron ocho; se reportan seis | sesión | hecho |
@@ -101,7 +101,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 |---|---|---|---|
 | R1 | `dense_e5`, `dense_gte`, `dense_gte_instrQ`, `dense_es_hiiamsid` sobre la muestra canónica | ~10 min c/u | hecho |
 | R2 | Barrido `(k1,b)` de BM25 sobre validación (62 configs) | ~1 h | pendiente |
-| R3 | Híbridos: una pasada base para los 5 rankers + 4 barridos | ~75 min + barridos | pendiente |
+| R3 | Híbridos: una pasada base para los 5 rankers + 4 barridos | ~75 min + barridos | hecho |
 | R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | pendiente |
 | R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | pendiente |
 | R6 | Métricas parent-level para híbridos y reranking | minutos | pendiente |
@@ -268,6 +268,30 @@ Las dos formulaciones son indistinguibles. La degradación que el manuscrito int
 como que *"explicit prompts introduce noise in structured technical retrieval tasks"*
 era el resultado de comparar dos muestras de consultas distintas (§3.1 del informe) con
 el *pooling* roto. **El hallazgo desaparece.**
+
+### El bonus numérico, ya operativo: un resultado negativo
+
+Reejecutadas las cuatro fusiones con el bonus arreglado y la rejilla de β ampliada:
+
+| Fusión | Publicado | Nuevo | β_exact | β_overlap |
+|---|---|---|---|---|
+| BM25 + ColBERT + TF-IDF | 0,8896 | **0,8926** | 0,00 | 0,05 |
+| BM25 + dense + TF-IDF | 0,8893 | **0,8920** | 0,00 | 0,05 |
+| BM25 + sparse + TF-IDF | 0,8817 | **0,8847** | 0,00 | 0,05 |
+| Fusión de cinco vías | 0,5899 | **0,6084** | 0,15 | 0,05 |
+
+Tres de las cuatro **descartan el bonus de contención exacta** (β_exact = 0) y las
+cuatro eligen β_overlap = 0,05. El motivo está en el conjunto de candidatos: la
+contención exacta se cumple para el documento correcto en el 99,8 % de las consultas,
+pero también para el **32,1 % de los distractores recuperados**. Un bonus binario que
+se activa para un tercio de la lista los eleva a todos por igual y no separa la
+variante correcta de sus hermanas.
+
+Es un resultado negativo sobre un elemento que el manuscrito presentaba como
+aportación de diseño, y se reporta como tal. La afirmación de L857 —«todas las
+configuraciones óptimas convergieron en β_exact = 0,1 y β_overlap = 0,0»— queda
+refutada por partida doble: describía un parámetro inerte, y con el parámetro
+operativo el óptimo es prácticamente el contrario.
 
 ### Baselines estructurados (B6 / R10)
 
