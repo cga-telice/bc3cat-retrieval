@@ -1132,44 +1132,22 @@ The hybrid has the lowest right-parent-wrong-item rate of the three ($8.13\%$ ag
 \subsection{Overall Performance Summary}
 \label{sec:4.7_Overall Performance Summary}
 
-Figure~\ref{fig:acc1_by_family} consolidates the central finding visually: the best configuration of each method family is plotted at both evaluation levels. Lexical retrieval (BM25-unigram-params) leads at item level by a wide margin, while neural retrieval (BGE-M3-ColBERT) collapses on the same task --- yet recovers to near-perfect performance at parent level. The dramatic item-to-parent gap exhibited by the neural family is the visual signature of the paper's main result: dense embeddings localize the parametric family well but cannot disambiguate variants within it. Parent-level metrics were not computed for the Hybrid and Reranking families in this work and appear as ``n/a''.
+Figure~\ref{fig:acc1_by_family} consolidates the central finding visually: the best configuration of each method family is plotted at both evaluation levels. Lexical retrieval (BM25-unigram-params) leads at item level by a wide margin, while neural retrieval (BGE-M3-ColBERT) collapses on the same task --- yet recovers to near-perfect performance at parent level. The item-to-parent gap exhibited by the neural family is the visual signature of this paper's main result: dense embeddings localize the parametric family well but cannot disambiguate variants within it. The hybrid family, which combines both kinds of signal, shows a gap of $8.1$ points --- an order of magnitude smaller than the neural family's $54.9$ --- which locates the contribution of the lexical component precisely: it is what closes the gap.
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=\textwidth]{acc1_by_family.pdf}
-\caption{Best Acc@1 per method family at item-level and parent-level on the test set ($n=16{,}590$ queries). For each family, the configuration with the highest item-level Acc@1 was selected and both its item- and parent-level scores are plotted. The 52.6-percentage-point item-level gap between Lexical and Neural collapses at parent-level, where Neural reaches $0.997$. Parent-level results were not computed for the Hybrid and Reranking families in this work (marked ``n/a''); a full parent-level evaluation of these families is deferred to future work.}
+\caption{Best Acc@1 per method family at item and parent level on the canonical test set ($n=16{,}590$). For each family, the configuration with the highest item-level Acc@1 is plotted at both levels. The 52.6-percentage-point item-level gap between the lexical and neural families collapses at parent level, where the neural family reaches $0.997$.}
 \label{fig:acc1_by_family}
 \end{figure}
 
 Table~\ref{tab:overall_performance} presents the top-performing configurations across all evaluated retrieval methods, ranked by Acc@1. The table encompasses lexical methods, pseudo-relevance feedback approaches, neural retrievers, hybrid fusion strategies, and reranked systems.
 
-\begin{table}[htbp]
-\centering
-\caption{Top 10 retrieval configurations ranked by Acc@1 on the test set (n=16,590 queries). MRR values provided for reference.}
-\label{tab:overall_performance}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Configuration} & \textbf{Acc@1} & \textbf{MRR} \\
-\midrule
-BM25-unigram\_params (k1=0.60, b=0.35) & 0.974 & 0.979 \\
-BM25 + ColBERT + TF-IDF (3-way fusion) & 0.890 & 0.908 \\
-BM25 + Dense + TF-IDF (3-way fusion) & 0.889 & 0.907 \\
-BM25 + Sparse + TF-IDF (3-way fusion) & 0.882 & 0.903 \\
-RM3 (M=5, N=20, $\lambda$=0.5) & 0.870 & 0.898 \\
-BM25-unigram (swept optimum, k1=0.80, b=0.35) & 0.869 & 0.898 \\
-Rocchio (M=5, N=20, $\beta$=0.5) & 0.857 & 0.888 \\
-BM25-unibigram (k1=0.80, b=0.35) & 0.827 & 0.844 \\
-5-way fusion + Blend reranking & 0.799 & 0.885 \\
-BM25 + Blend reranking & 0.766 & 0.845 \\
-\midrule
-\multicolumn{3}{l}{\textit{Best neural (for reference):}} \\
-BGE-M3-ColBERT & 0.448 & 0.580 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\input{tables/overall.tex}
 
-The evaluation across 100 configurations produced four findings: (1) optimized BM25 achieved the highest performance (Acc@1=97.4\%); (2) the best neural approach underperformed by 52.6 percentage points; (3) hybrid fusion nearly doubled neural-only performance ($89.0\%$ vs $44.8\%$); and (4) cross-encoder reranking improved results but did not surpass the lexical baseline.
-These rankings are based on Acc@1, which reflects automated deployment scenarios where only the top result is used. Practitioners operating in semi-automated workflows — where a human reviewer examines the first few candidates — may find Recall@5 or MRR more relevant criteria and, under those metrics, hybrid configurations show comparatively stronger performance relative to the lexical baseline, as reflected in Table~\ref{tab:overall_performance}.
+The evaluation produced four findings: (1) BM25 with domain-specific parameter phrases achieves the highest item-level accuracy ($97.4\%$); (2) the best neural retriever trails it by $52.6$ percentage points, while matching it at parent level; (3) fusing a lexical and a neural ranker roughly doubles neural-only accuracy ($89.3\%$ against $44.8\%$) without reaching the lexical baseline; and (4) neither query expansion nor cross-encoder reranking improves on that baseline --- reranking actively degrades it.
+
+These rankings are based on Acc@1, which reflects automated deployment, where only the top result is used. It is worth checking whether a semi-automated workflow --- a human reviewer examining the first few candidates --- would reorder them, and it would not: BM25 with parameter phrases also has the highest Recall@5 of any system evaluated here ($0.985$, against $0.944$ for the best hybrid and $0.948$ for the best reranked configuration). The choice of metric does not rescue the neural and hybrid systems on this benchmark.
 
 
 \section{Discussion}

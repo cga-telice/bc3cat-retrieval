@@ -1,0 +1,27 @@
+% Generado por scripts/build_overall_table.py -- no editar a mano.
+\begin{table}[htbp]
+\centering
+\caption{Top 10 configurations by item-level Acc@1 on the canonical test set ($n=16{,}590$). Every row is measured on the same queries. MRR is given for reference.}
+\label{tab:overall_performance}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Configuration} & \textbf{Acc@1} & \textbf{MRR} \\
+\midrule
+BM25 + parameter phrases ($k_1{=}0.60$, $b{=}0.35$) & 0.974 & 0.979 \\
+RM3 over BM25 + parameter phrases ($M{=}5$, $N{=}20$, $\lambda{=}0.7$) & 0.973 & 0.978 \\
+Rocchio over BM25 + parameter phrases ($M{=}10$, $N{=}20$, $\beta{=}0.7$) & 0.967 & 0.975 \\
+Rule-based structured pipeline & 0.903 & 0.917 \\
+Hybrid: BM25 + ColBERT + TF-IDF char & 0.893 & 0.910 \\
+Hybrid: BM25 + BGE-dense + TF-IDF char & 0.892 & 0.909 \\
+Hybrid: BM25 + BGE-sparse + TF-IDF char & 0.885 & 0.906 \\
+BM25 unigram ($k_1{=}0.80$, $b{=}0.35$) & 0.869 & 0.898 \\
+BM25 unigram + cross-encoder blend, $K'{=}50$ & 0.766 & 0.845 \\
+TF-IDF + parameter phrases & 0.708 & 0.761 \\
+\midrule
+\multicolumn{3}{l}{\textit{For reference:}} \\
+Hybrid (3-way) + cross-encoder blend, $K'{=}100$ & 0.706 & 0.816 \\
+Five-way fusion (BM25 + 3$\times$BGE-M3 + TF-IDF) & 0.608 & 0.755 \\
+BGE-M3 ColBERT (best neural) & 0.448 & 0.580 \\
+\bottomrule
+\end{tabular}
+\end{table}
