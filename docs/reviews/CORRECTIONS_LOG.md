@@ -359,6 +359,33 @@ encima:
 
 ---
 
+### Auditoría final de muestras (C1)
+
+`scripts/check_sample_consistency.py --expect benchmark/query_samples/OEB_query_sample_test_16590.json`
+sobre los 239 runs del repositorio. Se excluyen por defecto tres subárboles que
+evalúan otra muestra **a propósito**, y el script lo declara al ejecutarse:
+
+- `_as_published/` — los runs originales, congelados como evidencia de que las tres
+  muestras del estudio publicado eran distintas;
+- `val/` — las 5.000 consultas de validación, disjuntas del test;
+- `hyde/` — la submuestra estratificada de 1.976 para B8.
+
+Del resto, **155 runs comparten la muestra canónica** `884deade9d3c` y ocho no:
+
+| Runs | Muestra | ¿Alimenta el manuscrito? |
+|---|---|---|
+| `hybrids/hyb_v01_*`, `hyb_v03/04/05_multi_k100` (7) | `7752be12d220` | No. Son las fusiones exploratorias previas a R3; ninguna aparece en `build_overall_table.py`, `leaderboard.py` ni `build_reranking_table.py` |
+| `reranked_tiebreak__bm25_unigram__wN-1_0__wP-0_5` (1) | vacío (n=0) | No. Fichero de resultados vacío |
+
+Son 1,3 GB de restos. Se dejan donde están —moverlos es decisión de César— pero
+quedan identificados, y ninguna cifra del paper sale de ellos.
+
+Antes el script fallaba siempre, porque contaba los `_as_published/` como
+divergencias. Una comprobación que falla siempre deja de leerse, que es
+exactamente cómo se coló el defecto original.
+
+---
+
 ### Selección en validación (C5 / R2 / B3)
 
 Las 62 configuraciones de la rejilla, evaluadas sobre las 5.000 consultas de

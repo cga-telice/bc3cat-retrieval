@@ -29,6 +29,15 @@ from sample_utils import fingerprint, load_sample, query_keys_from_run, short  #
 CACHE_PATH = Path(".cache/sample_fingerprints.json")
 RESULT_GLOBS = ("**/results_top100.jsonl.gz", "**/results_top*_ce_*.jsonl.gz")
 
+# Subarboles que evaluan otra muestra a proposito. Excluirlos es lo que permite
+# que el veredicto signifique algo: sin esto la comprobacion falla siempre y
+# deja de leerse, que es justo como se colo el defecto original.
+#   _as_published/  los runs originales, congelados como evidencia de que las
+#                   tres muestras del estudio publicado eran distintas.
+#   val/            el conjunto de validacion, 5.000 consultas disjuntas.
+#   hyde/           la submuestra estratificada de HyDE.
+DEFAULT_EXCLUDES = ("_as_published/", "val/", "hyde/")
+
 
 def load_cache() -> dict[str, dict]:
     if not CACHE_PATH.exists():
@@ -91,11 +100,27 @@ def main() -> int:
         help="fichero de muestra canonica; exige que todos los runs coincidan",
     )
     parser.add_argument("--refresh", action="store_true", help="recalcula, ignora la cache")
+    parser.add_argument(
+        "--exclude",
+        nargs="*",
+        default=list(DEFAULT_EXCLUDES),
+        help="prefijos de ruta que evaluan otra muestra a proposito",
+    )
+    parser.add_argument(
+        "--no-exclude", action="store_true", help="audita tambien los subarboles excluidos"
+    )
     args = parser.parse_args()
 
     results = collect(args.runs_dir, args.refresh)
     if not results:
         return 1
+
+    excludes = [] if args.no_exclude else [e.replace("\\", "/") for e in args.exclude]
+    if excludes:
+        skipped = {rel for rel in results
+                   if any(rel.replace("\\", "/").startswith(e) for e in excludes)}
+        results = {rel: info for rel, info in results.items() if rel not in skipped}
+        print(f"Excluidos {len(skipped)} runs bajo: {', '.join(excludes)}")
 
     groups: dict[tuple[str, int], list[str]] = defaultdict(list)
     errors: list[str] = []
