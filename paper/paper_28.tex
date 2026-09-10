@@ -1004,39 +1004,20 @@ This weight distribution is itself revealing: the optimizer heavily constrained 
 
 
 \subsection{Cross-Encoder Reranking}
-Cross-encoder reranking was applied to the top-100 candidates from three retrieval systems: BM25 (unigram), the hybrid approach (BM25 + BGE-ColBERT + TF-IDF character n-grams), and BGE-M3-ColBERT. Two reranking strategies were evaluated: \textit{replace}, which uses cross-encoder scores exclusively to rerank candidates, and \textit{blend}, which combines original retrieval scores with cross-encoder scores using weighted interpolation ($\lambda=0.6$)).
+\label{subsec:reranking}
 
-Table~\ref{tab:reranking_results} presents the performance of both reranking strategies for each retrieval system.
-\begin{table}[ht]
-\centering
-\caption{Performance comparison of cross-encoder reranking strategies. Replace uses CE scores only; Blend combines original retrieval scores with CE scores ($\lambda=0.6$).}
-\label{tab:reranking_results}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lcccc}
-\hline
-\textbf{System} & \textbf{Acc@1} & \textbf{Recall@5} & \textbf{Recall@10} & \textbf{MRR@10} \\
-\hline
-\textit{BM25 (unigram)} & & & & \\
-\quad Baseline & 0.869 & 0.931 & 0.950 & 1.000 \\
-\quad Replace & 0.434 & 0.841 & 0.916 & 0.607 \\
-\quad Blend & 0.766 & 0.942 & 0.966 & 0.845 \\
-\hline
-\textit{BGE-M3-ColBERT} & & & & \\
-\quad Baseline & 0.448 & 0.753 & 0.785 & 0.580 \\
-\quad Replace & 0.299 & 0.664 & 0.740 & 0.455 \\
-\quad Blend & 0.475 & 0.764 & 0.786 & 0.601 \\
-\hline
-\textit{Hybrid (BM25 + BGE-ColBERT + TF-IDF)} & & & & \\
-\quad Baseline & 0.590 & 0.928 & 0.963 & 0.730 \\
-\quad Replace & 0.430 & 0.858 & 0.932 & 0.608 \\
-\quad Blend & \textbf{0.799} & \textbf{0.985} & \textbf{0.988} & \textbf{0.885} \\
-\hline
-\end{tabular}
-}
-\end{table}
-The blend strategy consistently outperformed the replace strategy across all three systems. For BM25 (unigram), blend achieved Acc@1 of 0.766 compared to 0.434 for replace, representing an improvement of +0.332. The hybrid system with blend reranking achieved the highest overall performance: 0.799 Acc@1, 0.985 Recall@5, 0.988 Recall@10, and 0.885 MRR@10, with improvements of +0.369, +0.127, +0.056, and +0.277 respectively over replace. BGE-M3-ColBERT blend showed improvements of +0.176 in Acc@1 and +0.146 in MRR@10 compared to replace.
+Cross-encoder reranking was applied to the top $K'$ candidates of three first-stage systems --- BM25 (unigram), BGE-M3-ColBERT, and the three-way hybrid --- at three depths, $K' \in \{20, 50, 100\}$. Two strategies were evaluated: \textit{replace}, which ranks by cross-encoder score alone, and \textit{blend}, which interpolates the cross-encoder score with the first-stage score ($\lambda = 0.6$).
 
-The blend strategy consistently outperformed replace across all systems, demonstrating that combining original retrieval signals with cross-encoder scores is essential.
+Table~\ref{tab:reranking_results} presents all eighteen combinations together with the unreranked baseline of each system.
+\input{tables/reranking.tex}
+
+Three patterns emerge, and none of them is the one usually expected of a reranking cascade.
+
+First, \textbf{reranking does not improve the systems that are already strong}. BM25-unigram falls from $0.869$ to $0.766$ under the best blend configuration, and the hybrid from $0.893$ to $0.812$. The only system that benefits is the weakest, BGE-M3-ColBERT, which rises from $0.448$ to $0.475$. A cross-encoder trained on topical relevance can repair a ranking that has the right family in the wrong order; it cannot improve one that is already discriminating variants correctly, because it does not represent the distinction being made.
+
+Second, \textbf{blend always beats replace, by a wide margin}: $+0.33$ to $+0.39$ in Acc@1. Ranking by cross-encoder score alone discards precisely the lexical evidence that resolves parametric variants. The gap is a direct measure of how much of the useful signal lives in the first stage.
+
+Third, \textbf{depth matters in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend, deeper reranking is mildly beneficial for recall: the hybrid reaches Recall@5 $=0.990$ and Recall@10 $=0.993$ at $K'=100$, the highest of any configuration in this study. If the deployment scenario places a human in front of the first few results rather than automating the top-1 decision, that configuration is the strongest we measured --- while remaining, at $0.812$ Acc@1, well below a tuned BM25 used alone.
 
 \subsection{Error Analysis}
 \label{subsec:error_analysis}

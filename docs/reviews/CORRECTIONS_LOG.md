@@ -33,10 +33,10 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | ~~A12~~ | 407 | ~~Prefijo de E5 erróneo~~ | **Descartado**: `src/retrievers/dense_e5.py:101-102` fija `"query: "` a mano e ignora el YAML. El paper es correcto; lo que se corrige es el YAML (→ C7) | informe | descartado |
 | A13 | 731, 735, 743, 837, 1080 | "E5-large" / "multilingual-e5-large" | `multilingual-e5-base` | sesión | hecho |
 | A14 | 771-772, 776-777, 838 | "GTE-large-en-v1.5", "GTE-Qwen2-instruct": modelos nunca usados, uno de ellos sólo inglés | `GTE-multilingual-base (direct)` / `(instruct)` | sesión | hecho |
-| A15 | 927 | `MRR@10 = 1.000` con Acc@1 = 0,869: imposible por definición | `0.898`; R@5 `0.931` → `0.932` | sesión | pendiente |
-| A16 | 936-937 | Fila híbrida: etiqueta de 3 vías, cifras de la fusión de 5 vías | Etiqueta y baseline correctos del sistema de 3 vías | sesión | pendiente |
-| A17 | 914 | *"top-100 candidates"* | `top-50` (o ampliar a 20/50/100, → R5) | sesión | pendiente |
-| A18 | 457 | *"Reranking depth: Top 20, 50, or 100"*: sólo se ejecutó 50 | Declarar las profundidades realmente evaluadas | sesión | pendiente |
+| A15 | 927 | `MRR@10 = 1.000` con Acc@1 = 0,869: imposible por definición | `0.898`; R@5 `0.931` → `0.932` | sesión | hecho |
+| A16 | 936-937 | Fila híbrida: etiqueta de 3 vías, cifras de la fusión de 5 vías | Etiqueta y baseline correctos del sistema de 3 vías | sesión | hecho |
+| A17 | 914 | *"top-100 candidates"* | `top-50` (o ampliar a 20/50/100, → R5) | sesión | hecho |
+| A18 | 457 | *"Reranking depth: Top 20, 50, or 100"*: sólo se ejecutó 50 | Declarar las profundidades realmente evaluadas | sesión | hecho |
 | A19 | 449 | Rejilla `β_exact ∈ {0.0, 0.05, 0.1}` y selección por MRR@10; el código usa `(0.10, 0.15)` y `acc@1` | Declarar la rejilla y el criterio reales (→ C4, C5) | R2-3.2 | hecho |
 | A20 | 857, 861 | *"All optimal configurations converged on β_exact=0.1"*: describe un desempate sobre un parámetro inerte | Eliminar la afirmación; rehacer con el bonus ya operativo (→ C3) | sesión | hecho |
 | A21 | 822 | *"ColBERT and sparse achieved perfect accuracy (1.000)"*: se leyó la columna de Recall | Acc@1 reales: 0,759 / 0,759 / 0,655 sobre las 29 consultas no numéricas | sesión | hecho |
@@ -45,7 +45,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | A24 | 714 vs 1072 | Mejor RM3: `M=10` en Tabla 7, `M=5` en Tabla 16 | Unificar y anotar el empate (ambas 0,8699) | sesión | hecho |
 | A25 | 1042 | *"in its embedding space"* aplicado a BM25 | BM25 no tiene espacio de embeddings | sesión | hecho |
 | A26 | 1086 | Afirmación sobre R@5/MRR no soportada por la Tabla 16 | Reescribir con lo que la tabla sí muestra | sesión | pendiente |
-| A27 | 944 | *"the highest overall performance"* para el híbrido+blend | Acotar al ámbito de la Tabla 13 | sesión | pendiente |
+| A27 | 944 | *"the highest overall performance"* para el híbrido+blend | Acotar al ámbito de la Tabla 13 | sesión | hecho |
 | A28 | 1073 | `BM25-unigram (default, k1=0.80, b=0.35)` | Es el óptimo del barrido, no un valor por defecto. **Reformulado**: no cabe invocar los defaults de Lucene porque no se usó Lucene (→ N1) | sesión | hecho |
 | A29 | 568 | "26.6 percentage point gap" | `26.5` (0,9737 − 0,7083) | sesión | hecho |
 | A30 | 195 | "Jacques de Sousa et al." sin `\cite` | Añadir la referencia | R2-8.4 | hecho |
@@ -103,7 +103,7 @@ Referencias de línea relativas a `paper/paper_28.tex` tal como se envió
 | R2 | Barrido `(k1,b)` de BM25 sobre validación (62 configs) | ~1 h | pendiente |
 | R3 | Híbridos: una pasada base para los 5 rankers + 4 barridos | ~75 min + barridos | hecho |
 | R4 | PRF sobre `bm25_unigram_params k1=0.60 b=0.35` (16 runs) | ~40 min | pendiente |
-| R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | pendiente |
+| R5 | Cross-encoder a K′ = 20, 50, 100 sobre tres sistemas | ~12 min/sistema | hecho |
 | R6 | Métricas parent-level para híbridos y reranking | minutos | pendiente |
 | R7 | Bootstrap, análisis de errores, leaderboards, distribución de rangos | minutos | análisis de errores hecho; falta bootstrap y leaderboards |
 | R8 | *(opcional, N10)* GTE sin prefijos | ~10 min | pendiente |
