@@ -94,3 +94,7 @@ paper/paper_28.pdf
 paper/*.log
 paper/*.spl
 docker-compose.override.yml
+
+# Documento de cambios generado por scripts/build_diff.py: se regenera, no se versiona.
+# Va detrás de la negación !paper/** para que prevalezca.
+paper/diff/

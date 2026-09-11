@@ -98,14 +98,14 @@ system at two levels: the exact parametric variant and its parent family.
 
 The central finding is a systematic dissociation between those two levels.
 Single-vector and learned-sparse multilingual retrievers place the correct family
-first for 96.0--99.8% of queries while placing the correct variant first for only
-7.0--13.6%; for GTE-multilingual-base the gap reaches 92.9 percentage points. The best
-neural system, BGE-M3 with late interaction, reaches 44.8% at item level against 99.7%
+first for 96.0--99.8\% of queries while placing the correct variant first for only
+7.0--13.6\%; for GTE-multilingual-base the gap reaches 92.9 percentage points. The best
+neural system, BGE-M3 with late interaction, reaches 44.8\% at item level against 99.7\%
 at parent level. A tuned BM25 with parameter tokens shows almost no
-such gap (97.4% item, 98.5% parent) and outperforms it by 52.6 points, while a
-rule-based pipeline over extracted structured attributes reaches 90.3%. We also
+such gap (97.4\% item, 98.5\% parent) and outperforms it by 52.6 points, while a
+rule-based pipeline over extracted structured attributes reaches 90.3\%. We also
 quantify what makes the benchmark tractable for literal matching: the target contains
-94.1% of the query's tokens and 99.96% of its numeric values verbatim.
+94.1\% of the query's tokens and 99.96\% of its numeric values verbatim.
 
 Dense embeddings therefore encode the domain well enough to localise a query within
 the catalog, but not the parametric distinctions that carry cost implications. The
