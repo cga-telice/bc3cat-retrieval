@@ -165,3 +165,23 @@ agents write into one `runs/` tree, so the `runs/{collection}/{queryset}/{method
 (D-008) is what keeps them from colliding. If that isolation proves insufficient, the
 alternative is a per-worktree `runs/` consolidated at sprint close — decide before S9, not
 during it.
+
+### D-019 — Agents hold no delete permission over data, index, runs, logs or hf-cache
+**Status:** Accepted · **Date:** 2026-09-14 · **Owner:** César
+**Context.** On 2026-09-14 the contents of `data/`, `index/`, `runs/`, `logs/` and
+`hf-cache/` were deleted from the main checkout by an agent session. Recovery was impossible
+because all three safety nets were inoperative *by construction*: those paths are in
+`.gitignore` so git never tracked them; the deletion used a filesystem API, so the Recycle
+Bin did not catch it; and volume shadow copies were not enabled on D:. `eval/` and
+`analysis/` survived only because their files are committed — `git clean` never removes a
+tracked file, whatever `.gitignore` says about its extension.
+**Decision.** Agents do not delete under those five paths. Concretely: `git clean` is never
+run with `-x` in this repo; a worktree whose `data/`, `index/` or `runs/` are NTFS junctions
+is never removed with `--force`, because the removal follows the junction into the real
+files; and cleanup of derived artefacts is proposed to a human and executed explicitly, not
+inferred from "these look stale".
+**Consequence.** Rebuilding `index/` after a corpus change is now a deliberate step rather
+than a housekeeping side effect. That is the intended cost.
+**Note.** The precise command is to be recovered from the agent session transcript and
+recorded here when identified; the decision does not depend on which of the two candidate
+mechanisms it was.
