@@ -3,10 +3,17 @@
 
 Produce, en `paper/diff/`:
 
-  paper_28_cambios.pdf           latexdiff compilado: lo borrado en rojo tachado,
-                                 lo añadido en azul subrayado
-  paper_28_cambios_overleaf.zip  el .tex, references.bib y figures/, listo para
-                                 subir a Overleaf; compila por sí solo
+  paper_28_cambios.pdf            latexdiff compilado: lo borrado en rojo
+                                  tachado, lo añadido en azul subrayado
+  paper_28_revisado_overleaf.zip  el artículo revisado limpio (paper_28.tex,
+                                  tables/, figures/, references.bib)
+  paper_28_cambios_overleaf.zip   el documento de diferencias, con sus figuras
+                                  y bibliografía
+
+Son dos proyectos de Overleaf separados a propósito: el .tex del diff lleva las
+dos versiones entrelazadas y, leído como código fuente, parece el original
+anotado. Cada zip tiene un único documento principal y se verifica compilándolo
+aislado desde el zip extraído.
 
 Tres decisiones que no son obvias y que hacen que compile:
 
@@ -44,6 +51,7 @@ BUILD = OUT / "overleaf"
 
 SUBMITTED_COMMIT = "223a2f0"
 NAME = "paper_28_cambios"
+REVISED = "paper_28_revisado"
 
 INPUT_RE = re.compile(r"\\input\{(tables/[^}]+)\}")
 
@@ -74,6 +82,37 @@ def flattened_revision() -> tuple[str, int]:
         return "\n".join(l for l in lines if not l.startswith("% Generado por"))
 
     return INPUT_RE.subn(inline, source)
+
+
+def package_revised(zip_path: Path) -> None:
+    """El artículo revisado tal cual, con sus tablas generadas, para Overleaf."""
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.write(PAPER / "paper_28.tex", "paper_28.tex")
+        z.write(PAPER / "references.bib", "references.bib")
+        for sub in ("tables", "figures"):
+            for f in sorted((PAPER / sub).iterdir()):
+                if f.is_file():
+                    z.write(f, f"{sub}/{f.name}")
+
+
+def verify_zip(zip_path: Path, main_tex: str) -> tuple[int, int]:
+    """Extrae el zip en una carpeta vacía y lo compila: (errores, páginas)."""
+    check = OUT / "_zipcheck"
+    if check.exists():
+        shutil.rmtree(check)
+    check.mkdir(parents=True)
+    with zipfile.ZipFile(zip_path) as z:
+        z.extractall(check)
+    stem = Path(main_tex).stem
+    pdflatex = f"pdflatex -interaction=nonstopmode {main_tex} >/dev/null 2>&1"
+    script = "; ".join(["cd /paper", pdflatex, f"bibtex {stem} >/dev/null 2>&1", pdflatex, pdflatex])
+    run_in_container(check, ["sh", "-c", script])
+    log_path = check / f"{stem}.log"
+    log = log_path.read_text(encoding="utf-8", errors="replace") if log_path.exists() else ""
+    errors_n = sum(1 for l in log.splitlines() if l.startswith("!"))
+    written = re.search(r"Output written on \S+ \((\d+) pages", log)
+    shutil.rmtree(check)
+    return errors_n, int(written.group(1)) if written else 0
 
 
 def main() -> int:
@@ -128,26 +167,41 @@ def main() -> int:
             print(f"    {e}", file=sys.stderr)
         return 1
 
-    # 4. Entregables: el PDF y un zip sólo con las fuentes.
+    # 4. Entregables. Dos proyectos de Overleaf separados, cada uno con un único
+    #    documento principal: si van juntos, Overleaf puede abrir el diff creyendo
+    #    que es el artículo, y su código fuente parece el original anotado.
     shutil.copy2(BUILD / f"{NAME}.pdf", OUT / f"{NAME}.pdf")
-    zip_path = OUT / f"{NAME}_overleaf.zip"
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+    diff_zip = OUT / f"{NAME}_overleaf.zip"
+    with zipfile.ZipFile(diff_zip, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(BUILD / f"{NAME}.tex", f"{NAME}.tex")
         z.write(BUILD / "references.bib", "references.bib")
         for fig in sorted((BUILD / "figures").iterdir()):
             z.write(fig, f"figures/{fig.name}")
 
+    revised_zip = OUT / f"{REVISED}_overleaf.zip"
+    package_revised(revised_zip)
+
     marks_add = (BUILD / f"{NAME}.tex").read_text(encoding="utf-8").count("\\DIFadd{")
     marks_del = (BUILD / f"{NAME}.tex").read_text(encoding="utf-8").count("\\DIFdel{")
-    print(f"compilado: {written.group(1)} páginas, 0 errores; {marks_add} adiciones, {marks_del} borrados")
+    print(f"diff compilado: {written.group(1)} páginas, 0 errores; {marks_add} adiciones, {marks_del} borrados")
     if unresolved:
         print(
             f"{len(unresolved)} referencias «??», todas en texto borrado que apunta a tablas "
             f"eliminadas en la revisión: {', '.join(unresolved)}"
         )
+
+    # 5. La prueba de que cada zip funciona solo: extraerlo y compilarlo aislado.
+    failed = False
+    for zip_path, main_tex in ((revised_zip, "paper_28.tex"), (diff_zip, f"{NAME}.tex")):
+        errors_n, pages = verify_zip(zip_path, main_tex)
+        status = "OK" if errors_n == 0 and pages else "FALLO"
+        failed |= status != "OK"
+        print(f"{status}: {zip_path.name} compila aislado -> {pages} páginas, {errors_n} errores")
+
     print(f"-> {OUT / (NAME + '.pdf')}")
-    print(f"-> {zip_path}")
-    return 0
+    print(f"-> {revised_zip}")
+    print(f"-> {diff_zip}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
