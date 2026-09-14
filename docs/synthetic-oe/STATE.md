@@ -10,22 +10,20 @@ whenever something blocks.
 
 ## Where we are
 
-**Active sprint:** none — branch scaffolding in place, S0 not yet opened.
+**Active sprint:** **S0** — Reproducibility foundation and splits. Design frozen at `f618571`.
 **Phase:** pre-execution. No runs exist on this branch.
 
 ## Done
 
-- BC3CAT-Syn/OE release received and validated (`INTAKE.md`, 2026-09-08): 70,242 corpus
-  records, 4,439 single + 4,998 stacked queries, all gold keys verified present.
+- BC3CAT-Syn/OE release received and validated (`INTAKE.md`, 2026-09-08); counts there.
 - Research proposal and sprint plan written (`RESEARCH_PROPOSAL.md`, `RESEARCH_PLAN.md`).
 - Documentation and agent scaffolding created.
-- 2026-09-14: the five OE data files verified byte-for-byte against the digests in
-  `INTAKE.md` in the main checkout — part of S0's entry state, already satisfied.
-- 2026-09-14: config↔module inventory over the 77 configs; three gaps found (D-016, D-017).
+- 2026-09-15: `data/` repopulated after the incident; five OE digests re-verified against
+  `INTAKE.md §2`. Config inventory re-run by parsing all 77 (D-016 amended: 72, not 2).
 
 ## In flight
 
-- Nothing running.
+- **S0**, opened 2026-09-15. Manifest, concept-level split, layout, config migration.
 
 ## Incident — 2026-09-14
 
@@ -42,7 +40,7 @@ is lost; `data/` was repopulated and verified 2026-09-15. No impact on S0/S1. Re
 
 ## Next action
 
-Open **S0 — Reproducibility foundation and splits**: `/sprint-open S0`.
+Execute S0 work items 1–6, then `/sprint-close S0`. No run happens in S0.
 
 ## Latest results
 

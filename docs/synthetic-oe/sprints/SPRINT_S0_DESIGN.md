@@ -1,6 +1,6 @@
 # Sprint S0 — Reproducibility foundation and splits · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `f618571` · `2026-09-15`
 > This section is read-only from that commit. Changes go in **Amendments** below, dated and
 > justified — never as in-place edits. `git log -- <this file>` after the freeze date is an
 > audit trail; keep it honest.
