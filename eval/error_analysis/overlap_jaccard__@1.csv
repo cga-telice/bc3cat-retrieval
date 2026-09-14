@@ -1,0 +1,4 @@
+,bm25_unigram,bge_m3_colbert,hyb_bm25_uni__bge_colbert__tfidf_char_3_5
+bm25_unigram,1.0,0.41992294991744633,0.6101190476190477
+bge_m3_colbert,0.41992294991744633,1.0,0.6459380788568404
+hyb_bm25_uni__bge_colbert__tfidf_char_3_5,0.6101190476190477,0.6459380788568404,1.0

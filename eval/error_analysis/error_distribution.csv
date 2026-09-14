@@ -1,0 +1,8 @@
+method,error_type,percent
+bge_m3_colbert,Lexical Confusion,0.5012531328320802
+bge_m3_colbert,Numeric Mismatch,97.90100250626567
+bge_m3_colbert,Other,1.5977443609022557
+bm25_unigram,Lexical Confusion,0.5291005291005291
+bm25_unigram,Numeric Mismatch,98.14814814814815
+bm25_unigram,Other,1.3227513227513228
+hyb_bm25_uni__bge_colbert__tfidf_char_3_5,Other,100.0

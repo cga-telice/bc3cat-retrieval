@@ -1,0 +1,12 @@
+,CLS correct,CLS wrong,total,rate
+BIO correct,199,321,520,0.0313
+BIO wrong,3321,12749,16070,0.9687
+total,3520,13070,16590,
+rate,0.2122,0.7878,1.0,
+
+summary_metric,count,fraction,,
+both_correct,199,0.0120,,
+both_wrong,12749,0.7685,,
+BIO_only_correct,321,0.0193,,
+CLS_only_correct,3321,0.2002,,
+union_correct,3841,0.2315,,

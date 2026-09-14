@@ -1,0 +1,3 @@
+method,Acc@1,delta_vs_best,ci95,p_raw,p_holm,p_bh,sig_vs_best_holm,sig_vs_best_bh
+bm25_unigram,0.8690777576853527,0.0,"[0.000, 0.000]",0.0,0.0,0.0,True,True
+prf_rocchio__bm25_unigram__M5__N20__beta0_5,0.8564798071127185,0.012597950572634131,"[0.0104, 0.0148]",9.999000099990002e-05,9.999000099990002e-05,9.999000099990002e-05,True,True

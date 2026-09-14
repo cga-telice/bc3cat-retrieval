@@ -185,3 +185,21 @@ than a housekeeping side effect. That is the intended cost.
 **Note.** The precise command is to be recovered from the agent session transcript and
 recorded here when identified; the decision does not depend on which of the two candidate
 mechanisms it was.
+
+### D-020 — `eval/`, `evals/` and `analysis/` are records, not derived artefacts
+**Status:** Accepted · **Date:** 2026-09-15 · **Owner:** César
+**Context.** The documentation model classes an artefact by how it is produced: a *derived*
+artefact is regenerated and never hand-edited, a *record* is append-only and versioned.
+While `runs/` existed, the contents of `eval/`, `evals/` and `analysis/` were derived —
+regenerable from the per-query rankings at any time, and so safely covered by the repo-wide
+`*.json` and `*.csv` ignore rules. The deletion of `runs/` (D-019) destroyed the input they
+derive from. They are now the only surviving evidence of the previous study's significance
+tests and error analysis, and nothing can regenerate them.
+**Decision.** They change class — from derived to record, and therefore from ignored to
+versioned. `.gitignore` carries explicit negations (`!eval/**`, `!evals/**`, `!analysis/**`)
+rather than a one-off `git add -f`. A forced add covers the 61 files that exist today and
+leaves the next one invisible, which is precisely the trap that cost `runs/`: the negation
+changes the rule, a forced add only makes an exception to it.
+**Consequence.** Analysis outputs under those three paths are versioned from now on,
+including ones generated later. The repo-wide `*.json` / `*.csv` rules still hold everywhere
+else.

@@ -1,0 +1,4 @@
+,bm25_unigram,tfidf_char_3_5,tfidf_unigram_phrases_replace
+bm25_unigram,1.0,0.595754716981132,0.6775
+tfidf_char_3_5,0.595754716981132,1.0,0.711098444752056
+tfidf_unigram_phrases_replace,0.6775,0.711098444752056,1.0

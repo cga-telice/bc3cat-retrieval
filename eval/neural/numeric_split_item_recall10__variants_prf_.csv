@@ -1,0 +1,8 @@
+method,Has numbers,No numbers
+bge_m3_colbert,0.7843729243,1.0
+dense_e5,0.5165790904,1.0
+bge_m3_dense,0.4633174325,1.0
+bge_m3_sparse,0.5345691685,1.0
+dense_es_hiiamsid,0.1419339252,0.96875
+dense_gte_instrQ,0.0725801582,0.8965517241
+dense_gte,0.064625234,0.5625

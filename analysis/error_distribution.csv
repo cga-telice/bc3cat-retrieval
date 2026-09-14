@@ -1,0 +1,8 @@
+error_type,structured_pipeline_rules,structured_pipeline_oracle_rules,structured_pipeline,structured_pipeline_oracle,structured_pipeline_phi4_classify,structured_pipeline_oracle_phi4_classify
+E1-WRONG_CONCEPT,252,0,252,0,252,0
+E2-PARTIAL_EXTRACT,1352,1434,0,0,0,0
+E2-WRONG_VALUE,0,0,0,0,0,0
+E2-ALL_NULL,0,0,0,0,0,0
+E2-UNSPECIFIED,0,0,2918,2976,1787,1887
+E3-SCHEMA_MISMATCH,0,0,0,0,0,0
+TOTAL,1604,1434,3170,2976,2039,1887

@@ -76,3 +76,8 @@ torch/
 # Ignore Claude Code scratch and agent delivery areas
 Claude outputs/
 .serena/
+
+# Surviving analysis artefacts of the previous study: records, not regenerable
+!eval/**
+!evals/**
+!analysis/**

@@ -1,0 +1,3 @@
+method,n_docs,dup_groups,dup_docs
+bm25_unigram,47513,1602,3276
+tfidf_unigram_phrases_replace,47513,720,1440

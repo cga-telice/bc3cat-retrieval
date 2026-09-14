@@ -1,0 +1,17 @@
+method,Has numbers,No numbers
+prf_rm3__bm25_unigram__M10__N20__beta0_5,0.9502445504,1.0
+prf_rm3__bm25_unigram__M5__N20__beta0_5,0.9502445504,1.0
+prf_rm3__bm25_unigram__M10__N40__beta0_5,0.9502445504,1.0
+prf_rm3__bm25_unigram__M5__N40__beta0_5,0.9502445504,1.0
+prf_rm3__bm25_unigram__M5__N20__beta0_7,0.9501841676,1.0
+prf_rm3__bm25_unigram__M10__N20__beta0_7,0.9500030191,1.0
+prf_rm3__bm25_unigram__M5__N40__beta0_7,0.9501841676,1.0
+prf_rm3__bm25_unigram__M10__N40__beta0_7,0.9490368939,0.9310344828
+prf_rocchio__bm25_unigram__M5__N20__beta0_5,0.9426966971,0.8965517241
+prf_rocchio__bm25_unigram__M5__N20__beta0_7,0.9426966971,0.8965517241
+prf_rocchio__bm25_unigram__M10__N20__beta0_5,0.9436628223,0.8965517241
+prf_rocchio__bm25_unigram__M10__N20__beta0_7,0.9436024395,0.8965517241
+prf_rocchio__bm25_unigram__M5__N40__beta0_5,0.941307892,0.8965517241
+prf_rocchio__bm25_unigram__M10__N40__beta0_5,0.9412475092,0.8965517241
+prf_rocchio__bm25_unigram__M5__N40__beta0_7,0.9393152587,0.8965517241
+prf_rocchio__bm25_unigram__M10__N40__beta0_7,0.9356319063,0.8965517241

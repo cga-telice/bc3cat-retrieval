@@ -1,0 +1,10 @@
+method,Has numbers,No numbers
+bm25_unigram_params__k1-0.60__b-0.35,0.9848439104,1.0
+bm25_unigram__k1-0.80__b-0.35,0.9501841676,1.0
+bm25_unibigram__k1-0.80__b-0.35,0.8695127106,0.9655172414
+tfidf_unigram_phrases_replace,0.8498279089,1.0
+tfidf_unigram_phrases_add,0.9191473945,1.0
+tfidf_unigram_nostop,0.8287543023,1.0
+tfidf_unigram,0.8074391643,1.0
+tfidf_char_3_5,0.6473039068,1.0
+rrf__bm25_char_e5,0.8537527927,1.0

@@ -1,0 +1,204 @@
+{
+  "E1-WRONG_CONCEPT": [
+    {
+      "query_item_key": "OEB200baedb",
+      "query_text": "zanja para cables de 0.80 a 1.00 m de profundidad a máquina, normal, en material normal. (cualquier franja horaria/no necesita intervalo/volumen escaso)",
+      "gold_parent_key": "OEB200$",
+      "concept_name": "ZANJA PARA CABLES DE 0,60 M DE ANCHURA A MÁQUINA",
+      "ground_truth_params": {
+        "PROFUNDIDAD": "0,80 a 1,00 m",
+        "TIPO DE TERRENO": "normal",
+        "TRABAJO": "Cualquier franja horaria",
+        "BANDA DE MANTENIMIENTO": "No necesita intervalo",
+        "CONDICIONES DE EJECUCIÓN": "Volumen escaso"
+      },
+      "condition": "structured_pipeline_rules",
+      "predicted_parent_key": "OEB190$",
+      "predicted_concept_name": "ZANJA PARA CABLES DE 0,60 M DE ANCHURA A MANO"
+    },
+    {
+      "query_item_key": "OEB290ihabc",
+      "query_text": "canalización hormigonada 16 t, polietileno libre de halógenos de 50 mm, con topo. (diurno/3 <== i < \"5\" horas/cualquier condición de ejecución)",
+      "gold_parent_key": "OEB290$",
+      "concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 50mm",
+      "ground_truth_params": {
+        "Nº TUBOS": "16",
+        "TIPO DE TERRENO": "Con topo",
+        "TRABAJO": "Diurno",
+        "BANDA DE MANTENIMIENTO": "3 <= i < 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Cualquier condición de ejecución"
+      },
+      "condition": "structured_pipeline_rules",
+      "predicted_parent_key": "OEB040$",
+      "predicted_concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 160mm"
+    },
+    {
+      "query_item_key": "OEB030ibabc",
+      "query_text": "canalización hormigonada 16 t, polietileno libre de halógenos de 110 mm, bajo vías. (diurno/3 >== i > \"5\" horas/cualquier condición de ejecución)",
+      "gold_parent_key": "OEB030$",
+      "concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 110mm",
+      "ground_truth_params": {
+        "Nº TUBOS": "16",
+        "TIPO DE TERRENO": "Bajo vías",
+        "TRABAJO": "Diurno",
+        "BANDA DE MANTENIMIENTO": "3 <= i < 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Cualquier condición de ejecución"
+      },
+      "condition": "structured_pipeline_rules",
+      "predicted_parent_key": "OEB040$",
+      "predicted_concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 160mm"
+    },
+    {
+      "query_item_key": "OEB230iabac",
+      "query_text": "canalización hormigonada 16 t, polietileno libre de halógenos de 200 mm, normal. (nocturno/i >== 5 horas/cualquier condición de ejecución)",
+      "gold_parent_key": "OEB230$",
+      "concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 200mm",
+      "ground_truth_params": {
+        "Nº TUBOS": "16",
+        "TIPO DE TERRENO": "Normal",
+        "TRABAJO": "Nocturno",
+        "BANDA DE MANTENIMIENTO": "i >= 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Cualquier condición de ejecución"
+      },
+      "condition": "structured_pipeline_rules",
+      "predicted_parent_key": "OEB040$",
+      "predicted_concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 160mm"
+    },
+    {
+      "query_item_key": "OEB300ibcac",
+      "query_text": "canalización hormigonada 16 t, polietileno libre de halógenos de 90 mm, bajo vías. (diurno excepcional/i >== 5 horas/cualquier condición de ejecución)",
+      "gold_parent_key": "OEB300$",
+      "concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 90mm",
+      "ground_truth_params": {
+        "Nº TUBOS": "16",
+        "TIPO DE TERRENO": "Bajo vías",
+        "TRABAJO": "Diurno Excepcional",
+        "BANDA DE MANTENIMIENTO": "i >= 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Cualquier condición de ejecución"
+      },
+      "condition": "structured_pipeline_rules",
+      "predicted_parent_key": "OEB040$",
+      "predicted_concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 160mm"
+    }
+  ],
+  "E2-PARTIAL_EXTRACT": [
+    {
+      "query_item_key": "OEB250acbdb",
+      "query_text": "suministro de canalización de 6 tubos de acero galvanizado de 100mm de diámetro para instalaciones cms en transiciones entre diferentes plataformas.(nocturno excepcional/no necesita intervalo/voumen escaso)",
+      "gold_parent_key": "OEB250$",
+      "concept_name": "TRANSICIÓN DE CANALIZACIONES CMS PARA OBRAS DE FÁBRICA",
+      "ground_truth_params": {
+        "TIPO DE ACCIÓN": "Suministro",
+        "Nº TUBOS": "6",
+        "TRABAJO": "Nocturno Excepcional",
+        "BANDA DE MANTENIMIENTO": "No necesita intervalo",
+        "CONDICIONES DE EJECUCIÓN": "Volumen escaso"
+      },
+      "condition": "structured_pipeline_oracle_rules",
+      "extracted_params": {
+        "TIPO DE ACCIÓN": "Suministro",
+        "Nº TUBOS": "6",
+        "TRABAJO": "Nocturno Excepcional",
+        "BANDA DE MANTENIMIENTO": "No necesita intervalo",
+        "CONDICIONES DE EJECUCIÓN": null
+      },
+      "mismatched_axes": [
+        "CONDICIONES DE EJECUCIÓN"
+      ]
+    },
+    {
+      "query_item_key": "OEB030bgedb",
+      "query_text": "canalización hormigonada 2 t, polietileno libre de halógenos de 110 mm, en balasto. (cualquier frana horaria/no necesita intervalo/volumen escaso)",
+      "gold_parent_key": "OEB030$",
+      "concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 110mm",
+      "ground_truth_params": {
+        "Nº TUBOS": "2",
+        "TIPO DE TERRENO": "Balasto",
+        "TRABAJO": "Cualquier franja horaria",
+        "BANDA DE MANTENIMIENTO": "No necesita intervalo",
+        "CONDICIONES DE EJECUCIÓN": "Volumen escaso"
+      },
+      "condition": "structured_pipeline_oracle_rules",
+      "extracted_params": {
+        "Nº TUBOS": "2",
+        "TIPO DE TERRENO": "Balasto",
+        "TRABAJO": null,
+        "BANDA DE MANTENIMIENTO": "No necesita intervalo",
+        "CONDICIONES DE EJECUCIÓN": "Volumen escaso"
+      },
+      "mismatched_axes": [
+        "TRABAJO"
+      ]
+    },
+    {
+      "query_item_key": "OEB020abeda",
+      "query_text": "canalización hormigonada de 2 t, pvc 110 mm, bajo vías. (cualquier frana horaria/no necesita intervalo/volumen relevante)",
+      "gold_parent_key": "OEB020$",
+      "concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE PVC 110 mm",
+      "ground_truth_params": {
+        "Nº TUBOS": "2",
+        "TIPO DE TERRENO": "Bajo vías",
+        "TRABAJO": "Cualquier franja horaria",
+        "BANDA DE MANTENIMIENTO": "No necesita intervalo",
+        "CONDICIONES DE EJECUCIÓN": "Volumen relevante"
+      },
+      "condition": "structured_pipeline_oracle_rules",
+      "extracted_params": {
+        "Nº TUBOS": "2",
+        "TIPO DE TERRENO": "Bajo vías",
+        "TRABAJO": null,
+        "BANDA DE MANTENIMIENTO": "No necesita intervalo",
+        "CONDICIONES DE EJECUCIÓN": "Volumen relevante"
+      },
+      "mismatched_axes": [
+        "TRABAJO"
+      ]
+    },
+    {
+      "query_item_key": "OEB040ageac",
+      "query_text": "canalización hormigonada 1 t, polietileno libre de halógenos de 160 mm, en balasto. (cualquier frana horaria/i >==5 horas/cualquier condición de ejecución)",
+      "gold_parent_key": "OEB040$",
+      "concept_name": "CANALIZACIÓN HORMIGONADA DE TUBO DE POLIETILENO 160mm",
+      "ground_truth_params": {
+        "Nº TUBOS": "1",
+        "TIPO DE TERRENO": "Balasto",
+        "TRABAJO": "Cualquier franja horaria",
+        "BANDA DE MANTENIMIENTO": "i >= 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Cualquier condición de ejecución"
+      },
+      "condition": "structured_pipeline_oracle_rules",
+      "extracted_params": {
+        "Nº TUBOS": "1",
+        "TIPO DE TERRENO": "Balasto",
+        "TRABAJO": null,
+        "BANDA DE MANTENIMIENTO": "i >= 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Cualquier condición de ejecución"
+      },
+      "mismatched_axes": [
+        "TRABAJO"
+      ]
+    },
+    {
+      "query_item_key": "OEB070beaa",
+      "query_text": "suministro y ejecución de canalización de 2 tubo(s) de polietileno 110 mm 5 at. con topo bajo vías (cualquier frana horaria/i >==5 horas/volumen relevante)",
+      "gold_parent_key": "OEB070$",
+      "concept_name": "HINCA TUBO DE POLIETILENO 110 MM",
+      "ground_truth_params": {
+        "Nº TUBOS": "2",
+        "TRABAJO": "Cualquier franja horaria",
+        "BANDA DE MANTENIMIENTO": "i >= 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Volumen relevante"
+      },
+      "condition": "structured_pipeline_oracle_rules",
+      "extracted_params": {
+        "Nº TUBOS": "2",
+        "TRABAJO": null,
+        "BANDA DE MANTENIMIENTO": "i >= 5 horas",
+        "CONDICIONES DE EJECUCIÓN": "Volumen relevante"
+      },
+      "mismatched_axes": [
+        "TRABAJO"
+      ]
+    }
+  ]
+}
