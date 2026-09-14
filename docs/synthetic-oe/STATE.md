@@ -27,24 +27,11 @@ whenever something blocks.
 
 - Nothing running.
 
-## Incident — 2026-09-14, working-set deletion
+## Incident — 2026-09-14
 
-`data/`, `index/`, `runs/`, `logs/` and `hf-cache/` were emptied by an agent session. They
-are git-ignored, so nothing is recoverable from any branch; no shadow copies existed. See
-D-019.
-
-| Path | Status | Repopulate from |
-|---|---|---|
-| `data/processed/OE_*` | restored 2026-09-15, digests verified | `Downloads/BC3CAT_Syn_OE_handoff` |
-| `data/processed/OEB_*` | restored 2026-09-15 | `../bc3cat-dataset/data/processed/` |
-| `index/`, `hf-cache/` | lost | derived — rebuild |
-| `runs/` | **lost, not recoverable** | per-query rankings of the previous study; aggregate metrics survive in `eval/`, structured-line analyses in `analysis/` |
-| `eval/`, `evals/`, `analysis/` | intact | now committed in full — see D-020 |
-
-Impact on this branch: none. S0 and S1 do not touch `runs/`; OE runs are new work from S3.
-The previous study's evaluation was already scheduled for a full re-run on a single query
-sample (review recommendation 3), and the structured-pipeline runs were outside the
-reproducible tag, so neither was citable as it stood.
+`data/`, `index/`, `runs/`, `logs/` and `hf-cache/` were emptied by an agent session. `runs/`
+is lost; `data/` was repopulated and verified 2026-09-15. No impact on S0/S1. Record:
+[`archive/INCIDENT_2026-09-14.md`](archive/INCIDENT_2026-09-14.md) · decisions D-019, D-020.
 
 ## Blocked / waiting
 

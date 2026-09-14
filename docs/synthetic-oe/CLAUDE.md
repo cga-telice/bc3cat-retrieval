@@ -144,13 +144,20 @@ Condition is derived, not stored: `single_<type>` if `modification_count == 1`, 
 index/{collection}/{method}
 runs/{collection}/{queryset}/{method}
 docs/synthetic-oe/
-  CLAUDE.md STATE.md DECISIONS.md SPLITS.md INTAKE.md   # contracts
+  CLAUDE.md STATE.md SPLITS.md INTAKE.md                # contracts
+  DECISIONS.md                                          # record — append-only, searched
+  archive/                                              # record — dated snapshots
   RESEARCH_PROPOSAL.md RESEARCH_PLAN.md SPRINTS.md      # plans
   sprints/SPRINT_XX_DESIGN.md                           # plan, frozen at sprint start
   sprints/SPRINT_XX_REPORT.md                           # record
   sprints/SPRINT_XX_AUDIT.md                            # record, written by the auditor
   results/                                              # derived — generated, never edited
 ```
+
+`DECISIONS.md` is a **record, not a contract**. It declares itself append-only — entries are
+never renumbered and never deleted — so it can only grow, and a bounded budget would force
+either deletion or a split that its own rules forbid. Search it by decision ID; do not read
+it wholesale. Reclassified 2026-09-15, when it passed 12 KB.
 
 ## Roles
 

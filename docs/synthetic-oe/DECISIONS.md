@@ -143,6 +143,13 @@ by some other path.
 **Consequence.** Enforces the reproducibility contract: a run is reproducible from
 `(config, code commit, query-set digest)` and nothing else. Without this, a config is a
 partial description of an experiment.
+**Amendment (2026-09-15).** The Context understates the second gap. Parsing all 77 configs
+(not grepping them) shows **72 of 77 declare no `retriever` block**, not two: behaviour comes
+from a notebook default in nearly every config. Two further facts the grep-based inventory
+missed — `dense_colbert128` declares its modules under a `builder:` key rather than `method:`,
+and the 77 split into 62 JSON-in-`.yaml` configs with literal `OEB_*` paths and 15 YAML
+configs with templated inputs, so "migrate off the hard-coded collection" is two different
+edits, not one. The decision stands unchanged; only its scope was misreported.
 
 ### D-017 — `dense_colbert128`: implement or remove
 **Status:** Open · **Raised:** 2026-09-14 · **Decide by:** S1
@@ -172,9 +179,10 @@ during it.
 `hf-cache/` were deleted from the main checkout by an agent session. Recovery was impossible
 because all three safety nets were inoperative *by construction*: those paths are in
 `.gitignore` so git never tracked them; the deletion used a filesystem API, so the Recycle
-Bin did not catch it; and volume shadow copies were not enabled on D:. `eval/` and
-`analysis/` survived only because their files are committed — `git clean` never removes a
-tracked file, whatever `.gitignore` says about its extension.
+Bin did not catch it; and volume shadow copies were not enabled on D:. `eval/`, `evals/`
+and `analysis/` survived only because they were not among the five junctioned paths — not
+because they were protected. At the time, `analysis/` had no tracked files at all and
+`eval/` only 63 of 102 (D-020).
 **Decision.** Agents do not delete under those five paths. Concretely: `git clean` is never
 run with `-x` in this repo; a worktree whose `data/`, `index/` or `runs/` are NTFS junctions
 is never removed with `--force`, because the removal follows the junction into the real
@@ -182,9 +190,22 @@ files; and cleanup of derived artefacts is proposed to a human and executed expl
 inferred from "these look stale".
 **Consequence.** Rebuilding `index/` after a corpus change is now a deliberate step rather
 than a housekeeping side effect. That is the intended cost.
-**Note.** The precise command is to be recovered from the agent session transcript and
-recorded here when identified; the decision does not depend on which of the two candidate
-mechanisms it was.
+**Correction (2026-09-15).** The Context above originally stated that `eval/` and
+`analysis/` survived because their files were committed, and that `git clean` had spared
+them. Both claims were false: no `git clean` ran, and `analysis/` was entirely untracked.
+Corrected in place because the claim asserted a protection that did not exist; the decision
+itself is unchanged.
+**Mechanism (identified 2026-09-15).** Neither candidate mechanism was `git clean`. From the
+agent session transcript (`d267339c-66db-4a34-bdf4-5b8dab10f1b3.jsonl`, entry
+`0dcc10b7-cb7f-4a3d-97a4-f8c57a3f47fa`, timestamp `2026-09-14T21:19:01.503Z`, cwd
+`D:/Users/cesar/Dev/Phd/bc3cat-retrieval`) the command was
+`git worktree remove .claude/worktrees/corpus-synthetic-queries-785c03 && git worktree
+remove .claude/worktrees/verificar-archivos-agentes-ec85ea && git branch -d ...`.
+The removal followed the NTFS junctions into the real directories; it returned 31.5 s later,
+matching the emptied directories' mtimes (23:19:31-32 local). It ran under
+`permissionMode: "auto"` and matched no rule in `.claude/settings.local.json`. The
+pre-removal safety check was `git status --porcelain` per worktree, which is blind to
+git-ignored content — that is the specific failure this decision guards against.
 
 ### D-020 — `eval/`, `evals/` and `analysis/` are records, not derived artefacts
 **Status:** Accepted · **Date:** 2026-09-15 · **Owner:** César
