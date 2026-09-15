@@ -91,6 +91,11 @@ agents working in separate worktrees.
 `reorder` admitted) from `bc3cat-dataset` at the start of the project, given its lead time.
 **Fallback.** If it does not arrive, H4 drops to an exploratory regression on the existing
 stacked set, with the confounding stated in the limitations.
+**Spec drafted 2026-09-15** (S0 work item 6): [`requests/E3_BALANCED_DOSE.md`](requests/E3_BALANCED_DOSE.md).
+Adds two asks beyond the original wording — a within-leaf dose ladder, so the slope is
+estimated within an item rather than across items, and a per-item `applicable_types` field,
+without which a comparison across counts compares different populations. **Not yet issued;**
+the issue date is recorded here when it is sent, and S0 exit criterion 6 is unmet until then.
 
 ### D-010 — Parameter availability reported as a pair of bounds
 **Status:** Proposed · **Date:** 2026-09-14
