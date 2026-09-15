@@ -128,6 +128,9 @@ def axis_labels_from_corpus(records) -> Dict[str, Dict[str, str]]:
     key them on, so the letter-to-label correspondence exists only in the corpus — where both
     appear in the same block. Siblings share it, so the first leaf of each concept settles it.
     """
+    if isinstance(records, pd.DataFrame):
+        records = records.to_dict("records")
+
     labels: Dict[str, Dict[str, str]] = {}
     for record in records:
         parent = record.get("parent_key")
@@ -319,6 +322,30 @@ def load_records(path: Path, extra_fields: tuple[str, ...] = ()) -> pd.DataFrame
     return pd.DataFrame([_as_record_from_obj(d, extra_fields) for d in container]).reset_index(
         drop=True
     )
+
+
+def assert_gold_present(queries: pd.DataFrame, corpus_keys) -> None:
+    """Fail loud when a query's gold leaf is absent from the corpus (INTAKE §4 breakpoint 1).
+
+    The old harness inferred the gold from the query's own key, so a synthetic query — whose
+    key is `<leaf>_syn_<hash>` and is deliberately not in the corpus — would have scored
+    against nothing and been dropped without a word. A dropped query is not a zero: it
+    silently shrinks the denominator, and a whole condition can disappear that way.
+
+    A query set with no `gold_item_key` column is one of the corpus's own renderings (`texto`,
+    `resumen`), where the query key *is* the gold; those are checked against the corpus too.
+    """
+    column = "gold_item_key" if "gold_item_key" in queries.columns else "item_key"
+    corpus_keys = set(corpus_keys)
+
+    absent = queries[~queries[column].astype(str).isin(corpus_keys)]
+    if len(absent):
+        listed = ", ".join(absent["item_key"].astype(str).head(5))
+        raise KeyError(
+            f"{len(absent)} of {len(queries)} queries have a {column} absent from the corpus: "
+            f"{listed}{' …' if len(absent) > 5 else ''}. A query whose gold is missing is never "
+            "dropped silently."
+        )
 
 
 def clean_df(df: pd.DataFrame) -> pd.DataFrame:

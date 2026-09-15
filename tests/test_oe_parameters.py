@@ -148,3 +148,47 @@ def test_unmodified_axes_mint_the_same_tokens_as_the_corpus(corpus, single_queri
 
     assert checked > 1000, "too few queries compared for this to mean anything"
     assert unchanged_axes_checked > 1000
+
+
+# --- gold integrity (INTAKE §4 breakpoint 1) -------------------------------------------
+
+
+def test_every_synthetic_gold_key_is_present_in_the_corpus(single_queries, by_item_key):
+    from utils.corpus_prep import assert_gold_present
+
+    import pandas as pd
+
+    queries = pd.DataFrame(
+        [{"item_key": q["item_key"], "gold_item_key": q["gold_item_key"]} for q in single_queries]
+    )
+
+    assert_gold_present(queries, set(by_item_key))  # must not raise
+
+
+def test_a_missing_gold_key_fails_loud_and_names_the_query():
+    """Silently dropping such a query is how a whole condition disappears from a report."""
+    import pandas as pd
+    import pytest as _pytest
+
+    from utils.corpus_prep import assert_gold_present
+
+    queries = pd.DataFrame(
+        [
+            {"item_key": "OEA010aaba_syn_1", "gold_item_key": "OEA010aaba"},
+            {"item_key": "OEA010aaba_syn_2", "gold_item_key": "OEA010_not_in_corpus"},
+        ]
+    )
+
+    with _pytest.raises(KeyError, match="OEA010aaba_syn_2"):
+        assert_gold_present(queries, {"OEA010aaba"})
+
+
+def test_a_corpus_query_set_without_gold_keys_is_accepted():
+    """texto and resumen are the leaf's own renderings: the query key is the gold."""
+    import pandas as pd
+
+    from utils.corpus_prep import assert_gold_present
+
+    queries = pd.DataFrame([{"item_key": "OEA010aaba"}])
+
+    assert_gold_present(queries, {"OEA010aaba"})

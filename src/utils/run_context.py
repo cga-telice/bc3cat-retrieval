@@ -65,6 +65,63 @@ def _rebase(value: str, work_root: Path) -> Path:
     return Path(value)
 
 
+@dataclass(frozen=True)
+class DataPaths:
+    """Where the data phase reads and writes, for one collection."""
+
+    collection: str
+    data_dir: Path
+    short_json: Path
+    long_json: Path
+    short_norm: Path
+    long_norm: Path
+    query_json: dict[str, Path]
+    query_norm: dict[str, Path]
+
+
+def data_paths(
+    collection: str,
+    *,
+    work_root: str | Path = _CONTAINER_ROOT,
+    data_dir: str | Path | None = None,
+) -> DataPaths:
+    """Resolve the data phase's inputs and outputs for `collection`.
+
+    `data.ipynb` runs before any method exists, so it cannot go through a config; this is the
+    same service keyed on the collection alone. Synthetic query sets are discovered rather
+    than assumed — OEB has none, and asking for them must not invent a path.
+    """
+    work_root = Path(work_root)
+    directory = Path(data_dir) if data_dir else work_root / "data" / "processed"
+
+    short_json = directory / f"{collection}_resumen.json"
+    long_json = directory / f"{collection}_texto.json"
+    missing = [str(p) for p in (short_json, long_json) if not p.exists()]
+    if missing:
+        raise FileNotFoundError(f"{collection}: corpus file(s) not found: " + ", ".join(missing))
+
+    synthetic = {}
+    for queryset in QUERY_SETS:
+        if queryset in _DECLARED_QUERY_SETS:
+            continue
+        candidate = directory / f"{collection}_{queryset}.json"
+        if candidate.exists():
+            synthetic[queryset] = candidate
+
+    return DataPaths(
+        collection=collection,
+        data_dir=directory,
+        short_json=short_json,
+        long_json=long_json,
+        short_norm=directory / f"{collection}_short_norm.parquet",
+        long_norm=directory / f"{collection}_long_norm.parquet",
+        query_json=synthetic,
+        query_norm={
+            queryset: directory / f"{collection}_{queryset}_norm.parquet" for queryset in synthetic
+        },
+    )
+
+
 def _input_shape(inputs: dict[str, Path], config_path: Path) -> tuple[str, str, str | None]:
     """Identify which of the three input shapes this config uses."""
     for short_key, long_key, template in _INPUT_SHAPES:
