@@ -132,3 +132,4 @@ Not applicable: S0 is backbone.
 
 | Date | What changed | Why | Effect on claims |
 |---|---|---|---|
+| 2026-09-15 | Work item 5 executed: `configs/dense_colbert128.yaml` and `src/retrievers/tfidf_unigram_phrases.py` deleted. Every "77 configs" in this document now reads 76, including exit criterion 3. | D-017 decided (remove). The orphan module was confirmed dead first: the live `_add`/`_replace` variants shim `.tfidf_unigram`, not it. | None. No published number depended on either; the `_add`/`_replace` results are unchanged. |

@@ -152,11 +152,17 @@ configs with templated inputs, so "migrate off the hard-coded collection" is two
 edits, not one. The decision stands unchanged; only its scope was misreported.
 
 ### D-017 — `dense_colbert128`: implement or remove
-**Status:** Open · **Raised:** 2026-09-14 · **Decide by:** S1
+**Status:** Accepted (remove) · **Raised:** 2026-09-14 · **Decided:** 2026-09-15 · **Owner:** César · **Executed in:** S0
 The config is unrunnable and appears nowhere in `docs/reviews/paper_28.tex`, so no published
 number depends on it. Two options: implement the modules and admit it to the method set, or
 delete the config. Leaving it in place is not one — an unrunnable config in `configs/` reads
 as an evaluated method to anyone auditing the repo later.
+**Resolution (2026-09-15).** Removed. `configs/dense_colbert128.yaml` deleted; neither
+declared module ever existed, so nothing else was touched. Recoverable from history if the
+method is ever wanted. In the same pass `src/retrievers/tfidf_unigram_phrases.py` was
+deleted: confirmed dead before removal — no config names it, and the two live variants
+`tfidf_unigram_phrases_{add,replace}.py` are shims over `.tfidf_unigram`, not over it, so
+the published `_add`/`_replace` numbers are unaffected. Config count 77 → 76.
 
 ### D-018 — Work happens in the main checkout; parallel worktrees need explicit data access
 **Status:** Proposed · **Date:** 2026-09-14 · **Executed in:** S0

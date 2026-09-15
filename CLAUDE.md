@@ -137,22 +137,18 @@ Per-branch documentation lives in `docs/{branch-name}/`. See `docs/synthetic-oe/
   E5-large 0.134 item / 0.982 parent; BGE-M3-dense 0.127 / 0.960; BGE-M3-sparse 0.125 /
   0.994; BGE-M3-ColBERT 0.448 / 0.997; GTE-large 0.013 / 0.837; BM25-params 0.974 item.
   Never cite the README table. Fixing it is a tracked task.
-- All 77 `configs/*.yaml` hard-code `collection: "OEB"`, and indexes/runs are written to
+- All 76 `configs/*.yaml` hard-code `collection: "OEB"`, and indexes/runs are written to
   flat `index/{method}` / `runs/{method}` paths regardless of collection or query set.
   Branch work that adds a collection must resolve this first.
 - The eval, bootstrap and error-analysis notebooks scan a flat `/work/runs`.
-- **`configs/dense_colbert128.yaml` is an orphan.** It names
-  `src.index_builders.dense_colbert128` and `src.retrievers.dense_colbert128`; neither
-  module exists, so the config cannot run. It appears nowhere in `docs/reviews/paper_28.tex`,
-  so no published number depends on it. Resolve it (implement or remove) before building the
-  OE run set — see `docs/synthetic-oe/DECISIONS.md` D-017.
 - **`tfidf_char_3_5` and `tfidf_unigram_nostop` declare no `retriever` block.** Their
   behaviour therefore comes from a notebook default rather than from the config, which
   contradicts the reproducibility contract above: a run must be reproducible from
   `(config, code commit, query-set digest)` alone. Declare the block explicitly, even when
   it only restates the default.
-- **`src/retrievers/tfidf_unigram_phrases.py` is referenced by no config** (the two live
-  variants use `_add` / `_replace`). Probable residue; confirm before deleting.
+- **`tfidf_char_3_5` / `tfidf_unigram_nostop` is the visible tip of a wider problem:**
+  parsing all 77 configs shows **72 declare no `retriever` block**, not two. See D-016's
+  2026-09-15 amendment.
 - **`hiiamsid/sentence_similarity_spanish_es` was evaluated and never reported.** It is
   described in the manuscript as one of the seven neural configurations but appears in no
   results table, while `runs/dense_es_hiiamsid/metrics_dual.json` holds item Acc@1 0.0244 /
