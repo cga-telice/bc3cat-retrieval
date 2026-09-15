@@ -311,3 +311,37 @@ mixes differ between the two sides — `unit_conversion` 204/345, `expansion` 13
 and test are therefore not exchangeable populations for a per-type comparison.** The planned
 analysis is unaffected, because it compares paired deltas against the identity rendering
 *within* a side; a comparison of a type across sides would not be valid.
+
+### D-022 — One resolver; notebooks never build a path
+**Status:** Proposed · **Date:** 2026-09-15 · **Owner:** César · **Executed in:** S1
+**Context.** S0 parameterised the configs but not the harness (see D-008). Seven notebooks
+still name OEB files literally, so `collection: "OE"` resolves correctly inside a config and
+is then ignored by the code that reads it. Three further facts bear on the fix. The
+retriever is still resolved from the config's filename through an alias table living inside
+`retrieve.ipynb` (D-016, *Still open*). `src/utils/config.py` is dead legacy — it points at
+`/work/data/llamaindex` and `IISS_plataforma_*.pkl`, a different dataset, and nothing but
+`index_classes.py` imports it. And the same literal appears in seven places, so seven
+independent fixes are seven chances to diverge; a notebook left on `OEB_short_feats` while
+the others move to OE does not fail, it returns a plausible wrong number.
+**Decision.** A single resolver, `src/utils/run_context.py`: given a config it returns the
+resolved data paths, the index directory and the runs directory under D-008's layout, the
+query set, and the retriever module read from `retriever.module`. **No notebook constructs
+a path after this lands.** The in-notebook alias table goes away, which closes D-016.
+**Method.** Module and its tests first, with no notebook touched — it is plain Python and
+can be tested. Then the notebooks one at a time, each verified the way the config migration
+was: resolve every path before and after, and require them to be identical under
+`collection: "OEB"`.
+**Scope.** S1 migrates only the three notebooks on the critical path — `features.ipynb`,
+`index_builder.ipynb`, `retrieve.ipynb`. The other four (`cross_encoder`, `hybrid`,
+`prf_bm25_orchestrator`, `reranker_tiebreak`) belong to method families that are untouched
+until S4 and are migrated when their sprint needs them, against a resolver that has by then
+survived real use.
+**Consequence — weaker verification than we would like.** The natural check would be to
+re-run OEB end to end and compare against the previous results. That is not available:
+`runs/` was destroyed on 2026-09-14 (D-019) and the baseline with it. Static path equality
+under `collection: "OEB"` is what remains, and it proves that the same file is read, not
+that the same number comes out. This is a cost of the incident that had not been counted
+until now.
+**Follow-on.** `src/utils/config.py` is superseded by the resolver. Removing it is a
+separate, explicit step once nothing imports it — not a side effect of this work.
+

@@ -50,5 +50,5 @@ sprint — it does not reproduce numbers.
 
 ## Open decisions
 
-See `DECISIONS.md` (status `Open`). The ones that gate work: run layout (D-008),
-method scope on OE (D-012). D-007/D-021 (split) and D-017 closed in S0.
+See `DECISIONS.md` (status `Open`). Gating: method scope on OE (D-012). Closed in S0:
+D-007/D-021, D-008, D-016, D-017. D-022 is S1's entry decision.
