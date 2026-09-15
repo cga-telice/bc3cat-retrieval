@@ -86,7 +86,10 @@ def main() -> None:
         "queryset": "resumen",
         "config": {"path": args.config, "sha256": sha256(config_path)},
         "code_commit": git("rev-parse", "HEAD"),
-        "code_dirty": bool(git("status", "--porcelain")),
+        # Only what can change the run counts: src/ and configs/. The fixture being written
+        # is untracked at this moment and cannot count against itself, and an uncommitted
+        # manuscript elsewhere in the tree says nothing about the number.
+        "code_dirty": bool(git("status", "--porcelain", "--", "src", "configs")),
         "inputs": inputs,
         "execution": dict(p.split("=", 1) for p in args.param),
         "metrics_sha256": sha256(metrics_path),
