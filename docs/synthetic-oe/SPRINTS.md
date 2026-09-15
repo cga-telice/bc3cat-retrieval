@@ -15,7 +15,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 
 | ID | Type | Status | Title | Serves | Depends on |
 |---|---|---|---|---|---|
-| S0 | backbone | active | Reproducibility foundation and splits | all | — |
+| S0 | backbone | active (report written, audit pending) | Reproducibility foundation and splits | all | — |
 | S1 | backbone | planned | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
 | S2 | backbone | planned | Go/no-go probe ⚑ | H3 | S1 |
 | S3 | backbone | planned | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
@@ -60,3 +60,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 |---|---|---|---|
 | 2026-09-14 | S0–S13, S90 | → planned | Registry seeded from `RESEARCH_PLAN.md` |
 | 2026-09-15 | S0 | planned → active | Design frozen at `f618571`; entry state verified after the 2026-09-14 incident |
+| 2026-09-15 | S0 | report written | All 7 exit criteria met; `done` withheld until `/audit S0` returns in a fresh session |

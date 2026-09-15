@@ -23,8 +23,8 @@ whenever something blocks.
 
 ## In flight
 
-- **S0**, opened 2026-09-15. Done: manifest, split (D-021), E3 spec, D-017.
-  Left: none — ready for /sprint-close S0.
+- **S0** — report written 2026-09-15, all 7 exit criteria met. Not `done`: awaiting
+  `/audit S0` in a fresh session.
 
 ## Incident — 2026-09-14
 
@@ -41,7 +41,7 @@ is lost; `data/` was repopulated and verified 2026-09-15. No impact on S0/S1. Re
 
 ## Next action
 
-Execute S0 work items 1–6, then `/sprint-close S0`. No run happens in S0.
+Run `/audit S0` in a **fresh session**. Then open S1 (D-022 is its entry decision).
 
 ## Latest results
 
