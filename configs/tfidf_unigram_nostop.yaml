@@ -14,6 +14,7 @@ inputs:
 
 method:
   name: tfidf_unigram_nostop
+  save_as: "tfidf_unigram_nostop"
   family: tfidf
   params:
     analyzer: word

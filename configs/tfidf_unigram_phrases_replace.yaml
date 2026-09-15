@@ -13,6 +13,7 @@ inputs:
 method:
   family: tfidf
   name: tfidf_unigram_phrases_replace 
+  save_as: "tfidf_unigram_phrases_replace"
   params:
     analyzer: word
     ngram_range: [1, 1]

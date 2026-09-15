@@ -14,6 +14,7 @@ inputs:
 method:
   family: tfidf
   name: tfidf_char_3_5
+  save_as: "tfidf_char_3_5"
   params:
     analyzer: char_wb
     ngram_range: [3, 5]

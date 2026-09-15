@@ -12,6 +12,7 @@ inputs:
 method:
   family: dense
   name: dense_es_hiiamsid
+  save_as: "dense_es_hiiamsid"
   impl: dense_es_hiiamsid
   params:
     model_name: hiiamsid/sentence_similarity_spanish_es

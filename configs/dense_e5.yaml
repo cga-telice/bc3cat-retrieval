@@ -12,6 +12,7 @@ inputs:
 method:
   family: dense
   name: dense_e5
+  save_as: "dense_e5"
   impl: dense_e5
   params:
     model_name: intfloat/multilingual-e5-base   # or Alibaba-NLP/gte-large

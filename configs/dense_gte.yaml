@@ -13,6 +13,7 @@ inputs:
 method:
   family: dense
   name: dense_gte
+  save_as: "dense_gte"
   impl: dense_gte
   params:
     model_name: Alibaba-NLP/gte-multilingual-base

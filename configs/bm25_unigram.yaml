@@ -13,6 +13,7 @@ inputs:
 method:
   family: "bm25"
   name: "bm25_unigram"
+  save_as: "bm25_unigram"
   params:
     analyzer: "word"
     ngram_range: [1, 1]

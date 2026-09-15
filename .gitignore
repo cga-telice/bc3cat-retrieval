@@ -81,3 +81,7 @@ Claude outputs/
 !eval/**
 !evals/**
 !analysis/**
+
+# pytest temp root (see pytest.ini)
+.pytest-tmp/
+.pytest_cache/
