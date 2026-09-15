@@ -77,3 +77,36 @@ def test_the_real_collections_resolve():
 
     assert set(oe.query_json) == {"single_texto", "stacked_texto"}
     assert oeb.query_json == {}
+
+
+def test_feature_outputs_are_resolved(tmp_path):
+    make_collection(tmp_path, "OE", querysets=("single_texto", "stacked_texto"))
+
+    paths = data_paths("OE", work_root=tmp_path)
+
+    assert paths.short_feats.name == "OE_short_feats.parquet"
+    assert paths.long_feats.name == "OE_long_feats.parquet"
+    assert paths.features_meta.name == "OE_features_meta.json"
+    assert paths.query_feats["stacked_texto"].name == "OE_stacked_texto_feats.parquet"
+
+
+def test_the_feature_paths_are_the_ones_the_configs_declare():
+    """A config's inputs.short_feats and this must be the same file, or the index would be
+    built from one table and queried with another."""
+    if not (REPO / "data" / "processed" / "OE_texto.json").exists():
+        pytest.skip("data/processed is git-ignored and absent in this checkout")
+
+    from utils.run_context import load_run_context
+
+    ctx = load_run_context(
+        REPO / "configs" / "bm25_unigram_params__k1-0.60__b-0.35__OE.yaml",
+        queryset="single_texto",
+        work_root=REPO,
+        require_inputs=False,
+    )
+    paths = data_paths("OE", work_root=REPO)
+
+    assert ctx.inputs["short_feats"] == paths.short_feats
+    assert ctx.inputs["long_feats"] == paths.long_feats
+    assert ctx.inputs["features_meta"] == paths.features_meta
+    assert ctx.query_path == paths.query_feats["single_texto"]
