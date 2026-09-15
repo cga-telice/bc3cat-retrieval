@@ -24,7 +24,7 @@ whenever something blocks.
 ## In flight
 
 - **S0**, opened 2026-09-15. Done: manifest, split (D-021), E3 spec, D-017.
-  Left: layout, configs, issuing E3.
+  Left: none — ready for /sprint-close S0.
 
 ## Incident — 2026-09-14
 
@@ -34,8 +34,8 @@ is lost; `data/` was repopulated and verified 2026-09-15. No impact on S0/S1. Re
 
 ## Blocked / waiting
 
-- **E3 balanced dose set** (counts 1–5, randomised type mixes, `reorder` admitted) — to be
-  requested from `bc3cat-dataset` in S0. Long external lead time; blocks S08 only.
+- **E3 balanced dose set** — requested from `bc3cat-dataset` 2026-09-15 (D-009). Awaiting
+  delivery; blocks S8 only, and gate G3 decides if it is late.
 - **Real-query anchor** (200–500 Telice estimator queries) — not requested yet. Off the
   critical path.
 
