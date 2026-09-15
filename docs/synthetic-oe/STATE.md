@@ -23,8 +23,8 @@ whenever something blocks.
 
 ## In flight
 
-- **S0**, opened 2026-09-15. Done: manifest, split (D-021), E3 spec drafted, D-017 closed.
-  Left: run/index layout, config migration, and issuing the E3 request.
+- **S0**, opened 2026-09-15. Done: manifest, split (D-021), E3 spec, D-017.
+  Left: layout, configs, issuing E3.
 
 ## Incident — 2026-09-14
 
