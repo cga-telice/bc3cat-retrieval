@@ -6,6 +6,14 @@ from typing import List, Tuple
 from scipy import sparse
 from sklearn.feature_extraction.text import CountVectorizer
 
+#: Rows of the dense score block held in memory at once. 2048 x 70,242 float32 is about
+#: 575 MB, which fits everywhere this runs; the whole OE query set at once would not.
+DEFAULT_BATCH_SIZE = 2048
+
+#: Distinguishes "caller said nothing" from "caller asked for one block" (batch_size=None).
+_USE_DEFAULT = object()
+
+
 def _read_json(p: Path) -> dict:
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -35,6 +43,7 @@ class BM25Searcher:
         self.meta    = _read_json(index_dir / "meta.json")
         self.fields  = _read_json(index_dir / "fields.json")
         self.doc_ids, self.external_ids = _load_mapping(index_dir / "mapping.jsonl")
+        self.default_batch_size = DEFAULT_BATCH_SIZE
 
         self.X_docs  = sparse.load_npz(data_dir / "bm25_docs.npz").tocsr().astype(np.float32)
         self.vocab   = _read_json(data_dir / "vocab.json")
@@ -78,7 +87,8 @@ class BM25Searcher:
         top_idx = part[order]
         return top_idx, sims[top_idx]
 
-    def search_batch(self, queries: List[str], k: int = 100):
+    def _search_block(self, queries: List[str], k: int):
+        """Score one block of queries against every document, densely."""
         Q = self._encode_queries_idf(queries)
         sims = (Q @ self.X_docs.T).toarray()
         sims = np.nan_to_num(sims, copy=False)
@@ -91,6 +101,40 @@ class BM25Searcher:
         top_idx = part[row_idx, sorter]
         top_s   = sims[row_idx, top_idx]
         return top_idx, top_s
+
+    def search_batch(self, queries: List[str], k: int = 100, batch_size=_USE_DEFAULT):
+        """Score `queries` in blocks, returning the same (indices, scores) as one block would.
+
+        The dense score block is len(queries) x num_docs, so scoring the whole query set at
+        once costs ~9 GB on OEB and ~20 GB on OE, and dies. A query's scores depend on no
+        other query, so blocking is an arithmetic no-op — see tests/test_bm25_batching.py.
+
+        `batch_size=None` restores the single-block behaviour; it is what the equality tests
+        compare against, not something a run should use.
+        """
+        if batch_size is _USE_DEFAULT:
+            batch_size = self.default_batch_size
+        if batch_size is not None and batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer or None, got {batch_size!r}")
+
+        n_queries = len(queries)
+        if n_queries == 0:
+            return (
+                np.empty((0, 0), dtype=np.int64),
+                np.empty((0, 0), dtype=np.float32),
+            )
+
+        if batch_size is None or batch_size >= n_queries:
+            return self._search_block(list(queries), k)
+
+        blocks = [
+            self._search_block(list(queries[start : start + batch_size]), k)
+            for start in range(0, n_queries, batch_size)
+        ]
+        return (
+            np.concatenate([idx for idx, _ in blocks], axis=0),
+            np.concatenate([scores for _, scores in blocks], axis=0),
+        )
 
 def load(index_dir: str | Path) -> BM25Searcher:
     return BM25Searcher(Path(index_dir))
