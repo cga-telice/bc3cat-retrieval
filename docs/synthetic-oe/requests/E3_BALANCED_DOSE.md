@@ -1,7 +1,7 @@
 # Request to `bc3cat-dataset` — E3 balanced dose set
 
 **Requested by:** `bc3cat-retrieval`, branch `research/synthetic-oe`, sprint S0
-**Drafted:** 2026-09-15 · **Issued:** *(pending — see D-009)*
+**Drafted:** 2026-09-15 · **Issued:** 2026-09-15 (D-009)
 **Needed by:** sprint S8. Gate G3 decides on its absence; it blocks S8 only.
 **Decision of record:** D-009.
 

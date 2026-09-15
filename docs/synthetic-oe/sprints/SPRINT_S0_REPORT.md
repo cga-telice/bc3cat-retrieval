@@ -15,20 +15,29 @@ No retrieval experiment ran, and none was designed to. There is therefore no `ru
 this report: the stamp degenerates to `{script, code commit, input digest}`, and every
 artefact below carries it.
 
-| Artefact | Generator | Commit | Inputs |
-|---|---|---|---|
-| [`MANIFEST.md`](../MANIFEST.md) | `src/utils/build_manifest.py` | `2662e72` | the 12 data files, digested in place |
-| [`SPLITS.md`](../SPLITS.md) | `src/utils/build_splits.py`, seed `20260915` | `d745472` | `OE_texto 02a2c270d7ffe147` |
-| [`requests/E3_BALANCED_DOSE.md`](../requests/E3_BALANCED_DOSE.md) | hand-written spec | `af843a6`, issued `95b58d3` | — |
-| 62 configs re-pathed | `src/utils/migrate_configs.py` | `6d7af8e` | the 76 configs |
-| 72 retriever declarations | `src/utils/declare_retrievers.py` | `35e3606` | the 76 configs |
+Two commits are in play for each generated artefact and they are not the same one: the
+commit that *contains* the artefact, and the commit the generator stamped into its header
+(`git rev-parse HEAD` at generation, necessarily earlier). Both are given (audit F3).
+
+| Artefact | Generator | Containing commit | Stamped in header | Inputs |
+|---|---|---|---|---|
+| [`MANIFEST.md`](../MANIFEST.md) | `src/utils/build_manifest.py` | `2662e72` | `15f53ec` | the 12 data files, digested in place |
+| [`SPLITS.md`](../SPLITS.md) | `src/utils/build_splits.py`, seed `20260915` | `d745472` | `af843a6` | `OE_texto 02a2c270d7ffe147` |
+| [`requests/E3_BALANCED_DOSE.md`](../requests/E3_BALANCED_DOSE.md) | hand-written spec | `af843a6`, issued `95b58d3` | — | — |
+| 62 configs re-pathed | `src/utils/migrate_configs.py` | `6d7af8e` | — | the 76 configs |
+| 72 retriever declarations | `src/utils/declare_retrievers.py` | `35e3606` | — | the 76 configs |
 
 Both migration scripts verify rather than assert: each resolves every config before and
 after and refuses to write if any config would read a different file, or if anything but
 the intended key changed. Both reported zero defects over all 76.
 
-`SPLITS.md` was regenerated after committing and produced a byte-identical file
-(`8d520eb46fa2a2c5`), which is the only evidence that "seeded" means anything.
+`SPLITS.md` was regenerated after committing and produced a file **identical apart from the
+generation stamp line**, which is the only evidence that "seeded" means anything. It cannot
+be byte-identical: `build_splits.py` stamps `git rev-parse --short HEAD` into the header, so
+a regeneration at a later commit differs there by construction. The concept lists, the
+balance tables and every count are reproduced exactly. *(Corrected 2026-09-15 after audit
+F2; the original text claimed byte-identity and a digest `8d520eb46fa2a2c5` that the stamp
+makes unreachable.)*
 
 ## Findings
 
@@ -41,8 +50,15 @@ every `gold_item_key` present in the corpus, every `parent_key` matching, `item_
 `texto` and `resumen` carrying the same leaves in the same order, and no template rows.
 
 **The split.** 42 / 41 concepts, 35 422 / 34 820 leaves (50.4 % dev), 2 206 / 2 233 single
-and 2 521 / 2 477 stacked queries. Per-type balance is even within a few percent except for
-the two applicability-limited types.
+and 2 521 / 2 477 stacked queries. Per-type balance is **even to within ~2 points on four of
+the nine modification types** (`template_paraphrase` 50.3/49.7, `reorder` 51.4/48.6,
+`synonym_label` 49.5/50.5, `paraphrase` 51.2/48.8) and wider on the rest: `num_to_text`
+52.5/47.5, `unit_expansion` 45.0/55.0, `compression` 55.8/44.2, and the two
+applicability-limited types `unit_conversion` 37.2/62.8 and `expansion` 63.1/36.9. Those are
+the slices later sprints report per type, so they are given as numbers rather than as a
+summary adjective. *(Corrected 2026-09-15 after audit F6; the original text said "even
+within a few percent except for the two applicability-limited types", which understated
+`compression` and `unit_expansion`.)*
 
 **The seven OEB files had no digest anywhere.** They do now, but only forward: they were
 copied from `../bc3cat-dataset` on 2026-09-15 while repopulating `data/`, so nothing
@@ -94,6 +110,10 @@ Nine assumptions this sprint falsified. Six of them were ours.
    `elsarticle/graphical_abstract.png`, and the directory holds `references (11).bib` and
    `graphical_abstract (1).png` — download-mangled names. **The paper does not compile from
    this directory as it stands.** Left untouched; renaming is the author's call.
+   *(Overtaken 2026-09-15, after this report closed, by `a391ee9`: both files were renamed to
+   the names `paper_28.tex` expects. `graphical_abstract (1).pdf` is still mangled. Noted
+   after audit F5 — the finding was true at `912807a` and is read here as a record, not as
+   the state of the tree.)*
 
 ## Exit criteria
 
@@ -103,14 +123,37 @@ Nine assumptions this sprint falsified. Six of them were ours.
 | 2 · Splits committed, 83 concepts once each, checked not eyeballed | yes | `SPLITS.md` at `d745472`; generator asserts partition and coverage before writing |
 | 3 · Every config resolves to an existing module and declares its retriever | yes | 0 unresolvable, 0 undeclared, over 76; modules confirmed by importing them as the notebook does |
 | 4 · `dense_colbert128` runnable or deleted; D-017 closed | yes | deleted at `15f53ec`; D-017 `Accepted (remove)` |
-| 5 · A config on `collection: "OE"` resolves its inputs to the OE files | yes | `migrate_configs.py --target OE` reports the resolved paths — **see the caveat below** |
+| 5 · A config on `collection: "OE"` resolves its inputs to the OE files | yes | `configs/bm25_unigram_params__k1-0.60__b-0.35__OE.yaml` carries `collection: "OE"`; `resolve_config.py` reports its OE paths with nothing overriding the field — **see the caveat below** |
 | 6 · E3 request recorded with its issue date | yes | D-009, issued 2026-09-15, at `95b58d3` |
 | 7 · `runs/` still empty | yes | 0 files |
 
-**Caveat on criterion 5.** It is met as worded, and as worded it is weaker than it reads.
-The *config* resolves to the OE files; the *harness* does not read that resolution
-(finding 3). Anyone treating criterion 5 as "OE can now be run" would be wrong. S1 closes
-the gap.
+**Caveat on criterion 5.** It is met, and as worded it is weaker than it reads. The
+*config* resolves to the OE files; the *harness* does not read that resolution (finding 3),
+and the three OE feature files it resolves to are not built until S1. Anyone treating
+criterion 5 as "OE can now be run" would be wrong. S1 closes the gap.
+
+*Amended 2026-09-15 after audit F1.* At close, this criterion was evidenced by
+`migrate_configs.py --target OE`. That was the wrong proof: `--target` overrides
+`collection:` by design — `resolve(cfg, collection=args.target)` never reads the field — so
+it proved the input *templates* expand under a supplied collection, not that any config
+names OE. Every one of the 76 configs still said `OEB`. Closed by adding the 77th config,
+`bm25_unigram_params__k1-0.60__b-0.35__OE.yaml` (the manuscript's best lexical variant,
+k1=0.60 / b=0.35), and by `src/utils/resolve_config.py`, which resolves one config from that
+config alone:
+
+```
+bm25_unigram_params__k1-0.60__b-0.35__OE.yaml
+  collection:     'OE'  (from the config, nothing overriding it)
+  features_meta    /work/data/processed/OE_features_meta.json   [not built yet]
+  long_feats       /work/data/processed/OE_long_feats.parquet   [not built yet]
+  short_feats      /work/data/processed/OE_short_feats.parquet   [not built yet]
+```
+
+Its OEB twin is untouched and still resolves to the OEB files. With 77 configs,
+`migrate_configs.py` reports 0 defects and resolved inputs byte-identical before and after;
+0 configs lack a `retriever` block; the new filename still yields `bm25_unigram_params`
+under the notebook's `split("__", 1)[0]`, so finding 1's filename coupling is respected
+rather than tripped.
 
 ## Deviations from design
 
@@ -124,9 +167,10 @@ The dev fraction of 0.5 is **not** a deviation: the design set none. It is now D
 
 ## What the next sprint inherits
 
-**Artefacts.** `MANIFEST.md`, `SPLITS.md` (seed `20260915`), the E3 request in flight, 76
-configs that name their collection and their retriever, and four committed scripts under
-`src/utils/`.
+**Artefacts.** `MANIFEST.md`, `SPLITS.md` (seed `20260915`), the E3 request in flight, 77
+configs that name their collection and their retriever — one of them,
+`bm25_unigram_params__k1-0.60__b-0.35__OE.yaml`, on `collection: "OE"` — and five committed
+scripts under `src/utils/`, the fifth being `resolve_config.py` (added closing audit F1).
 
 **Debt, all of it created before S0 except the last two.**
 
@@ -164,6 +208,25 @@ the JSON's 47 514; the OE corpus carries no such row. Harmless today, confusing 
 
 ## Audit
 
-Not yet run. `/audit S0` must run in a fresh session that has not seen this work; the sprint
-is not `done` until it returns `PASS` or `PASS WITH FINDINGS` and the findings are resolved
-or recorded.
+Run 2026-09-15 in a fresh session against report commit `44a48ac`, repo HEAD `a391ee9`.
+Verdict **PASS WITH FINDINGS**, recorded verbatim in
+[`SPRINT_S0_AUDIT.md`](SPRINT_S0_AUDIT.md). It re-derived the five OE digests, all four
+corpus counts, the gold-integrity checks, the whole split (partition, per-subchapter and
+per-type tables) and the config inventory independently from the digested files, and found
+no numeric error. All six findings are provenance or wording defects. Disposition:
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| F1 · criterion 5 proven by `--target`, which overrides `collection:` | major | **resolved** — 77th config on `collection: "OE"` added, plus `src/utils/resolve_config.py`; criterion 5 re-evidenced and the caveat amended above |
+| F2 · "byte-identical regeneration" impossible, the header carries a commit stamp | minor | **resolved** — restated as identical apart from the generation stamp, with why |
+| F3 · artefacts stamped with two different commits, unlabelled | minor | **resolved** — the artefact table now gives containing commit and header stamp in separate columns |
+| F4 · `E3_BALANCED_DOSE.md` still read `Issued: (pending)` | minor | **resolved** — spec now reads `Issued: 2026-09-15 (D-009)`, matching D-009 and `STATE.md` |
+| F5 · finding 9 overtaken at HEAD by `a391ee9` | minor | **resolved** — dated note added in place; the finding stands as a record at `912807a` |
+| F6 · "even within a few percent" understated two types | minor | **resolved** — replaced with the nine per-type percentages |
+
+Five items the audit lists as **unverifiable** are accepted as such, not resolved, because no
+artefact can settle them: the Zenodo download (finding 8), the cross-repo issue of the E3
+request, OEB provenance before 2026-09-15, the migration scripts' output at the time they ran
+(the end state was re-verified), and finding 4's discarded decile variant (`build_splits.py`
+implements terciles only). The first four are human attestations and are labelled as such
+where they appear; the fifth is a discarded alternative, not a claim this sprint relies on.
