@@ -1,0 +1,583 @@
+
+#===== CELL 0 [code] =====
+# === features.ipynb — retrieval-oriented feature prep (Spanish construction items) ===
+
+# What this notebook does
+# -----------------------
+# Consumes the *normalized* corpora saved by data.ipynb and derives fields tailored
+# for our retrieval baselines (TF-IDF, BM25, char n-grams) plus quick previews.
+# It does **not** alter the canonical normalization; it only builds extra views.
+
+# Upstream inputs (produced by data.ipynb)
+# ----------------------------------------
+# - /work/data/processed/{COLLECTION}_short_norm.parquet
+# - /work/data/processed/{COLLECTION}_long_norm.parquet
+#  Each must contain at least:
+#  id, item_key, text_word, text_char, numbers, tokens_word,
+#  parameters_norm, param_values_multi_norm
+
+# Main outputs (only if SAVE=True)
+# --------------------------------
+# - /work/data/processed/{COLLECTION}_short_feats.parquet
+# - /work/data/processed/{COLLECTION}_long_feats.parquet
+# - /work/data/processed/{COLLECTION}_features_meta.json
+
+# Fields created here (in addition to upstream columns)
+# -----------------------------------------------------
+# - param_phrases                 : list[str] like ["volumen_relevante", ...]
+# - text_word_phrases_add         : str  (unigrams + merged phrase tokens)
+# - text_word_phrases_replace     : str  (phrase spans collapsed into one token)
+# - tokens_bigram                 : list[tuple[str, str]] (for analysis / previews)
+# - text_word_uni_bi              : str (optional convenience, unigrams + "w1|w2")
+# - has_numbers                   : bool
+# - tokens_word_bi                : list[str] (BM25 uni+bi single-token bigrams)
+
+# How these map to methods (quick reference)
+# ------------------------------------------
+# TF-IDF (unigram)                     -> text_word
+# TF-IDF (unigram + phrases, add)      -> text_word_phrases_add
+# TF-IDF (unigram + phrases, replace)  -> text_word_phrases_replace
+# TF-IDF (char 3–5)                    -> text_char  (analyzer='char_wb', ngram_range=(3,5))
+# BM25 (unigram)                       -> tokens_word
+# BM25 (unigram + bigram)              -> tokens_word_bi
+
+from pathlib import Path
+import json
+import pandas as pd
+import re
+import numpy as np
+from IPython.display import display  # for nice previews
+
+# ---- Config ----
+COLLECTION = "OEB"
+DATA_DIR   = Path("/work/data/processed")
+OUT_DIR    = DATA_DIR
+
+SAVE         = True      # set True when you're ready to write files
+PREVIEW_ROWS = 12
+
+# Feature switches
+CFG = {
+    "use_param_phrases": True,
+    "also_keep_raw_text": True,   # only affects *_add (replace ignores this)
+    "make_bigrams": True,
+    "mark_has_numbers": True,
+}
+
+# File names
+SHORT_FILE = DATA_DIR / f"{COLLECTION}_short_norm.parquet"
+LONG_FILE  = DATA_DIR / f"{COLLECTION}_long_norm.parquet"
+
+# --- Helpers (consistent with data.ipynb) ---
+WORD_TOKEN_RE = re.compile(r"[a-záéíóúüñ]+|\d+(?:\.\d+)?(?:x\d+(?:\.\d+)?)?", flags=re.UNICODE)
+
+def snake_merge(norm_string: str) -> str:
+    toks = WORD_TOKEN_RE.findall(str(norm_string))
+    return "_".join(toks)
+
+def make_bigrams(tokens):
+    return [(tokens[i], tokens[i+1]) for i in range(len(tokens)-1)] if len(tokens) >= 2 else []
+
+def to_space_joined_bigrams(bigrams):
+    return " ".join([f"{a}|{b}" for (a,b) in bigrams])
+
+# --- Preview helpers ---
+def _trunc(s, n=140):
+    s = str(s)
+    return s if len(s) <= n else s[:n-1] + "…"
+
+def _as_list_local(x):
+    import numpy as np, pandas as pd
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return []
+    if isinstance(x, list):
+        return x
+    if isinstance(x, tuple):
+        return list(x)
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    return [x]
+
+def _join_bigrams(bigrams, k=10):
+    pairs = _as_list_local(bigrams)[:k]
+    return [f"{a}_{b}" for (a,b) in pairs]
+
+def summary_bm25(df, name="short"):
+    lu  = df["tokens_word"].map(lambda xs: len(_as_list_local(xs))).mean()
+    lb  = df["tokens_bigram"].map(lambda xs: len(_as_list_local(xs))).mean() if "tokens_bigram" in df else 0.0
+    lub = df["tokens_word_bi"].map(lambda xs: len(_as_list_local(xs))).mean() if "tokens_word_bi" in df else 0.0
+    print(f"[{name}] BM25 token lengths — unigrams={lu:.1f}, bigrams={lb:.1f}, uni+bi={lub:.1f}")
+
+def preview_bm25(df, name="short", n=8, head_uni=10, head_bi=8):
+    has_bi = df["tokens_bigram"].map(lambda xs: len(_as_list_local(xs)) > 0) if "tokens_bigram" in df else df.index == -1
+    sample = df.loc[has_bi].head(n).copy()
+    if sample.empty:
+        print(f"[{name}] no BM25 bigrams to preview.")
+        return
+    sample = sample.assign(
+        len_uni = sample["tokens_word"].map(lambda xs: len(_as_list_local(xs))),
+        len_bi  = sample["tokens_bigram"].map(lambda xs: len(_as_list_local(xs))),
+        len_uni_bi = sample["tokens_word_bi"].map(lambda xs: len(_as_list_local(xs))) if "tokens_word_bi" in sample else 0
+    )
+    sample["tokens_word_head"] = sample["tokens_word"].map(lambda xs: _as_list_local(xs)[:head_uni])
+    sample["bigrams_head"]     = sample["tokens_bigram"].map(lambda xs: _join_bigrams(xs, head_bi))
+    sample["tokens_word_bi_head"] = sample["tokens_word_bi"].map(lambda xs: _as_list_local(xs)[:head_uni+head_bi]) if "tokens_word_bi" in sample else [[]]
+    display(sample[["item_key","len_uni","len_bi","len_uni_bi","tokens_word_head","bigrams_head","tokens_word_bi_head"]])
+
+def preview_features(df, name="short", n=13):
+    cols = [
+        "item_key",
+        "param_values_multi_norm",
+        "param_phrases",
+        *([ "text" ] if "text" in df.columns else []),
+        "text_word",
+        "text_word_phrases_add",
+        "text_word_phrases_replace",
+        "has_numbers"
+    ]
+    has = df["param_phrases"].map(lambda x: isinstance(x, (list, tuple)) and len(x) > 0)
+    sample = df.loc[has, cols].head(n).copy()
+    if sample.empty:
+        print(f"[{name}] no rows with param_phrases to preview.")
+        return
+    for c in ["text_word","text_word_phrases_add","text_word_phrases_replace"]:
+        sample[c] = sample[c].map(lambda x: _trunc(x, 140))
+    sample["#phrases"] = sample["param_phrases"].map(len)
+    display(sample)
+
+def summary_stats(df, name="short"):
+    pct_with_phr = 100 * (df["param_phrases"].map(len) > 0).mean()
+    avg_phr = df["param_phrases"].map(len).mean()
+    base = df["text_word"].str.split().map(len)
+    add  = df["text_word_phrases_add"].str.split().map(len)
+    rep  = df["text_word_phrases_replace"].str.split().map(len)
+    print(f"[{name}] % rows with param_phrases: {pct_with_phr:.2f}% | avg phrases/doc: {avg_phr:.2f}")
+    print(f"[{name}] avg token len: base={base.mean():.1f} | add={add.mean():.1f} | replace={rep.mean():.1f}")
+    print(f"[{name}] Δ(add-base)={ (add-base).mean():+.1f} | Δ(replace-base)={ (rep-base).mean():+.1f}")
+
+# --- Load normalized corpora ---
+short_df = pd.read_parquet(SHORT_FILE)
+long_df  = pd.read_parquet(LONG_FILE)
+
+# Ensure raw text column exists; if missing, fall back to text_word (safe)
+for _df in (short_df, long_df):
+    if "text" not in _df.columns:
+        _df["text"] = _df["text_word"]
+
+required_cols = [
+    "id","item_key", "text_word","text_char","numbers",
+    "parameters_norm","param_values_multi_norm","tokens_word"
+]
+for name, df in [("short", short_df), ("long", long_df)]:
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        raise KeyError(f"{name} corpus missing columns: {missing}")
+
+# --- Phrase handling: build param_phrases; then ADD & REPLACE variants ----------
+def _norm_list(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return []
+    return list(x) if isinstance(x, (list, tuple)) else [x]
+
+def _as_tokens_str(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return []
+    if isinstance(x, (list, tuple, np.ndarray)):
+        return [str(t) for t in x]
+    return str(x).split()
+
+def _find_phrase_occurrences(tokens, phrase_words):
+    occ = []
+    L = len(phrase_words)
+    if L == 0 or L > len(tokens):
+        return occ
+    i = 0
+    while i <= len(tokens) - L:
+        if tokens[i:i+L] == phrase_words:
+            occ.append(i)
+            i += L  # non-overlap
+        else:
+            i += 1
+    return occ
+
+def inject_phrases_add(tokens, phrases):
+    """
+    Metadata-aware ADD:
+      - Always append every phrase token from metadata (independent of presence in text).
+      - Keep original tokens intact.
+    """
+    tokens = list(tokens)
+    merged = ["_".join(p.split("_")) if "_" in p else "_".join(p.split()) for p in phrases]
+    # phrases in our pipeline already come snake_cased; the line above is just defensive.
+    return tokens + list(merged)
+
+def inject_phrases_replace(tokens, phrases):
+    """
+    Metadata-aware REPLACE:
+      1) Replace any *contiguous* occurrences in the base tokens by the merged token
+         (longer phrases first; non-overlapping).
+      2) Append ONLY the phrases that did NOT occur in the text (so metadata is still visible).
+    """
+    tokens = list(tokens)
+
+    # normalize phrases to word lists (split on '_' preferred, fallback on space)
+    norm = []
+    for p in phrases:
+        parts = p.split("_")
+        if len(parts) == 1:
+            parts = p.split()
+        norm.append((p, parts))
+
+    # sort by length desc so longer phrases win overlaps
+    norm.sort(key=lambda x: (-len(x[1]), x[0]))
+
+    marks, occupied = [], set()
+    found = set()
+
+    for p, words in norm:
+        for s in _find_phrase_occurrences(tokens, words):
+            idxs = range(s, s+len(words))
+            if any(j in occupied for j in idxs):
+                continue
+            marks.append((s, len(words), p))  # p is already snake_cased
+            occupied.update(idxs)
+            found.add(p)
+
+    if marks:
+        marks.sort(key=lambda t: t[0])
+        out, cur = [], 0
+        for s, L, merged in marks:
+            while cur < s:
+                out.append(tokens[cur]); cur += 1
+            out.append(merged); cur = s + L
+        out.extend(tokens[cur:])
+    else:
+        out = tokens
+
+    # Append phrases that were NOT found in text
+    not_found = [p for p, _ in norm if p not in found]
+    return out + not_found
+# --- rebuild param_phrases and the two injected text fields -------------------
+
+def rebuild_param_phrases(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    # param_values_multi_norm is a list of distinct parameter values — keep them separate
+    def _norm_list_vals(x):
+        if x is None or (isinstance(x, float) and pd.isna(x)):
+            return []
+        if isinstance(x, (list, tuple, np.ndarray)):
+            return [str(t).strip() for t in x if str(t).strip()]
+        # string fallback: treat it as a single value (upstream ideally keeps lists)
+        s = str(x).strip()
+        return [s] if s else []
+
+    df["param_phrases"] = df["param_values_multi_norm"].map(
+        lambda vals: sorted(
+            {snake_merge(v) for v in _norm_list_vals(vals)},
+            key=lambda s: (-len(s.split("_")), s)
+        )
+    )
+    return df
+
+# Apply to short/long
+short_feat = rebuild_param_phrases(short_df)
+long_feat  = rebuild_param_phrases(long_df)
+
+# Build the two variants
+base_tokens_short = short_feat["text_word"].map(_as_tokens_str)
+base_tokens_long  = long_feat["text_word"].map(_as_tokens_str)
+
+short_feat["text_word_phrases_add"] = [
+    " ".join(inject_phrases_add(toks, phrs))
+    for toks, phrs in zip(base_tokens_short, short_feat["param_phrases"])
+]
+short_feat["text_word_phrases_replace"] = [
+    " ".join(inject_phrases_replace(toks, phrs))
+    for toks, phrs in zip(base_tokens_short, short_feat["param_phrases"])
+]
+
+long_feat["text_word_phrases_add"] = [
+    " ".join(inject_phrases_add(toks, phrs))
+    for toks, phrs in zip(base_tokens_long, long_feat["param_phrases"])
+]
+long_feat["text_word_phrases_replace"] = [
+    " ".join(inject_phrases_replace(toks, phrs))
+    for toks, phrs in zip(base_tokens_long, long_feat["param_phrases"])
+]
+
+display(
+    long_feat.loc[:, ["item_key", "text_word", "text_word_params", "param_tokens"]].head(8)
+)
+
+# --- Derived features (optional) ----------------------------------------------
+def add_optional_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    if CFG["make_bigrams"]:
+        df["tokens_bigram"] = df["tokens_word"].map(make_bigrams)
+        df["text_word_uni_bi"] = df["text_word"] + " " + df["tokens_bigram"].map(to_space_joined_bigrams)
+    if CFG["mark_has_numbers"]:
+        df["has_numbers"] = df["numbers"].map(lambda xs: len(xs) > 0)
+    return df
+
+short_feat = add_optional_features(short_feat)
+long_feat  = add_optional_features(long_feat)
+
+# --- Explicit bigram tokens for BM25 (unigram + bigram) -----------------------
+def _as_list(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return []
+    if isinstance(x, list):
+        return x
+    if isinstance(x, tuple):
+        return list(x)
+    if isinstance(x, np.ndarray):
+        return x.tolist()
+    return [x]
+
+def add_bm25_bigram_tokens(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    if "tokens_bigram" not in df.columns:
+        def _make_bigrams(tokens):
+            toks = _as_list(tokens)
+            return [(toks[i], toks[i+1]) for i in range(len(toks)-1)] if len(toks) >= 2 else []
+        df["tokens_bigram"] = df["tokens_word"].map(_make_bigrams)
+    df["tokens_word"]   = df["tokens_word"].map(_as_list)
+    df["tokens_bigram"] = df["tokens_bigram"].map(_as_list)
+    df["tokens_word_bi"] = df.apply(
+        lambda r: _as_list(r["tokens_word"]) + [f"{a}_{b}" for (a, b) in _as_list(r["tokens_bigram"])],
+        axis=1
+    )
+    return df
+
+short_feat = add_bm25_bigram_tokens(short_feat)
+long_feat  = add_bm25_bigram_tokens(long_feat)
+
+# --- Minimal schema check ------------------------------------------------------
+must_have = [
+    "id","item_key","text_word","text_char","numbers","tokens_word",
+    "param_phrases","text_word_phrases_add","text_word_phrases_replace"
+]
+missing_short = [c for c in must_have if c not in short_feat.columns]
+missing_long  = [c for c in must_have if c not in long_feat.columns]
+if missing_short or missing_long:
+    raise KeyError(f"Missing required feature columns — short:{missing_short} | long:{missing_long}")
+
+# --- PREVIEW (clean, self-contained, full text) -------------------------------
+import pandas as pd
+import numpy as np
+from IPython.display import display
+
+# Show full strings / wide frames
+pd.set_option("display.max_colwidth", None)
+pd.set_option("display.expand_frame_repr", False)
+pd.set_option("display.max_rows", 200)
+pd.set_option("display.max_columns", 200)
+
+def _as_list(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)): return []
+    if isinstance(x, list): return x
+    if isinstance(x, tuple): return list(x)
+    if isinstance(x, np.ndarray): return x.tolist()
+    return [x]
+
+def _split_words(s):
+    if s is None or (isinstance(s, float) and pd.isna(s)): return []
+    return str(s).split()
+
+def _phrase_words(p):
+    return p.split("_") if isinstance(p, str) and "_" in p else str(p).split()
+
+def _occurred_contiguously(tokens, phrase):
+    words = _phrase_words(phrase); L = len(words)
+    for i in range(0, max(0, len(tokens) - L + 1)):
+        if tokens[i:i+L] == words: return True
+    return False
+
+def _summary_block(df, name):
+    # base/add/replace lengths (gracefully handle missing)
+    base_len = df["text_word"].map(_split_words).map(len) if "text_word" in df else pd.Series([np.nan]*len(df))
+    add_len  = df["text_word_phrases_add"].map(_split_words).map(len) if "text_word_phrases_add" in df else pd.Series([np.nan]*len(df))
+    rep_len  = df["text_word_phrases_replace"].map(_split_words).map(len) if "text_word_phrases_replace" in df else pd.Series([np.nan]*len(df))
+
+    # phrases
+    phrs = df["param_phrases"].map(_as_list) if "param_phrases" in df else pd.Series([[]]*len(df))
+    pct_with_phr = 100 * phrs.map(lambda xs: len(xs) > 0).mean() if len(df) else 0.0
+    avg_phr = phrs.map(len).mean() if len(df) else 0.0
+
+    print(f"[{name}] rows={len(df):,} | % with phrases={pct_with_phr:.2f}% | avg phrases/doc={avg_phr:.2f}")
+    if "text_word" in df:
+        print(f"[{name}] avg tokens — base={base_len.mean():.1f}", end="")
+        if "text_word_phrases_add" in df:  print(f" | add={add_len.mean():.1f} (Δ={ (add_len-base_len).mean():+.1f})", end="")
+        if "text_word_phrases_replace" in df: print(f" | replace={rep_len.mean():.1f} (Δ={ (rep_len-base_len).mean():+.1f})", end="")
+        print()
+
+def _bm25_summary(df, name):
+    if "tokens_word" not in df: 
+        print(f"[{name}] BM25: tokens_word not found — skipping."); 
+        return
+    lu = df["tokens_word"].map(lambda xs: len(_as_list(xs))).mean()
+    lb = df["tokens_bigram"].map(lambda xs: len(_as_list(xs))).mean() if "tokens_bigram" in df else 0.0
+    lub = df["tokens_word_bi"].map(lambda xs: len(_as_list(xs))).mean() if "tokens_word_bi" in df else 0.0
+    print(f"[{name}] BM25 token lengths — unigrams={lu:.1f}, bigrams={lb:.1f}, uni+bi={lub:.1f}")
+
+def _bm25_preview(df, name, n=8, head_uni=10, head_bi=8):
+    if "tokens_word" not in df: 
+        print(f"[{name}] BM25 preview skipped (tokens_word missing).")
+        return
+    has_bi = df["tokens_bigram"].map(lambda xs: len(_as_list(xs)) > 0) if "tokens_bigram" in df else pd.Series(False, index=df.index)
+    sample = df.loc[has_bi].head(n).copy()
+    if sample.empty:
+        print(f"[{name}] no BM25 bigrams to preview."); 
+        return
+    sample["len_uni"] = sample["tokens_word"].map(lambda xs: len(_as_list(xs)))
+    sample["len_bi"]  = sample["tokens_bigram"].map(lambda xs: len(_as_list(xs)))
+    sample["len_uni_bi"] = sample["tokens_word_bi"].map(lambda xs: len(_as_list(xs))) if "tokens_word_bi" in sample else 0
+    sample["tokens_word_head"] = sample["tokens_word"].map(lambda xs: _as_list(xs)[:head_uni])
+    sample["bigrams_head"]     = sample["tokens_bigram"].map(lambda xs: [f"{a}_{b}" for (a,b) in _as_list(xs)[:head_bi]])
+    if "tokens_word_bi" in sample:
+        sample["tokens_word_bi_head"] = sample["tokens_word_bi"].map(lambda xs: _as_list(xs)[:head_uni+head_bi])
+    cols = ["item_key","len_uni","len_bi","len_uni_bi","tokens_word_head","bigrams_head"]
+    if "tokens_word_bi_head" in sample: cols.append("tokens_word_bi_head")
+    display(sample[cols])
+
+def _full_text_preview(df, name, n=12):
+    if len(df) == 0:
+        print(f"[{name}] empty DataFrame."); 
+        return
+    sub = df.copy()
+    sub["param_phrases"] = sub["param_phrases"].map(_as_list) if "param_phrases" in sub else [[]]*len(sub)
+    sub["base_tokens"]   = sub["text_word"].map(_split_words) if "text_word" in sub else [[]]*len(sub)
+
+    # which phrases occur contiguously in base text?
+    sub["phrases_in_base"] = sub.apply(
+        lambda r: [p for p in r["param_phrases"] if _occurred_contiguously(r["base_tokens"], p)],
+        axis=1
+    ) if "param_phrases" in sub and "text_word" in sub else [[]]*len(sub)
+
+    # phrases appended in REPLACE variant (metadata but not found in text)
+    sub["phrases_appended_replace"] = sub.apply(
+        lambda r: [p for p in r["param_phrases"] if p not in set(r.get("phrases_in_base", []))],
+        axis=1
+    ) if "param_phrases" in sub else [[]]*len(sub)
+
+    # lengths
+    sub["len_base"]    = sub["text_word"].map(lambda s: len(_split_words(s))) if "text_word" in sub else np.nan
+    sub["len_add"]     = sub["text_word_phrases_add"].map(lambda s: len(_split_words(s))) if "text_word_phrases_add" in sub else np.nan
+    sub["len_replace"] = sub["text_word_phrases_replace"].map(lambda s: len(_split_words(s))) if "text_word_phrases_replace" in sub else np.nan
+    sub["Δadd"]        = sub["len_add"] - sub["len_base"] if "text_word_phrases_add" in sub else np.nan
+    sub["Δreplace"]    = sub["len_replace"] - sub["len_base"] if "text_word_phrases_replace" in sub else np.nan
+
+    # keep only rows with phrases
+    mask_has_phr = sub["param_phrases"].map(lambda xs: len(xs) > 0)
+    sub = sub.loc[mask_has_phr, [
+        c for c in [
+            "item_key",
+            "param_phrases",
+            "phrases_in_base",
+            "phrases_appended_replace",
+            ("text" if "text" in sub.columns else None),
+            "text_word",
+            "text_word_phrases_add",
+            "text_word_phrases_replace",
+            "len_base","len_add","len_replace","Δadd","Δreplace"
+        ] if c in sub.columns
+    ]].head(PREVIEW_ROWS)
+
+    print(f"\n== {name.upper()} — FULL PREVIEW (showing {len(sub)} rows) ==")
+    display(sub)
+
+# === SUMMARY ===
+print("\n=== SUMMARY ===")
+_summary_block(short_feat, "short")
+_summary_block(long_feat,  "long")
+
+# === FULL TEXT PREVIEWS (no truncation) ===
+_full_text_preview(short_feat, "short", n=PREVIEW_ROWS)
+_full_text_preview(long_feat,  "long",  n=PREVIEW_ROWS)
+
+# === BM25 SUMMARIES / PREVIEWS ===
+print("\n=== BM25 SUMMARY ===")
+_bm25_summary(short_feat, "short")
+_bm25_summary(long_feat,  "long")
+
+print("\n--- BM25 preview (SHORT) ---")
+_bm25_preview(short_feat, "short", n=8, head_uni=10, head_bi=8)
+
+print("\n--- BM25 preview (LONG) ---")
+_bm25_preview(long_feat, "long", n=8, head_uni=10, head_bi=8)
+
+# === Alignment sanity check ===
+if "param_phrases" in short_feat and "param_phrases" in long_feat:
+    chk = (
+        short_feat[["item_key","param_phrases"]]
+        .merge(long_feat[["item_key","param_phrases"]], on="item_key", suffixes=("_short","_long"))
+    )
+    align_rate = (chk.apply(lambda r: set(_as_list(r["param_phrases_short"])) == set(_as_list(r["param_phrases_long"])), axis=1)).mean()
+    print(f"\nParam phrase alignment rate (short vs long): {align_rate:.3f}")
+else:
+    print("\nParam phrase alignment check skipped (param_phrases missing).")
+
+# --- SAVE (single switch) -----------------------------------------------------
+if SAVE:
+    out_short = OUT_DIR / f"{COLLECTION}_short_feats.parquet"
+    out_long  = OUT_DIR / f"{COLLECTION}_long_feats.parquet"
+    short_feat.to_parquet(out_short, index=False)
+    long_feat.to_parquet(out_long, index=False)
+
+    features_meta = {
+        "collection": COLLECTION,
+        "text_fields": {
+            "raw_text" : "text",
+            "word_unigram": "text_word",
+            "word_unigram_phrases_add": "text_word_phrases_add",
+            "word_unigram_phrases_replace": "text_word_phrases_replace",
+            "char_3_5": "text_char",
+            "word_unigram_params": "text_word_params"
+        },
+        "token_fields": {
+            "bm25_unigram": "tokens_word",
+            "bm25_unigram_bigram": "tokens_word_bi"
+        },
+        "aux_fields": {
+            "numbers": "numbers",
+            "tokens_word": "tokens_word",
+            "has_numbers": "has_numbers" if "has_numbers" in short_feat.columns else None,
+            "param_phrases": "param_phrases",
+            "param_tokens": "param_tokens"
+        }
+    }
+
+    meta_path = OUT_DIR / f"{COLLECTION}_features_meta.json"
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(features_meta, f, ensure_ascii=False, indent=2)
+
+    print("\nSaved:")
+    print("  ", out_short)
+    print("  ", out_long)
+    print("  ", meta_path)
+else:
+    print("\nNot saving (SAVE is False). Set SAVE=True to write files.")
+
+#--- OUT ---
+    item_key                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          text_word                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       text_word_params                                                                                                             param_tokens
+0  OEB010aaa                 ejecución de canalización para línea subterránea de doble circuito de 220 o 400 kv de cables entubados y tubos embebidos en hormigón hm 20 de dimensiones totales 2 m de ancho por 1.60 m de alto hormigonado hasta cota de 760 mm de profundidad posterior
+...[TRUNC]...
+subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+1  OEB010aab      206     205         411  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de]  [ejecución_de, de_canalización, canalización_para, para_línea, línea_subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+2  OEB010aac      208     207         415  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de]  [ejecución_de, de_canalización, canalización_para, para_línea, línea_subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+3  OEB010aba      206     205         411  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de]  [ejecución_de, de_canalización, canalización_para, para_línea, línea_subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+4  OEB010abb      206     205         411  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de]  [ejecución_de, de_canalización, canalización_para, para_línea, línea_subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+5  OEB010abc      208     207         415  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de]  [ejecución_de, de_canalización, canalización_para, para_línea, línea_subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+6  OEB010baa      206     205         411  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de]  [ejecución_de, de_canalización, canalización_para, para_línea, línea_subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+7  OEB010bab      206     205         411  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de]  [ejecución_de, de_canalización, canalización_para, para_línea, línea_subterránea, subterránea_de, de_doble, doble_circuito]  [ejecución, de, canalización, para, línea, subterránea, de, doble, circuito, de, 220, o, 400, kv, de, cables, entubados, y]
+
+Param phrase alignment rate (short vs long): 1.000
+
+Saved:
+   /work/data/processed/OEB_short_feats.parquet
+   /work/data/processed/OEB_long_feats.parquet
+   /work/data/processed/OEB_features_meta.json
+
+
+#===== CELL 1 [code] =====
+

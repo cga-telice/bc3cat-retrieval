@@ -1,0 +1,369 @@
+
+#===== CELL 0 [markdown] =====
+# Rank Distribution Analysis
+
+## Purpose
+Analyze where the correct (gold) document appears in the retrieved rankings
+across different methods. Useful for understanding retrieval failure modes.
+
+## Inputs
+- Retrieval results from `/work/runs/*/results_top*.jsonl.gz`
+
+## Outputs
+- `/work/eval/rank_distribution/gold_ranks_per_query.csv`: Per-query gold ranks
+- `/work/eval/rank_distribution/gold_ranks_summary.csv`: Summary statistics
+- `/work/eval/rank_distribution/rank_hist__*.png`: Histogram plots
+- `/work/eval/rank_distribution/rank_cdf__*.png`: CDF plots
+
+## What This Notebook Does
+1. Discovers all completed runs under `/work/runs/`
+2. Filters to keep only canonical BM25 variants (bm25_unigram, bm25_unibigram)
+3. For each method, loads top-K results
+4. Finds the rank of the gold document for each query
+5. Computes summary statistics (mean rank, median, % in top-1/5/10)
+6. Generates histogram and CDF visualizations
+7. Saves all outputs to `/work/eval/rank_distribution/`
+
+#===== CELL 1 [code] =====
+# rank_distribution.ipynb — analyze where the gold answer appears in top-100
+# Keeps all methods, but only bm25_unigram and bm25_unibigram among BM25 family
+# Saves results to /work/evals/rank_distribution/
+
+import os, json, gzip
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+RUNS_DIR = Path("/work/runs")
+EVALS_DIR = Path("/work/eval/rank_distribution")
+EVALS_DIR.mkdir(parents=True, exist_ok=True)
+
+TOPK = 100
+
+# Which BM25 methods to keep
+BM25_CANONICAL = {"bm25_unigram", "bm25_unibigram"}
+
+def detect_method(run_dir: Path) -> str:
+    """Return method name based on folder path."""
+    return run_dir.name
+
+def load_results(results_path: Path) -> list[dict]:
+    rows = []
+    with gzip.open(results_path, "rt", encoding="utf-8") as gz:
+        for ln in gz:
+            if not ln.strip(): continue
+            obj = json.loads(ln)
+            qid = str(obj["query_item_key"])
+            gold = str(obj["query_item_key"])  # same id
+            cands = [str(c["index_item_key"]) for c in obj.get("candidates", [])]
+            try:
+                rank = cands.index(gold) + 1
+            except ValueError:
+                rank = None
+            rows.append({"query_item_key": qid, "gold_rank": rank})
+    return rows
+
+def latest_results_file(run_dir: Path) -> Path|None:
+    cands = sorted(run_dir.glob("results_top*.jsonl.gz"))
+    return cands[-1] if cands else None
+
+all_dfs = []
+summary_rows = []
+
+for run_dir in sorted(RUNS_DIR.iterdir()):
+    if not run_dir.is_dir(): continue
+    method = detect_method(run_dir)
+
+    # Skip BM25 variants that are not canonical
+    if method.startswith("bm25") and method not in BM25_CANONICAL or method.startswith("prf_"):
+        continue
+
+    res_path = latest_results_file(run_dir)
+    if res_path is None:
+        continue
+
+    print(f"Processing {method} …")
+    rows = load_results(res_path)
+    df = pd.DataFrame(rows)
+    df["method"] = method
+    all_dfs.append(df)
+
+    # Coverage
+    total = len(df)
+    found = df["gold_rank"].notna().sum()
+    coverage = found / total
+    ranks = df["gold_rank"].dropna()
+    mean_rank = ranks.mean() if not ranks.empty else np.nan
+    median_rank = ranks.median() if not ranks.empty else np.nan
+
+    summary_rows.append({
+        "method": method,
+        "n_queries": total,
+        "coverage@100": coverage,
+        "mean_rank": mean_rank,
+        "median_rank": median_rank,
+    })
+
+# Save per-query ranks
+all_df = pd.concat(all_dfs, ignore_index=True)
+all_df.to_csv(EVALS_DIR / "gold_ranks_per_query.csv", index=False)
+
+# Save summary
+summary_df = pd.DataFrame(summary_rows).sort_values("coverage@100", ascending=False)
+summary_df.to_csv(EVALS_DIR / "gold_ranks_summary.csv", index=False)
+
+# Plot histograms + CDF
+for method, df in all_df.groupby("method"):
+    ranks = df["gold_rank"].dropna()
+    plt.figure(figsize=(7,4))
+    plt.hist(ranks, bins=[1,2,5,10,20,50,100], edgecolor="black", align="left")
+    plt.xscale("log")
+    plt.xlabel("Rank position (log bins)")
+    plt.ylabel("Count")
+    plt.title(f"Rank distribution — {method}")
+    plt.tight_layout()
+    plt.savefig(EVALS_DIR / f"rank_hist__{method}.png", dpi=150)
+    plt.close()
+
+    # CDF
+    plt.figure(figsize=(7,4))
+    sorted_r = np.sort(ranks)
+    yvals = np.arange(1, len(sorted_r)+1) / len(sorted_r)
+    plt.plot(sorted_r, yvals, marker=".", linestyle="none")
+    plt.xscale("log")
+    plt.xlabel("Rank (log)")
+    plt.ylabel("Cumulative fraction")
+    plt.title(f"CDF of gold ranks — {method}")
+    plt.tight_layout()
+    plt.savefig(EVALS_DIR / f"rank_cdf__{method}.png", dpi=150)
+    plt.close()
+
+print("\nDone. Outputs saved to", EVALS_DIR)
+print(" - gold_ranks_per_query.csv (per query rank)")
+print(" - gold_ranks_summary.csv (summary stats)")
+print(" - rank_hist__*.png, rank_cdf__*.png (plots)")
+
+#--- OUT ---
+Processing bm25_unibigram …
+Processing bm25_unigram …
+Processing tfidf_char_3_5 …
+Processing tfidf_unigram …
+Processing tfidf_unigram_nostop …
+Processing tfidf_unigram_phrases_add …
+Processing tfidf_unigram_phrases_replace …
+
+Done. Outputs saved to /work/eval/rank_distribution
+ - gold_ranks_per_query.csv (per query rank)
+ - gold_ranks_summary.csv (summary stats)
+ - rank_hist__*.png, rank_cdf__*.png (plots)
+
+
+#===== CELL 2 [code] =====
+# rank_distribution.ipynb — gold-rank analysis with bucketed percentages
+# Includes all runs except: prf_* and non-canonical bm25_*
+# Keeps only: bm25_unigram, bm25_unibigram, plus any non-BM25, non-PRF runs.
+import os, json, gzip
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+RUNS_DIR = Path("/work/runs")
+EVALS_DIR = Path("/work/eval/rank_distribution")
+EVALS_DIR.mkdir(parents=True, exist_ok=True)
+
+TOPK = 100
+BM25_CANONICAL = {"bm25_unigram", "bm25_unibigram"}
+
+def detect_method(run_dir: Path) -> str:
+    # method is the top-level folder name under /work/runs
+    return run_dir.name
+
+def latest_results_file(run_dir: Path) -> Path|None:
+    # Search current dir
+    cands = sorted(run_dir.glob("results_top*.jsonl.gz"))
+    # Also search immediate subfolders (sometimes runs are nested)
+    for sub in sorted(run_dir.iterdir()):
+        if sub.is_dir():
+            cands += sorted(sub.glob("results_top*.jsonl.gz"))
+    return cands[-1] if cands else None
+
+def load_results(results_path: Path) -> list[dict]:
+    rows = []
+    with gzip.open(results_path, "rt", encoding="utf-8") as gz:
+        for ln in gz:
+            if not ln.strip(): continue
+            obj = json.loads(ln)
+            qid = str(obj["query_item_key"])
+            gold = qid  # gold is the same id
+            cands = [str(c["index_item_key"]) for c in obj.get("candidates", [])]
+            try:
+                rank = cands.index(gold) + 1
+            except ValueError:
+                rank = None
+            rows.append({"query_item_key": qid, "gold_rank": rank})
+    return rows
+
+def bucket_counts(series: pd.Series, total: int) -> dict:
+    """Return counts and percentages in the requested buckets."""
+    # series contains ranks (ints) and NaN for misses
+    miss = series.isna().sum()
+    s = series.dropna().astype(int)
+    b_1      = (s == 1).sum()
+    b_2_5    = ((s >= 2)  & (s <= 5 )).sum()
+    b_6_10   = ((s >= 6)  & (s <= 10)).sum()
+    b_11_20  = ((s >= 11) & (s <= 20)).sum()
+    b_21_50  = ((s >= 21) & (s <= 50)).sum()
+    b_51_100 = ((s >= 51) & (s <= 100)).sum()
+    pct = lambda x: x / total if total else 0.0
+    return {
+        "p_at1":       pct(b_1),
+        "p_2_5":       pct(b_2_5),
+        "p_6_10":      pct(b_6_10),
+        "p_11_20":     pct(b_11_20),
+        "p_21_50":     pct(b_21_50),
+        "p_51_100":    pct(b_51_100),
+        "p_miss_gt100":pct(miss),
+        "coverage@100":pct(total - miss),
+        "found_count": total - miss,
+        "miss_count":  miss,
+    }
+
+# Gather methods to include
+included = []
+for run_dir in sorted(RUNS_DIR.iterdir()):
+    if not run_dir.is_dir():
+        continue
+    method = detect_method(run_dir)
+    # Exclude rules:
+    # - skip prf_* runs
+    # - skip bm25_* unless canonical
+    if method.startswith("prf_"):
+        continue
+    if method.startswith("bm25") and method not in BM25_CANONICAL:
+        continue
+    # Keep if there is at least one results file
+    if latest_results_file(run_dir) is not None:
+        included.append(run_dir)
+
+# Write the included methods list
+with open(EVALS_DIR / "methods_included.txt", "w", encoding="utf-8") as f:
+    for d in included:
+        f.write(d.name + "\n")
+
+print("Included methods:", [d.name for d in included])
+
+# Process runs
+all_rows = []
+summary_rows = []
+
+for run_dir in included:
+    method = run_dir.name
+    res_path = latest_results_file(run_dir)
+    print(f"Processing {method} → {res_path}")
+    rows = load_results(res_path)
+    df = pd.DataFrame(rows)
+    df["method"] = method
+    all_rows.append(df)
+
+    total = len(df)
+    ranks = df["gold_rank"]
+    stats = bucket_counts(ranks, total=total)
+
+    # mean/median of found ranks only
+    found_ranks = ranks.dropna().astype(int)
+    mean_rank = float(found_ranks.mean()) if not found_ranks.empty else np.nan
+    median_rank = float(found_ranks.median()) if not found_ranks.empty else np.nan
+
+    summary_rows.append({
+        "method": method,
+        "n_queries": total,
+        **stats,
+        "mean_rank_found": mean_rank,
+        "median_rank_found": median_rank,
+    })
+
+# Save per-query ranks
+all_df = pd.concat(all_rows, ignore_index=True) if all_rows else pd.DataFrame(columns=["query_item_key","gold_rank","method"])
+all_df.to_csv(EVALS_DIR / "gold_ranks_per_query.csv", index=False)
+
+# Save summary with bucketed percentages
+summary_df = pd.DataFrame(summary_rows).sort_values(["coverage@100","p_at1"], ascending=[False, False])
+summary_path = EVALS_DIR / "gold_ranks_summary.csv"
+summary_df.to_csv(summary_path, index=False)
+
+print("\nSaved:", summary_path)
+
+# Optional: plots per method (histogram + CDF). Comment out if not needed.
+for method, dfm in all_df.groupby("method"):
+    r = dfm["gold_rank"].dropna().astype(int)
+    if r.empty:
+        continue
+    # Histogram with human-friendly bucket edges
+    edges = [1,2,6,11,21,51,101]  # maps to 1, 2-5, 6-10, 11-20, 21-50, 51-100
+    labels = ["1","2–5","6–10","11–20","21–50","51–100"]
+    hist, _ = np.histogram(r, bins=edges)
+    plt.figure(figsize=(6,3.6))
+    plt.bar(labels, hist, width=0.8)
+    plt.title(f"Gold rank buckets — {method}")
+    plt.xlabel("Rank bucket")
+    plt.ylabel("Count")
+    plt.tight_layout()
+    plt.savefig(EVALS_DIR / f"rank_buckets__{method}.png", dpi=150)
+    plt.close()
+
+    # CDF
+    sr = np.sort(r.values)
+    y = np.arange(1, len(sr)+1) / len(sr)
+    plt.figure(figsize=(6,3.6))
+    plt.plot(sr, y)
+    plt.xscale("log")
+    plt.title(f"CDF of gold ranks — {method}")
+    plt.xlabel("Rank (log scale)")
+    plt.ylabel("Cumulative fraction (found)")
+    plt.tight_layout()
+    plt.savefig(EVALS_DIR / f"rank_cdf__{method}.png", dpi=150)
+    plt.close()
+
+print("\nAll done. Outputs written to:", EVALS_DIR)
+print(" - methods_included.txt")
+print(" - gold_ranks_per_query.csv")
+print(" - gold_ranks_summary.csv (with bucketed %)")
+print(" - rank_buckets__*.png, rank_cdf__*.png")
+
+#--- OUT ---
+Included methods: ['bm25_unibigram', 'bm25_unigram', 'tfidf_char_3_5', 'tfidf_unigram', 'tfidf_unigram_nostop', 'tfidf_unigram_phrases_add', 'tfidf_unigram_phrases_replace']
+Processing bm25_unibigram → /work/runs/bm25_unibigram/results_top100.jsonl.gz
+Processing bm25_unigram → /work/runs/bm25_unigram/results_top100.jsonl.gz
+Processing tfidf_char_3_5 → /work/runs/tfidf_char_3_5/results_top100.jsonl.gz
+Processing tfidf_unigram → /work/runs/tfidf_unigram/results_top100.jsonl.gz
+Processing tfidf_unigram_nostop → /work/runs/tfidf_unigram_nostop/results_top100.jsonl.gz
+Processing tfidf_unigram_phrases_add → /work/runs/tfidf_unigram_phrases_add/results_top100.jsonl.gz
+Processing tfidf_unigram_phrases_replace → /work/runs/tfidf_unigram_phrases_replace/results_top100.jsonl.gz
+
+Saved: /work/eval/rank_distribution/gold_ranks_summary.csv
+
+All done. Outputs written to: /work/eval/rank_distribution
+ - methods_included.txt
+ - gold_ranks_per_query.csv
+ - gold_ranks_summary.csv (with bucketed %)
+ - rank_buckets__*.png, rank_cdf__*.png
+
+
+#===== CELL 3 [code] =====
+# --- Find queries where gold item not in top-K -----------------
+K = 100
+missed = summary[summary["rank_item"] > K].copy()
+
+missed_out = missed[["query_item_key", "query_text", "rank_item"]]
+print("Missed queries:", len(missed_out))
+
+# Save for inspection
+missed_csv = RUN_DIR / "missed_queries.csv"
+missed_out.to_csv(missed_csv, index=False)
+print("Saved:", missed_csv)
+
+# Peek a few
+display(missed_out.head(10))
+

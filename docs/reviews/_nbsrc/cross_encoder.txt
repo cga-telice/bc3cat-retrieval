@@ -1,0 +1,586 @@
+
+#===== CELL 0 [markdown] =====
+# Cross-Encoder Reranking Runner (Spanish)
+
+## Overview
+This notebook refines retrieval results from any lexical, neural, or hybrid run by scoring each query–document pair with a **Spanish-capable Cross-Encoder**.  
+It re-orders the top-K′ candidates and produces both **pure** and **blended** rankings with improved precision.
+
+---
+
+## 🔧 Inputs
+- **Run folder**: existing `/work/runs/...` directory containing `results_top*.jsonl.gz` or `fused.parquet`
+- **Raw text data**:
+  - `/work/data/processed/OEB_resumen.json` → short descriptions (queries)
+  - `/work/data/processed/OEB_texto.json` → long descriptions (documents)
+
+---
+
+## ⚙️ Config highlights (`CFG`)
+| Parameter | Description | Example |
+|------------|--------------|----------|
+| `input_run_dir` | Path to run folder to rerank | `/work/runs/hybrids/hyb_bm25_uni__bge_colbert__tfidf_char_3_5` |
+| `k_prime` | Number of candidates per query | `50` |
+| `ce_model` | Cross-Encoder model | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` |
+| `lambda_blend` | Blend weight (CE vs fused) | `0.6` |
+| `device` | `"cuda"` or `"cpu"` | auto-detected |
+| `cache_dirname` | Local cache for CE scores | `ce_cache/` |
+
+---
+
+## 🚀 Outputs (saved to the same run folder)
+| File | Description |
+|------|--------------|
+| `ce_pairs_scores.parquet` | CE scores per query–doc pair |
+| `ce_final_replace.parquet` | Reranked list (CE only) |
+| `ce_final_blend.parquet` | Reranked list (λ-blend) |
+| `metrics_ce_replace.json` / `metrics_ce_blend.json` | Accuracy, Recall, MRR |
+| `results_topK_ce_replace.jsonl.gz` / `results_topK_ce_blend.jsonl.gz` | Final candidate files |
+
+---
+
+## 📈 Metrics computed
+- **Accuracy@1** – exact match at top-1  
+- **Recall@5**, **Recall@10**  
+- **MRR@10** – mean reciprocal rank (cutoff 10)
+
+---
+
+## 💾 Notes
+- Safe to rerun: cached CE scores prevent recomputation.
+- Works with *any* run (lexical, dense, or hybrid).
+- Automatically handles missing fused scores (REPLACE-only mode).
+- Compatible with later evaluation notebooks (bootstrap tests, error analysis).
+
+---
+
+**Usage:**  
+Run this cell once after a hybrid or dense retrieval to produce final reranked metrics and artifacts for reporting.
+
+
+#===== CELL 1 [code] =====
+# %% [markdown]
+# Cross-Encoder Reranking Runner (Spanish) — single cell
+#
+# What this does:
+# 1) Points to an EXISTING run folder (single or hybrid) under /work/runs/... that already contains candidates
+#    (ideally the `results_top*.jsonl.gz` we wrote in the hybrid runner).
+# 2) Loads K′ candidates per query (default 50) from that run.
+# 3) Loads SHORT raw text (query) and LONG raw text (doc) by item_key.
+# 4) Scores each (query, doc) pair with a Spanish-capable cross-encoder (MiniLMv2 multilingual).
+# 5) Produces two variants:
+#      - REPLACE: rank by CE score only
+#      - BLEND:   final = λ·CE + (1–λ)·fused_score (if fused_score is available)
+#    (Falls back gracefully if no fused_score is present in the input.)
+# 6) Saves artifacts into the same run folder:
+#      ce_pairs_scores.parquet
+#      ce_final_replace.parquet / ce_final_blend.parquet
+#      metrics_ce_replace.json / metrics_ce_blend.json
+#      results_top{K' }_ce_replace.jsonl.gz / results_top{K'}_ce_blend.jsonl.gz
+#
+# Progress messages included throughout.
+
+# %% [code]
+from __future__ import annotations
+import os, sys, json, time, math, gzip
+from pathlib import Path
+from typing import List, Dict, Tuple, Any
+from collections import defaultdict
+
+import numpy as np
+import pandas as pd
+
+# Torch / Sentence-Transformers
+try:
+    import torch
+    from sentence_transformers import CrossEncoder
+except Exception as e:
+    raise ImportError(
+        "Please install sentence-transformers: pip install -U sentence-transformers torch"
+    ) from e
+
+# ---------------- CONFIG ----------------
+CFG = {
+    # === 1) SELECT THE RUN TO RERANK (single or hybrid) ===
+    #    e.g.: "/work/runs/hybrids/hyb_v03_multi_k100" or "/work/runs/singles/bm25_unigram_v01"
+    "input_run_dir": "/work/runs/bge_m3_colbert",
+
+    # === 2) How many candidates per query to re-rank ===
+    "k_prime": 50,
+
+    # === 3) Cross-encoder model (Spanish-capable MiniLM) ===
+    "ce_model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+    "max_length": 320,           # 256–384 is a good range; keep numbers/units
+    "batch_size": 64,            # Adjust to your GPU/CPU
+    "use_fp16": True,            # If GPU supports FP16
+    "device": "cuda" if torch.cuda.is_available() else "cpu",
+
+    # === 4) Combine strategy ===
+    #   Two outputs will be produced:
+    #     - REPLACE: rank by CE only
+    #     - BLEND: final = λ·CE + (1–λ)·fused (when fused score available)
+    "lambda_blend": 0.6,
+
+    # === 5) Data to fetch raw texts (same files you used in hybrid runner) ===
+    "data_dir_processed": "/work/data/processed",
+    "collection": "OEB",
+    "raw_short_json": "/work/data/processed/OEB_resumen.json",
+    "raw_long_json":  "/work/data/processed/OEB_texto.json",
+
+    # === 6) Optional cache for CE scores (speeds up re-runs) ===
+    "cache_dirname": "ce_cache",   # under the input run dir
+}
+
+INPUT_DIR = Path(CFG["input_run_dir"])
+RUN_DIR = INPUT_DIR  # write artifacts back into the same run
+RUN_DIR.mkdir(parents=True, exist_ok=True)
+
+# ---------------- logging ----------------
+def log(msg: str):
+    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{ts}] {msg}", flush=True)
+
+# ---------------- basic utils ----------------
+def save_json(obj, path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+
+# ---------------- load raw JSON helpers ----------------
+def _as_record_from_obj(doc: Any) -> Dict[str, Any]:
+    if isinstance(doc, dict):
+        text = doc.get("text") or doc.get("content")
+        md   = (doc.get("metadata") or {}) if isinstance(doc.get("metadata"), dict) else {}
+        root = doc
+        doc_id = root.get("id") or root.get("id_") or root.get("doc_id") \
+                 or md.get("id") or md.get("id_") or md.get("doc_id")
+    else:
+        text = getattr(doc, "text", None)
+        md   = getattr(doc, "metadata", None) or {}
+        root = {}
+        doc_id = getattr(doc, "id_", None) or getattr(doc, "doc_id", None) or md.get("id")
+    def pick(key: str, default=None):
+        return md.get(key, root.get(key, default))
+    return {
+        "id": doc_id,
+        "item_key": pick("item_key"),
+        "text_raw": text if isinstance(text, str) else pick("text", ""),
+    }
+
+def load_raw_json(path: str) -> pd.DataFrame:
+    with open(path, "r", encoding="utf-8") as f:
+        obj = json.load(f)
+    if isinstance(obj, list):
+        rows = [_as_record_from_obj(d) for d in obj]
+    elif isinstance(obj, dict):
+        container = None
+        for key in ("documents", "data", "items", "records"):
+            if key in obj and isinstance(obj[key], list):
+                container = obj[key]; break
+        if container is None:
+            raise TypeError(f"Unsupported JSON structure in {path}.")
+        rows = [_as_record_from_obj(d) for d in container]
+    else:
+        raise TypeError(f"Unsupported JSON root in {path}.")
+    df = pd.DataFrame(rows)
+    if "item_key" not in df or "text_raw" not in df:
+        raise KeyError(f"Raw JSON must contain item_key and text_raw. Found: {df.columns}")
+    return df[["item_key", "text_raw"]]
+
+# ---------------- 0) locate candidates in the input run ----------------
+def read_results_topK_jsonl_gz(run_dir: Path) -> Tuple[pd.DataFrame, dict]:
+    """
+    Reads results_top*.jsonl.gz if present and returns:
+      - candidates_df: columns [query_item_key, doc_item_key, fused_score (if any), rank]
+      - meta_example: the 'meta' object from first line (for provenance)
+    If not present, falls back to fused.parquet if available.
+    """
+    # find a results_top*.jsonl.gz file
+    gz_files = sorted(run_dir.glob("results_top*.jsonl.gz"))
+    if gz_files:
+        path = gz_files[0]
+        log(f"[IO] Using candidates from {path.name}")
+        rows = []
+        meta_example = None
+        with gzip.open(path, "rt", encoding="utf-8") as gz:
+            for line in gz:
+                rec = json.loads(line)
+                if meta_example is None:
+                    meta_example = rec.get("meta", {})
+                qkey = rec["query_item_key"]
+                for cand in rec["candidates"]:
+                    rows.append({
+                        "query_item_key": qkey,
+                        "doc_item_key": cand["index_item_key"],
+                        "fused_score": cand.get("score", None),
+                        "rank": cand.get("rank", None),
+                    })
+        df = pd.DataFrame(rows)
+        return df, meta_example or {}
+    # fallback: fused.parquet
+    fp = run_dir / "fused.parquet"
+    if fp.exists():
+        log("[IO] results_top*.jsonl.gz not found; falling back to fused.parquet")
+        df = pd.read_parquet(fp)
+        # Expect columns: query_id, doc_id, fused_score, rank
+        df = df.rename(columns={
+            "query_id": "query_item_key",
+            "doc_id": "doc_item_key"
+        })
+        return df[["query_item_key","doc_item_key","fused_score","rank"]], {}
+    raise FileNotFoundError("No candidates found: expected results_top*.jsonl.gz or fused.parquet.")
+
+cands_all, meta_in = read_results_topK_jsonl_gz(RUN_DIR)
+
+# enforce K′ per query
+Kp = int(CFG["k_prime"])
+cands_all = (cands_all
+             .sort_values(["query_item_key","rank"])
+             .groupby("query_item_key", as_index=False)
+             .head(Kp)
+             .reset_index(drop=True))
+log(f"[CANDS] Loaded {len(cands_all):,} pairs across {cands_all['query_item_key'].nunique():,} queries at K'={Kp}")
+
+# ---------------- 1) pull raw texts for queries and docs ----------------
+log("[DATA] Loading raw JSON (short/long) …")
+raw_short = load_raw_json(CFG["raw_short_json"])
+raw_long  = load_raw_json(CFG["raw_long_json"])
+log(f"[DATA] raw_short={len(raw_short):,} raw_long={len(raw_long):,}")
+
+q_raw_map = dict(zip(raw_short["item_key"], raw_short["text_raw"]))
+d_raw_map = dict(zip(raw_long["item_key"],  raw_long["text_raw"]))
+
+# Limit to the queries present in cands_all (saves memory)
+present_qs = sorted(cands_all["query_item_key"].unique().tolist())
+
+# ---------------- 2) build CE input pairs ----------------
+def build_pairs(df: pd.DataFrame) -> Tuple[List[Tuple[str,str]], pd.DataFrame]:
+    """
+    Returns CE sentence pairs and a dataframe aligning each pair:
+      pairs = [(query_text, doc_text), ...]
+      align_df columns: [query_item_key, doc_item_key]
+    """
+    pairs = []
+    align = []
+    missing_q, missing_d = 0, 0
+    for q, d in df[["query_item_key","doc_item_key"]].itertuples(index=False):
+        qt = q_raw_map.get(q)
+        dt = d_raw_map.get(d)
+        if qt is None: 
+            missing_q += 1
+            continue
+        if dt is None:
+            missing_d += 1
+            continue
+        pairs.append((qt, dt))
+        align.append((q, d))
+    if missing_q or missing_d:
+        log(f"[WARN] Missing raw texts — queries: {missing_q}, docs: {missing_d}. Those pairs were skipped.")
+    align_df = pd.DataFrame(align, columns=["query_item_key","doc_item_key"])
+    return pairs, align_df
+
+pairs, align_df = build_pairs(cands_all)
+log(f"[CE] Built {len(pairs):,} pairs for scoring")
+
+# ---------------- 3) load cross-encoder ----------------
+log(f"[CE] Loading model: {CFG['ce_model']} on {CFG['device']} …")
+model = CrossEncoder(
+    CFG["ce_model"],
+    max_length=CFG["max_length"],
+    device=CFG["device"]
+)
+if CFG["use_fp16"] and CFG["device"].startswith("cuda"):
+    try:
+        model.model.half()
+        log("[CE] Using FP16 on CUDA")
+    except Exception:
+        log("[CE] FP16 not applied; continuing with default precision")
+
+# ---------------- 4) score pairs (with simple cache) ----------------
+CACHE_DIR = RUN_DIR / CFG["cache_dirname"] / CFG["ce_model"].replace("/", "__")
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+cache_file = CACHE_DIR / "ce_scores.parquet"
+
+# We'll cache by (query_item_key, doc_item_key, model_name, max_length)
+cache_key_cols = ["query_item_key","doc_item_key","model_name","max_length"]
+existing = None
+if cache_file.exists():
+    try:
+        existing = pd.read_parquet(cache_file)
+        log(f"[CACHE] Loaded {len(existing):,} cached CE scores")
+    except Exception:
+        log("[CACHE] Could not read cache parquet; ignoring cache")
+
+need_mask = None
+if existing is not None:
+    existing = existing[(existing["model_name"] == CFG["ce_model"]) &
+                        (existing["max_length"] == CFG["max_length"])]
+    merged = align_df.merge(existing[cache_key_cols + ["ce_score"]],
+                            on=cache_key_cols[:2], how="left")
+    need_mask = merged["ce_score"].isna().values
+else:
+    merged = align_df.copy()
+    merged["ce_score"] = np.nan
+    need_mask = np.ones(len(merged), dtype=bool)
+
+to_score_idx = np.where(need_mask)[0]
+log(f"[CE] Pairs to score now: {len(to_score_idx):,} (cached present for {len(merged)-len(to_score_idx):,})")
+
+def batched(iterable, n):
+    for i in range(0, len(iterable), n):
+        yield i, iterable[i:i+n]
+
+bsz = CFG["batch_size"]
+t0 = time.time()
+scored_rows = []
+for i, idx_block in batched(to_score_idx.tolist(), bsz):
+    block_pairs = [pairs[j] for j in idx_block]
+    # CrossEncoder returns a score per pair
+    with torch.inference_mode():
+        scores = model.predict(block_pairs, batch_size=len(block_pairs), show_progress_bar=False)
+    for off, s in zip(idx_block, scores):
+        q = align_df.iloc[off]["query_item_key"]
+        d = align_df.iloc[off]["doc_item_key"]
+        scored_rows.append((q, d, float(s)))
+    if (i // bsz) % 10 == 0 or (i + bsz) >= len(to_score_idx):
+        done = min(i + bsz, len(to_score_idx))
+        elapsed = time.time() - t0
+        qps = done / max(elapsed, 1e-6)
+        log(f"[CE] Scored {done}/{len(to_score_idx)} pairs | {qps:.1f} pairs/s | elapsed={elapsed:.1f}s")
+
+scored_df = pd.DataFrame(scored_rows, columns=["query_item_key","doc_item_key","ce_score"])
+# Merge back with cached (if any)
+if existing is not None and "ce_score" in existing.columns:
+    existing = existing[["query_item_key","doc_item_key","ce_score","model_name","max_length"]].drop_duplicates()
+    # keep cached for pairs we didn't rescore
+    keep_cached = existing.merge(scored_df[["query_item_key","doc_item_key"]],
+                                 on=["query_item_key","doc_item_key"], how="left", indicator=True)
+    keep_cached = keep_cached[keep_cached["_merge"] == "left_only"].drop(columns="_merge")
+    combined = pd.concat([keep_cached[["query_item_key","doc_item_key","ce_score"]],
+                          scored_df], ignore_index=True)
+else:
+    combined = scored_df
+
+# Save/update cache
+cache_save = combined.copy()
+cache_save["model_name"] = CFG["ce_model"]
+cache_save["max_length"] = CFG["max_length"]
+try:
+    cache_save.to_parquet(cache_file, index=False)
+    log(f"[CACHE] Updated cache → {cache_file}")
+except Exception:
+    cache_save.to_csv(cache_file.with_suffix(".csv"), index=False)
+    log(f"[CACHE] Wrote CSV cache (parquet failed) → {cache_file.with_suffix('.csv')}")
+
+# Align CE scores back to the full candidates table
+cands_scored = (cands_all
+                .merge(combined, on=["query_item_key","doc_item_key"], how="left"))
+
+missing_scores = cands_scored["ce_score"].isna().sum()
+if missing_scores > 0:
+    log(f"[WARN] Missing CE scores for {missing_scores} pairs (likely missing raw text). They will be dropped from reranking.")
+    cands_scored = cands_scored.dropna(subset=["ce_score"])
+
+# ---------------- 5) produce REPLACE and BLEND orderings ----------------
+# If fused_score not present (e.g., single-method run without fused), we only do REPLACE
+has_fused = "fused_score" in cands_scored.columns and cands_scored["fused_score"].notna().any()
+
+def rerank_replace(df: pd.DataFrame, k: int) -> pd.DataFrame:
+    out = (df.sort_values(["query_item_key","ce_score"], ascending=[True, False])
+             .assign(rank=lambda x: x.groupby("query_item_key")["ce_score"]
+                                    .rank(method="first", ascending=False).astype(int))
+             .query("rank <= @k")
+             .sort_values(["query_item_key","rank"])
+             .reset_index(drop=True))
+    return out
+
+def rerank_blend(df: pd.DataFrame, k: int, lam: float) -> pd.DataFrame:
+    if not has_fused:
+        return None
+    tmp = df.copy()
+    tmp["blended"] = lam * tmp["ce_score"] + (1.0 - lam) * tmp["fused_score"].fillna(0.0)
+    out = (tmp.sort_values(["query_item_key","blended"], ascending=[True, False])
+              .assign(rank=lambda x: x.groupby("query_item_key")["blended"]
+                                     .rank(method="first", ascending=False).astype(int))
+              .query("rank <= @k")
+              .sort_values(["query_item_key","rank"])
+              .reset_index(drop=True))
+    return out
+
+log("[RERANK] Producing REPLACE …")
+final_replace = rerank_replace(cands_scored, CFG["k_prime"])
+try:
+    final_replace.to_parquet(RUN_DIR / "ce_final_replace.parquet", index=False)
+    log(f"[SAVE] ce_final_replace → {RUN_DIR/'ce_final_replace.parquet'}")
+except Exception:
+    final_replace.to_csv(RUN_DIR / "ce_final_replace.csv", index=False)
+    log(f"[SAVE] ce_final_replace → {RUN_DIR/'ce_final_replace.csv'} (csv fallback)")
+
+final_blend = None
+if has_fused:
+    log(f"[RERANK] Producing BLEND (λ={CFG['lambda_blend']:.2f}) …")
+    final_blend = rerank_blend(cands_scored, CFG["k_prime"], CFG["lambda_blend"])
+    try:
+        final_blend.to_parquet(RUN_DIR / "ce_final_blend.parquet", index=False)
+        log(f"[SAVE] ce_final_blend → {RUN_DIR/'ce_final_blend.parquet'}")
+    except Exception:
+        final_blend.to_csv(RUN_DIR / "ce_final_blend.csv", index=False)
+        log(f"[SAVE] ce_final_blend → {RUN_DIR/'ce_final_blend.csv'} (csv fallback)")
+
+# ---------------- 6) metrics ----------------
+# gold is query_item_key == doc_item_key
+def metrics_at_k(df: pd.DataFrame, ks=(5,10)) -> Dict[str, float]:
+    ranks = df[["query_item_key","doc_item_key","rank"]]
+    # compute gold rank per query
+    ranks["is_gold"] = (ranks["query_item_key"] == ranks["doc_item_key"]).astype(int)
+    gold = ranks[ranks["is_gold"] == 1][["query_item_key","rank"]]
+    gold_ranks = dict(zip(gold["query_item_key"], gold["rank"]))
+    queries = df["query_item_key"].unique().tolist()
+    total_q = len(queries)
+    out = {}
+    acc1 = sum(1 for q in queries if gold_ranks.get(q, 10**9) == 1) / total_q
+    out["acc@1"] = acc1
+    for k in ks:
+        rec = sum(1 for q in queries if gold_ranks.get(q, 10**9) <= k) / total_q
+        out[f"recall@{k}"] = rec
+    mrr10 = sum((1.0 / gold_ranks[q]) if (q in gold_ranks and gold_ranks[q] <= 10) else 0.0 for q in queries) / total_q
+    out["mrr@10"] = mrr10
+    return out
+
+log("[EVAL] Metrics for CE REPLACE …")
+m_replace = metrics_at_k(final_replace, ks=(5,10))
+save_json(m_replace, RUN_DIR / "metrics_ce_replace.json")
+log("[EVAL][REPLACE] " + " | ".join(f"{k}={v:.4f}" for k, v in m_replace.items()))
+
+if final_blend is not None:
+    log("[EVAL] Metrics for CE BLEND …")
+    m_blend = metrics_at_k(final_blend, ks=(5,10))
+    save_json(m_blend, RUN_DIR / "metrics_ce_blend.json")
+    log("[EVAL][BLEND]   " + " | ".join(f"{k}={v:.4f}" for k, v in m_blend.items()))
+
+# ---------------- 7) write results_topK JSONL.GZ for downstream tools ----------------
+def write_results_jsonl(df: pd.DataFrame, out_path: Path, variant_meta: dict):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df = df.sort_values(["query_item_key","rank"])
+    with gzip.open(out_path, "wt", encoding="utf-8") as gz:
+        for i, (qkey, grp) in enumerate(df.groupby("query_item_key")):
+            rec = {
+                "meta": variant_meta,
+                "query_id": f"q_{i:06d}",
+                "query_item_key": str(qkey),
+                "candidates": [
+                    {"rank": int(r), "index_item_key": str(d),
+                     "score": float(s)}
+                    for r, d, s in zip(grp["rank"].tolist(),
+                                       grp["doc_item_key"].astype(str).tolist(),
+                                       grp.get("ce_score", grp.get("blended", grp["rank"])).astype(float).tolist())
+                ],
+            }
+            gz.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+base_meta = {
+    "source_run": str(RUN_DIR),
+    "ce_model": CFG["ce_model"],
+    "k_prime": CFG["k_prime"],
+    "max_length": CFG["max_length"],
+    "lambda_blend": CFG["lambda_blend"],
+    "mode": None,  # will set per file
+}
+
+# REPLACE
+meta_replace = base_meta.copy(); meta_replace["mode"] = "replace"
+write_results_jsonl(final_replace, RUN_DIR / f"results_top{CFG['k_prime']}_ce_replace.jsonl.gz", meta_replace)
+log(f"[SAVE] results_top{CFG['k_prime']}_ce_replace.jsonl.gz")
+
+# BLEND (if available)
+if final_blend is not None:
+    meta_blend = base_meta.copy(); meta_blend["mode"] = "blend"
+    write_results_jsonl(final_blend, RUN_DIR / f"results_top{CFG['k_prime']}_ce_blend.jsonl.gz", meta_blend)
+    log(f"[SAVE] results_top{CFG['k_prime']}_ce_blend.jsonl.gz")
+
+log("[DONE] Cross-encoder reranking complete.")
+
+#--- OUT ---
+[2025-10-14 21:53:27] [IO] Using candidates from results_top100.jsonl.gz
+[2025-10-14 21:53:31] [CANDS] Loaded 829,500 pairs across 16,590 queries at K'=50
+[2025-10-14 21:53:31] [DATA] Loading raw JSON (short/long) …
+[2025-10-14 21:53:33] [DATA] raw_short=47,514 raw_long=47,514
+[2025-10-14 21:53:34] [CE] Built 829,500 pairs for scoring
+[2025-10-14 21:53:34] [CE] Loading model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1 on cuda …
+[2025-10-14 21:53:35] [CE] Using FP16 on CUDA
+[2025-10-14 21:53:35] [CE] Pairs to score now: 829,500 (cached present for 0)
+[2025-10-14 21:53:36] [CE] Scored 64/829500 pairs | 135.8 pairs/s | elapsed=0.5s
+[2025-10-14 21:53:36] [CE] Scored 704/829500 pairs | 841.4 pairs/s | elapsed=0.8s
+[2025-10-14 21:53:36] [CE] Scored 1344/829500 pairs | 1223.0 pairs/s | elapsed=1.1s
+[2025-10-14 21:53:37] [CE] Scored 1984/829500 pairs | 1461.5 pairs/s | elapsed=1.4s
+[2025-10-14 21:53:37] [CE] Scored 2624/829500 pairs | 1625.8 pairs/s | elapsed=1.6s
+[2025-10-14 21:53:37] [CE] Scored 3264/829500 pairs | 1768.8 pairs/s | elapsed=1.8s
+[2025-10-14 21:53:37] [CE] Scored 3904/829500 pairs | 1874.1 pairs/s | elapsed=2.1s
+[2025-10-14 21:53:38] [CE] Scored 4544/829500 pairs | 1953.0 pairs/s | elapsed=2.3s
+[2025-10-14 21:53:38] [CE] Scored 5184/829500 pairs | 2010.9 pairs/s | elapsed=2.6s
+[2025-10-14 21:53:38] [CE] Scored 5824/829500 pairs | 2060.5 pairs/s | elapsed=2.8s
+[2025-10-14 21:53:38] [CE] Scored 6464/829500 pairs | 2111.4 pairs/s | elapsed=3.1s
+[2025-10-14 21:53:39] [CE] Scored 7104/829500 pairs | 2138.2 pairs/s | elapsed=3.3s
+[2025-10-14 21:53:39] [CE] Scored 7744/829500 pairs | 2157.3 pairs/s | elapsed=3.6s
+[2025-10-14 21:53:39] [CE] Scored 8384/829500 pairs | 2167.5 pairs/s | elapsed=3.9s
+[2025-10-14 21:53:39] [CE] Scored 9024/829500 pairs | 2187.6 pairs/s | elapsed=4.1s
+[2025-10-14 21:53:40] [CE] Scored 9664/829500 pairs | 2200.4 pairs/s | elapsed=4.4s
+[2025-10-14 21:53:40] [CE] Scored 10304/829500 pairs | 2211.7 pairs/s | elapsed=4.7s
+[2025-10-14 21:53:40] [CE] Scored 10944/829500 pairs | 2221.5 pairs/s | elapsed=4.9s
+[2025-10-14 21:53:41] [CE] Scored 11584/829500 pairs | 2231.4 pairs/s | elapsed=5.2s
+[2025-10-14 21:53:41] [CE] Scored 12224/829500 pairs | 2237.9 pairs/s | elapsed=5.5s
+[2025-10-14 21:53:41] [CE] Scored 12864/829500 pairs | 2247.0 pairs/s | elapsed=5.7s
+[2025-10-14 21:53:41] [CE] Scored 13504/829500 pairs | 2262.8 pairs/s | elapsed=6.0s
+[2025-10-14 21:53:42] [CE] Scored 14144/829500 pairs | 2276.9 pairs/s | elapsed=6.2s
+[2025-10-14 21:53:42] [CE] Scored 14784/829500 pairs | 2289.6 pairs/s | elapsed=6.5s
+[2025-10-14 21:53:42] [CE] Scored 15424/829500 pairs | 2294.7 pairs/s | elapsed=6.7s
+[2025-10-14 21:53:42] [CE] Scored 16064/829500 pairs | 2306.0 pairs/s | elapsed=7.0s
+[2025-10-14 21:53:43] [CE] Scored 16704/829500 pairs | 2320.6 pairs/s | elapsed=7.2s
+[2025-10-14 21:53:43] [CE] Scored 17344/829500 pairs | 2329.0 pairs/s | elapsed=7.4s
+[2025-10-14 21:53:43] [CE] Scored 17984/829500 pairs | 2331.9 pairs/s | elapsed=7.7s
+
+...[TRUNC]...
+-10-14 21:59:20] [CE] Scored 821184/829500 pairs | 2380.1 pairs/s | elapsed=345.0s
+[2025-10-14 21:59:21] [CE] Scored 821824/829500 pairs | 2380.0 pairs/s | elapsed=345.3s
+[2025-10-14 21:59:21] [CE] Scored 822464/829500 pairs | 2379.9 pairs/s | elapsed=345.6s
+[2025-10-14 21:59:21] [CE] Scored 823104/829500 pairs | 2380.0 pairs/s | elapsed=345.8s
+[2025-10-14 21:59:21] [CE] Scored 823744/829500 pairs | 2380.0 pairs/s | elapsed=346.1s
+[2025-10-14 21:59:22] [CE] Scored 824384/829500 pairs | 2380.0 pairs/s | elapsed=346.4s
+[2025-10-14 21:59:22] [CE] Scored 825024/829500 pairs | 2380.0 pairs/s | elapsed=346.6s
+[2025-10-14 21:59:22] [CE] Scored 825664/829500 pairs | 2380.0 pairs/s | elapsed=346.9s
+[2025-10-14 21:59:23] [CE] Scored 826304/829500 pairs | 2380.0 pairs/s | elapsed=347.2s
+[2025-10-14 21:59:23] [CE] Scored 826944/829500 pairs | 2380.0 pairs/s | elapsed=347.5s
+[2025-10-14 21:59:23] [CE] Scored 827584/829500 pairs | 2379.9 pairs/s | elapsed=347.7s
+[2025-10-14 21:59:23] [CE] Scored 828224/829500 pairs | 2379.8 pairs/s | elapsed=348.0s
+[2025-10-14 21:59:24] [CE] Scored 828864/829500 pairs | 2379.9 pairs/s | elapsed=348.3s
+[2025-10-14 21:59:24] [CE] Scored 829500/829500 pairs | 2379.8 pairs/s | elapsed=348.6s
+[2025-10-14 21:59:24] [CACHE] Updated cache → /work/runs/bge_m3_colbert/ce_cache/cross-encoder__mmarco-mMiniLMv2-L12-H384-v1/ce_scores.parquet
+[2025-10-14 21:59:25] [RERANK] Producing REPLACE …
+[2025-10-14 21:59:25] [SAVE] ce_final_replace → /work/runs/bge_m3_colbert/ce_final_replace.parquet
+[2025-10-14 21:59:25] [RERANK] Producing BLEND (λ=0.60) …
+[2025-10-14 21:59:26] [SAVE] ce_final_blend → /work/runs/bge_m3_colbert/ce_final_blend.parquet
+[2025-10-14 21:59:26] [EVAL] Metrics for CE REPLACE …
+[2025-10-14 21:59:26] [EVAL][REPLACE] acc@1=0.2993 | recall@5=0.6641 | recall@10=0.7398 | mrr@10=0.4551
+[2025-10-14 21:59:26] [EVAL] Metrics for CE BLEND …
+
+/tmp/ipykernel_25243/2658145285.py:374: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  ranks["is_gold"] = (ranks["query_item_key"] == ranks["doc_item_key"]).astype(int)
+/tmp/ipykernel_25243/2658145285.py:374: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  ranks["is_gold"] = (ranks["query_item_key"] == ranks["doc_item_key"]).astype(int)
+
+[2025-10-14 21:59:26] [EVAL][BLEND]   acc@1=0.4754 | recall@5=0.7641 | recall@10=0.7858 | mrr@10=0.6005
+[2025-10-14 21:59:33] [SAVE] results_top50_ce_replace.jsonl.gz
+[2025-10-14 21:59:39] [SAVE] results_top50_ce_blend.jsonl.gz
+[2025-10-14 21:59:39] [DONE] Cross-encoder reranking complete.
+
+
+#===== CELL 2 [code] =====
+

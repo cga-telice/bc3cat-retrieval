@@ -1,0 +1,373 @@
+
+#===== CELL 0 [markdown] =====
+# Retrieval Runner
+
+## Purpose
+Run retrieval on the query set using a pre-built index (produced by `index_builder.ipynb`).
+Produces ranked candidate lists for evaluation.
+
+## Inputs
+- **METHOD_NAME**: Name of the method/index to use (must match a directory in `/work/index/`)
+- **RANDOM_SAMPLE**: Number of queries to sample (set to full dataset size for complete eval)
+- **K**: Number of candidates to retrieve per query (default: 100)
+
+## Outputs
+- `results_top{K}.jsonl.gz`: Compressed JSONL with ranked candidates per query
+- `results_perquery_summary.csv`: Per-query accuracy flags
+- Console metrics: Acc@1, Recall@5, Recall@10
+
+## What This Notebook Does
+1. Loads the specified index from `/work/index/{METHOD_NAME}/`
+2. Loads query data from processed short-format parquet
+3. Dynamically selects the correct query text field based on method type
+4. Runs batch retrieval using the method's retriever module
+5. Computes quick evaluation metrics
+6. Saves results to `/work/runs/{METHOD_NAME}/`
+
+#===== CELL 1 [code] =====
+# papermill parameters
+METHOD_NAME   = "bge_m3_colbert"
+RANDOM_SAMPLE = 16590   
+SAVE          = True   
+K             = 100
+RUN_CONTEXT = "manual"
+
+#===== CELL 2 [code] =====
+# === retrieve.ipynb — universal runner with preview-first SAVE switch ===
+#
+# PURPOSE:
+#   Run retrieval experiments on short-format queries against the long-format
+#   index of construction items. Works with all indexes built by the universal
+#   index builder (TF–IDF, BM25, neural, etc.).
+#
+# HOW IT WORKS:
+#   1. Configure the method name (e.g., "tfidf_unigram").
+#   2. Resolve and load the corresponding index (meta.json, fields.json,
+#      mapping.jsonl, and data/).
+#   3. Load short-format queries (optionally sample/shuffle).
+#   4. Dynamically load the appropriate retriever module from /src/retrievers/.
+#   5. Run batch retrieval (cosine similarity or method-specific scoring).
+#   6. Compute quick metrics (Acc@1, Recall@5, Recall@10).
+#   7. Preview: show top-K candidates per query in a compact table.
+#   8. Save: if SAVE=True, write full ranked results to
+#      /runs/{method}/results_topK.jsonl.gz and log.txt.
+#
+# KEY FEATURES:
+#   • Universal: supports multiple retrieval families via pluggable modules.
+#   • Safe workflow: preview results first, then save when satisfied.
+#   • Standard outputs: JSONL results + log for each run, enabling reproducible experiments.
+#
+# Typical usage:
+#   - Set METHOD_NAME to the retriever you want.
+#   - Adjust sampling and preview knobs if needed.
+#   - Run all cells to preview results.
+#   - If results look good, set SAVE=True and rerun the final block to persist.
+
+
+from __future__ import annotations
+import json, gzip, time, os
+import yaml
+from pathlib import Path
+from typing import Dict, Any, List, Tuple
+import numpy as np
+import pandas as pd
+from importlib import import_module
+
+# ---------------- CONFIG ----------------
+INDEX_ROOT   = Path("/work/index")
+DATA_DIR     = Path("/work/data/processed")
+RUN_DIR      = Path(f"/work/runs/{METHOD_NAME}")
+RUN_DIR.mkdir(parents=True, exist_ok=True)
+CFG_PATH = Path(f"/work/configs") / f"{METHOD_NAME}.yaml"
+
+def read_yaml(p: str | Path) -> dict:
+    import yaml
+    with open(p, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+# --- Resolve queries source (SHORT items) from YAML if available ---
+with open(CFG_PATH, "r", encoding="utf-8") as _f:
+    _cfg = yaml.safe_load(_f)
+
+# If YAML specifies data_dir, prefer it so templates resolve correctly
+_yaml_data_dir = (_cfg.get("paths") or {}).get("data_dir")
+if _yaml_data_dir:
+    DATA_DIR = Path(_yaml_data_dir)
+
+_qtpl = _cfg["inputs"].get("short_text_path") or _cfg["inputs"].get("short_feats") or _cfg["inputs"].get("short_path")
+if not _qtpl:
+    raise KeyError("YAML missing inputs.short_text_path (or short_feats/short_path) for queries")
+
+QUERIES_PATH = Path(_qtpl.format(data_dir=DATA_DIR, collection=_cfg.get("collection", "")))
+print(f"[queries] Using YAML path: {QUERIES_PATH}")
+
+# Selection knobs
+SHUFFLE = False       # True to shuffle before head()
+MAX_QUERIES = None    # Optional hard cap after sampling/shuffle (None = no cap)
+
+# Preview knobs
+PREVIEW_QUERIES = 5000  # how many queries to show in the preview table
+PREVIEW_K = 5         # how many candidates to show per previewed query
+
+# -------------- helpers --------------
+def read_json(p: Path) -> dict:
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def read_registry(index_root: Path) -> dict:
+    p = index_root / "registry.json"
+    return read_json(p) if p.exists() else {}
+
+def resolve_index_dir(method_name: str, index_root: Path) -> Path:
+    reg = read_registry(index_root)
+    if method_name in reg and reg[method_name].get("path"):
+        return Path(reg[method_name]["path"])
+    return index_root / method_name
+
+def resolve_query_text_col(index_dir: Path, queries_df: pd.DataFrame) -> str:
+    """
+    Resolve the query text column directly from the built index (meta.json first, then fields.json).
+    Raises if neither works.
+    """
+    # meta.json
+    meta = read_json(index_dir / "meta.json")
+    col = meta.get("text_field")
+    if col and col in queries_df.columns:
+        print(f"[resolve_query_text_col] Using text_field from meta.json: {col}")
+        return col
+
+    # fields.json
+    fields = read_json(index_dir / "fields.json")
+    col2 = fields.get("text_field")
+    if col2 and col2 in queries_df.columns:
+        print(f"[resolve_query_text_col] Using text_field from fields.json: {col2}")
+        return col2
+
+    raise KeyError(f"No valid text_field found in meta.json or fields.json for {index_dir}")
+
+def dynamic_load_retriever(method_name: str):
+    """
+    Convention: /src/retrievers/{method_name}.py exposes load(index_dir) -> searcher
+    Variants like 'nostop' just reuse the base retriever.
+    """
+    # Accept pretty run names like "bm25_unigram__k1-0.60__b-0.20"
+    base = method_name.split("__", 1)[0]
+    alias = {
+        "tfidf_unigram_nostop": "tfidf_unigram",
+        "tfidf_char_3_5": "tfidf_unigram",
+        "dense_gte_instrQ": "dense_gte",
+        # add more aliases if you add more variants later
+    }
+    mod_name = alias.get(base, base)
+    mod = import_module(f"retrievers.{mod_name}")
+    if not hasattr(mod, "load"):
+        raise AttributeError(f"retriever module {mod_name} must expose load(index_dir)")
+    return mod
+
+# -------------- resolve & load index --------------
+index_dir = resolve_index_dir(METHOD_NAME, INDEX_ROOT)
+meta_path   = index_dir / "meta.json"
+fields_path = index_dir / "fields.json"
+mapping_path= index_dir / "mapping.jsonl"
+data_dir    = index_dir / "data"
+for p in [meta_path, fields_path, mapping_path, data_dir]:
+    if not Path(p).exists():
+        raise FileNotFoundError(f"Missing index file/dir: {p}")
+
+meta   = read_json(meta_path)
+fields = read_json(fields_path)
+
+print(f"Index: {index_dir}")
+print(f"  family : {meta.get('method')}")
+print(f"  variant: {meta.get('variant')}")
+print(f"  num_docs: {meta.get('num_docs')} | text_field: {meta.get('text_field')}")
+
+# -------------- load queries --------------
+# features meta (which column to use as query text for each method)
+# Format-aware read (JSON/JSONL or Parquet)
+suf = QUERIES_PATH.suffix.lower()
+if suf in (".json", ".jsonl"):
+    try:
+        queries_df = pd.read_json(QUERIES_PATH, lines=True).copy()
+    except ValueError:
+        queries_df = pd.read_json(QUERIES_PATH).copy()
+else:
+    queries_df = pd.read_parquet(QUERIES_PATH).copy()
+
+# (Optional/legacy) features meta
+FEATURES_META_PATH = DATA_DIR / "OEB_features_meta.json"
+feats_meta = read_json(FEATURES_META_PATH) if FEATURES_META_PATH.exists() else {}
+
+# 1) Optional: take a random subset (also shuffles it)
+if RANDOM_SAMPLE is not None:
+    queries_df = queries_df.sample(n=int(RANDOM_SAMPLE), random_state=42).copy()
+# 2) Else: just shuffle order (no change to membership)
+elif SHUFFLE:
+    queries_df = queries_df.sample(frac=1.0, random_state=42).copy()
+# 3) Optional: hard cap after the above
+if MAX_QUERIES is not None:
+    queries_df = queries_df.head(int(MAX_QUERIES)).copy()
+
+QUERY_TEXT_COL = resolve_query_text_col(index_dir, queries_df)
+
+req = {"item_key", QUERY_TEXT_COL}
+missing = sorted([c for c in req if c not in queries_df.columns])
+if missing:
+    raise KeyError(f"Queries source missing columns: {missing}")
+
+if MAX_QUERIES is not None:
+    queries_df = queries_df.head(int(MAX_QUERIES)).copy()
+
+print(f"Queries loaded: {len(queries_df)} | query_text: '{QUERY_TEXT_COL}'")
+
+# -------------- load retriever --------------
+retr_mod = dynamic_load_retriever(METHOD_NAME)
+searcher = retr_mod.load(index_dir)
+
+# -------------- run retrieval (no write yet) --------------
+texts = queries_df[QUERY_TEXT_COL].astype(str).tolist()
+qkeys  = queries_df["item_key"].astype(str).tolist()
+
+t0 = time.time()
+top_idx, top_scores = searcher.search_batch(texts, k=K)   # arrays: (B x K)
+# ---- Batch metrics (Acc@1, Recall@5, Recall@10) ----
+# Map internal doc_ids back to external item keys for comparison
+ext_ids = np.asarray(searcher.external_ids, dtype=object)
+top_ext = ext_ids[top_idx]           # shape (B, K)
+qkeys_arr = np.asarray(qkeys, dtype=object)[:, None]  # (B, 1)
+
+hits_at1  = (top_ext[:, :1] == qkeys_arr).any(axis=1)
+hits_at5  = (top_ext[:, :5] == qkeys_arr).any(axis=1) if K >= 5 else hits_at1
+hits_at10 = (top_ext[:, :10] == qkeys_arr).any(axis=1) if K >= 10 else hits_at5
+
+acc1  = float(hits_at1.mean())
+rec5  = float(hits_at5.mean())
+rec10 = float(hits_at10.mean())
+
+print(f"Batch metrics on {len(qkeys)} queries — Acc@1={acc1:.4f} | Recall@5={rec5:.4f} | Recall@10={rec10:.4f}")
+
+elapsed = time.time() - t0
+
+# -------------- PREVIEW dataframe --------------
+# Show a compact table with top-5 per query (no disk write yet)
+def preview_frame(B_show=5, k_show=5):
+    B = min(B_show, len(qkeys))
+    rows = []
+    for i in range(B):
+        for r in range(min(k_show, top_idx.shape[1])):
+            doc_i = int(top_idx[i, r])
+            rows.append({
+                "q_rank": r+1,
+                "query_item_key": qkeys[i],
+                "index_item_key": str(searcher.external_ids[doc_i]),
+                "score": float(top_scores[i, r]),
+                "is_correct@r": (qkeys[i] == str(searcher.external_ids[doc_i]))
+            })
+    return pd.DataFrame(rows)
+
+preview_df = preview_frame(B_show=min(PREVIEW_QUERIES, len(qkeys)), k_show=min(PREVIEW_K, K))
+display(preview_df)
+
+# Quick Acc@1 on the previewed subset (for sanity)
+prev_B = preview_df["query_item_key"].nunique()
+if prev_B > 0:
+    acc1_preview = (
+        preview_df.query("q_rank==1")
+                  .assign(hit=lambda d: d["is_correct@r"].astype(bool))
+                  ["hit"].mean()
+    )
+else:
+    acc1_preview = 0.0
+
+print(f"\nPreview Acc@1 over {prev_B} queries: {acc1_preview:.4f}")
+print(f"Elapsed: {elapsed:.2f}s (B={len(qkeys)}, K={K})")
+print("\nIf this looks good, set SAVE=True and re-run to write the full results.")
+
+# -------------- OPTIONAL SAVE --------------
+if SAVE:
+    out_path = RUN_DIR / f"results_top{K}.jsonl.gz"
+    with gzip.open(out_path, "wt", encoding="utf-8") as gz:
+        for i, (qkey, qtext) in enumerate(zip(qkeys, texts)):
+            cand = []
+            for r in range(top_idx.shape[1]):
+                didx = int(top_idx[i, r])
+                cand.append({
+                    "rank": r+1,
+                    "doc_id": didx,  # internal 0..N-1
+                    "index_item_key": str(searcher.external_ids[didx]),  # stable external id
+                    "score": float(top_scores[i, r]),
+                })
+            rec = {
+                "query_id": f"q_{i:06d}",
+                "query_item_key": qkey,
+                "query_text": qtext,
+                "candidates": cand,
+                "score_info": {"family": "cosine", "higher_is_better": True},
+                "meta": {
+                    "method": meta.get("method"),
+                    "variant": meta.get("variant"),
+                    "index_path": str(index_dir),
+                    "created_utc": pd.Timestamp.utcnow().isoformat()
+                }
+            }
+            gz.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+    # simple Acc@1 over all processed queries
+    acc1 = np.mean([
+        (qkeys[i] == str(searcher.external_ids[int(top_idx[i,0])])) if top_idx.shape[1] > 0 else False
+        for i in range(len(qkeys))
+    ])
+    log_lines = [
+        f"Method: {METHOD_NAME}",
+        f"Index : {index_dir}",
+        f"Docs  : {meta.get('num_docs')} | Queries: {len(qkeys)} | K={K}",
+        f"Acc@1 : {acc1:.4f}",
+        f"Output: {out_path}",
+    ]
+    with open(RUN_DIR / "log.txt", "w", encoding="utf-8") as f:
+        f.write("\n".join(log_lines) + "\n")
+    print("\n".join(log_lines))
+
+#--- OUT ---
+[queries] Using YAML path: /work/data/processed/OEB_short_norm.parquet
+Index: /work/index/bge_m3_colbert
+  family : colbert
+  variant: bge_m3_colbert
+  num_docs: 47513 | text_field: text_norm
+[resolve_query_text_col] Using text_field from meta.json: text_norm
+Queries loaded: 16590 | query_text: 'text_norm'
+Batch metrics on 16590 queries — Acc@1=0.4480 | Recall@5=0.7533 | Recall@10=0.7847
+
+       q_rank query_item_key index_item_key     score  is_correct@r
+0           1    OEB040idbcb    OEB040idbbb  36.34375         False
+1           2    OEB040idbcb    OEB040iddcb  36.34375         False
+2           3    OEB040idbcb    OEB040idbcb  36.34375          True
+3           4    OEB040idbcb    OEB040iddbb  36.25000         False
+4           5    OEB040idbcb    OEB040idbab  36.12500         False
+...       ...            ...            ...       ...           ...
+24995       1    OEB300ghadb    OEB300gacdb  32.96875         False
+24996       2    OEB300ghadb    OEB300gaadb  32.78125         False
+24997       3    OEB300ghadb    OEB300gabdb  32.68750         False
+24998       4    OEB300ghadb    OEB300gaedb  32.65625         False
+24999       5    OEB300ghadb    OEB300gacab  32.62500         False
+
+[25000 rows x 5 columns]
+
+Preview Acc@1 over 5000 queries: 0.4492
+Elapsed: 5578.43s (B=16590, K=100)
+
+If this looks good, set SAVE=True and re-run to write the full results.
+Method: bge_m3_colbert
+Index : /work/index/bge_m3_colbert
+Docs  : 47513 | Queries: 16590 | K=100
+Acc@1 : 0.4480
+Output: /work/runs/bge_m3_colbert/results_top100.jsonl.gz
+
+
+#===== CELL 3 [code] =====
+if RUN_CONTEXT != "manual":
+    # skip during orchestrated runs
+    raise SystemExit  # or just: pass
+
+#===== CELL 4 [code] =====
+

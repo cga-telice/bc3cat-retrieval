@@ -1,0 +1,134 @@
+
+#===== CELL 0 [markdown] =====
+# Numeric Tiebreak Reranker
+
+## Purpose
+Rerank BM25 results using numeric parameter matching as a tiebreaker.
+Boosts documents that share numeric values or parameter tokens with the query.
+
+## Inputs
+- Base run: `/work/runs/bm25_unigram/results_top*.jsonl.gz`
+- Features: `/work/data/processed/OEB_*_feats.parquet`
+
+## Outputs
+- Reranked results in `/work/runs/bm25_tiebreak__bm25_unigram__wN-{W_NUM}__wP-{W_PARAM}/`
+- `results_top100.jsonl.gz`: Reranked candidate lists
+
+## What This Notebook Does
+1. Loads base BM25 retrieval results
+2. Loads processed features (numbers, param_values_multi_norm)
+3. For each query-document pair:
+   - Computes numeric overlap bonus (W_NUM weight)
+   - Computes parameter token overlap bonus (W_PARAM weight)
+   - Adds bonus to original BM25 score
+4. Re-sorts candidates by adjusted score
+5. Saves reranked results for downstream evaluation
+
+## Parameters
+- **W_NUM**: Weight for numeric value matches (default: 1.0)
+- **W_PARAM**: Weight for parameter token matches (default: 0.5)
+
+#===== CELL 1 [code] =====
+# /work/src/reranker_tiebreak
+# --- Paths (adjust BASE_RUN as needed) ---
+from pathlib import Path
+import gzip, json, importlib, sys
+import pandas as pd
+from datetime import datetime
+
+WORK = Path("/work")
+SRC  = WORK / "src"
+if str(SRC) not in sys.path: sys.path.insert(0, str(SRC))
+importlib.invalidate_caches()
+
+BASE_RUN = WORK / "runs" / "bm25_unigram"           # <- your existing run dir
+IN_PATH  = sorted(BASE_RUN.glob("results_top*.jsonl.gz"))[-1]
+NEW_RUN  = WORK / "runs" / "bm25_tiebreak__bm25_unigram__wN-1_0__wP-0_5"  # feel free to rename
+OUT_PATH = NEW_RUN / "results_top100.jsonl.gz"
+NEW_RUN.mkdir(parents=True, exist_ok=True)
+
+# --- Load processed metadata (numbers, param_values_multi_norm) ---
+# Discover collection + processed paths from the run itself
+with gzip.open(IN_PATH, "rt", encoding="utf-8") as gz:
+    first = None
+    for line in gz:
+        if line.strip():
+            first = json.loads(line); break
+assert first is not None, f"{IN_PATH} is empty"
+index_path = Path(first["meta"]["index_path"])
+collection = json.loads((index_path/"meta.json").read_text(encoding="utf-8")).get("collection","OEB")
+processed  = index_path.parent.parent / "data" / "processed"
+QUERIES_PATH = processed / f"{collection}_short_feats.parquet"
+CORPUS_PATH  = processed / f"{collection}_long_feats.parquet"
+
+df_q = pd.read_parquet(QUERIES_PATH)[["item_key","numbers","param_values_multi_norm"]].set_index("item_key")
+df_d = pd.read_parquet(CORPUS_PATH )[["item_key","numbers","param_values_multi_norm"]].set_index("item_key")
+
+# --- Helpers to normalize list-like fields safely ---
+import numpy as np
+import pandas as pd
+
+def as_list(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)): return []
+    if isinstance(x, (list, tuple)): return list(x)
+    if isinstance(x, (pd.Series, pd.Index)): return list(x)
+    if isinstance(x, np.ndarray): return x.tolist()
+    return [x]
+
+# --- Reranker import + weights ---
+from rerankers.bm25_tiebreak import rerank_with_metadata
+W_NUM, W_PARAM, K_SAVE = 1.0, 0.5, 100
+
+# --- Stream → rerank → write ---
+hits_at1, total = 0, 0
+with gzip.open(IN_PATH, "rt", encoding="utf-8") as gz_in, \
+     gzip.open(OUT_PATH, "wt", encoding="utf-8") as gz_out:
+    for line in gz_in:
+        if not line.strip(): continue
+        rec = json.loads(line)
+
+        qkey = str(rec.get("query_item_key",""))
+        qmeta = {"numbers": [], "param_values_multi_norm": []}
+        if qkey in df_q.index:
+            qmeta["numbers"] = as_list(df_q.at[qkey, "numbers"])
+            qmeta["param_values_multi_norm"] = as_list(df_q.at[qkey, "param_values_multi_norm"])
+
+        # normalize candidate list to the minimal fields we use
+        cands = []
+        for c in rec.get("candidates", []):
+            cands.append({
+                "rank": int(c.get("rank", 0)),
+                "index_item_key": str(c.get("index_item_key","")),
+                "score": float(c.get("score", 0.0)),
+                **({"doc_id": c["doc_id"]} if "doc_id" in c else {})
+            })
+
+        # rerank using doc metadata frame
+        rescored = rerank_with_metadata(cands, qmeta, df_d, w_num=W_NUM, w_param=W_PARAM)[:K_SAVE]
+        for i, r in enumerate(rescored, start=1): r["rank"] = i
+
+        # write record back out (same schema + a hint in meta)
+        out = dict(rec)
+        out["candidates"] = rescored
+        meta = out.get("meta", {})
+        meta["variant"] = f"{meta.get('variant') or meta.get('impl') or 'bm25'}+tiebreak"
+        meta["rerank"]  = {"w_num": W_NUM, "w_param": W_PARAM, "created_utc": datetime.utcnow().isoformat()}
+        out["meta"] = meta
+        gz_out.write(json.dumps(out, ensure_ascii=False) + "\n")
+
+        total += 1
+        if rescored and rescored[0]["index_item_key"] == qkey:
+            hits_at1 += 1
+
+print(f"Saved → {OUT_PATH}")
+print(f"Quick Acc@1 sanity: {hits_at1/max(1,total):.4f}")
+
+# (optional) run metrics the same way you usually do, pointing RUN_DIR=NEW_RUN
+
+#--- OUT ---
+Saved → /work/runs/bm25_tiebreak__bm25_unigram__wN-1_0__wP-0_5/results_top100.jsonl.gz
+Quick Acc@1 sanity: 0.9079
+
+
+#===== CELL 2 [code] =====
+

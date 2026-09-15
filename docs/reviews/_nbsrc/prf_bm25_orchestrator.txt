@@ -1,0 +1,435 @@
+
+#===== CELL 0 [markdown] =====
+# Pseudo-Relevance Feedback (PRF) Orchestrator
+
+## Purpose
+Run Pseudo-Relevance Feedback experiments (RM3 and Rocchio variants) on top of a base BM25 index.
+Performs grid search over PRF hyperparameters.
+
+## Inputs
+- Base index: `/work/index/bm25_unigram/`
+- Query data: `/work/data/processed/OEB_short_feats.parquet`
+
+## Outputs
+- Multiple run directories under `/work/runs/prf_{variant}__{base_method}__M{M}__N{N}__beta{beta}/`
+- Each containing `results_top{K}.jsonl.gz` and metrics
+
+## What This Notebook Does
+1. Loads the base BM25 index and document-term matrix
+2. For each PRF variant (RM3, Rocchio) and parameter combination:
+   - M: Number of pseudo-relevant documents (5, 10)
+   - N: Number of expansion terms (20, 40)
+   - beta: Interpolation weight (0.5, 0.7)
+3. Expands each query using top-M documents
+4. Re-retrieves with expanded query
+5. Computes and reports Acc@1 metrics
+6. Saves results to separate run directories
+
+## PRF Parameters
+- **M**: Number of top documents to use for feedback
+- **N**: Number of terms to add to expanded query
+- **beta**: Weight for original query vs. expansion terms
+
+#===== CELL 1 [code] =====
+# BM25 PRF orchestrator — RM3 & Rocchio, grid, batch-safe, reusing your retriever stack
+# Produces:
+#   /work/runs/prf_rm3__<base>__M<M>__N<N>__beta<B>/
+#   /work/runs/prf_rocchio__<base>__M<M>__N<N>__beta<B>/
+#
+# The code mirrors retrieve.ipynb patterns for: registry resolution, query text column, and output format.
+# Citations (internal code you already have):
+#  - universal runner patterns: resolve_index_dir, resolve_query_text_col, dynamic module load:contentReference[oaicite:6]{index=6}
+#  - TF–IDF retriever exposes encode (BM25 doesn’t) — reason we avoid encode here:contentReference[oaicite:7]{index=7}
+
+from __future__ import annotations
+import os, re, json, gzip, time, math
+from pathlib import Path
+from typing import Dict, Any, List, Tuple
+import numpy as np
+import pandas as pd
+from importlib import import_module
+
+# ---------------- CONFIG ----------------
+BASE_METHODS = ["bm25_unigram"]  # base indexes to PRF
+INDEX_ROOT   = Path("/work/index")
+DATA_DIR     = Path("/work/data/processed")
+COLLECTION   = "OEB"
+QUERIES_PATH = DATA_DIR / f"{COLLECTION}_short_feats.parquet"
+CORPUS_PATH  = DATA_DIR / f"{COLLECTION}_long_feats.parquet"
+FEATURES_META_PATH = DATA_DIR / f"{COLLECTION}_features_meta.json"
+
+# retrieval sizes
+K_FIRST  = 100   # topK from the first pass
+K_SECOND = 100   # topK we save after PRF requery
+
+# sampling (set to None to use all queries)
+RANDOM_SAMPLE = 16590  # e.g., 5000
+SHUFFLE = False
+MAX_QUERIES = None
+
+# PRF grids
+RM3_GRID = {
+    "M_list":  [5, 10],      # how many top docs to model
+    "N_list":  [20, 40],     # how many expansion terms to add
+    "beta_list": [0.5, 0.7], # interpolation weight for model feedback
+}
+ROCCHIO_GRID = {
+    "M_list":  [5, 10],
+    "N_list":  [20, 40],     # we still cap how many expansion terms we include
+    "beta_list": [0.5, 0.7], # weight for feedback terms (α is implicit via original query)
+}
+
+# batching
+BATCH = 1024  # queries per chunk to avoid memory spikes
+
+# ---------------- Helpers (mirroring retrieve.ipynb patterns) ----------------
+def read_json(p: Path) -> dict:
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def read_registry(index_root: Path) -> dict:
+    p = index_root / "registry.json"
+    return read_json(p) if p.exists() else {}
+
+def resolve_index_dir(method_name: str, index_root: Path) -> Path:
+    reg = read_registry(index_root)
+    if method_name in reg and reg[method_name].get("path"):
+        return Path(reg[method_name]["path"])
+    return index_root / method_name
+
+def resolve_query_text_col(index_dir: Path, queries_df: pd.DataFrame) -> str:
+    meta = read_json(index_dir / "meta.json")
+    col = meta.get("text_field")
+    if col and col in queries_df.columns:
+        print(f"[resolve_query_text_col] Using text_field from meta.json: {col}")
+        return col
+    fields = read_json(index_dir / "fields.json")
+    col2 = fields.get("text_field")
+    if col2 and col2 in queries_df.columns:
+        print(f"[resolve_query_text_col] Using text_field from fields.json: {col2}")
+        return col2
+    raise KeyError(f"No valid text_field found in meta.json or fields.json for {index_dir}")
+
+def dynamic_load_retriever(method_name: str):
+    # Exactly like your runner’s aliasing concept
+    mod = import_module(f"retrievers.{method_name}")
+    if not hasattr(mod, "load"):
+        raise AttributeError(f"retriever module {method_name} must expose load(index_dir)")
+    return mod
+
+_tok_re = re.compile(r"(?u)\b\w+\b")
+def tokenize(s: str) -> List[str]:
+    # Match your default tokenization in indexes (word tokens, lowercase, strip accents already in index)
+    return [t.lower() for t in _tok_re.findall(s or "")]
+
+def build_collection_model(df_long: pd.DataFrame, text_col: str) -> Dict[str, int]:
+    # Collection frequency (simple bag of words) — used for RM3 background smoothing
+    cf = {}
+    for txt in df_long[text_col].astype(str):
+        for w in tokenize(txt):
+            cf[w] = cf.get(w, 0) + 1
+    return cf
+
+def top_terms_from_docs(doc_texts: List[str], N: int, cf_bg: Dict[str,int] | None = None,
+                        rm3: bool = True) -> List[Tuple[str, float]]:
+    # Simple term scoring on the pseudo-relevant set
+    tf = {}
+    for txt in doc_texts:
+        for w in tokenize(txt):
+            tf[w] = tf.get(w, 0) + 1
+
+    if rm3:
+        # RM3-ish: p(w|R) with simple Dirichlet-like background (μ ~ 2000 via cf)
+        # We don’t have doc lengths/idf here; we just bias by collection frequency to avoid junk.
+        # If cf_bg absent, fall back to pure normalized tf.
+        total = sum(tf.values()) or 1
+        if cf_bg:
+            bg_total = sum(cf_bg.values()) or 1
+            mu = 2000.0
+            scores = {w: (tf[w] + mu * (cf_bg.get(w,0)/bg_total)) / (total + mu) for w in tf}
+        else:
+            scores = {w: tf[w] / total for w in tf}
+    else:
+        # Rocchio-ish: just use normalized tf over PRF docs as “centroid” weights
+        total = sum(tf.values()) or 1
+        scores = {w: tf[w]/total for w in tf}
+
+    # Drop very short numeric clutter like single ‘0’, but keep domain numbers like 110, 220, 90 etc
+    filtered = {w:v for w,v in scores.items() if not (len(w)<=1 and w.isdigit())}
+    # Return top-N
+    items = sorted(filtered.items(), key=lambda x: x[1], reverse=True)[:N]
+    return items
+
+def mix_query_with_expansion(q_text: str, exp_terms: List[Tuple[str,float]], beta: float, N_rep: int = 20) -> str:
+    """
+    Create an expanded text by repeating terms ∝ weights.
+    N_rep controls total repeats budget for expansion only (keeps string size bounded).
+    """
+    if not exp_terms:
+        return q_text
+    weights = np.array([w for _, w in exp_terms], dtype=float)
+    if weights.max() > 0:
+        weights = weights / weights.max()
+    # allocate repeats
+    counts = np.floor(weights * (beta * N_rep)).astype(int)
+    bag = []
+    for (term, _), c in zip(exp_terms, counts):
+        if c > 0:
+            bag.extend([term] * int(c))
+    # Keep original query intact (implicitly weight (1-beta))
+    return (q_text or "") + " " + " ".join(bag)
+
+def run_prf_variant(base_method: str, variant: str, M: int, N: int, beta: float):
+    """
+    One full PRF run: base BM25 -> topK -> expansion -> requery -> write run folder & results.
+    """
+    index_dir = resolve_index_dir(base_method, INDEX_ROOT)
+    meta = read_json(index_dir / "meta.json")
+    text_col = meta.get("text_field")  # same col for short and long in your features (word_unigram)
+    if not text_col:
+        text_col = resolve_query_text_col(index_dir, pd.read_parquet(QUERIES_PATH))
+
+    # load tables
+    df_q = pd.read_parquet(QUERIES_PATH).copy()
+    df_d = pd.read_parquet(CORPUS_PATH).copy()
+    req = {"item_key", text_col}
+    if not req.issubset(df_q.columns) or not req.issubset(df_d.columns):
+        raise KeyError(f"Expected columns {req} in both short/long parquet")
+
+    # sample/shuffle like the runner
+    if RANDOM_SAMPLE is not None:
+        df_q = df_q.sample(n=int(RANDOM_SAMPLE), random_state=42).copy()
+    elif SHUFFLE:
+        df_q = df_q.sample(frac=1.0, random_state=42).copy()
+    if MAX_QUERIES is not None:
+        df_q = df_q.head(int(MAX_QUERIES)).copy()
+
+    # searcher
+    retr_mod = dynamic_load_retriever(base_method)
+    searcher = retr_mod.load(index_dir)  # uses BM25 implementation for that base
+    ext_ids = np.asarray(searcher.external_ids, dtype=object)
+
+    # precompute background collection model for RM3 (one-time)
+    cf_bg = None
+    if variant == "rm3":
+        cf_bg = build_collection_model(df_d.rename(columns={text_col:"d_text"}), "d_text")
+
+    # out dir
+    run_name = f"prf_{variant}__{base_method}__M{M}__N{N}__beta{str(beta).replace('.','_')}"
+    RUN_DIR = Path("/work/runs") / run_name
+    RUN_DIR.mkdir(parents=True, exist_ok=True)
+
+    out_path = RUN_DIR / f"results_top{K_SECOND}.jsonl.gz"
+    if out_path.exists():
+        out_path.unlink()  # overwrite
+
+    # stream processing
+    total = len(df_q)
+    hits_at1 = []
+    t0 = time.time()
+
+    with gzip.open(out_path, "wt", encoding="utf-8") as gz:
+        for start in range(0, total, BATCH):
+            end = min(total, start + BATCH)
+            batch = df_q.iloc[start:end]
+            qkeys  = batch["item_key"].astype(str).tolist()
+            qtexts = batch[text_col].astype(str).tolist()
+
+            # first pass (base)
+            top_idx, top_s = searcher.search_batch(qtexts, k=K_FIRST)
+
+            # build expansions and requery
+            expanded_texts = []
+            for i, qkey in enumerate(qkeys):
+                # take top-M doc texts
+                topM_idx = list(top_idx[i, :min(M, top_idx.shape[1])])
+                topM_keys = ext_ids[topM_idx]
+                prs = df_d.loc[df_d["item_key"].isin(topM_keys), text_col].astype(str).tolist()
+
+                if variant == "rm3":
+                    exp = top_terms_from_docs(prs, N=N, cf_bg=cf_bg, rm3=True)
+                else:
+                    exp = top_terms_from_docs(prs, N=N, cf_bg=None, rm3=False)
+
+                expanded = mix_query_with_expansion(qtexts[i], exp, beta=beta, N_rep=30)
+                expanded_texts.append(expanded)
+
+            # second pass on expanded queries
+            top2_idx, top2_s = searcher.search_batch(expanded_texts, k=K_SECOND)
+
+            # write records
+            for i, qkey in enumerate(qkeys):
+                cand = []
+                for r in range(top2_idx.shape[1]):
+                    didx = int(top2_idx[i, r])
+                    cand.append({
+                        "rank": r+1,
+                        "doc_id": didx,
+                        "index_item_key": str(ext_ids[didx]),
+                        "score": float(top2_s[i, r]),
+                    })
+                rec = {
+                    "query_id": f"q_{(start+i):06d}",
+                    "query_item_key": qkey,
+                    "query_text": qtexts[i],
+                    "candidates": cand,
+                    "score_info": {"family": "bm25", "higher_is_better": True},
+                    "meta": {
+                        "method": meta.get("method"),
+                        "variant": f"{base_method}+{variant}",
+                        "index_path": str(index_dir),
+                        "created_utc": pd.Timestamp.utcnow().isoformat(),
+                        "prf": {"M": M, "N": N, "beta": beta, "first_pass_K": K_FIRST}
+                    }
+                }
+                gz.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+                # quick Acc@1 on the fly
+                hit = 1 if (len(cand) and cand[0]["index_item_key"] == qkey) else 0
+                hits_at1.append(hit)
+
+            done = end
+            rate = done / max(1, time.time() - t0)
+            print(f"[{variant}::{base_method}] {done}/{total} done — Acc@1 so far={np.mean(hits_at1):.4f} — {rate:.1f} q/s")
+
+    # final log
+    acc1 = float(np.mean(hits_at1)) if hits_at1 else 0.0
+    log_lines = [
+        f"PRF variant : {variant}",
+        f"Base method : {base_method}",
+        f"Index       : {index_dir}",
+        f"Queries     : {total} | K1={K_FIRST} -> K2={K_SECOND}",
+        f"Params      : M={M} N={N} beta={beta}",
+        f"Acc@1       : {acc1:.4f}",
+        f"Output      : {out_path}",
+    ]
+    with open(RUN_DIR / "log.txt", "w", encoding="utf-8") as f:
+        f.write("\n".join(log_lines) + "\n")
+    print("\n".join(log_lines))
+
+# ---------------- Run the whole grid ----------------
+for base in BASE_METHODS:
+    # RM3 grid
+    for M in RM3_GRID["M_list"]:
+        for N in RM3_GRID["N_list"]:
+            for beta in RM3_GRID["beta_list"]:
+                run_prf_variant(base, variant="rm3", M=M, N=N, beta=beta)
+
+    # Rocchio grid (implemented via centroid term weights + repetition)
+    for M in ROCCHIO_GRID["M_list"]:
+        for N in ROCCHIO_GRID["N_list"]:
+            for beta in ROCCHIO_GRID["beta_list"]:
+                run_prf_variant(base, variant="rocchio", M=M, N=N, beta=beta)
+
+#--- OUT ---
+[rm3::bm25_unigram] 1024/16590 done — Acc@1 so far=0.8506 — 124.0 q/s
+[rm3::bm25_unigram] 2048/16590 done — Acc@1 so far=0.8677 — 123.1 q/s
+[rm3::bm25_unigram] 3072/16590 done — Acc@1 so far=0.8743 — 123.3 q/s
+[rm3::bm25_unigram] 4096/16590 done — Acc@1 so far=0.8735 — 123.6 q/s
+[rm3::bm25_unigram] 5120/16590 done — Acc@1 so far=0.8760 — 123.7 q/s
+[rm3::bm25_unigram] 6144/16590 done — Acc@1 so far=0.8740 — 124.0 q/s
+[rm3::bm25_unigram] 7168/16590 done — Acc@1 so far=0.8669 — 124.3 q/s
+[rm3::bm25_unigram] 8192/16590 done — Acc@1 so far=0.8693 — 124.6 q/s
+[rm3::bm25_unigram] 9216/16590 done — Acc@1 so far=0.8703 — 124.7 q/s
+[rm3::bm25_unigram] 10240/16590 done — Acc@1 so far=0.8701 — 124.6 q/s
+[rm3::bm25_unigram] 11264/16590 done — Acc@1 so far=0.8696 — 124.5 q/s
+[rm3::bm25_unigram] 12288/16590 done — Acc@1 so far=0.8700 — 124.7 q/s
+[rm3::bm25_unigram] 13312/16590 done — Acc@1 so far=0.8712 — 124.8 q/s
+[rm3::bm25_unigram] 14336/16590 done — Acc@1 so far=0.8706 — 124.7 q/s
+[rm3::bm25_unigram] 15360/16590 done — Acc@1 so far=0.8706 — 124.8 q/s
+[rm3::bm25_unigram] 16384/16590 done — Acc@1 so far=0.8698 — 124.8 q/s
+[rm3::bm25_unigram] 16590/16590 done — Acc@1 so far=0.8699 — 124.8 q/s
+PRF variant : rm3
+Base method : bm25_unigram
+Index       : /work/index/bm25_unigram
+Queries     : 16590 | K1=100 -> K2=100
+Params      : M=5 N=20 beta=0.5
+Acc@1       : 0.8699
+Output      : /work/runs/prf_rm3__bm25_unigram__M5__N20__beta0_5/results_top100.jsonl.gz
+[rm3::bm25_unigram] 1024/16590 done — Acc@1 so far=0.8506 — 123.6 q/s
+[rm3::bm25_unigram] 2048/16590 done — Acc@1 so far=0.8672 — 123.1 q/s
+[rm3::bm25_unigram] 3072/16590 done — Acc@1 so far=0.8737 — 122.8 q/s
+[rm3::bm25_unigram] 4096/16590 done — Acc@1 so far=0.8730 — 123.5 q/s
+[rm3::bm25_unigram] 5120/16590 done — Acc@1 so far=0.8756 — 123.6 q/s
+[rm3::bm25_unigram] 6144/16590 done — Acc@1 so far=0.8737 — 124.0 q/s
+[rm3::bm25_unigram] 7168/16590 done — Acc@1 so far=0.8666 — 124.4 q/s
+[rm3::bm25_unigram] 8192/16590 done — Acc@1 so far=0.8690 — 124.6 q/s
+[rm3::bm25_unigram] 9216/16590 done — Acc@1 so far=0.8701 — 124.6 q/s
+[rm3::bm25_unigram] 10240/16590 done — Acc@1 so far=0.8699 — 124.5 q/s
+[rm3::bm25_unigram] 11264/16590 done — Acc@1 so far=0.8694 — 124.5 q/s
+[rm3::bm25_unigram] 12288/16590 done — Acc@1 so far=0.8698 — 124.5 q/s
+[rm3::bm25_unigram] 13312/16590 done — Acc@1 so far=0.8711 — 124.6 q/s
+[rm3::bm25_unigram] 14336/16590 done — Acc@1 so far=0.8705 — 124.6 q/s
+[rm3::bm25_unigram] 15360/16590 done — Acc@1 so far=0.8706 — 124.5 q/s
+[rm3::bm25_unigram] 16384/16590 done — Acc@1 so far=0.8698 — 124.6 q/s
+[rm3::bm25_unigram] 16590/16590 done — Acc@1 so far=0.8698 — 124.6 q/s
+PRF variant : rm3
+Base method : bm25_unigram
+Index       : /work/index/bm25_unigram
+Queries     : 16590 | K1=100 -> K2=100
+Params      : M=5 N=20 beta=0.7
+Acc@1       : 0.8698
+Output      : /work/runs/prf_rm3__bm25_unigram__M5__N20__beta0_7/results_top100.jsonl.gz
+[rm3::bm25_unigram] 1024/16590 done — Acc@1 so far=0.8506 — 115.4 q/s
+[rm3
+...[TRUNC]...
+::bm25_unigram] 2048/16590 done — Acc@1 so far=0.8296 — 113.7 q/s
+[rocchio::bm25_unigram] 3072/16590 done — Acc@1 so far=0.8382 — 113.0 q/s
+[rocchio::bm25_unigram] 4096/16590 done — Acc@1 so far=0.8359 — 113.6 q/s
+[rocchio::bm25_unigram] 5120/16590 done — Acc@1 so far=0.8379 — 113.4 q/s
+[rocchio::bm25_unigram] 6144/16590 done — Acc@1 so far=0.8379 — 113.5 q/s
+[rocchio::bm25_unigram] 7168/16590 done — Acc@1 so far=0.8315 — 113.6 q/s
+[rocchio::bm25_unigram] 8192/16590 done — Acc@1 so far=0.8328 — 113.6 q/s
+[rocchio::bm25_unigram] 9216/16590 done — Acc@1 so far=0.8349 — 113.3 q/s
+[rocchio::bm25_unigram] 10240/16590 done — Acc@1 so far=0.8345 — 113.2 q/s
+[rocchio::bm25_unigram] 11264/16590 done — Acc@1 so far=0.8350 — 113.0 q/s
+[rocchio::bm25_unigram] 12288/16590 done — Acc@1 so far=0.8362 — 112.9 q/s
+[rocchio::bm25_unigram] 13312/16590 done — Acc@1 so far=0.8377 — 113.0 q/s
+[rocchio::bm25_unigram] 14336/16590 done — Acc@1 so far=0.8368 — 113.1 q/s
+[rocchio::bm25_unigram] 15360/16590 done — Acc@1 so far=0.8368 — 113.2 q/s
+[rocchio::bm25_unigram] 16384/16590 done — Acc@1 so far=0.8359 — 113.4 q/s
+[rocchio::bm25_unigram] 16590/16590 done — Acc@1 so far=0.8361 — 113.4 q/s
+PRF variant : rocchio
+Base method : bm25_unigram
+Index       : /work/index/bm25_unigram
+Queries     : 16590 | K1=100 -> K2=100
+Params      : M=10 N=40 beta=0.5
+Acc@1       : 0.8361
+Output      : /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_5/results_top100.jsonl.gz
+[rocchio::bm25_unigram] 1024/16590 done — Acc@1 so far=0.8125 — 109.8 q/s
+[rocchio::bm25_unigram] 2048/16590 done — Acc@1 so far=0.8252 — 110.6 q/s
+[rocchio::bm25_unigram] 3072/16590 done — Acc@1 so far=0.8337 — 110.5 q/s
+[rocchio::bm25_unigram] 4096/16590 done — Acc@1 so far=0.8318 — 110.7 q/s
+[rocchio::bm25_unigram] 5120/16590 done — Acc@1 so far=0.8340 — 110.6 q/s
+[rocchio::bm25_unigram] 6144/16590 done — Acc@1 so far=0.8340 — 110.4 q/s
+[rocchio::bm25_unigram] 7168/16590 done — Acc@1 so far=0.8276 — 110.3 q/s
+[rocchio::bm25_unigram] 8192/16590 done — Acc@1 so far=0.8286 — 110.1 q/s
+[rocchio::bm25_unigram] 9216/16590 done — Acc@1 so far=0.8308 — 110.0 q/s
+[rocchio::bm25_unigram] 10240/16590 done — Acc@1 so far=0.8306 — 110.0 q/s
+[rocchio::bm25_unigram] 11264/16590 done — Acc@1 so far=0.8313 — 109.8 q/s
+[rocchio::bm25_unigram] 12288/16590 done — Acc@1 so far=0.8322 — 109.9 q/s
+[rocchio::bm25_unigram] 13312/16590 done — Acc@1 so far=0.8337 — 110.0 q/s
+[rocchio::bm25_unigram] 14336/16590 done — Acc@1 so far=0.8328 — 109.9 q/s
+[rocchio::bm25_unigram] 15360/16590 done — Acc@1 so far=0.8327 — 109.9 q/s
+[rocchio::bm25_unigram] 16384/16590 done — Acc@1 so far=0.8317 — 109.9 q/s
+[rocchio::bm25_unigram] 16590/16590 done — Acc@1 so far=0.8319 — 109.9 q/s
+PRF variant : rocchio
+Base method : bm25_unigram
+Index       : /work/index/bm25_unigram
+Queries     : 16590 | K1=100 -> K2=100
+Params      : M=10 N=40 beta=0.7
+Acc@1       : 0.8319
+Output      : /work/runs/prf_rocchio__bm25_unigram__M10__N40__beta0_7/results_top100.jsonl.gz
+
+
+#===== CELL 2 [markdown] =====
+## Pseudo-Relevance Feedback (PRF) Experiments
+
+To test whether query expansion could improve retrieval effectiveness, we applied pseudo-relevance feedback (RM3 and Rocchio variants) to our best-performing lexical baselines (BM25_unigram and BM25_unibigram). PRF was implemented as a two-stage process: the first retrieval round identified the top-M candidate documents, and terms from these were used to expand the query for a second retrieval.
+
+The results show only marginal improvements at best. For example, BM25_unigram improved from Acc@1 = 0.8690 to 0.8699 under RM3 with tuned parameters. This difference falls within the range of statistical variation and was not significant under paired bootstrap testing.
+
+Given the computational overhead of PRF and the lack of consistent gains, we do not consider PRF further in the main comparison. Instead, results are reported only for the direct lexical, neural, and hybrid baselines. PRF results are retained as supplementary material.
+
+#===== CELL 3 [code] =====
+
