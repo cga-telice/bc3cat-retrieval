@@ -1,6 +1,6 @@
 # Sprint S1 — Harness adaptation to BC3CAT-Syn/OE · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `9cd244c` · `2026-09-15`
 > This section is read-only from that commit. Changes go in **Amendments** below, dated and
 > justified — never as in-place edits. `git log -- <this file>` after the freeze date is an
 > audit trail; keep it honest.

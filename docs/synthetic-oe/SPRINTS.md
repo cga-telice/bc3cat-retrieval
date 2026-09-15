@@ -15,8 +15,8 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 
 | ID | Type | Status | Title | Serves | Depends on |
 |---|---|---|---|---|---|
-| S0 | backbone | active (report written, audit pending) | Reproducibility foundation and splits | all | — |
-| S1 | backbone | planned | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
+| S0 | backbone | **done** | Reproducibility foundation and splits | all | — |
+| S1 | backbone | **active** | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
 | S2 | backbone | planned | Go/no-go probe ⚑ | H3 | S1 |
 | S3 | backbone | planned | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
 | S4 | backbone | planned | E1 ablation — Track A | H1, H2 | S3 |
@@ -61,3 +61,5 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-14 | S0–S13, S90 | → planned | Registry seeded from `RESEARCH_PLAN.md` |
 | 2026-09-15 | S0 | planned → active | Design frozen at `f618571`; entry state verified after the 2026-09-14 incident |
 | 2026-09-15 | S0 | report written | All 7 exit criteria met; `done` withheld until `/audit S0` returns in a fresh session |
+| 2026-09-15 | S0 | active → **done** | `/audit S0`: **PASS WITH FINDINGS** ([`SPRINT_S0_AUDIT.md`](sprints/SPRINT_S0_AUDIT.md)). All six findings resolved, F1 by adding the 77th config on `collection: "OE"` |
+| 2026-09-15 | S1 | planned → **active** | Design frozen at `9cd244c`; entry state verified in the tree. Scope widened to five notebooks, and the golden fixture is captured before the migration rather than conceded as lost |
