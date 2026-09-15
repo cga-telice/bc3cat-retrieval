@@ -82,12 +82,35 @@ concept counts (family sizes span 3–6,336, so an even split of concepts is a 6
 the corpus). Fraction set by D-021.
 
 ### D-008 — Run and index layout keyed by collection and query set
-**Status:** Proposed · **Date:** 2026-09-14 · **Executed in:** S0/S1
+**Status:** Accepted · **Date:** 2026-09-14 · **Adopted:** 2026-09-15 in S0 · **Implemented in:** S1
 **Context.** All 77 configs hard-code `collection: "OEB"` and write to flat paths; one
 corpus here has four query sets.
 **Decision.** `index/{collection}/{method}` and `runs/{collection}/{queryset}/{method}`.
 **Consequence.** Touches every notebook that scans `/work/runs`. Also isolates parallel
 agents working in separate worktrees.
+**Adopted 2026-09-15 (S0).** The grammar, fixed now so that S1 implements a decision rather
+than inventing one:
+
+| Segment | Values |
+|---|---|
+| `{collection}` | `OEB`, `OE` — the value of `collection:` in the config |
+| `{queryset}` | `resumen` (the leaf's own summary — the identity rendering and the baseline), `single_texto`, `stacked_texto`; later `balanced_texto` if the E3 set arrives (D-009) |
+| `{method}` | the config's `method.save_as`, unchanged |
+
+Index paths carry no query set: an index is built from the corpus, and the query set only
+decides what is asked of it.
+
+Two notes on scope. **S0 adopts, S1 implements** — S0 produces no runs, so nothing is
+written under either layout yet. And the migration that would normally be the hard part
+does not exist: `runs/` and `index/` were emptied on 2026-09-14 (D-019), so there is
+nothing under the old flat layout to move. That is the only cheaper consequence of that
+incident.
+**Config side executed 2026-09-15.** 62 of the 76 configs held literal input paths
+(`/work/data/processed/OEB_short_feats.parquet`) and were rewritten to
+`{data_dir}/{collection}_…` by `src/utils/migrate_configs.py`, matching the 14 that were
+already parameterised. The script resolves every config's inputs before and after and
+refuses to write if any differ; all 76 resolved identically, and the diff is exactly three
+lines per file and nothing else.
 
 ### D-009 — Compositionality requires a balanced dose set from upstream
 **Status:** Proposed · **Date:** 2026-09-14 · **Executed in:** S8

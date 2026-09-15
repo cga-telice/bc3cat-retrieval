@@ -5,9 +5,9 @@
     "index_root": "/work/index"
   },
   "inputs": {
-    "short_feats": "/work/data/processed/OEB_short_feats.parquet",
-    "long_feats": "/work/data/processed/OEB_long_feats.parquet",
-    "features_meta": "/work/data/processed/OEB_features_meta.json"
+    "short_feats": "{data_dir}/{collection}_short_feats.parquet",
+    "long_feats": "{data_dir}/{collection}_long_feats.parquet",
+    "features_meta": "{data_dir}/{collection}_features_meta.json"
   },
   "method": {
     "family": "bm25",
