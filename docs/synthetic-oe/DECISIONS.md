@@ -105,6 +105,14 @@ written under either layout yet. And the migration that would normally be the ha
 does not exist: `runs/` and `index/` were emptied on 2026-09-14 (D-019), so there is
 nothing under the old flat layout to move. That is the only cheaper consequence of that
 incident.
+**The harness is not parameterised, only the configs are (2026-09-15).** Seven notebooks
+still name OEB files literally, outside any config: `features.ipynb`
+(`OEB_features_meta`, `OEB_long_feats`, `OEB_short_feats`), `index_builder.ipynb`
+(`OEB_long_norm`, `OEB_short_norm`), `retrieve.ipynb` (`OEB_features_meta`,
+`OEB_short_norm`), `cross_encoder.ipynb` and `hybrid.ipynb` (`OEB_resumen`, `OEB_texto`),
+`prf_bm25_orchestrator.ipynb` (`OEB_short_feats`), `reranker_tiebreak.ipynb`. Setting
+`collection: "OE"` therefore does **not** yet run anything on OE. Fixing this is S1, and it
+is larger than the config migration was.
 **Config side executed 2026-09-15.** 62 of the 76 configs held literal input paths
 (`/work/data/processed/OEB_short_feats.parquet`) and were rewritten to
 `{data_dir}/{collection}_…` by `src/utils/migrate_configs.py`, matching the 14 that were
@@ -177,6 +185,21 @@ by some other path.
 **Consequence.** Enforces the reproducibility contract: a run is reproducible from
 `(config, code commit, query-set digest)` and nothing else. Without this, a config is a
 partial description of an experiment.
+**Resolution (2026-09-15, S0).** The default was found and written down. `retrieve.ipynb`
+derives the retriever from the config's **filename**, not from any field in it:
+`base = METHOD_NAME.split("__", 1)[0]`, then an alias table living in the notebook
+(`tfidf_unigram_nostop` and `tfidf_char_3_5` → `tfidf_unigram`, `dense_gte_instrQ` →
+`dense_gte`), then `import_module(f"retrievers.{base}")`. So `method.impl`, which looks like
+it selects the implementation, does not — six configs do not even set it. A run was
+reproducible from `(config, code commit)` only because the filename happened to survive.
+`src/utils/declare_retrievers.py` wrote the resolved module into all 72 configs that lacked
+one, restating the default rather than changing it, and verifying per config that nothing
+but the new `retriever` key changed. Modules were confirmed by importing them exactly as the
+notebook does, which is how the two `tfidf_unigram_phrases_*` shims pass: they re-export
+`load` through `from .tfidf_unigram import *`.
+**Still open.** Declaring is not the same as obeying. The notebook still reads the filename,
+so the block is documentation until S1 wires the harness to it. Until then a config renamed
+on disk changes which code runs, silently.
 **Amendment (2026-09-15).** The Context understates the second gap. Parsing all 77 configs
 (not grepping them) shows **72 of 77 declare no `retriever` block**, not two: behaviour comes
 from a notebook default in nearly every config. Two further facts the grep-based inventory

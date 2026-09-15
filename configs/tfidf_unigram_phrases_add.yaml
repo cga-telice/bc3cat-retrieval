@@ -31,3 +31,7 @@ io:
   fields_file: fields.json
   meta_file: meta.json
   data_dirname: data
+
+retriever:
+  module: src.retrievers.tfidf_unigram_phrases_add
+  entrypoint: load

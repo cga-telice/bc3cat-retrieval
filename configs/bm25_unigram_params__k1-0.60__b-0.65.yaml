@@ -32,5 +32,9 @@
     "mapping_file": "mapping.jsonl",
     "fields_file": "fields.json",
     "meta_file": "meta.json"
+  },
+  "retriever": {
+    "module": "src.retrievers.bm25_unigram_params",
+    "entrypoint": "load"
   }
 }

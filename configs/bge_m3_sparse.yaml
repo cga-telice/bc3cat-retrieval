@@ -31,3 +31,7 @@ io:
   mapping_file: mapping.jsonl
   fields_file: fields.json
   meta_file: meta.json
+
+retriever:
+  module: src.retrievers.bge_m3_sparse
+  entrypoint: load

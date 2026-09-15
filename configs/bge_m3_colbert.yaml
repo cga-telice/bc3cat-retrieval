@@ -34,4 +34,6 @@ retrieval:
   preselect: 256      # number of FAISS preselected docs before MaxSim
   topk: 100            # default return size
 
-
+retriever:
+  module: src.retrievers.bge_m3_colbert
+  entrypoint: load

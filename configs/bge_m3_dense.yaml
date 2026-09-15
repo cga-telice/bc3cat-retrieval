@@ -38,3 +38,7 @@ model:
 
 # (Optional) experiment id
 experiment_id: bge_m3_dense_v1
+
+retriever:
+  module: src.retrievers.bge_m3_dense
+  entrypoint: load
