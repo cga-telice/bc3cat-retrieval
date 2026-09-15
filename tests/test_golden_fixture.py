@@ -92,6 +92,26 @@ def test_the_fixture_is_stamped():
 
 @pytest.mark.skipif(not MIGRATED.exists(), reason="the migrated OEB run has not been made yet")
 def test_the_migrated_harness_reproduces_the_fixture():
-    differences = diff_metrics(load(FIXTURE / "metrics_dual.json"), load(MIGRATED))
+    """Every figure the fixture recorded, reproduced exactly after five notebooks, a new
+    resolver, batched scoring and gold decoupled from the query key."""
+    differences = diff_metrics(
+        load(FIXTURE / "metrics_dual.json"), load(MIGRATED), allow_extra_scopes=True
+    )
 
     assert differences == [], "the migration moved a number:\n" + "\n".join(differences)
+
+
+@pytest.mark.skipif(not MIGRATED.exists(), reason="the migrated OEB run has not been made yet")
+def test_the_migration_only_added_slices():
+    """The tolerance above is for added slices, so what was added is named here rather than
+    left as whatever happened to appear."""
+    before = {row["scope"] for row in load(FIXTURE / "metrics_dual.json")}
+    after = {row["scope"] for row in load(MIGRATED)}
+
+    added = after - before
+
+    assert before <= after, "a scope the fixture recorded has disappeared"
+    assert added, "the slices S1 adds are missing"
+    assert all(scope.split(":")[0] in {
+        "condition", "modification_type", "modification_count", "subchapter", "family_tercile"
+    } for scope in added), sorted(added)

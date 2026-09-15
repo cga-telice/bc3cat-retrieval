@@ -162,12 +162,12 @@ class RunContext:
     config_path: Path
     collection: str
     method: str
-    queryset: str
+    queryset: str | None
     data_dir: Path
     index_dir: Path
-    run_dir: Path
+    run_dir: Path | None
     corpus_path: Path
-    query_path: Path
+    query_path: Path | None
     inputs: dict[str, Path]
     retriever_module: str
     retriever_entrypoint: str
@@ -176,7 +176,7 @@ class RunContext:
 def load_run_context(
     config_path: str | Path,
     *,
-    queryset: str,
+    queryset: str | None,
     work_root: str | Path = _CONTAINER_ROOT,
     require_inputs: bool = True,
 ) -> RunContext:
@@ -190,7 +190,9 @@ def load_run_context(
     config_path = Path(config_path)
     work_root = Path(work_root)
 
-    if queryset not in QUERY_SETS:
+    # queryset=None is an index build: an index is made from the corpus and carries no
+    # query set, so demanding one there would force the caller to name one arbitrarily.
+    if queryset is not None and queryset not in QUERY_SETS:
         raise ValueError(
             f"unknown query set {queryset!r}; expected one of {', '.join(QUERY_SETS)}"
         )
@@ -222,8 +224,9 @@ def load_run_context(
     short_key, long_key, template = _input_shape(inputs, config_path)
     corpus_path = inputs[long_key]
 
-    role = _DECLARED_QUERY_SETS.get(queryset)
-    if role:
+    if queryset is None:
+        query_path = None
+    elif (role := _DECLARED_QUERY_SETS.get(queryset)):
         query_path = inputs[short_key if role == "short" else long_key]
     else:
         if template is None:
@@ -231,7 +234,8 @@ def load_run_context(
         query_path = data_dir / template.format(collection=collection, queryset=queryset)
 
     if require_inputs:
-        missing = [str(p) for p in (*inputs.values(), query_path) if not p.exists()]
+        candidates = [*inputs.values()] + ([query_path] if query_path else [])
+        missing = [str(p) for p in candidates if not p.exists()]
         if missing:
             raise FileNotFoundError(
                 f"{config_path.name} ({queryset}): input(s) not on disk: " + ", ".join(missing)
@@ -244,7 +248,7 @@ def load_run_context(
         queryset=queryset,
         data_dir=data_dir,
         index_dir=work_root / "index" / collection / method,
-        run_dir=work_root / "runs" / collection / queryset / method,
+        run_dir=(work_root / "runs" / collection / queryset / method) if queryset else None,
         corpus_path=corpus_path,
         query_path=query_path,
         inputs=inputs,

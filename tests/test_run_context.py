@@ -223,3 +223,17 @@ def test_retriever_module_survives_a_renamed_config(tmp_path):
     ctx = load_run_context(cfg_path, queryset="resumen", work_root=tmp_path, require_inputs=False)
 
     assert ctx.retriever_module == "retrievers.bm25_unigram_params"
+
+
+def test_an_index_build_needs_no_query_set(tmp_path):
+    """index_builder builds from the corpus alone; demanding a query set there would force
+    it to name one arbitrarily, and the arbitrary name would end up in a path."""
+    cfg_path = write_config(tmp_path, BM25_OEB)
+
+    ctx = load_run_context(cfg_path, queryset=None, work_root=tmp_path, require_inputs=False)
+
+    assert ctx.index_dir == tmp_path / "index" / "OEB" / "bm25_unigram_params__k1-0.60__b-0.35"
+    assert ctx.corpus_path == tmp_path / "data" / "processed" / "OEB_long_feats.parquet"
+    assert ctx.queryset is None
+    assert ctx.query_path is None
+    assert ctx.run_dir is None
