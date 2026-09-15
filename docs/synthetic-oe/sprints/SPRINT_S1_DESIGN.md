@@ -138,3 +138,4 @@ can be built without it. S1 therefore migrates **five** notebooks, not three.
 
 | Date | What changed | Why | Effect on claims |
 |---|---|---|---|
+| 2026-09-15 | **Work item 12 added: batch the retrieval scoring.** The retriever scores every query against every document in one dense block, so the full OEB query set (47,513) kills the kernel at 21 GB free. Queries are scored in batches, with the batch size a declared parameter of the run. | Not a discovered preference — a wall. Exit criterion 11 asks for the OE dev split, whose identity condition is 35,422 queries, and S3 asks for the full 70,242-leaf corpus; neither is reachable as the harness stands. Approved by César, 2026-09-15. | None, and that is testable rather than asserted: the golden fixture (item 3) was captured before the change, so the batched harness must reproduce it exactly on the same 16,590 queries. A batching change that moved a number would be a bug, and the fixture would catch it. |
