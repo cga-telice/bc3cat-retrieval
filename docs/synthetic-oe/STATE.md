@@ -23,7 +23,8 @@ whenever something blocks.
 
 ## In flight
 
-- **S0**, opened 2026-09-15. Manifest, concept-level split, layout, config migration.
+- **S0**, opened 2026-09-15. Done: manifest, split (D-021), E3 spec drafted, D-017 closed.
+  Left: run/index layout, config migration, and issuing the E3 request.
 
 ## Incident — 2026-09-14
 
@@ -49,5 +50,5 @@ sprint — it does not reproduce numbers.
 
 ## Open decisions
 
-See `DECISIONS.md` (status `Open`). The ones that gate work: split design (D-007),
-run layout (D-008), method scope on OE (D-012), `dense_colbert128` (D-017).
+See `DECISIONS.md` (status `Open`). The ones that gate work: run layout (D-008),
+method scope on OE (D-012). D-007/D-021 (split) and D-017 closed in S0.
