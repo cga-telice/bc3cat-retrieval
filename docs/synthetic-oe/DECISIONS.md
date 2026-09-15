@@ -173,7 +173,7 @@ How far reinforcement-learning-style optimisation is pursued relative to contras
 fine-tuning with sibling hard negatives. Gated by G2 (after S5).
 
 ### D-016 — Config↔module integrity is a precondition for the OE run set
-**Status:** Proposed · **Date:** 2026-09-14 · **Executed in:** S1
+**Status:** **Closed** · **Date:** 2026-09-14 · **Executed in:** S1, 2026-09-15
 **Context.** An inventory of the 77 configs against `src/` (2026-09-14) found three gaps:
 `dense_colbert128` names index-builder and retriever modules that do not exist;
 `tfidf_char_3_5` and `tfidf_unigram_nostop` declare no `retriever` block, so their behaviour
@@ -314,7 +314,7 @@ analysis is unaffected, because it compares paired deltas against the identity r
 *within* a side; a comparison of a type across sides would not be valid.
 
 ### D-022 — One resolver; notebooks never build a path
-**Status:** Proposed · **Date:** 2026-09-15 · **Owner:** César · **Executed in:** S1
+**Status:** **Accepted, executed** · **Date:** 2026-09-15 · **Owner:** César · **Executed in:** S1, 2026-09-15
 **Context.** S0 parameterised the configs but not the harness (see D-008). Seven notebooks
 still name OEB files literally, so `collection: "OE"` resolves correctly inside a config and
 is then ignored by the code that reads it. Three further facts bear on the fix. The
@@ -346,3 +346,71 @@ until now.
 **Follow-on.** `src/utils/config.py` is superseded by the resolver. Removing it is a
 separate, explicit step once nothing imports it — not a side effect of this work.
 
+
+### D-023 — The index is built over the full corpus; the split selects queries only
+**Status:** Accepted · **Date:** 2026-09-15 · **Raised in:** S1 · **Implemented in:** S1
+**Context.** `SPLITS.md` partitions the 83 concepts and says which queries belong to each
+side. It says nothing about what the queries are asked *of*, and nothing else did either.
+Two readings were available and they are not equivalent: index the whole 70,242-leaf corpus
+and filter only the queries, or index only the side's concepts.
+**Decision.** The index is always built over the full corpus. The split selects queries.
+**Why.** Indexing dev concepts alone makes dev an easier task than test — 35,422 candidates
+instead of 70,242, and every hard sibling from the other side removed — so every dev number
+would be inflated relative to the test number it is supposed to predict. It would also make
+the operating point chosen on dev the wrong one for test.
+**Consequence.** `index/{collection}/{method}` carries no split segment, alongside carrying
+no query set (D-008). A run's `run_meta.json` records the split it drew its queries from.
+Enforced by `tests/test_run_context.py`.
+
+### D-024 — The `OEB#` template row is dropped, and that is the 47,514 / 47,513 gap
+**Status:** Accepted · **Date:** 2026-09-15 · **Raised in:** S0 · **Answered in:** S1
+**Context.** The S0 report left an open question: `OEB_texto.json` holds 47,514 records and
+the parquets 47,513, and nobody had written down why.
+**Answer.** `clean_df` drops rows whose `item_key` ends in `#` or `$` — the BC3 template
+keys. `OEB#` is the only such row in the OEB corpus, and it is exactly the difference. The
+OE corpus carries no template row, so OE's 70,242 is 70,242 on both sides.
+**Decision.** Keep the behaviour. A template is not a retrievable item; indexing it would
+add a document no query can correctly match.
+**Consequence.** Recorded rather than rediscovered. `tests/test_corpus_prep.py` asserts the
+dropped set is exactly `{"OEB#"}`, so a future corpus that drops something else fails loudly
+instead of quietly shrinking.
+
+### D-008 — amendment: `texto` is the fourth query set, and `resumen` is not the identity rendering
+**Status:** Amendment to D-008 · **Date:** 2026-09-15 · **Raised in:** S1
+**Context.** D-008's `{queryset}` table lists three values and glosses `resumen` as "the leaf's
+own summary — the identity rendering and the baseline". Those are two different things and
+`resumen` is only the second. `RESEARCH_PROPOSAL.md §E0(a)` defines the identity condition as
+`texto→texto`, query = target, and S4's paired deltas are measured against "the identity
+rendering of the same leaves" — which for a synthetic query is its gold leaf's *unmodified
+`texto`*, not that leaf's summary.
+**Amendment.** `{queryset}` takes four values: `texto` (the identity rendering, the reference
+every paired delta is measured against), `resumen` (the replication baseline — what the
+previous study used as its query), `single_texto`, `stacked_texto`; and `balanced_texto` if
+E3 arrives (D-009).
+**Why now.** Before any run, so that no path has to be renamed and no already-published
+number has to be relabelled. Had this been noticed in S4 instead, the deltas would have been
+computed against the wrong reference and the error would have been invisible — both
+conditions exist, both produce plausible numbers.
+**Consequence.** Implemented in `utils/run_context.py`; `runs/OE/texto/…` exists as of S1.
+
+---
+
+*Closing notes added 2026-09-15 (S1).*
+
+**D-016 is closed.** `retrieve.ipynb` reads `retriever.module` from the config and imports
+it; the in-notebook alias table is deleted. `tests/test_notebooks_are_parameterised.py`
+asserts the notebook holds no alias table and no `split("__", 1)`, and
+`tests/test_run_context.py` asserts that a renamed config resolves to the same module — the
+property whose absence was S0 finding 1.
+
+**D-022 is executed, with its scope widened and its pessimism overturned.**
+*Scope:* five notebooks, not three. `data.ipynb` owns the parameter normalisation and the
+only collection knob upstream of features, and `metrics.ipynb` owned the gold assumption;
+neither could be left behind and still have OE run. The other four (`cross_encoder`,
+`hybrid`, `prf_bm25_orchestrator`, `reranker_tiebreak`) stand as written, for S4.
+*Verification:* D-022 concluded that only static path equality remained, because `runs/` was
+destroyed on 2026-09-14 and the baseline with it. That was true of the runs and not of the
+inputs: the OEB feature tables survived, so the baseline was **re-manufactured** before the
+migration began and frozen at `tests/fixtures/oeb_bm25_pre_migration/`. The migrated harness
+reproduces all six of its figures exactly. The verification is therefore numeric, not merely
+structural — stronger than the decision that authorised the work expected.

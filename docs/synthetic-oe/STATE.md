@@ -3,15 +3,15 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-15 · **Updated by:** César
+**Last updated:** 2026-09-16 · **Updated by:** César
 
 ---
 
 ## Where we are
 
 **Active sprint:** **S1 — harness adaptation**, design frozen at `9cd244c`.
-**Phase:** pre-execution. No run exists yet; the first is S1's OEB golden fixture, captured
-*before* any notebook is migrated.
+**Phase:** executing. Items 1-10 and 12 done; 11 done for all four query sets on dev. The
+sprint report is what remains.
 
 ## Done
 
@@ -23,9 +23,11 @@ belong in `archive/`. Updated at every sprint transition and whenever something 
 
 ## In flight
 
-- **S1 opened 2026-09-15.** Five notebooks onto one resolver (D-022, widened from three);
-  gold decoupled from the query key, fail-loud; one BM25 config on OE over all four query
-  sets, dev split only. S1 produces no citable number.
+- **S1 opened 2026-09-15.** Five notebooks now run off one resolver; gold comes from the
+  query record; scoring is batched (design amendment, 2026-09-15). 252 tests, none skipped.
+  **The OEB golden fixture reproduces exactly after the migration** — all six figures, no
+  differences — so the plumbing change moved no number. Four OE runs exist on dev.
+  S1 produces no citable number; the run figures are plumbing evidence for S2.
 
 ## Incident — 2026-09-14
 
@@ -41,20 +43,22 @@ belong in `archive/`. Updated at every sprint transition and whenever something 
 
 ## Next action
 
-S1 items 1–3, in order and as a gate: `run_context.py` with tests, the `pytest` harness
-(`tests/` has no tracked file), then the OEB golden fixture. If the fixture is not captured
-within three days, fall back to static path equality and record the downgrade as an
-amendment rather than extending the sprint.
+Write `sprints/SPRINT_S1_REPORT.md` against the frozen design, then `/audit S1` in a
+session that did not do the work. Two things the report must carry: the manuscript's 0.974
+comes from a 16,590-of-47,513 sample (`RANDOM_SAMPLE`, seed 42), and `ranx` is absent from
+`requirements.txt` although the contract names ranx 0.3.7.
 
 ## Latest results
 
-None yet. When runs exist this points at `results/` and names the last audited sprint; it
-never reproduces numbers.
+Five runs exist under `runs/{collection}/{queryset}/{method}`, four of them OE on dev.
+**None is a result.** S1 is plumbing: its figures are evidence that the harness runs, and
+the first reportable numbers come from S2. `results/` is still empty.
 
 ## Open decisions
 
-See `DECISIONS.md` (`Open`). Gating: method scope on OE (D-012) — gates S3, not S1. Closed in
-S0: D-007/D-021, D-008, D-016, D-017. D-022 is executed in S1, which raises **D-023** (index
-over the full corpus; the split selects queries only) and **D-024** (the `OEB#` template
-row), and amends D-008 to add `texto` as a fourth query set — `resumen` is the replication
-baseline, not the identity rendering.
+See `DECISIONS.md` (`Open`). Gating: method scope on OE (D-012) — gates S3, not S1.
+Closed in S1: **D-016** (the alias table is gone) and **D-022** (executed, scope widened to
+five notebooks, verification numeric rather than structural). Recorded in S1: **D-023**
+(the index is built over the full corpus; the split selects queries only), **D-024** (the
+`OEB#` row), and an amendment to **D-008** adding `texto` as the fourth query set —
+`resumen` is the replication baseline, not the identity rendering.
