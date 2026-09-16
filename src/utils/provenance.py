@@ -53,17 +53,28 @@ def provenance_stamp(
     repo = Path(repo)
     try:
         code_commit = _git(repo, "rev-parse", "HEAD")
-        code_dirty = bool(_git(repo, "status", "--porcelain", "--", "src", "configs"))
+        # The paths, not just a flag. The same checkout reads as dirty from inside the
+        # container purely because Windows wrote CRLF, so `dirty: true` on its own is not
+        # usable evidence — a reader has to see *what* differs to judge whether it could
+        # have changed the number.
+        dirty_paths = [
+            line[3:].strip()
+            for line in _git(repo, "status", "--porcelain", "--", "src", "configs").splitlines()
+            if line.strip()
+        ]
+        code_dirty = bool(dirty_paths)
     except (subprocess.CalledProcessError, FileNotFoundError):
         # A container without git, or a checkout without history: say so, rather than
         # inventing a commit id that would be quoted later as if it were one.
         code_commit = "unavailable"
         code_dirty = True
+        dirty_paths = ["<git unavailable>"]
 
     return {
         "run_id": run_id,
         "config_sha256": sha256_file(config_path),
         "code_commit": code_commit,
         "code_dirty": code_dirty,
+        "code_dirty_paths": dirty_paths,
         "query_set_sha256": sha256_file(query_path),
     }

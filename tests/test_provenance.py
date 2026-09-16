@@ -92,3 +92,19 @@ def test_every_run_records_what_it_dropped(meta_path):
 
     assert meta["dropped"] == 0
     assert meta["queries"] > 0
+
+
+def test_a_dirty_tree_names_the_files(tmp_path):
+    """A bare `dirty: true` is not usable evidence. The same checkout reads as dirty from
+    inside the container purely because Windows wrote CRLF, so the stamp records which paths
+    differ and lets the reader judge whether they could have changed the number."""
+    config = tmp_path / "cfg.yaml"
+    config.write_text("x", encoding="utf-8")
+    queries = tmp_path / "q"
+    queries.write_bytes(b"y")
+
+    stamp = provenance_stamp(run_id="r", config_path=config, query_path=queries, repo=REPO)
+
+    assert "code_dirty_paths" in stamp
+    assert isinstance(stamp["code_dirty_paths"], list)
+    assert stamp["code_dirty"] == bool(stamp["code_dirty_paths"])
