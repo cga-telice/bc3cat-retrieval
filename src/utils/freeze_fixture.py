@@ -56,6 +56,14 @@ def main() -> None:
         default=[],
         help="execution parameter as NAME=VALUE, repeatable",
     )
+    ap.add_argument(
+        "--captured-at",
+        help=(
+            "the commit the run was produced at, when re-freezing an existing fixture. "
+            "Without it the stamp would record today's HEAD as the capture commit, which "
+            "for a fixture whose whole purpose is to predate the migration would be false."
+        ),
+    )
     args = ap.parse_args()
 
     run_dir = (REPO / args.run).resolve()
@@ -79,25 +87,51 @@ def main() -> None:
             "sha256": sha256(on_disk) if on_disk.exists() else None,
         }
 
+    # Capture fields describe the run; frozen_at fields describe this invocation. They are
+    # the same only the first time. On a re-freeze the capture fields are carried forward
+    # from the previous stamp, and the stamp says they were carried rather than measured.
+    previous = {}
+    if (into / "STAMP.json").exists():
+        previous = json.loads((into / "STAMP.json").read_text(encoding="utf-8"))
+
+    captured_at = args.captured_at or previous.get("code_commit") or git("rev-parse", "HEAD")
+    carried = bool(args.captured_at or previous.get("code_commit"))
+    captured_dirty = previous.get("code_dirty", False) if carried else None
     stamp = {
         "what": "OEB baseline captured before the S1 notebook migration (D-022)",
         "run_id": run_dir.name,
         "collection": collection,
         "queryset": "resumen",
         "config": {"path": args.config, "sha256": sha256(config_path)},
-        "code_commit": git("rev-parse", "HEAD"),
+        "code_commit": captured_at,
+        "capture_fields": "carried forward from the previous stamp" if carried else "measured now",
+        "frozen_at_commit": git("rev-parse", "HEAD"),
         # Only what can change the run counts: src/ and configs/. The fixture being written
         # is untracked at this moment and cannot count against itself, and an uncommitted
         # manuscript elsewhere in the tree says nothing about the number.
-        "code_dirty": bool(git("status", "--porcelain", "--", "src", "configs")),
+        "code_dirty": (
+            captured_dirty
+            if carried
+            else bool(git("status", "--porcelain", "--", "src", "configs"))
+        ),
         "inputs": inputs,
         "execution": dict(p.split("=", 1) for p in args.param),
         "metrics_sha256": sha256(metrics_path),
     }
 
     into.mkdir(parents=True, exist_ok=True)
-    (into / METRICS).write_text(metrics_path.read_text(encoding="utf-8"), encoding="utf-8")
-    (into / "STAMP.json").write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    # newline="" so Windows does not translate LF to CRLF on the way out: a copy whose
+    # bytes differ from the source digests to something the stamp does not name, which is
+    # how the integrity chain gets a hole at both ends (audit F1).
+    frozen = into / METRICS
+    frozen.write_text(metrics_path.read_text(encoding="utf-8"), encoding="utf-8", newline="")
+
+    # The frozen copy's own digest, not only the source's: without it nothing anchors the
+    # file the tests actually read.
+    stamp["frozen_metrics_sha256"] = sha256(frozen)
+    (into / "STAMP.json").write_text(
+        json.dumps(stamp, indent=2) + chr(10), encoding="utf-8", newline=""
+    )
 
     print(f"frozen into {into.relative_to(REPO)}")
     print(json.dumps(stamp, indent=2))

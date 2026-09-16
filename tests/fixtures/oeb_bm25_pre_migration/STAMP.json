@@ -1,0 +1,36 @@
+{
+  "what": "OEB baseline captured before the S1 notebook migration (D-022)",
+  "run_id": "bm25_unigram_params__k1-0.60__b-0.35",
+  "collection": "OEB",
+  "queryset": "resumen",
+  "config": {
+    "path": "configs/bm25_unigram_params__k1-0.60__b-0.35.yaml",
+    "sha256": "34c184257a1864975ac8aa5543c7df473df59a8e67e68f6a122d3fe37baf2d40"
+  },
+  "code_commit": "a1a2391410eafdb09cdeab5cc5f6b85eeae93861",
+  "capture_fields": "carried forward from the previous stamp",
+  "frozen_at_commit": "a8e5d217555219e4fc7b17ee207cd9ec653d4027",
+  "code_dirty": false,
+  "inputs": {
+    "short_feats": {
+      "path": "/work/data/processed/OEB_short_feats.parquet",
+      "sha256": "a7fdce118e1adbd6814421847afff5f047a2a5f271abfc3b8eb6311d53248c37"
+    },
+    "long_feats": {
+      "path": "/work/data/processed/OEB_long_feats.parquet",
+      "sha256": "1bdfb1bda4bcc259f2af9a86b94b157ece6476ca3134b3e364c0c5467daf6627"
+    },
+    "features_meta": {
+      "path": "/work/data/processed/OEB_features_meta.json",
+      "sha256": "58b211e720a09763e489c2153226b226b192b9d38edc313bef45c34ae696fa5c"
+    }
+  },
+  "execution": {
+    "RANDOM_SAMPLE": "16590",
+    "random_state": "42",
+    "K": "100",
+    "SAVE": "True"
+  },
+  "metrics_sha256": "d82d58d6d7e1bed1b0c864403f35c0aa04c21a094132cff342af1b698e75d547",
+  "frozen_metrics_sha256": "d82d58d6d7e1bed1b0c864403f35c0aa04c21a094132cff342af1b698e75d547"
+}

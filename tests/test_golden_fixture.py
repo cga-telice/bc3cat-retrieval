@@ -78,6 +78,43 @@ def test_an_added_scope_is_reported():
 # --- the fixture itself ---------------------------------------------------------------
 
 
+def test_the_fixture_file_matches_its_own_digest():
+    """The stamp used to name only the *source* run's digest, so nothing anchored the copy
+    the tests actually read — and a CRLF translation on the way out meant the two differed
+    (audit F1). Both are recorded now, and this checks the one that matters."""
+    import hashlib
+
+    stamp = json.loads((FIXTURE / "STAMP.json").read_text(encoding="utf-8"))
+    frozen = (FIXTURE / "metrics_dual.json").read_bytes()
+
+    assert stamp["frozen_metrics_sha256"] == hashlib.sha256(frozen).hexdigest()
+    crlf = bytes([13, 10])
+    assert crlf not in frozen, "line endings were translated; the digest would not survive"
+
+
+def test_the_fixture_is_tracked_by_git():
+    """.gitignore's blanket *.json rule silently excluded it, so the sprint's only claimed
+    finding rested on a file with no version-control history (audit F1)."""
+    import subprocess
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "tests/fixtures/oeb_bm25_pre_migration"],
+        cwd=REPO, capture_output=True, text=True, check=True,
+    ).stdout.split()
+
+    assert "tests/fixtures/oeb_bm25_pre_migration/metrics_dual.json" in tracked
+    assert "tests/fixtures/oeb_bm25_pre_migration/STAMP.json" in tracked
+
+
+def test_the_fixture_predates_the_migrated_metrics_notebook():
+    """Structural proof that the fixture was not produced by today's code: the migrated
+    metrics notebook emits the slice rows, and the fixture has none of them."""
+    rows = load(FIXTURE / "metrics_dual.json")
+
+    assert {row["scope"] for row in rows} == {"overall", "has_numbers", "no_numbers"}
+    assert len(rows) == 6
+
+
 def test_the_fixture_is_stamped():
     stamp = json.loads((FIXTURE / "STAMP.json").read_text(encoding="utf-8"))
 

@@ -87,11 +87,17 @@ def test_every_run_on_disk_is_stamped(meta_path):
 @pytest.mark.skipif(not RUN_METAS, reason="no runs in this checkout (runs/ is git-ignored)")
 @pytest.mark.parametrize("meta_path", RUN_METAS, ids=lambda p: str(p.parent.relative_to(RUNS)))
 def test_every_run_records_what_it_dropped(meta_path):
-    """Zero is the only acceptable value, and it is recorded rather than assumed."""
+    """Zero is the only acceptable value — and it has to be a measurement.
+
+    The first version of this asserted `dropped == 0` against a literal the harness wrote
+    unconditionally, so it could not fail (audit F4). It now checks the arithmetic the run
+    recorded: what entered scoring against what came out.
+    """
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
 
-    assert meta["dropped"] == 0
     assert meta["queries"] > 0
+    assert meta["dropped"] == 0
+    assert meta["queries_selected"] - meta["queries"] == meta["dropped"]
 
 
 def test_a_dirty_tree_names_the_files(tmp_path):

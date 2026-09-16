@@ -85,3 +85,8 @@ Claude outputs/
 # pytest temp root (see pytest.ini)
 .pytest-tmp/
 .pytest_cache/
+
+# Test fixtures are evidence, not data: the golden fixture is the only proof that a
+# migration moved no number, so it is versioned despite the blanket *.json rule above.
+!tests/fixtures/
+!tests/fixtures/**
