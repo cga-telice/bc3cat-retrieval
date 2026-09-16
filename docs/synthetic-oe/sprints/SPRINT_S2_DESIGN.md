@@ -1,6 +1,6 @@
 # Sprint S2 — Go/no-go probe ⚑ · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `1f126f0` · `2026-09-17`
 > This section is read-only from that commit. Changes go in **Amendments** below, dated and
 > justified — never as in-place edits. `git log -- <this file>` after the freeze date is an
 > audit trail; keep it honest.

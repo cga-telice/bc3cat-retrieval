@@ -434,3 +434,17 @@ keeps its shape and moves its intercept — but S7 and S8 regress on that axis a
 which of the two they used. Any figure quoting a dose must name the field it counted.
 **Upstream.** Worth a note to `bc3cat-dataset`: the doubling looks like a packaging artefact,
 and it is not among the documented "pantry artefacts" of D-004.
+
+### D-026 — The structured pipeline is ported by file checkout, not merged
+**Status:** Accepted · **Date:** 2026-09-17 · **Owner:** César · **Raised in:** S2 design (`1f126f0`) · **Executed in:** S2
+**Context.** S2 needs `structured_pipeline_rules`, which exists only on
+`research/structured-retrieval` (`85c3359`) and names `OEB_*` files literally. The root contract
+forbids merging research branches without a recorded decision.
+**Decision.** Bring only the modules the rules variant needs — `src/pipeline/{catalog_lookup,
+param_extractor_rules,schema_extractor}.py`, `src/retrievers/structured_pipeline{,_rules}.py`,
+`src/index_builders/concept_dense_e5.py` — by per-file checkout. Each file records its source
+commit in its header; literal paths are replaced by the resolver (D-022). No merge, no history
+shared.
+**Consequence.** The two branches can diverge on these files; this branch's copy is the one its
+numbers rest on. The LLM and oracle variants stay behind until S5. Time-boxed by the S2
+stopping criterion: no structured runs by day 4 and the port moves to S5.

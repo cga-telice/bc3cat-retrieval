@@ -3,14 +3,15 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-16 · **Updated by:** César
+**Last updated:** 2026-09-17 · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint:** none. **S1 is `done`**; S2 — the go/no-go probe — is next to open.
-**Phase:** the harness runs end to end on OE. The first reportable numbers come from S2.
+**Active sprint:** **S2 — go/no-go probe**, design frozen at `1f126f0` on 2026-09-17
+([`SPRINT_S2_DESIGN.md`](sprints/SPRINT_S2_DESIGN.md)). Time-box 8 working days; day-4 check on
+the structured port. **Phase:** first reportable numbers; gate G1 is read at close.
 
 ## Done
 
@@ -26,7 +27,9 @@ belong in `archive/`. Updated at every sprint transition and whenever something 
 
 ## In flight
 
-- Nothing — S2 not yet opened.
+- **S2** — 4 methods (`bm25_unigram_params`, `bm25_unigram`, `bge_m3_colbert`,
+  `structured_pipeline_rules`) × `texto` / `single_texto` / `stacked_texto`, dev only. Port of
+  the structured modules under D-026. Needs Docker Desktop (Jupyter + `bge-m3`, GPU).
 
 
 ## Incident — 2026-09-14
@@ -43,9 +46,9 @@ belong in `archive/`. Updated at every sprint transition and whenever something 
 
 ## Next action
 
-Open S2 (`/sprint-open S2`) — the go/no-go probe. Its identity control is already built and
-its query set is `texto`; gate G1 stops the project if that control reads below ≈0.98.
-Method scope on OE (D-012) gates S3, not S2.
+S2 work item 1: port the structured pipeline (D-026) and confirm from the feature code
+whether `bm25_unigram_params` reads the query's parsed `parameters` (D-010). Start Docker
+Desktop before any run.
 
 ## Latest results
 
@@ -58,4 +61,5 @@ runs. The first reportable numbers come from S2.
 See `DECISIONS.md` (`Open`). Gating: method scope on OE (D-012) — gates S3. Closed in S1:
 **D-016**, **D-022**. Recorded in S1: **D-023** (index over the full corpus), **D-024**
 (`OEB#`), **D-025** (the stacked dose is one lower than `modification_count` says — it reaches
-H4), and an amendment to **D-008** adding `texto` as the fourth query set.
+H4), and an amendment to **D-008** adding `texto` as the fourth query set. Recorded in S2: **D-026** (structured
+pipeline ported by file checkout, not merged).
