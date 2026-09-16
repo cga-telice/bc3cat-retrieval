@@ -448,3 +448,24 @@ shared.
 **Consequence.** The two branches can diverge on these files; this branch's copy is the one its
 numbers rest on. The LLM and oracle variants stay behind until S5. Time-boxed by the S2
 stopping criterion: no structured runs by day 4 and the port moves to S5.
+
+### D-010 — confirmation in S2: `bm25_unigram_params` is an oracle bound on synthetic queries
+**Status:** Note on D-010 · **Date:** 2026-09-17 · **Raised in:** S2 (design constraint "D-010")
+**Finding.** Confirmed from the code, not inferred. `utils.corpus_prep.add_param_token_columns`
+builds `text_word_params = text_word + param_tokens`, and `param_tokens` is minted by
+`build_param_tokens` from the record's own `parameters` — for a synthetic query, the parsed,
+flat dict that `nest_flat_parameters` lifts back into axes. `bm25_unigram_params` indexes and
+queries that field (`index_builders/bm25_unigram_params.select_field`). A real query carries no
+`parameters`, so on every query set here the method receives an axis segmentation it could not
+have in deployment. On `texto` the tokens are the gold leaf's exactly; on a modified axis the
+rewritten token is out of vocabulary and contributes nothing; on an untouched axis it matches.
+**Consequence.** Per the S2 design, `bm25_unigram_params` is reported as an **oracle bound** and
+G1 is also read on `bm25_unigram`, the deployable arm. D-010 stays Proposed as a policy; this
+entry fixes its application to this method.
+**Adjacent, recorded for S2 work item 6.** `normalize_text` rewrites `\d\.\d{3}` as a thousands
+separator, so a synthetic decimal is mangled (`0.03x0.015 m` → `0.03x0015 m`) in `text_norm`,
+`text_word` and the param token. Dev reach: 9/204 `unit_conversion`, 4/244 `unit_expansion`,
+38/2,521 stacked; other single types only through the corpus's own `03.365` specification
+numbers, which are rewritten identically on both sides. Not fixed — it is harness behaviour
+every method inherits — but a miss in that set is classified as a feature artefact, not a
+rendering effect.
