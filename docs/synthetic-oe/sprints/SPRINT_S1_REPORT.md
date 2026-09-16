@@ -15,45 +15,38 @@ Five runs, one method, no tuning. Each carries the four-part stamp the operating
 computed at execution time from the files actually read:
 [`results/S1/run_provenance.md`](../results/S1/run_provenance.md).
 
-| run_id | queries | split | gold column | dropped |
-|---|---:|---|---|---:|
-| `OE/texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | 35,422 | dev | `item_key` | 0 |
-| `OE/resumen/…__OE` | 35,422 | dev | `item_key` | 0 |
-| `OE/single_texto/…__OE` | 2,206 | dev | `gold_item_key` | 0 |
-| `OE/stacked_texto/…__OE` | 2,521 | dev | `gold_item_key` | 0 |
-| `OEB/resumen/bm25_unigram_params__k1-0.60__b-0.35` | 16,590 | all | `item_key` | 0 |
+Four OE runs on the dev split — `texto` 35,422, `resumen` 35,422, `single_texto` 2,206,
+`stacked_texto` 2,521 — and the OEB fixture run, 16,590 of 47,513 sampled at
+`random_state=42`. The synthetic sets score against `gold_item_key`, the rest against
+`item_key`; `dropped` is 0 on all five, measured rather than asserted.
 
 Every count reconciles with `SPLITS.md`: dev holds 35,422 leaves, 2,206 single and 2,521
 stacked queries. The OEB run is the golden fixture's query set, re-run through the migrated
 harness.
 
-All five stamped one uncommitted path, `src/index_builders/README.md`. It reads as modified
-from inside the container and clean on the host — Windows wrote CRLF. It is a README, it is
-not imported, and the runs are otherwise from a clean tree. Recorded rather than suppressed.
+All five stamped one uncommitted path, `src/index_builders/README.md`: it reads as modified
+inside the container and clean on the host, because Windows wrote CRLF. A README, not
+imported, and the runs are otherwise from a clean tree. Recorded rather than suppressed.
 
 ## Findings
 
-S1 changed no method and tuned nothing, so **it has no results**, and the figures its runs
-produced are not reported as findings. They are in
-[`results/S1/headline_figures.md`](../results/S1/headline_figures.md), labelled as what they
-are: evidence that the harness runs end to end, and the reference S2 measures against.
-
-The sprint's own finding is the one thing it set out to establish.
+S1 changed no method and tuned nothing, so **it has no results**. Its runs' figures are in
+[`headline_figures.md`](../results/S1/headline_figures.md), labelled as what they are:
+evidence the harness runs, and the reference S2 measures against. The sprint's own finding is
+the one thing it set out to establish.
 
 **The migration moved no number.** The OEB baseline was captured before any notebook was
-touched, at commit `a1a2391`, and frozen at `tests/fixtures/oeb_bm25_pre_migration/`. After
-five migrated notebooks, a new resolver, batched scoring, gold decoupled from the query key
-and a rewritten metrics notebook, the same 16,590 queries reproduce **all six recorded
-figures to ten decimal places**, both targets, all three scopes:
-[`results/S1/fixture_check.md`](../results/S1/fixture_check.md). `diff_metrics` reports no
-differences. The only rows that differ are the slices S1 adds, and a separate test enumerates
-which additions are permitted so that tolerance cannot cover a regression.
+touched, at commit `a1a2391`. After five migrated notebooks, a new resolver, batched scoring,
+gold decoupled from the query key and a rewritten metrics notebook, the same 16,590 queries
+reproduce **all six recorded figures to ten decimal places**, both targets, all three scopes:
+[`fixture_check.md`](../results/S1/fixture_check.md). The only rows that differ are the slices
+S1 adds, and a test enumerates which additions are permitted, so the tolerance cannot cover a
+regression. The auditor confirmed the comparison is not vacuous.
 
-D-022 expected this verification to be impossible — `runs/` was destroyed on 2026-09-14 and
-the baseline with it, leaving "static path equality, which proves that the same file is read,
-not that the same number comes out". That was true of the runs and false of the inputs: the
-OEB feature tables survived the incident, so the baseline was re-manufactured rather than
-conceded. The verification is numeric, not structural.
+D-022 expected this to be impossible: `runs/` was destroyed on 2026-09-14 and the baseline
+with it, leaving "static path equality … proves that the same file is read, not that the same
+number comes out". True of the runs, false of the inputs — the OEB feature tables survived, so
+the baseline was re-manufactured rather than conceded, and the verification is numeric.
 
 ## Hypotheses
 
@@ -63,7 +56,8 @@ conceded. The verification is numeric, not structural.
 
 ## What is now known to be wrong
 
-Eleven assumptions this sprint falsified. Six were in documents this branch wrote.
+Twelve assumptions this sprint falsified. Six sat in this branch’s own documents; two were
+found by the audit rather than by the work.
 
 1. **The OE corpus could not be built at all.** `normalize_parameters_field` called `.get` on
    an unused axis, which OE writes as `"F": null`. **7,212 of 70,242 records** carry one.
@@ -74,47 +68,58 @@ Eleven assumptions this sprint falsified. Six were in documents this branch wrot
    `gold_label_for_query`, which returns the query key. Five, not three.
 3. **D-022's pessimism was wrong**, in the useful direction. See Findings.
 4. **D-008 lists three query sets and mislabels one.** It glosses `resumen` as "the identity
-   rendering and the baseline". Those are two conditions: the proposal defines identity as
-   `texto→texto`, and S4's paired deltas are measured against a leaf's *unmodified `texto`*,
-   not its summary. Had this surfaced in S4, the deltas would have been computed against the
-   wrong reference — and both readings produce plausible numbers, so nothing would have
-   looked wrong. Amended before any run, so no path was renamed.
+   rendering and the baseline"; those are two conditions. The proposal defines identity as
+   `texto→texto`, and S4's paired deltas are measured against a leaf's *unmodified `texto`*.
+   Had this surfaced in S4 the deltas would have used the wrong reference — and both readings
+   produce plausible numbers, so nothing would have looked wrong. Amended before any run.
 5. **9 of 77 configs never declared `method.save_as`**, which D-008 makes the `{method}` path
    segment. They worked because the harness took the method name from the config's *filename*
    — the same coupling S0 recorded as finding 1, in the other direction.
 6. **`inputs` takes three shapes, not one.** 70 lexical configs declare
    `short_feats`/`long_feats`/`features_meta`, 5 neural ones `short_text_path`/`long_text_path`
-   over raw JSON, 2 hybrids over the `_norm` parquets. Any resolver assuming one shape breaks
-   the neural family at S4.
+   over raw JSON, 2 hybrids over `_norm` parquets. A resolver assuming one breaks S4.
 7. **The harness could not run its own corpus.** Scoring densified a
-   `len(queries) × num_docs` block: ~9 GB on the full OEB query set with 21 GB free, and the
-   kernel died. The OE dev identity condition is 35,422 queries and S3 asks for 70,242.
-   Batched, the full OEB set now runs in 48 s.
+   `len(queries) × num_docs` block and the kernel died on the full OEB query set. The OE dev
+   identity condition is 35,422 queries; S3 asks for 70,242. Batched, it completes — the
+   stamped `OE/texto` run scores 35,422 queries against 70,242 documents. *(A full-OEB timing
+   quoted here was removed after audit F5: no run was kept, so rule 1 says it does not exist.)*
 8. **The manuscript's 0.974 comes from a sample.** `retrieve.ipynb` defaults to
    `RANDOM_SAMPLE = 16590` of 47,513 queries — 35 %, `random_state=42`. Re-running it gives
-   item Acc@1 0.9737, which is the published figure; the full 47,513 give 0.9735. The figure
-   is reproducible and the sampling is deterministic, but it is nowhere stated. Given that
+   item Acc@1 0.9737 in the stamped `OEB/resumen` run, which is the published figure. It is
+   reproducible and the sampling is deterministic, but it is nowhere stated. *(A full-corpus
+   comparison figure was quoted here and removed after audit F5 — no run was kept for it.)* Given that
    the previous review cycle found three distinct query samples reported as one, this belongs
    in the manuscript's methods, not in a notebook default.
-9. **The declared environment does not reproduce the reported numbers.** `requirements.txt`
-   names five packages; `ranx` is not among them, though the root contract specifies ranx
-   0.3.7, and neither is `papermill`, though all five notebooks carry papermill parameter
-   cells. Both were installed by hand to run this sprint.
+9. **The root contract names a dependency the harness does not use.** `CLAUDE.md` says
+   "Metrics via `ranx` 0.3.7"; `metrics.ipynb` computes Acc@1, Recall@5/@10, MRR and nDCG@10
+   in-notebook, and did so before the migration too — `grep -rn ranx src/ tests/` returns
+   nothing at any commit. The contract has not described the harness for some time: a
+   divergence S1 inherited rather than caused. *(This entry first claimed `ranx` was missing
+   from `requirements.txt` and had to be installed to run the sprint. The audit checked and
+   it is not needed at all — I installed it on an assumption and never verified it was used.
+   Corrected after audit.)* `papermill` **is** absent and **is** required: all five notebooks
+   carry a tagged `parameters` cell and every run here was executed through it.
 10. **The axis letter-to-label map exists only in the corpus.** `OE_concept_schema.json` lists
     a concept's axes by label without the letter the records key on. Deriving it from the
     schema's axis order would have been a guess that produced plausible tokens.
-11. **`tests/` held no tracked file** — only two orphan `.pyc`. There was no test harness to
-    add tests to.
+11. **`tests/` held no tracked file** — two orphan `.pyc`, no harness to add tests to.
+12. **The stacked set's dose is one lower than it says.** `OE_stacked_texto` lists
+    `template_paraphrase` **twice** in all 4,998 records and `modification_count` counts the
+    duplicate: 554 records at count 3 carry 2 distinct modifications, 730 at count 6 carry 5,
+    through the range. The contract quotes "2–8 (mode 5)"; the distinct dose is 1–7, mode 4.
+    Uniform, so it shifts the dose axis rather than distorting it — but **H4 is a regression
+    on that axis** and S7/S8 read it directly. Carried as a `distinct_modification_count`
+    slice rather than corrected: the field is upstream and digested (D-025).
 
 ## Exit criteria
 
 | Criterion | Met | Evidence |
 |---|---|---|
 | 1 · `run_context.py` committed with tests; `pytest` runs from a tracked `tests/` | yes | 269 tests, 0 skipped, from `pytest.ini` |
-| 2 · All 77 configs resolve byte-identically before and after under `OEB`; 0 defects | yes | `migrate_configs.py`: "Resolved inputs are byte-identical before and after for all 77 configs", 0 defects; 154 of the tests are the 77 configs resolved twice |
+| 2 · All 77 configs resolve byte-identically before and after under `OEB`; 0 defects | yes | `tests/test_configs_resolve.py` — 154 parametrised tests over all 77 configs, resolving each and checking its declared module exists. *(The `migrate_configs.py` output first cited here is an S0 result and is vacuous if re-run today: no config still holds the literals it rewrites, so its before/after compares a config with itself — audit F8b.)* |
 | 3 · The fixture re-run after migration reproduces `metrics_dual.json` exactly | yes | [`fixture_check.md`](../results/S1/fixture_check.md): 36 figures, none moved; `diff_metrics` reports none |
 | 4 · No collection literal in the five notebooks | yes, **as re-read** | See Deviations. Enforced by `tests/test_notebooks_are_parameterised.py` over all five |
-| 5 · `retrieve.ipynb` raises on an absent gold; 0 dropped on all four OE runs | yes | `assert_gold_present` with its own test; `dropped: 0` in all five `run_meta.json` |
+| 5 · `retrieve.ipynb` raises on an absent gold; 0 dropped on all four OE runs | yes | `assert_gold_present` runs before scoring, with its own tests, and a row-count check raises after. `dropped` is the measured difference between what entered scoring and what came out — 0 on all five runs. *(It was a hard-coded literal whose test could not fail — audit F4.)* |
 | 6 · The config completes on OE for all four query sets (dev), each with its four-part stamp | yes | [`run_provenance.md`](../results/S1/run_provenance.md) — **stamp added late; see Deviations** |
 | 7 · Dual-target metrics plus every named slice, reconciling with `SPLITS.md` | yes | [`slices.md`](../results/S1/slices.md); counts match `SPLITS.md` |
 | 8 · D-016 closed; D-022 executed; D-023 and D-024 recorded | yes | `DECISIONS.md`, entries and closing notes |
@@ -125,8 +130,34 @@ Eleven assumptions this sprint falsified. Six were in documents this branch wrot
 |---|---|
 | **Work item 12, batched scoring.** Not in the frozen design; the harness could not run the sprint's own exit criterion without it | Amendments row 1, 2026-09-15, approved by César before implementation |
 | **Five notebooks, not D-022's three.** `data.ipynb` and `metrics.ipynb` added | Declared in the design's Entry state, which states five before the work began |
-| **Criterion 4 is met as re-read, not as written.** As written it forbids a collection literal anywhere outside a comment, which would forbid the papermill parameters cell — where a literal belongs, being the notebook's input. Enforced instead as: outside the parameters cell and comments, no collection is named and no data path is built | Not amended before the fact. Declared here, and pinned by three tests |
-| **The four-part stamp was added after the first runs, not with them.** The first five runs carried `run_id` and the config *path* only; the gap surfaced while writing this report, and all five were re-run | Not amended. Declared here. No number changed: the re-runs reproduce the fixture and the same figures |
+| **Criterion 4 is met as re-read, not as written.** As written it forbids a collection literal anywhere outside a comment, which would forbid the papermill parameters cell — where a literal belongs, being the notebook's input. Enforced instead as: outside the parameters cell and comments, no collection is named and no data path is built | Amendments row 2, 2026-09-16, added after audit F2. It was declared here only, and an exit criterion belongs in the plan; the restated criterion is also stricter, since it forbids building a path, which the original did not |
+| **The four-part stamp was added after the first runs, not with them.** The first five runs carried `run_id` and the config *path* only; the gap surfaced while writing this report, and all five were re-run | Not amended. Declared here. The OEB re-run reproduces the fixture, which is verified. That the four *OE* runs' figures are unchanged from the unstamped first pass is an **inference**, not a verified fact: those artefacts were overwritten by the re-runs and no longer exist. Stated as fact in the first version of this report; corrected after audit |
+
+## Audit
+
+`/audit S1`, in a session that had seen neither the work nor the reasoning:
+**PASS WITH FINDINGS** ([`SPRINT_S1_AUDIT.md`](SPRINT_S1_AUDIT.md), which carries each finding
+in full). The auditor recomputed every stamp's digests, re-derived Acc@1, Recall@5/@10 and MRR
+from the raw result files outside `metrics.ipynb` on all five runs, and checked the fixture
+comparison for vacuity. Eight findings, **two major, all resolved**.
+
+**F1:** the golden fixture was *untracked* — `.gitignore`'s blanket `*.json` swallowed it —
+so the sprint's one claimed finding rested on a file with no history; and its stamp named the
+source run's digest, not the frozen copy's, which a CRLF translation had made differ.
+`tests/fixtures/` is committed, the copy carries its own digest, and the capture commit is
+carried forward on re-freeze rather than overwritten with today's HEAD. **F2:** exit criterion
+4 was restated after the freeze and recorded only here; it now has a dated Amendments row in
+the design, where the freeze rule sends it.
+
+The six minor ones — a doubled slice population (F3, which led to finding 12), a `dropped`
+literal whose test could not fail (F4), two prose figures with no run (F5), a provenance table
+omitting its own sampling parameters (F6), OEB and OE in one table (F7), and the index outside
+the stamp (F8) — are resolved, each where the criterion or finding it touches says so.
+
+Three *Unverifiable* items stand: `nDCG@10` was not independently re-derived; the pre-stamp
+OE figures cannot be compared, their artefacts being gone; and the container-side tree state
+cannot be inspected from the host. A fourth refuted a claim here — see finding 9. One check
+was blocked by the permission system, so F8b rests on reading the script.
 
 ## What the next sprint inherits
 
@@ -137,24 +168,19 @@ under `src/utils/` (`run_context`, `corpus_prep`, `feature_prep`, `splits`, `pro
 `compare_metrics`) and three scripts (`declare_save_as`, `freeze_fixture`, `build_results`);
 269 tests; and the golden fixture, which stays useful for every later migration.
 
-**Debt.**
+**Debt.** Four notebooks still build paths and name OEB (`cross_encoder`, `hybrid`,
+`prf_bm25_orchestrator`, `reranker_tiebreak`) — they belong to S4 under D-022's scope.
+`requirements.txt` does not install `papermill`, without which no notebook here can be run as
+it was run. `src/utils/config.py` is still dead legacy (D-022's follow-on).
+`runs/bm25_unigram_params__k1-0.60__b-0.35` is the pre-migration run under the old flat
+layout; its metrics are frozen in the fixture, so it is redundant, but nothing under `runs/`
+was deleted. `src/index_builders/README.md` will stamp every future run as having an
+uncommitted path until the repository settles line endings. And only `bm25_unigram_params` has
+been run on OE — the rest of the method set is D-012, at S3.
 
-- Four notebooks still build paths and name OEB: `cross_encoder`, `hybrid`,
-  `prf_bm25_orchestrator`, `reranker_tiebreak`. They belong to S4 (D-022 scope).
-- `requirements.txt` does not install `ranx` or `papermill`. Until it does, the container has
-  to be patched by hand and the environment is not reproducible from the repository.
-- `src/utils/config.py` is still dead legacy; removing it is D-022's follow-on.
-- `runs/bm25_unigram_params__k1-0.60__b-0.35` is the pre-migration run under the old flat
-  layout. Its metrics are frozen in the fixture, so it is redundant, but nothing under `runs/`
-  was deleted.
-- `src/index_builders/README.md` reads as modified inside the container because of CRLF. It
-  will stamp every future run as having an uncommitted path until the repository settles line
-  endings.
-- Only `bm25_unigram_params` has been run on OE. The rest of the method set is D-012, at S3.
-
-**For S2.** The identity control it needs is already built and its query set is `texto`. The
-gate G1 threshold is "identity control below ≈0.98 → stop, the harness or the corpus is
-wrong"; the harness now produces that control, and reading it is S2's job, not this report's.
+**For S2.** The identity control it needs is built and its query set is `texto`. Gate G1's
+threshold is "identity control below ≈0.98 → stop"; the harness now produces that control, and
+reading it is S2's job, not this report's.
 
 ## Decisions raised
 

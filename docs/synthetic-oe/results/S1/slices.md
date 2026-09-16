@@ -46,6 +46,7 @@ produces what exit criterion 7 asks for, not to be read as results.
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:unit_conversion` | 204 | 0.6078 | 0.6956 | 0.7460 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:unit_expansion` | 244 | 0.5082 | 0.6206 | 0.6676 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_count:1` | 2,206 | 0.6206 | 0.7034 | 0.7481 |
+| `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `distinct_modification_count:1` | 2,206 | 0.6206 | 0.7034 | 0.7481 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `subchapter:OEA` | 89 | 0.5843 | 0.6920 | 0.7543 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `subchapter:OEB` | 1,760 | 0.5972 | 0.6783 | 0.7242 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `subchapter:OEC` | 143 | 0.6783 | 0.7752 | 0.8138 |
@@ -75,6 +76,7 @@ produces what exit criterion 7 asks for, not to be read as results.
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:unit_conversion` | 204 | 0.8725 | 0.8833 | 0.8655 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:unit_expansion` | 244 | 0.8115 | 0.8307 | 0.7864 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_count:1` | 2,206 | 0.8799 | 0.8907 | 0.8276 |
+| `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `distinct_modification_count:1` | 2,206 | 0.8799 | 0.8907 | 0.8276 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `subchapter:OEA` | 89 | 0.9663 | 0.9663 | 0.9566 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `subchapter:OEB` | 1,760 | 0.8585 | 0.8708 | 0.8021 |
 | `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `subchapter:OEC` | 143 | 0.9930 | 0.9944 | 0.9949 |
@@ -91,7 +93,7 @@ produces what exit criterion 7 asks for, not to be read as results.
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:num_to_text` | 661 | 0.0121 | 0.0454 | 0.0580 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:paraphrase` | 1,578 | 0.0602 | 0.1078 | 0.1218 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:synonym_label` | 2,507 | 0.1795 | 0.2618 | 0.2935 |
-| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:template_paraphrase` | 5,042 | 0.1789 | 0.2623 | 0.2947 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:template_paraphrase` | 2,521 | 0.1789 | 0.2623 | 0.2947 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:unit_conversion` | 92 | 0.0870 | 0.1309 | 0.1559 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_type:unit_expansion` | 299 | 0.3177 | 0.4431 | 0.4978 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_count:3` | 554 | 0.5090 | 0.6656 | 0.7314 |
@@ -100,6 +102,12 @@ produces what exit criterion 7 asks for, not to be read as results.
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_count:6` | 730 | 0.1068 | 0.1743 | 0.1984 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_count:7` | 226 | 0.0000 | 0.0135 | 0.0089 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `modification_count:8` | 45 | 0.0000 | 0.0193 | 0.0219 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `distinct_modification_count:2` | 554 | 0.5090 | 0.6656 | 0.7314 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `distinct_modification_count:3` | 280 | 0.2250 | 0.3615 | 0.4225 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `distinct_modification_count:4` | 686 | 0.0408 | 0.0878 | 0.1045 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `distinct_modification_count:5` | 730 | 0.1068 | 0.1743 | 0.1984 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `distinct_modification_count:6` | 226 | 0.0000 | 0.0135 | 0.0089 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `distinct_modification_count:7` | 45 | 0.0000 | 0.0193 | 0.0219 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `subchapter:OEA` | 97 | 0.1237 | 0.2834 | 0.3613 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `subchapter:OEB` | 1,794 | 0.0680 | 0.1188 | 0.1363 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | item | `subchapter:OEC` | 114 | 0.4561 | 0.6548 | 0.7324 |
@@ -116,7 +124,7 @@ produces what exit criterion 7 asks for, not to be read as results.
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:num_to_text` | 661 | 0.1891 | 0.1941 | 0.1942 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:paraphrase` | 1,578 | 0.1907 | 0.2021 | 0.1923 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:synonym_label` | 2,507 | 0.3933 | 0.4092 | 0.3905 |
-| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:template_paraphrase` | 5,042 | 0.3967 | 0.4125 | 0.3939 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:template_paraphrase` | 2,521 | 0.3967 | 0.4125 | 0.3939 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:unit_conversion` | 92 | 0.3587 | 0.3616 | 0.3601 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_type:unit_expansion` | 299 | 0.8294 | 0.8304 | 0.8312 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_count:3` | 554 | 0.7870 | 0.8216 | 0.7709 |
@@ -125,6 +133,12 @@ produces what exit criterion 7 asks for, not to be read as results.
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_count:6` | 730 | 0.2740 | 0.2843 | 0.2724 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_count:7` | 226 | 0.1681 | 0.1733 | 0.1723 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `modification_count:8` | 45 | 0.1778 | 0.1844 | 0.1806 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `distinct_modification_count:2` | 554 | 0.7870 | 0.8216 | 0.7709 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `distinct_modification_count:3` | 280 | 0.7321 | 0.7373 | 0.7309 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `distinct_modification_count:4` | 686 | 0.1647 | 0.1796 | 0.1683 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `distinct_modification_count:5` | 730 | 0.2740 | 0.2843 | 0.2724 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `distinct_modification_count:6` | 226 | 0.1681 | 0.1733 | 0.1723 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `distinct_modification_count:7` | 45 | 0.1778 | 0.1844 | 0.1806 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `subchapter:OEA` | 97 | 0.9278 | 0.9320 | 0.9385 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `subchapter:OEB` | 1,794 | 0.2174 | 0.2292 | 0.2191 |
 | `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | parent | `subchapter:OEC` | 114 | 0.9561 | 0.9638 | 0.9638 |

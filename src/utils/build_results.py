@@ -57,13 +57,21 @@ def write_provenance(runs: list[dict], out: Path) -> None:
         "",
         "## What each run read and wrote",
         "",
-        "| run_id | query table | gold column | dropped | K | batch | elapsed (s) |",
-        "|---|---|---|---:|---:|---|---:|",
+        "| run_id | query table | gold column | selected | scored | dropped | sample | K | elapsed (s) |",
+        "|---|---|---|---:|---:|---:|---|---:|---:|",
     ]
     for run in runs:
         lines.append(
             f"| `{run['run_id']}` | `{Path(run['query_path']).name}` | `{run['gold_column']}` | "
-            f"{run['dropped']} | {run['K']} | {run['batch_size'] or 'default'} | {run['elapsed_s']} |"
+            f"{run.get('queries_selected', run['queries']):,} | {run['queries']:,} | "
+            f"{run['dropped']} | "
+            + (
+                f"{run['random_sample']:,} of {run.get('queries_after_split', 0):,}, "
+                f"random_state={run['random_state']}"
+                if run.get("random_sample")
+                else "none — every query"
+            )
+            + f" | {run['K']} | {run['elapsed_s']} |"
         )
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -78,19 +86,34 @@ def write_headline(runs: list[dict], out: Path) -> None:
         "and its design says so. They are evidence that the harness runs end to end, and the",
         "reference S2 will measure against. Nothing here is a finding about retrieval.",
         "",
-        "| run_id | target | queries | Acc@1 | Recall@5 | Recall@10 | MRR | nDCG@10 |",
-        "|---|---|---:|---:|---:|---:|---:|---:|",
+        "One table per collection, deliberately. The design forbids comparing an OEB number",
+        "with an OE one — different corpora, different query length, nothing controlled — and",
+        "a single table invites exactly that by putting them in one column (audit F7).",
     ]
+
+    by_collection: dict[str, list[dict]] = {}
     for run in runs:
-        for row in run["_metrics"]:
-            if row["scope"] != "overall":
-                continue
-            lines.append(
-                f"| `{run['run_id']}` | {row['target']} | {int(row['queries']):,} | "
-                f"{row['Acc@1']:.4f} | {row['Recall@5']:.4f} | {row['Recall@10']:.4f} | "
-                f"{row['MRR']:.4f} | {row['nDCG@10']:.4f} |"
-            )
-    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        by_collection.setdefault(run["collection"], []).append(run)
+
+    for collection, group in sorted(by_collection.items()):
+        lines += [
+            "",
+            f"## {collection}",
+            "",
+            "| run_id | target | queries | Acc@1 | Recall@5 | Recall@10 | MRR | nDCG@10 |",
+            "|---|---|---:|---:|---:|---:|---:|---:|",
+        ]
+        for run in group:
+            for row in run["_metrics"]:
+                if row["scope"] != "overall":
+                    continue
+                lines.append(
+                    f"| `{run['run_id']}` | {row['target']} | {int(row['queries']):,} | "
+                    f"{row['Acc@1']:.4f} | {row['Recall@5']:.4f} | {row['Recall@10']:.4f} | "
+                    f"{row['MRR']:.4f} | {row['nDCG@10']:.4f} |"
+                )
+
+    out.write_text(chr(10).join(lines) + chr(10), encoding="utf-8")
 
 
 def write_slices(runs: list[dict], out: Path) -> None:

@@ -9,9 +9,8 @@ belong in `archive/`. Updated at every sprint transition and whenever something 
 
 ## Where we are
 
-**Active sprint:** **S1 — harness adaptation**, design frozen at `9cd244c`.
-**Phase:** report written ([`SPRINT_S1_REPORT.md`](sprints/SPRINT_S1_REPORT.md)), audit
-pending. All 8 exit criteria met. `done` is withheld until the audit returns.
+**Active sprint:** none. **S1 is `done`**; S2 — the go/no-go probe — is next to open.
+**Phase:** the harness runs end to end on OE. The first reportable numbers come from S2.
 
 ## Done
 
@@ -20,14 +19,15 @@ pending. All 8 exit criteria met. `done` is withheld until the audit returns.
   `SPLITS.md` (seed `20260915`), 77 configs naming collection and retriever, E3 issued.
   Audited fresh: PASS WITH FINDINGS, all six resolved
   ([`SPRINT_S0_AUDIT.md`](sprints/SPRINT_S0_AUDIT.md)).
+- **S1 done 2026-09-16** — five notebooks on one resolver, gold read from the query record,
+  batched scoring, 272 tests. The OEB fixture reproduces to ten decimal places, so the
+  migration moved no number. Audited fresh: PASS WITH FINDINGS, eight findings, two major,
+  all resolved ([`SPRINT_S1_AUDIT.md`](sprints/SPRINT_S1_AUDIT.md)).
 
 ## In flight
 
-- **S1 opened 2026-09-15.** Five notebooks now run off one resolver; gold comes from the
-  query record; scoring is batched (design amendment, 2026-09-15). 252 tests, none skipped.
-  **The OEB golden fixture reproduces exactly after the migration** — all six figures, no
-  differences — so the plumbing change moved no number. Four OE runs exist on dev.
-  S1 produces no citable number; the run figures are plumbing evidence for S2.
+- Nothing — S2 not yet opened.
+
 
 ## Incident — 2026-09-14
 
@@ -43,8 +43,9 @@ pending. All 8 exit criteria met. `done` is withheld until the audit returns.
 
 ## Next action
 
-`/audit S1`, in a session that did not do the work. Then S2 — the go/no-go probe, whose
-identity control is already built and whose query set is `texto`.
+Open S2 (`/sprint-open S2`) — the go/no-go probe. Its identity control is already built and
+its query set is `texto`; gate G1 stops the project if that control reads below ≈0.98.
+Method scope on OE (D-012) gates S3, not S2.
 
 ## Latest results
 
@@ -54,9 +55,7 @@ runs. The first reportable numbers come from S2.
 
 ## Open decisions
 
-See `DECISIONS.md` (`Open`). Gating: method scope on OE (D-012) — gates S3, not S1.
-Closed in S1: **D-016** (the alias table is gone) and **D-022** (executed, scope widened to
-five notebooks, verification numeric rather than structural). Recorded in S1: **D-023**
-(the index is built over the full corpus; the split selects queries only), **D-024** (the
-`OEB#` row), and an amendment to **D-008** adding `texto` as the fourth query set —
-`resumen` is the replication baseline, not the identity rendering.
+See `DECISIONS.md` (`Open`). Gating: method scope on OE (D-012) — gates S3. Closed in S1:
+**D-016**, **D-022**. Recorded in S1: **D-023** (index over the full corpus), **D-024**
+(`OEB#`), **D-025** (the stacked dose is one lower than `modification_count` says — it reaches
+H4), and an amendment to **D-008** adding `texto` as the fourth query set.

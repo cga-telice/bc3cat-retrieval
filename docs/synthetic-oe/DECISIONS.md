@@ -414,3 +414,23 @@ inputs: the OEB feature tables survived, so the baseline was **re-manufactured**
 migration began and frozen at `tests/fixtures/oeb_bm25_pre_migration/`. The migrated harness
 reproduces all six of its figures exactly. The verification is therefore numeric, not merely
 structural — stronger than the decision that authorised the work expected.
+
+### D-025 — `modification_types` is de-duplicated; the stacked dose is one lower than the field says
+**Status:** Accepted · **Date:** 2026-09-16 · **Raised in:** S1 (audit F3) · **Implemented in:** S1
+**Context.** `OE_stacked_texto.json` lists `template_paraphrase` **twice** in the
+`modification_types` of all 4,998 records, and `modification_count` counts the duplicate.
+Exploding the raw list gave a `modification_type:template_paraphrase` slice of 5,042 queries
+on a 2,521-query run — a population wrong by 2× — and the recorded dose is one higher than the
+number of distinct modifications for every stacked record: 554 records at count 3 carry 2,
+730 at count 6 carry 5, through the range. The single set is unaffected (0 duplicates).
+**Decision.** De-duplicate `modification_types` when slicing, preserving order. Do **not**
+rewrite `modification_count`: it is an upstream field, digested in `MANIFEST.md`, and silently
+correcting a frozen input is how two collections start disagreeing about what they contain.
+The distinct dose is reported alongside it as `distinct_modification_count`, so both are
+visible and the discrepancy is legible rather than buried.
+**Consequence — this reaches H4.** The branch contract quotes "`modification_count` 2–8
+(mode 5)"; the distinct dose is 1–7, mode 4. The shift is uniform, so a dose-response slope
+keeps its shape and moves its intercept — but S7 and S8 regress on that axis and must say
+which of the two they used. Any figure quoting a dose must name the field it counted.
+**Upstream.** Worth a note to `bc3cat-dataset`: the doubling looks like a packaging artefact,
+and it is not among the documented "pantry artefacts" of D-004.

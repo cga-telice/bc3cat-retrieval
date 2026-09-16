@@ -6,18 +6,18 @@ the full values are in each run's `run_meta.json`.
 
 | run_id | queries | split | config SHA-256 | code commit | query-set SHA-256 | uncommitted under src/ or configs/ |
 |---|---:|---|---|---|---|---|
-| `OE/resumen/bm25_unigram_params__k1-0.60__b-0.35__OE` | 35,422 | dev | `c695c126f20d5a9e` | `beb7b52` | `f041a8e85d766c55` | `src/index_builders/README.md` |
-| `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | 2,206 | dev | `c695c126f20d5a9e` | `beb7b52` | `e5b79ae44fcc544e` | `src/index_builders/README.md` |
-| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | 2,521 | dev | `c695c126f20d5a9e` | `beb7b52` | `7b0894e6bc5c82d3` | `src/index_builders/README.md` |
-| `OE/texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | 35,422 | dev | `c695c126f20d5a9e` | `beb7b52` | `643f1a72d5c5df17` | `src/index_builders/README.md` |
-| `OEB/resumen/bm25_unigram_params__k1-0.60__b-0.35` | 16,590 | all | `34c184257a186497` | `beb7b52` | `a7fdce118e1adbd6` | `src/index_builders/README.md` |
+| `OE/resumen/bm25_unigram_params__k1-0.60__b-0.35__OE` | 35,422 | dev | `c695c126f20d5a9e` | `ddd224b` | `f041a8e85d766c55` | `src/index_builders/README.md`, `src/utils/build_results.py` |
+| `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | 2,206 | dev | `c695c126f20d5a9e` | `ddd224b` | `e5b79ae44fcc544e` | `src/index_builders/README.md`, `src/utils/build_results.py` |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | 2,521 | dev | `c695c126f20d5a9e` | `ddd224b` | `7b0894e6bc5c82d3` | `src/index_builders/README.md`, `src/utils/build_results.py` |
+| `OE/texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | 35,422 | dev | `c695c126f20d5a9e` | `ddd224b` | `643f1a72d5c5df17` | `src/index_builders/README.md`, `src/utils/build_results.py` |
+| `OEB/resumen/bm25_unigram_params__k1-0.60__b-0.35` | 16,590 | all | `34c184257a186497` | `ddd224b` | `a7fdce118e1adbd6` | `src/index_builders/README.md`, `src/utils/build_results.py` |
 
 ## What each run read and wrote
 
-| run_id | query table | gold column | dropped | K | batch | elapsed (s) |
-|---|---|---|---:|---:|---|---:|
-| `OE/resumen/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_short_feats.parquet` | `item_key` | 0 | 100 | default | 40.814 |
-| `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_single_texto_feats.parquet` | `gold_item_key` | 0 | 100 | default | 5.193 |
-| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_stacked_texto_feats.parquet` | `gold_item_key` | 0 | 100 | default | 5.108 |
-| `OE/texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_long_feats.parquet` | `item_key` | 0 | 100 | default | 84.8 |
-| `OEB/resumen/bm25_unigram_params__k1-0.60__b-0.35` | `OEB_short_feats.parquet` | `item_key` | 0 | 100 | default | 16.359 |
+| run_id | query table | gold column | selected | scored | dropped | sample | K | elapsed (s) |
+|---|---|---|---:|---:|---:|---|---:|---:|
+| `OE/resumen/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_short_feats.parquet` | `item_key` | 35,422 | 35,422 | 0 | none — every query | 100 | 40.876 |
+| `OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_single_texto_feats.parquet` | `gold_item_key` | 2,206 | 2,206 | 0 | none — every query | 100 | 5.316 |
+| `OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_stacked_texto_feats.parquet` | `gold_item_key` | 2,521 | 2,521 | 0 | none — every query | 100 | 5.13 |
+| `OE/texto/bm25_unigram_params__k1-0.60__b-0.35__OE` | `OE_long_feats.parquet` | `item_key` | 35,422 | 35,422 | 0 | none — every query | 100 | 84.233 |
+| `OEB/resumen/bm25_unigram_params__k1-0.60__b-0.35` | `OEB_short_feats.parquet` | `item_key` | 16,590 | 16,590 | 0 | 16,590 of 47,513, random_state=42 | 100 | 16.245 |

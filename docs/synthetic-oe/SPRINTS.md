@@ -16,7 +16,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | ID | Type | Status | Title | Serves | Depends on |
 |---|---|---|---|---|---|
 | S0 | backbone | **done** | Reproducibility foundation and splits | all | — |
-| S1 | backbone | **active** | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
+| S1 | backbone | **done** | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
 | S2 | backbone | planned | Go/no-go probe ⚑ | H3 | S1 |
 | S3 | backbone | planned | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
 | S4 | backbone | planned | E1 ablation — Track A | H1, H2 | S3 |
@@ -65,3 +65,5 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-15 | S1 | planned → **active** | Design frozen at `9cd244c`; entry state verified in the tree. Scope widened to five notebooks, and the golden fixture is captured before the migration rather than conceded as lost |
 | 2026-09-15 | S1 | design amended | Work item 12 added: batch the retrieval scoring. The harness could not run the sprint's own exit criterion without it |
 | 2026-09-16 | S1 | report written | All 8 exit criteria met; the fixture reproduces to ten decimal places. `done` withheld until `/audit S1` returns in a session that did not do the work |
+| 2026-09-16 | S1 | design amended | Exit criterion 4 restated after audit F2, where the freeze rule sends it |
+| 2026-09-16 | S1 | active → **done** | `/audit S1`: **PASS WITH FINDINGS** ([`SPRINT_S1_AUDIT.md`](sprints/SPRINT_S1_AUDIT.md)). Eight findings, two major, all resolved — the untracked fixture (F1) and the unamended criterion (F2) among them. D-025 raised from F3 |
