@@ -19,6 +19,12 @@ try:
 except Exception:  # pragma: no cover
     requests = None  # allow import without requests for local-only mode
 
+#: Queries per retrieval block (S2). See `search_batch`.
+DEFAULT_BATCH_SIZE = 1024
+
+#: Distinguishes "caller said nothing" from "caller asked for one block" (batch_size=None).
+_USE_DEFAULT = object()
+
 """
 Why this version?
 - Your previous implementation did exact MaxSim over *preselect=2000* docs/query,
@@ -228,7 +234,30 @@ class ColBERTSearcher:
         top_idx, top_sc = self.search_batch([query_text], k)
         return top_idx[0], top_sc[0]
 
-    def search_batch(self, texts: List[str], k: int = 100) -> Tuple[np.ndarray, np.ndarray]:
+    def search_batch(self, texts: List[str], k: int = 100, batch_size=_USE_DEFAULT) -> Tuple[np.ndarray, np.ndarray]:
+        """Retrieve in blocks of `batch_size` queries (S2); `None` means one block.
+
+        Query token matrices are held for a whole block: ~130 tokens x 1024 dims float32 per
+        query is ~18 GB for the 35,422 OE dev identity queries at once. Every step after
+        encoding is per query, so blocking changes memory, not results.
+        """
+        if batch_size is _USE_DEFAULT:
+            batch_size = DEFAULT_BATCH_SIZE
+        if batch_size is not None and batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer or None, got {batch_size!r}")
+        texts = list(texts)
+        if batch_size is None or batch_size >= len(texts):
+            return self._search_block(texts, k)
+        blocks = [
+            self._search_block(texts[s : s + batch_size], k)
+            for s in range(0, len(texts), batch_size)
+        ]
+        return (
+            np.concatenate([i for i, _ in blocks], axis=0),
+            np.concatenate([sc for _, sc in blocks], axis=0),
+        )
+
+    def _search_block(self, texts: List[str], k: int = 100) -> Tuple[np.ndarray, np.ndarray]:
         B = len(texts)
         N = len(self.doc_ids)
         k_eff = min(max(int(k), 1), N)

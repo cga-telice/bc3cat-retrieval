@@ -25,6 +25,14 @@ try:
 except Exception:
     SentenceTransformer = None  # we’ll guard its use
 
+#: Query rows scored per block (S2). The similarity block is B x N float32: 2048 x 70,242 is
+#: ~575 MB, while the 35,422 OE dev identity queries at once would be ~10 GB. Same default as
+#: retrievers.bm25_unigram.
+DEFAULT_BATCH_SIZE = 2048
+
+#: Distinguishes "caller said nothing" from "caller asked for one block" (batch_size=None).
+_USE_DEFAULT = object()
+
 def _read_json(p: Path) -> dict:
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -112,7 +120,29 @@ class DenseE5Searcher:
         top = _argtopk(sims, k)
         return top, sims[top]
 
-    def search_batch(self, queries: List[str], k: int = 100):
+    def search_batch(self, queries: List[str], k: int = 100, batch_size=_USE_DEFAULT):
+        """Score `queries` in blocks of `batch_size` rows (S2); `None` means one block.
+
+        A query's similarities depend on no other query, so blocking changes memory, not
+        results — see tests/test_dense_batching.py.
+        """
+        if batch_size is _USE_DEFAULT:
+            batch_size = DEFAULT_BATCH_SIZE
+        if batch_size is not None and batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer or None, got {batch_size!r}")
+        queries = list(queries)
+        if batch_size is None or batch_size >= len(queries):
+            return self._search_block(queries, k)
+        blocks = [
+            self._search_block(queries[s : s + batch_size], k)
+            for s in range(0, len(queries), batch_size)
+        ]
+        return (
+            np.concatenate([i for i, _ in blocks], axis=0),
+            np.concatenate([sc for _, sc in blocks], axis=0),
+        )
+
+    def _search_block(self, queries: List[str], k: int = 100):
         Q = self.encode_queries(queries)       # (B, D)
         sims = Q @ self.X_docs.T               # (B, N)
         B, N = sims.shape

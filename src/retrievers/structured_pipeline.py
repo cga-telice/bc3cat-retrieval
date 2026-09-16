@@ -23,8 +23,8 @@ Ported from `research/structured-retrieval@85c3359` (D-026). Changes against the
   reads ids from `external_ids`, so a silent disagreement would score the wrong leaves.
 - **Scope.** Rules only. The LLM extractor and the oracle-parent mode are not ported (S5);
   asking for either raises instead of falling back.
-- **Batching.** `search_batch` encodes all queries through E5 in one call, then runs Stages
-  2–3 per query. The source looped over `search()`, which encodes one query at a time.
+- **Batching.** `search_batch` sends all queries through E5's `search_batch` (which blocks
+  them itself, S2), then runs Stages 2–3 per query. The source looped over `search()`, which encodes one query at a time.
   Stages 1–3 and the three-tier ranking are otherwise unchanged; `search()` and
   `search_batch()` share `_rank_from_stage1`, and a test holds them equal.
 - The `__main__` sanity test, which enumerated OEB variant directories, is not ported.
@@ -104,8 +104,9 @@ class StructuredPipelineSearcher:
         e5_idx, e5_scores = self._e5.search(query, k=k)
         return self._rank_from_stage1(query, e5_idx, e5_scores, k)
 
-    def search_batch(self, queries: list[str], k: int = 100):
-        """Batch search: one E5 call for all queries, then Stages 2–3 per query.
+    def search_batch(self, queries: list[str], k: int = 100, **e5_kwargs):
+        """Batch search: E5 over all queries (blocked by E5's own `batch_size`), then Stages
+        2–3 per query. Extra keyword arguments go to the Stage-1 searcher.
 
         Returns:
             (indices[B,K], scores[B,K]) — np arrays.
@@ -116,7 +117,7 @@ class StructuredPipelineSearcher:
         if B == 0:
             return all_idx, all_scores
 
-        e5_idx, e5_scores = self._e5.search_batch(list(queries), k=k)
+        e5_idx, e5_scores = self._e5.search_batch(list(queries), k=k, **e5_kwargs)
         for i, q in enumerate(queries):
             idx, scores = self._rank_from_stage1(q, e5_idx[i], e5_scores[i], k)
             all_idx[i] = idx
