@@ -41,14 +41,16 @@ def write_provenance(runs: list[dict], out: Path) -> None:
         "itself recorded it at execution time (operating rule 1). Digests are truncated here;",
         "the full values are in each run's `run_meta.json`.",
         "",
-        "| run_id | queries | split | config SHA-256 | code commit | query-set SHA-256 | dirty |",
+        "| run_id | queries | split | config SHA-256 | code commit | query-set SHA-256 | uncommitted under src/ or configs/ |",
         "|---|---:|---|---|---|---|---|",
     ]
     for run in runs:
         lines.append(
             f"| `{run['run_id']}` | {run['queries']:,} | {run['split']} | "
             f"`{run['config_sha256'][:16]}` | `{run['code_commit'][:7]}` | "
-            f"`{run['query_set_sha256'][:16]}` | {'yes' if run.get('code_dirty') else 'no'} |"
+            f"`{run['query_set_sha256'][:16]}` | "
+            + (", ".join(f"`{p}`" for p in run.get("code_dirty_paths", [])) or "none")
+            + " |"
         )
 
     lines += [

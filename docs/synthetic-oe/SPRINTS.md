@@ -63,3 +63,5 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-15 | S0 | report written | All 7 exit criteria met; `done` withheld until `/audit S0` returns in a fresh session |
 | 2026-09-15 | S0 | active → **done** | `/audit S0`: **PASS WITH FINDINGS** ([`SPRINT_S0_AUDIT.md`](sprints/SPRINT_S0_AUDIT.md)). All six findings resolved, F1 by adding the 77th config on `collection: "OE"` |
 | 2026-09-15 | S1 | planned → **active** | Design frozen at `9cd244c`; entry state verified in the tree. Scope widened to five notebooks, and the golden fixture is captured before the migration rather than conceded as lost |
+| 2026-09-15 | S1 | design amended | Work item 12 added: batch the retrieval scoring. The harness could not run the sprint's own exit criterion without it |
+| 2026-09-16 | S1 | report written | All 8 exit criteria met; the fixture reproduces to ten decimal places. `done` withheld until `/audit S1` returns in a session that did not do the work |
