@@ -108,3 +108,19 @@ def test_a_dirty_tree_names_the_files(tmp_path):
     assert "code_dirty_paths" in stamp
     assert isinstance(stamp["code_dirty_paths"], list)
     assert stamp["code_dirty"] == bool(stamp["code_dirty_paths"])
+
+
+def test_the_dirty_paths_are_real_paths(tmp_path):
+    """A stamp naming a path that does not exist is worse than no stamp: the reader cannot
+    tell whether the file is missing or the parsing is."""
+    config = tmp_path / "cfg.yaml"
+    config.write_text("x", encoding="utf-8")
+    queries = tmp_path / "q"
+    queries.write_bytes(b"y")
+
+    stamp = provenance_stamp(run_id="r", config_path=config, query_path=queries, repo=REPO)
+
+    for path in stamp["code_dirty_paths"]:
+        if path == "<git unavailable>":
+            continue
+        assert (REPO / path).exists(), f"{path} is not a path in this repository"

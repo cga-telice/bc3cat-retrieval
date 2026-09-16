@@ -57,10 +57,12 @@ def provenance_stamp(
         # container purely because Windows wrote CRLF, so `dirty: true` on its own is not
         # usable evidence — a reader has to see *what* differs to judge whether it could
         # have changed the number.
+        # Porcelain lines are "XY path", where XY is two status columns; splitting on
+        # whitespace is right where a fixed offset is not, because the columns vary.
         dirty_paths = [
-            line[3:].strip()
+            line.split(maxsplit=1)[1]
             for line in _git(repo, "status", "--porcelain", "--", "src", "configs").splitlines()
-            if line.strip()
+            if line.strip() and len(line.split(maxsplit=1)) > 1
         ]
         code_dirty = bool(dirty_paths)
     except (subprocess.CalledProcessError, FileNotFoundError):
