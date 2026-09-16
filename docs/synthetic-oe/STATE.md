@@ -27,9 +27,10 @@ the structured port. **Phase:** first reportable numbers; gate G1 is read at clo
 
 ## In flight
 
-- **S2** — 4 methods (`bm25_unigram_params`, `bm25_unigram`, `bge_m3_colbert`,
-  `structured_pipeline_rules`) × `texto` / `single_texto` / `stacked_texto`, dev only. Port of
-  the structured modules under D-026. Needs Docker Desktop (Jupyter + `bge-m3`, GPU).
+- **S2** — 5 methods (`bm25_unigram_params`, `bm25_unigram`, `bge_m3_colbert`, and
+  `structured_pipeline_rules` in its faithful and `_valuenorm` variants, amendment A1) ×
+  `texto` / `single_texto` / `stacked_texto`, dev only. Work item 1 (port) **done**. Next: E5 and
+  ColBERT indexes on OE — needs Docker Desktop (Jupyter + `bge-m3`, GPU).
 
 
 ## Incident — 2026-09-14
@@ -46,9 +47,8 @@ the structured port. **Phase:** first reportable numbers; gate G1 is read at clo
 
 ## Next action
 
-S2 work item 1: port the structured pipeline (D-026) and confirm from the feature code
-whether `bm25_unigram_params` reads the query's parsed `parameters` (D-010). Start Docker
-Desktop before any run.
+Confirm from the feature code whether `bm25_unigram_params` reads the query's parsed
+`parameters` (D-010). Then start Docker Desktop and build `dense_e5__OE` and the ColBERT index.
 
 ## Latest results
 

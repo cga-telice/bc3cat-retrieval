@@ -31,10 +31,15 @@ def build(cfg: Dict[str, Any], long_df: pd.DataFrame, text_field: str):
         )
     if p.get("oracle"):
         raise ValueError("oracle-parent mode is not ported (S5)")
+    if p.get("stage3_value_match", "literal") not in ("literal", "normalized"):
+        raise ValueError(f"stage3_value_match={p.get('stage3_value_match')!r}")
     if not p.get("stage1_index"):
         raise ValueError("method.params.stage1_index is required: the E5 index Stage 1 reads")
 
     n = len(long_df)
-    print(f"[structured_pipeline_rules] pseudo-index | docs={n} | stage1={p['stage1_index']}")
+    print(
+        f"[structured_pipeline_rules] pseudo-index | docs={n} | stage1={p['stage1_index']} "
+        f"| stage3_value_match={p.get('stage3_value_match', 'literal')}"
+    )
     artifacts = {"__num_docs__": int(n)}
     return artifacts, None, None

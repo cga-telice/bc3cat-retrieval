@@ -11,6 +11,16 @@ Ported from `research/structured-retrieval@85c3359` (D-026). Changes against the
 the default `OEB_*` paths are gone — both paths are required, and the caller gets them from
 the resolver (D-022); the `__main__` self-test, which asserted OEB counts, is replaced by
 `tests/test_structured_pipeline.py`. Matching logic is unchanged.
+
+`value_match` (S2, design amendment 2026-09-17) selects how a schema value is compared with a
+leaf's `value_norm`:
+
+- `"literal"` — the source's behaviour, and the default: `strip().lower()`. The corpus side was
+  normalised by `utils.corpus_prep.normalize_param_string`, which also rewrites decimal commas
+  and thousands dots, so a value such as `hasta 0,80 m` never equals its leaf's `hasta 0.80 m`.
+  On OE that makes 1,640 leaves unreachable.
+- `"normalized"` — both sides through `normalize_param_string`, the function that produced
+  `label_norm` / `value_norm`. A bug fix, run as its own config so both are reported.
 """
 
 import json
@@ -19,14 +29,24 @@ from pathlib import Path
 
 import pandas as pd
 
+from utils.corpus_prep import normalize_param_string
+
 logger = logging.getLogger(__name__)
 
 
 class CatalogLookup:
     """Deterministic lookup from (parent_key, extracted_params) to item_key(s)."""
 
-    def __init__(self, schema_path, parquet_path):
+    VALUE_MATCH = ("literal", "normalized")
+
+    def __init__(self, schema_path, parquet_path, value_match: str = "literal"):
         """Load the concept schema and build the lookup structures."""
+        if value_match not in self.VALUE_MATCH:
+            raise ValueError(f"value_match={value_match!r}; expected one of {self.VALUE_MATCH}")
+        self._norm = (
+            (lambda x: x.strip().lower()) if value_match == "literal" else normalize_param_string
+        )
+        self.value_match = value_match
         schema_path = Path(schema_path)
         parquet_path = Path(parquet_path)
 
@@ -38,8 +58,8 @@ class CatalogLookup:
         for pk, entry in self._schema.items():
             self._valid_values[pk] = {}
             for label, values in entry["axes"].items():
-                self._valid_values[pk][label.strip().lower()] = {
-                    v.strip().lower() for v in values
+                self._valid_values[pk][self._norm(label)] = {
+                    self._norm(v) for v in values
                 }
 
         # Build item index from parquet
@@ -77,8 +97,8 @@ class CatalogLookup:
         for label, value in extracted_params.items():
             if value is None:
                 continue
-            nl = label.strip().lower()
-            nv = value.strip().lower()
+            nl = self._norm(label)
+            nv = self._norm(value)
             if nl not in valid:
                 logger.warning(
                     "Unknown axis %r for %s, treating as None", label, parent_key

@@ -28,6 +28,8 @@ Ported from `research/structured-retrieval@85c3359` (D-026). Changes against the
   Stages 1–3 and the three-tier ranking are otherwise unchanged; `search()` and
   `search_batch()` share `_rank_from_stage1`, and a test holds them equal.
 - The `__main__` sanity test, which enumerated OEB variant directories, is not ported.
+- **`stage3_value_match`** (S2 amendment 2026-09-17) is passed to `CatalogLookup`; absent means
+  `"literal"`, the source's behaviour. See `pipeline.catalog_lookup`.
 """
 
 from __future__ import annotations
@@ -217,6 +219,7 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
       - stage2_method: "rules" (the only variant ported)
       - stage1_index:  the E5 index's directory name under index/{collection}/
       - oracle:        false, or absent
+      - stage3_value_match: "literal" (default, as the source) or "normalized"
 
     Args:
         device_override: If set, overrides the E5 searcher's device (e.g. "cpu").
@@ -282,8 +285,9 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     print("  Stage 2: rule-based extractor")
 
     # Stage 3: Catalog lookup
-    catalog = CatalogLookup(paths.concept_schema, paths.long_norm)
-    print("  Stage 3: catalog lookup ready")
+    value_match = params.get("stage3_value_match", "literal")
+    catalog = CatalogLookup(paths.concept_schema, paths.long_norm, value_match=value_match)
+    print(f"  Stage 3: catalog lookup ready (value_match={value_match})")
 
     searcher = StructuredPipelineSearcher(
         e5_searcher=e5,

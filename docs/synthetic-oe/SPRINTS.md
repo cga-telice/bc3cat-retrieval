@@ -68,3 +68,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-16 | S1 | design amended | Exit criterion 4 restated after audit F2, where the freeze rule sends it |
 | 2026-09-16 | S1 | active → **done** | `/audit S1`: **PASS WITH FINDINGS** ([`SPRINT_S1_AUDIT.md`](sprints/SPRINT_S1_AUDIT.md)). Eight findings, two major, all resolved — the untracked fixture (F1) and the unamended criterion (F2) among them. D-025 raised from F3 |
 | 2026-09-17 | S2 | planned → **active** | Design frozen at `1f126f0`; entry state verified in the tree. Structured pipeline ported from `research/structured-retrieval` by file checkout (D-026), `bm25_unigram` added as a text-only arm (D-010), 8-day time-box |
+| 2026-09-17 | S2 | design amended | A1 fifth arm `structured_pipeline_rules_valuenorm__OE` (Stage-3 decimal-comma defect, 1,640 leaves); A2 work item 1's exact-recovery test → never-misread; A3 port file list |

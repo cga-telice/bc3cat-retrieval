@@ -1,4 +1,7 @@
-# Structured pipeline, rules variant, on OE (S2, D-026).
+# Structured pipeline, rules variant, Stage-3 value matching normalised, on OE (S2, D-026).
+# Identical to structured_pipeline_rules__OE except stage3_value_match: the source compares
+# schema values literally with the corpus value_norm, so decimal-comma values never match
+# (1,640 OE leaves). Design amendment 2026-09-17; both variants are reported.
 # Stage 1: E5 item index (dense_e5__OE) -> parent_key of the top-1 leaf
 # Stage 2: rule-based extraction of axis values from the query text
 # Stage 3: deterministic catalogue lookup, three-tier ranking
@@ -15,14 +18,14 @@ inputs:
 
 method:
   family: structured
-  name: structured_pipeline_rules__OE
+  name: structured_pipeline_rules_valuenorm__OE
   impl: structured_pipeline_rules
-  save_as: structured_pipeline_rules__OE
+  save_as: structured_pipeline_rules_valuenorm__OE
   params:
     stage2_method: rules
     oracle: false
     stage1_index: dense_e5__OE
-    stage3_value_match: literal
+    stage3_value_match: normalized
 
 io:
   data_dirname: data

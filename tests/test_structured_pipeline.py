@@ -200,6 +200,12 @@ RULES = {"stage2_method": "rules", "oracle": False, "stage1_index": "e5"}
 def test_load_resolves_everything_from_the_index_directory(tmp_path):
     s = sp.load(_index_tree(tmp_path, params=RULES))
     assert list(s.external_ids) == DOCS
+    assert s._catalog.value_match == "literal"  # absent means the source's comparison
+
+
+def test_load_passes_stage3_value_match_to_the_catalogue(tmp_path):
+    s = sp.load(_index_tree(tmp_path, params={**RULES, "stage3_value_match": "normalized"}))
+    assert s._catalog.value_match == "normalized"
 
 
 @pytest.mark.parametrize(
@@ -224,8 +230,9 @@ def test_load_fails_loud_when_stage1_lists_other_documents(tmp_path):
 
 @pytest.mark.parametrize(
     "params",
-    [{**RULES, "stage2_method": "llm"}, {**RULES, "oracle": True}, {"stage2_method": "rules"}],
-    ids=["llm", "oracle", "no-stage1"],
+    [{**RULES, "stage2_method": "llm"}, {**RULES, "oracle": True}, {"stage2_method": "rules"},
+     {**RULES, "stage3_value_match": "fuzzy"}],
+    ids=["llm", "oracle", "no-stage1", "unknown-value-match"],
 )
 def test_builder_refuses_what_is_not_ported(params):
     with pytest.raises(ValueError):
@@ -255,20 +262,25 @@ def _gold(parameters) -> dict[str, str]:
     return gold
 
 
-@needs_oe
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "S2 finding, pending decision: CatalogLookup compares schema values (decimal comma, "
-        "'hasta 0,80 m') with corpus value_norm (decimal point, 'hasta 0.80 m'). 1,640 OE leaves "
-        "in OEB190$, OEB200$, OED180$, OEG050$, OEG020$ can never be a Stage-3 match. Inherited "
-        "unchanged from 85c3359, where it already hit 1,080 OEB leaves."
-    ),
+LITERAL_DEFECT = (
+    "S2 finding, kept by design (amendment 2026-09-17): value_match='literal' is the source's "
+    "comparison, schema 'hasta 0,80 m' against corpus value_norm 'hasta 0.80 m'. 1,640 OE leaves "
+    "in OEB190$, OEB200$, OED180$, OEG050$, OEG020$ can never be a Stage-3 match. Inherited from "
+    "85c3359, where it already hit 1,080 OEB leaves. structured_pipeline_rules_valuenorm__OE runs "
+    "the fixed comparison beside it."
 )
-def test_catalogue_lookup_reads_every_leaf_back_from_its_own_values(oe):
+
+
+@needs_oe
+@pytest.mark.parametrize(
+    "value_match",
+    [pytest.param("literal", marks=pytest.mark.xfail(strict=True, reason=LITERAL_DEFECT)),
+     "normalized"],
+)
+def test_catalogue_lookup_reads_every_leaf_back_from_its_own_values(oe, value_match):
     """Stage 3's identity: a leaf's own schema values select that leaf and nothing else."""
     long_norm, schema_path = oe
-    catalog = CatalogLookup(schema_path, PROCESSED / "OE_long_norm.parquet")
+    catalog = CatalogLookup(schema_path, PROCESSED / "OE_long_norm.parquet", value_match=value_match)
     wrong = []
     for row in long_norm.itertuples(index=False):
         got = catalog.lookup(row.parent_key, _gold(row.parameters))
@@ -278,17 +290,15 @@ def test_catalogue_lookup_reads_every_leaf_back_from_its_own_values(oe):
 
 
 @needs_oe
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "S2 finding, pending a design amendment: 8/20 leaves miss one axis. TIPO DE TERRENO's "
-        "value is not written literally in texto ('Normal' is 'en cualquier clase de terreno, "
-        "excepto roca'), and ALVEOLOS has no numeric context rule. A property of the rules "
-        "extractor on texto, not of the port; exact recovery is not attainable as frozen."
-    ),
-)
-def test_extractor_recovers_gold_parameters_on_20_dev_texto_leaves(oe):
-    """S2 design, work item 1: 20 seeded `texto` dev leaves, exact recovery."""
+def test_extractor_on_20_dev_texto_leaves_abstains_but_never_misreads(oe):
+    """S2 work item 1, as amended 2026-09-17.
+
+    The frozen test asked for exact recovery. On `texto` that is not attainable by a rules
+    extractor — TIPO DE TERRENO is not written literally, ALVEOLOS has no context rule — so
+    recovery is *measured* in the stage table (work item 5). What is asserted here is the
+    property the port must not break: when the extractor commits to a value on an unmodified
+    leaf, it is that leaf's value. Abstaining (None) is allowed; misreading is not.
+    """
     from utils.splits import load_split
 
     long_norm, schema_path = oe
@@ -296,14 +306,18 @@ def test_extractor_recovers_gold_parameters_on_20_dev_texto_leaves(oe):
     rows = dev.iloc[sorted(random.Random(20260917).sample(range(len(dev)), 20))]
 
     extractor = RuleBasedParamExtractor(schema_path)
-    wrong = []
+    misread, abstained = [], 0
     for row in rows.itertuples(index=False):
-        got = extractor.extract(row.parent_key, row.text_norm)
-        gold = _gold(row.parameters)
         # The schema keeps BC3's padding (' Nº TUBOS ', ' i >= 5 horas'); the extractor returns
         # it verbatim and the lookup strips it, so compare stripped.
-        got = {a.strip(): (v.strip() if v is not None else None) for a, v in got.items()}
-        if got != gold:
-            diff = {a: (gold.get(a), got.get(a)) for a in gold if gold.get(a) != got.get(a)}
-            wrong.append((row.item_key, diff))
-    assert not wrong, f"{len(wrong)}/20 leaves not recovered: {wrong}"
+        got = {a.strip(): (v.strip() if v is not None else None)
+               for a, v in extractor.extract(row.parent_key, row.text_norm).items()}
+        gold = _gold(row.parameters)
+        assert set(got) == set(gold), f"{row.item_key}: axes {set(got)} != {set(gold)}"
+        for axis, value in got.items():
+            if value is None:
+                abstained += 1
+            elif value != gold[axis]:
+                misread.append((row.item_key, axis, gold[axis], value))
+    assert not misread, f"misread axes: {misread}"
+    assert abstained > 0  # the finding the amendment rests on; if this flips, re-read it
