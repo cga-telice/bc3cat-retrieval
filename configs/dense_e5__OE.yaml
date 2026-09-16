@@ -7,9 +7,12 @@ paths:
   data_dir: /work/data/processed
   index_root: /work/index
 
+# Parquet, not the JSON corpus files dense_e5.yaml names: index_builder.ipynb's _read_df reads
+# a one-line JSON array with lines=True and gets one row of 70,242 columns (S2). The `text`
+# column of the feature tables equals the JSON `text`, row for row, on all four query sets.
 inputs:
-  short_text_path: "{data_dir}/{collection}_resumen.json"
-  long_text_path: "{data_dir}/{collection}_texto.json"
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
 
 method:
   family: dense
