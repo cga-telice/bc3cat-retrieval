@@ -1,0 +1,34 @@
+# Structured pipeline, rules variant, on OE (S2, D-026).
+# Stage 1: E5 item index (dense_e5__OE) -> parent_key of the top-1 leaf
+# Stage 2: rule-based extraction of axis values from the query text
+# Stage 3: deterministic catalogue lookup, three-tier ranking
+# Ported from research/structured-retrieval@85c3359 (configs/structured_pipeline_rules.yaml).
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_rules__OE
+  impl: structured_pipeline_rules
+  save_as: structured_pipeline_rules__OE
+  params:
+    stage2_method: rules
+    oracle: false
+    stage1_index: dense_e5__OE
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.structured_pipeline_rules
+  entrypoint: load

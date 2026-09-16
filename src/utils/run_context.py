@@ -78,6 +78,7 @@ class DataPaths:
     short_feats: Path
     long_feats: Path
     features_meta: Path
+    concept_schema: Path
     query_json: dict[str, Path]
     query_norm: dict[str, Path]
     query_feats: dict[str, Path]
@@ -122,6 +123,7 @@ def data_paths(
         short_feats=directory / f"{collection}_short_feats.parquet",
         long_feats=directory / f"{collection}_long_feats.parquet",
         features_meta=directory / f"{collection}_features_meta.json",
+        concept_schema=directory / f"{collection}_concept_schema.json",
         query_json=synthetic,
         query_norm={
             queryset: directory / f"{collection}_{queryset}_norm.parquet" for queryset in synthetic

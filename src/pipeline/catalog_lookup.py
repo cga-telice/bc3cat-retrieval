@@ -4,8 +4,13 @@ Maps (parent_key, extracted_params) → matching item_key(s).
 
 Usage::
 
-    cl = CatalogLookup()
-    result = cl.lookup("OEB010$", {"TERRENO": "blando", "PAVIMENTO": None, ...})
+    cl = CatalogLookup(schema_path, long_norm_path)
+    result = cl.lookup("OEA010$", {"DIMENSIONES": "30x15 mm", "TRABAJO": None, ...})
+
+Ported from `research/structured-retrieval@85c3359` (D-026). Changes against the source:
+the default `OEB_*` paths are gone — both paths are required, and the caller gets them from
+the resolver (D-022); the `__main__` self-test, which asserted OEB counts, is replaced by
+`tests/test_structured_pipeline.py`. Matching logic is unchanged.
 """
 
 import json
@@ -16,18 +21,14 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
-DEFAULT_SCHEMA_PATH = DATA_DIR / "OEB_concept_schema.json"
-DEFAULT_PARQUET_PATH = DATA_DIR / "OEB_long_norm.parquet"
-
 
 class CatalogLookup:
     """Deterministic lookup from (parent_key, extracted_params) to item_key(s)."""
 
-    def __init__(self, schema_path=None, parquet_path=None):
+    def __init__(self, schema_path, parquet_path):
         """Load the concept schema and build the lookup structures."""
-        schema_path = Path(schema_path or DEFAULT_SCHEMA_PATH)
-        parquet_path = Path(parquet_path or DEFAULT_PARQUET_PATH)
+        schema_path = Path(schema_path)
+        parquet_path = Path(parquet_path)
 
         with open(schema_path, encoding="utf-8") as f:
             self._schema = json.load(f)
@@ -104,67 +105,3 @@ class CatalogLookup:
     def get_all_parent_keys(self) -> list[str]:
         """Return all known parent_keys."""
         return sorted(self._schema.keys())
-
-
-if __name__ == "__main__":
-    import sys
-
-    logging.basicConfig(level=logging.WARNING)
-
-    cl = CatalogLookup()
-    print(f"Loaded {len(cl.get_all_parent_keys())} concept groups")
-    passed = 0
-    total = 7
-
-    # Test 1: Full match (all axes specified) -- exactly 1 item
-    r = cl.lookup("OEB010$", {
-        "TERRENO": "blando",
-        "PAVIMENTO": "sin reposición",
-        "CONDICIONES DE EJECUCIÓN": "Volumen relevante",
-    })
-    assert r == ["OEB010aaa"], f"T1 FAIL: {r}"
-    passed += 1
-    print("T1 PASS: full match -> 1 item")
-
-    # Test 2: Partial match (only TERRENO set) -- 6 items (2 pav x 3 cond)
-    r = cl.lookup("OEB010$", {
-        "TERRENO": "blando",
-        "PAVIMENTO": None,
-        "CONDICIONES DE EJECUCIÓN": None,
-    })
-    assert len(r) == 6, f"T2 FAIL: got {len(r)}"
-    passed += 1
-    print("T2 PASS: partial match -> 6 items")
-
-    # Test 3: All null on small group -- all items
-    r = cl.lookup("OEB160$", {"CONDICIONES DE EJECUCIÓN": None})
-    assert len(r) == 3, f"T3 FAIL: got {len(r)}"
-    passed += 1
-    print("T3 PASS: all null -> 3 items")
-
-    # Test 4: Unknown parent_key -- empty list
-    r = cl.lookup("NONEXISTENT$", {"X": "y"})
-    assert r == [], f"T4 FAIL: {r}"
-    passed += 1
-    print("T4 PASS: unknown parent -> []")
-
-    # Test 5: Unknown value -- warning + treated as wildcard
-    r = cl.lookup("OEB160$", {"CONDICIONES DE EJECUCIÓN": "valor inventado"})
-    assert len(r) == 3, f"T5 FAIL: got {len(r)}"
-    passed += 1
-    print("T5 PASS: unknown value -> 3 items (wildcard)")
-
-    # Test 6: Large group (6336 items), all null -- all items
-    r = cl.lookup("OEB030$", {})
-    assert len(r) == 6336, f"T6 FAIL: got {len(r)}"
-    passed += 1
-    print("T6 PASS: large all-null -> 6336 items")
-
-    # Test 6b: Large group, one axis specified -- correct sub-group
-    r = cl.lookup("OEB030$", {"Nº TUBOS": "1"})
-    assert len(r) == 576, f"T6b FAIL: got {len(r)}"
-    passed += 1
-    print("T6b PASS: large 1-axis -> 576 items")
-
-    print(f"\n{passed}/{total} tests passed")
-    sys.exit(0 if passed == total else 1)
