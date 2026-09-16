@@ -462,8 +462,8 @@ rewritten token is out of vocabulary and contributes nothing; on an untouched ax
 **Consequence.** Per the S2 design, `bm25_unigram_params` is reported as an **oracle bound** and
 G1 is also read on `bm25_unigram`, the deployable arm. D-010 stays Proposed as a policy; this
 entry fixes its application to this method.
-**Adjacent, recorded for S2 work item 6.** `normalize_text` rewrites `\d\.\d{3}` as a thousands
-separator, so a synthetic decimal is mangled (`0.03x0.015 m` → `0.03x0015 m`) in `text_norm`,
+**Adjacent, recorded for S2 work item 6.** `normalize_text` rewrites `\d\.\d{3}` as a thousands
+separator (the pattern ends in a word boundary), so a synthetic decimal is mangled (`0.03x0.015 m` → `0.03x0015 m`) in `text_norm`,
 `text_word` and the param token. Dev reach: 9/204 `unit_conversion`, 4/244 `unit_expansion`,
 38/2,521 stacked; other single types only through the corpus's own `03.365` specification
 numbers, which are rewritten identically on both sides. Not fixed — it is harness behaviour
