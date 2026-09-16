@@ -1,0 +1,39 @@
+# /work/configs/bge_m3_colbert__OE
+
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+method:
+  family: colbert
+  name: bge_m3_colbert__OE
+  impl: bge_m3_colbert
+  save_as: bge_m3_colbert__OE
+  params:
+    api_base: "http://host.docker.internal:8800"
+
+inputs:
+  long_feats: "{data_dir}/{collection}_long_norm.parquet"
+  short_feats: "{data_dir}/{collection}_short_norm.parquet"
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+model:
+  name: BAAI/bge-m3
+  use_fp16: true
+  max_length_query: 256
+  max_length_doc: 256
+
+retrieval:
+  preselect: 256      # number of FAISS preselected docs before MaxSim
+  topk: 100            # default return size
+
+retriever:
+  module: src.retrievers.bge_m3_colbert
+  entrypoint: load
