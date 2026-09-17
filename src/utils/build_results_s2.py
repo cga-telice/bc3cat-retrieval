@@ -75,6 +75,20 @@ CONTRASTS = (  # (treatment, reference)
     ("structured_pipeline_rules_valuenorm__OE", "bm25_unigram_params__k1-0.60__b-0.35__OE"),
     ("structured_pipeline_rules_valuenorm__OE", "bm25_unigram__k1-0.60__b-0.35__OE"),
 )
+COLBERT_CONTRASTS = (  # F3 of the S2 audit: the inversion claim needs its own intervals
+    ("bge_m3_colbert__OE", "bm25_unigram_params__k1-0.60__b-0.35__OE"),
+    ("bge_m3_colbert__OE", "bm25_unigram__k1-0.60__b-0.35__OE"),
+)
+#: The corpus the identity queries are read back from, for the miss anatomy table.
+CORPUS = REPO / "data" / "processed" / "OE_long_feats.parquet"
+#: Methods whose rank-1 ties are read from the run's own scores. The structured arms encode
+#: their tie order in the score itself (tier 1 descends by 1e-4), so their ties come from the
+#: stage decomposition's `stage3_matched` instead.
+SCORE_TIE_METHODS = (
+    "bm25_unigram_params__k1-0.60__b-0.35__OE",
+    "bm25_unigram__k1-0.60__b-0.35__OE",
+    "bge_m3_colbert__OE",
+)
 METRIC_COLS = ["item_acc1", "parent_acc1"]
 
 
@@ -361,9 +375,33 @@ def write_l1_deltas(runs: dict) -> None:
 
 
 def write_structured_vs_bm25(runs: dict) -> None:
+    write_contrasts(
+        runs,
+        CONTRASTS,
+        "structured_vs_bm25.md",
+        "structured − BM25 on the L1 conditions (dev)",
+        [("single_texto", m) for m in METHODS if m != "bge_m3_colbert__OE"],
+    )
+
+
+def write_colbert_vs_bm25(runs: dict) -> None:
+    write_contrasts(
+        runs,
+        COLBERT_CONTRASTS,
+        "colbert_vs_bm25.md",
+        "ColBERT − BM25 on the L1 conditions (dev)",
+        [("single_texto", m) for m in ("bge_m3_colbert__OE", *SCORE_TIE_METHODS[:2])],
+        extra_how=[
+            "S2 read ColBERT's L1 advantage from point estimates alone; these are its intervals.",
+        ],
+    )
+
+
+def write_contrasts(runs: dict, contrasts: tuple, filename: str, title: str,
+                    source_keys: list, extra_how: list[str] = ()) -> None:
     rows = []
     for condition in L1_CONDITIONS:
-        for treat, ref in CONTRASTS:
+        for treat, ref in contrasts:
             a = runs[("single_texto", treat)]["_perquery"]
             b = runs[("single_texto", ref)]["_perquery"]
             a = a[a["condition"] == condition]
@@ -392,12 +430,13 @@ def write_structured_vs_bm25(runs: dict) -> None:
             r[level]["holm"], r[level]["bh"] = ph, pb
 
     lines = header(
-        "structured − BM25 on the L1 conditions (dev)",
+        title,
         [
             "Paired on identical `query_item_key` within `single_texto`; delta = treatment −",
             "reference, per query. CIs: paired query-level bootstrap and concept-clustered bootstrap.",
             "`CI entirely above 0` is `true` when the lower bound of the respective CI is > 0.",
             f"Holm and BH adjust over the {len(rows)} contrasts of each level separately.",
+            *extra_how,
         ],
     )
     for level in ("item", "parent"):
@@ -418,8 +457,7 @@ def write_structured_vs_bm25(runs: dict) -> None:
                 f"{fp(s['p'])} | {fp(s['holm'])} | {fp(s['bh'])} |"
             )
         lines.append("")
-    keys = [("single_texto", m) for m in METHODS if m != "bge_m3_colbert__OE"]
-    write(OUT / "structured_vs_bm25.md", lines + sources(runs, keys))
+    write(OUT / filename, lines + sources(runs, source_keys))
 
 
 def write_stacked(runs: dict) -> None:
@@ -616,6 +654,226 @@ def write_failures(runs: dict) -> None:
                                               [("docs/synthetic-oe/sprints/SPRINT_S2_FAILURES.csv", FAILURES)]))
 
 
+def _iter_top100(run_dir: Path):
+    """Stream a run's ranked candidate lists, as the run wrote them."""
+    import gzip
+
+    with gzip.open(run_dir / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
+        for line in fh:
+            if line.strip():
+                yield json.loads(line)
+
+
+#: Why an identity query failed, in the order the classifier tries them. The token comparison
+#: is over the analysed multiset of the indexed field, so it is the view BM25 itself has.
+MISS_CLASSES = (
+    ("other_concept", "rank 1 is outside the gold's concept"),
+    ("duplicate_texto", "gold and rank 1 have byte-identical `texto`"),
+    ("identical_tokens", "same token multiset: the scores tie and the order decides"),
+    ("rank1_superset", "rank 1 has every token of the gold and more"),
+    ("gold_superset", "the gold has every token of rank 1 and more"),
+    ("both_differ", "each has tokens the other lacks"),
+)
+
+
+def write_identity_misses(runs: dict) -> None:
+    """Anatomy of the identity misses of the two BM25 arms (S2 audit, F8).
+
+    The S2 report stated the 662 / 3,260 split in prose. This derives the whole breakdown,
+    because the reading of gate G1 rests on it: ties are only part of the story.
+    """
+    import collections
+    import re
+
+    from sklearn.feature_extraction.text import CountVectorizer
+
+    corpus = pd.read_parquet(CORPUS, columns=["item_key", "parent_key", "text", "text_word"])
+    analyse = CountVectorizer(
+        lowercase=True, token_pattern=r"(?u)\b\w+\b", strip_accents="unicode"
+    ).build_analyzer()
+    tokens = {k: collections.Counter(analyse(t)) for k, t in zip(corpus.item_key, corpus.text_word)}
+    parent = dict(zip(corpus.item_key, corpus.parent_key))
+    texto = dict(zip(corpus.item_key, corpus.text))
+    methods = ("bm25_unigram__k1-0.60__b-0.35__OE", "bm25_unigram_params__k1-0.60__b-0.35__OE")
+
+    lines = header(
+        "identity misses of the BM25 arms (`texto`, dev)",
+        [
+            "Every identity miss classified by comparing the gold's analysed token multiset with",
+            "rank 1's, on the indexed field, using the index's own token pattern `(?u)\\b\\w+\\b`",
+            "with accents stripped. Classes are exclusive and tried in table order.",
+            "`differing parameter` counts the `texto` lines present in the gold and absent from",
+            "rank 1, by the label before the colon.",
+        ],
+    )
+    lines += [
+        "| class | what it means |",
+        "|---|---|",
+        *[f"| `{name}` | {what} |" for name, what in MISS_CLASSES],
+        "",
+        "## Misses by class",
+        "",
+        "| method | n queries | n misses | "
+        + " | ".join(f"`{name}`" for name, _ in MISS_CLASSES)
+        + " | gold at rank 2 | gold outside top 100 |",
+        "|---|---:|---:|" + "---:|" * (len(MISS_CLASSES) + 2),
+    ]
+    labels: dict[str, collections.Counter] = {}
+    for method in methods:
+        counts = collections.Counter()
+        label_counts = collections.Counter()
+        n = rank2 = outside = 0
+        for record in _iter_top100(RUNS / "texto" / method):
+            n += 1
+            gold, top = record["gold_item_key"], record["candidates"][0]["index_item_key"]
+            if gold == top:
+                continue
+            position = next((c["rank"] for c in record["candidates"] if c["index_item_key"] == gold), None)
+            rank2 += position == 2
+            outside += position is None
+            gold_tokens, top_tokens = tokens[gold], tokens[top]
+            only_gold, only_top = gold_tokens - top_tokens, top_tokens - gold_tokens
+            if parent[top] != parent[gold]:
+                cls = "other_concept"
+            elif texto[gold] == texto[top]:
+                cls = "duplicate_texto"
+            elif not only_gold and not only_top:
+                cls = "identical_tokens"
+            elif not only_gold:
+                cls = "rank1_superset"
+            elif not only_top:
+                cls = "gold_superset"
+            else:
+                cls = "both_differ"
+            counts[cls] += 1
+            gold_lines = [l.strip().rstrip(".") for l in texto[gold].split("\n")]
+            top_lines = [l.strip().rstrip(".") for l in texto[top].split("\n")]
+            for line in gold_lines:
+                if line not in top_lines:
+                    label_counts[line.split(":")[0] if ":" in line else "(description)"] += 1
+        labels[method] = label_counts
+        lines.append(
+            f"| {SHORT[method]} | {n:,} | {sum(counts.values()):,} | "
+            + " | ".join(f"{counts[name]:,}" for name, _ in MISS_CLASSES)
+            + f" | {rank2:,} | {outside:,} |"
+        )
+
+    lines += [
+        "",
+        "## Which `texto` line separates the gold from rank 1",
+        "",
+        "One row per parameter label; a miss with two differing lines counts in both.",
+        "",
+        "| method | differing line | n misses |",
+        "|---|---|---:|",
+    ]
+    for method in methods:
+        for label, count in labels[method].most_common(8):
+            lines.append(f"| {SHORT[method]} | {label} | {count:,} |")
+
+    duplicates = collections.Counter(texto.values())
+    repeated = sum(c for c in duplicates.values() if c > 1)
+    group_size = {k: duplicates[t] for k, t in texto.items()}
+    dev = list(runs[("texto", methods[0])]["_perquery"]["query_item_key"])
+    ceiling = sum(1.0 / group_size[k] for k in dev) / len(dev)
+    lines += [
+        "",
+        "## The ceiling a `texto`-only method can reach",
+        "",
+        f"Leaves whose `texto` is not unique: {repeated:,} of {len(texto):,} "
+        f"({repeated / len(texto):.4f}), in {sum(1 for c in duplicates.values() if c > 1):,} groups; "
+        f"{sum(1 for k in dev if group_size[k] > 1):,} of them are dev identity queries. Nothing that "
+        "reads only `texto` can separate a group, so its expected identity Acc@1 under a uniform "
+        f"draw inside each group is **{ceiling:.4f}**, not 1.0. The column below counts how many of "
+        "each method's identity misses are leaves in such a group.",
+        "",
+        "| method | identity misses | of them, duplicate-`texto` leaves | other misses |",
+        "|---|---:|---:|---:|",
+    ]
+    for method in METHODS:
+        missed = [
+            r["gold_item_key"]
+            for r in _iter_top100(RUNS / "texto" / method)
+            if r["candidates"][0]["index_item_key"] != r["gold_item_key"]
+        ]
+        duplicated = sum(1 for k in missed if group_size[k] > 1)
+        lines.append(
+            f"| {SHORT[method]} | {len(missed):,} | {duplicated:,} | {len(missed) - duplicated:,} |"
+        )
+    write(OUT / "identity_misses.md", lines + sources(runs, [("texto", m) for m in methods],
+                                                     [("data/processed/OE_long_feats.parquet", CORPUS)]))
+
+
+def write_tiebreak(runs: dict) -> None:
+    """Rank-1 ties in every family, not only the structured one (S2 audit, F6).
+
+    `Acc@1 (random tie-break)` is the expectation over a uniform draw inside the rank-1 tie:
+    a query contributes 1/|tie| when the gold is in the tie set and 0 otherwise. It is exact,
+    so it needs no seed. The gap to the run's own Acc@1 is what candidate order is worth.
+    """
+    lines = header(
+        "rank-1 ties and what order is worth (dev)",
+        [
+            "For the lexical and late-interaction arms a tie is an exact equality of the run's",
+            "own scores at rank 1. The structured arms encode their order in the score (tier 1",
+            "descends by 1e-4), so their tie set is Stage 3's matched-key set, read from",
+            "`logs/S2/stages/`. Point estimates; `Acc@1 (random tie-break)` is an expectation,",
+            "not a simulation.",
+        ],
+    )
+    lines += [
+        "| queryset | method | n queries | queries tied at rank 1 | share tied | mean tie size | "
+        "gold in the tie set | run Acc@1 | Acc@1 (random tie-break) | difference |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for queryset in QUERYSETS:
+        for method in METHODS:
+            run = runs[(queryset, method)]["_perquery"]
+            observed = float(run["item_acc1"].mean())
+            if method in SCORE_TIE_METHODS:
+                tied = tie_sizes = gold_in = 0
+                expected = 0.0
+                n = 0
+                for record in _iter_top100(RUNS / queryset / method):
+                    n += 1
+                    best = record["candidates"][0]["score"]
+                    tie = [c for c in record["candidates"] if c["score"] == best]
+                    in_tie = any(c["index_item_key"] == record["gold_item_key"] for c in tie)
+                    if len(tie) > 1:
+                        tied += 1
+                        tie_sizes += len(tie)
+                    gold_in += in_tie
+                    expected += (1.0 / len(tie)) if in_tie else 0.0
+                expected /= n
+                mean_tie = tie_sizes / tied if tied else float("nan")
+            else:
+                stages = pd.read_parquet(STAGES / f"{queryset}__{method}.parquet")
+                matched = stages["stage3_matched"].to_numpy(dtype=float)
+                gold_in_match = stages["stage3_gold_in_match"].to_numpy(dtype=bool)
+                # A query with no Stage-3 match never reaches a tier-1 tie; it is counted as
+                # untied here and contributes its run outcome, not an expectation.
+                has_tier1 = matched > 0
+                n = len(stages)
+                tied = int((matched > 1).sum())
+                tie_sizes = float(matched[matched > 1].sum())
+                gold_in = int(gold_in_match.sum())
+                mean_tie = tie_sizes / tied if tied else float("nan")
+                contrib = np.where(has_tier1 & gold_in_match, 1.0 / np.where(matched > 0, matched, 1), 0.0)
+                fallback = run.set_index("query_item_key").loc[stages["query_item_key"], "item_acc1"].to_numpy()
+                expected = float(np.where(has_tier1, contrib, fallback).mean())
+            lines.append(
+                f"| {queryset} | {SHORT[method]} | {n:,} | {tied:,} | {tied / n:.4f} | "
+                + (f"{mean_tie:.2f}" if tied else "—")
+                + f" | {gold_in / n:.4f} | {f4(observed)} | {f4(expected)} | {fd(expected - observed)} |"
+            )
+    extra = [
+        (f"logs/S2/stages/{qs}__{m}.parquet", STAGES / f"{qs}__{m}.parquet")
+        for qs in QUERYSETS
+        for m in STRUCTURED
+    ]
+    write(OUT / "tiebreak.md", lines + sources(runs, [(qs, m) for qs in QUERYSETS for m in METHODS], extra))
+
+
 def write_provenance(runs: dict) -> None:
     lines = header(
         "run provenance",
@@ -652,8 +910,11 @@ def main() -> None:
     runs = load_runs()
     write_provenance(runs)
     write_identity(runs)
+    write_identity_misses(runs)
     write_l1_deltas(runs)
     write_structured_vs_bm25(runs)
+    write_colbert_vs_bm25(runs)
+    write_tiebreak(runs)
     write_stacked(runs)
     write_structured_stages(runs)
     write_failures(runs)

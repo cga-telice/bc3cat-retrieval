@@ -17,7 +17,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 |---|---|---|---|---|---|
 | S0 | backbone | **done** | Reproducibility foundation and splits | all | — |
 | S1 | backbone | **done** | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
-| S2 | backbone | **active** | Go/no-go probe ⚑ | H3 | S1 |
+| S2 | backbone | **done** | Go/no-go probe ⚑ | H3 | S1 |
 | S3 | backbone | planned | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
 | S4 | backbone | planned | E1 ablation — Track A | H1, H2 | S3 |
 | S5 | backbone | planned | E1 ablation — Track B (structured) | H3 | S4 |
@@ -71,3 +71,5 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-17 | S2 | design amended | A1 fifth arm `structured_pipeline_rules_valuenorm__OE` (Stage-3 decimal-comma defect, 1,640 leaves); A2 work item 1's exact-recovery test → never-misread; A3 port file list |
 | 2026-09-17 | S2 | design amended | A4 harness repairs needed to run items 3–4; A5 run bookkeeping (indexes rebuilt, S1 runs archived, one commit for all 15 runs) |
 | 2026-09-17 | S2 | report written | All 7 exit criteria met; G1 read **proceed**, pending César's ruling on `bm25_unigram` identity 0.8870 (D-027). Structured-overtake refuted for rules. `done` withheld until `/audit S2` in a fresh session |
+| 2026-09-17 | S2 | audited fresh | **PASS WITH FINDINGS** (`SPRINT_S2_AUDIT.md`): 9 findings, 3 major. Tables regenerate byte-identically and the headline deltas recompute from the raw lists; the gate reading did not survive. All nine resolved in §Audit response |
+| 2026-09-17 | S2 | active → **done** | G1 re-read under the frozen design: **ambiguous** — `bm25_unigram` 0.8870 (clustered [0.7996, 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling), L1 branch *proceed*. D-027 rejected, D-030 accepted (thresholds read on the clustered interval), D-028/D-029 amended. New generated tables: `identity_misses.md`, `colbert_vs_bm25.md`, `tiebreak.md`; design amendment A6 |

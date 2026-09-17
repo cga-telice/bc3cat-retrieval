@@ -469,3 +469,44 @@ separator (the pattern ends in a word boundary), so a synthetic decimal is mangl
 numbers, which are rewritten identically on both sides. Not fixed — it is harness behaviour
 every method inherits — but a miss in that set is classified as a feature artefact, not a
 rendering effect.
+
+### D-027 — Re-defining the G1 stop rule after seeing the result
+**Status:** Rejected · **Date:** 2026-09-17 · **Owner:** César · **Raised in:** S2 report · **Closed in:** S2 audit response
+**Context.** `bm25_unigram` reads its own `texto` back at 0.8870 [0.8837, 0.8903], clustered
+[0.7996, 0.9242]. The frozen G1 branch stops the project when BM25 or ColBERT identity is below
+≈0.98, and D-010 names `bm25_unigram` as the deployable arm G1 is also read on.
+**Proposal, as raised.** Treat the shortfall as a recorded method property (the analyzer drops
+`<`, `>`, `=`) and stop only when the same code path reads *another* method at ≥ 0.98 on the
+same queries — which `bm25_unigram_params` does, at 0.9994.
+**Decision.** Rejected. The proposal is sound as a diagnosis and inadmissible as a gate: it was
+written after the result it would rescue, and a gate re-defined post hoc is not a gate. G1 is
+read under the design as frozen (see D-030) and recorded **ambiguous** on that arm.
+**Consequence.** S3 proceeds with the identity ceiling of the deployable lexical arm recorded at
+0.8870, which bounds every L1 figure measured against it. If the analyzer is to keep the
+comparators, that is a new variant with its own config in S9, not a repair of S2.
+
+### D-030 — A threshold on an Acc@1 is read against the concept-clustered interval
+**Status:** Accepted · **Date:** 2026-09-17 · **Owner:** César · **Raised in:** S2 audit (F2)
+**Context.** Each concept expands into hundreds of near-identical leaves that succeed or fail
+together, so 35,422 identity queries are nowhere near 35,422 independent observations. The S2
+identity table gives both intervals, and they disagree at the gate: ColBERT is
+[0.9849, 0.9873] by query and [0.9463, 1.0000] by concept, which straddles 0.98.
+**Decision.** Where a design states a threshold on an Acc@1, it is read against the
+**concept-clustered** bootstrap interval; the query-level interval remains the reported
+precision of the point estimate. A clustered interval straddling the threshold is recorded
+*ambiguous* on that arm, as the S2 design already required.
+**Consequence.** Binding on later gates, not only G1. In S2 it makes `bge_m3_colbert` ambiguous
+on the identity branch although its point estimate clears 0.98 — with the note that the corpus
+ceiling is 0.9863 (776 dev leaves share a `texto`), which no `texto`-only method can exceed.
+
+### D-004 / D-025 — note from S2: two upstream defects found while auditing S2
+**Status:** Note · **Date:** 2026-09-17 · **Raised in:** S2 audit response
+**Duplicate `texto`.** 776 OE leaves in 292 groups share a `texto` with a sibling, all of them in
+dev. Expected identity ceiling for a `texto`-only method: 0.9863. `bm25_unigram_params` separates
+them only through parameter tokens, i.e. information a real query does not carry (D-010).
+**Stacked dose counts.** Upstream reports (`bc3cat-dataset` `synthetic`, 2026-09-17) that the
+stacked set's `modification_count` / `modification_types` overstate the dose visible in the
+TEXTO by ≈1,800 modifications, because the compatibility rule matched strings rather than text
+variables. Texts and therefore Acc@1 are unaffected; every by-dose reading waits for the
+corrected sidecar. SINGLE is expected clean and not yet verified. Both are for upstream; S7 and
+S8 must not regress on the current dose field.
