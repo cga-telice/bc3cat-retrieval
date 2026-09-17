@@ -146,6 +146,9 @@ runs/{collection}/{queryset}/{method}
 docs/synthetic-oe/
   CLAUDE.md STATE.md SPLITS.md INTAKE.md                # contracts
   DECISIONS.md                                          # record — append-only, searched
+  DATASET_DEFECTS.md                                    # record — what is wrong with the corpus,
+                                                        #   classified P (upstream) / H (harness) /
+                                                        #   C (property of the catalogue)
   archive/                                              # record — dated snapshots
   RESEARCH_PROPOSAL.md RESEARCH_PLAN.md SPRINTS.md      # plans
   sprints/SPRINT_XX_DESIGN.md                           # plan, frozen at sprint start

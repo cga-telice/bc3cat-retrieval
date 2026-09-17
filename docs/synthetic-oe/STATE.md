@@ -30,6 +30,8 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 ## In flight
 
 - **S3** — not yet opened. Run `/sprint-open S3`.
+- **[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)** — every corpus defect in one place, classified
+  by who fixes it. Opened 2026-09-17.
 - **Upstream, from `bc3cat-dataset` 2026-09-17:** corrected stacked dose fields
   (`texto_modification_count`) delivered on `syn/stacked-audit` `fd4713d`, not merged and not
   taken in here — stacked by-dose readings stay suspended until they are. SINGLE audited clean,
