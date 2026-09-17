@@ -44,6 +44,14 @@ Leaves whose `texto` is not unique: 776 of 70,242 (0.0110), in 292 groups; 776 o
 | structured_rules | 8,117 | 583 | 7,534 |
 | structured_valuenorm | 7,035 | 579 | 6,456 |
 
+Where those groups sit. A group spanning two concepts would cap parent-level Acc@1 as
+well; one inside a single concept caps only the item level.
+
+| concept | group size | n groups | n leaves |
+|---|---:|---:|---:|
+| `OEA050$` | 3 | 192 | 576 |
+| `OEG050$` | 2 | 100 | 200 |
+
 ## Sources
 
 | run_id | config SHA-256 | code commit | query-set SHA-256 |

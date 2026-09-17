@@ -30,10 +30,12 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 ## In flight
 
 - **S3** — not yet opened. Run `/sprint-open S3`.
-- **Upstream, for `bc3cat-dataset`:** the corrected stacked dose sidecar (counts overstate the
-  dose visible in the TEXTO by ≈1,800 modifications; texts and Acc@1 unaffected, by-dose
-  readings suspended), and the 292 duplicate-`texto` groups (776 leaves, all in dev), which cap
-  `texto`-only identity at 0.9863.
+- **Upstream, from `bc3cat-dataset` 2026-09-17:** corrected stacked dose fields
+  (`texto_modification_count`) delivered on `syn/stacked-audit` `fd4713d`, not merged and not
+  taken in here — stacked by-dose readings stay suspended until they are. SINGLE audited clean,
+  so the L1 slices stand. The 292 duplicate-`texto` groups are all intra-concept: item-level
+  identity caps at 0.9863, parent level is untouched. **D-031 awaits your ruling:** flag those
+  groups (proposed) or collapse them, which would invalidate S2's runs by corpus digest.
 
 
 ## Incident — 2026-09-14

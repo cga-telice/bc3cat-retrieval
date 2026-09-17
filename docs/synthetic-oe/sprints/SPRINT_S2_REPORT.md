@@ -66,6 +66,11 @@ defect, not a retrieval one.
 
 **There is no 1.0 to reach.** 776 dev leaves share their `texto` with a sibling, so a `texto`-only
 method expects at most **0.9863** identity Acc@1 under a uniform draw inside each duplicate group.
+Every group is inside one concept — `OEA050$` 192 groups of 3, `OEG050$` 100 of 2 — so this caps
+the item level only; **parent-level Acc@1 keeps its 1.0**. Upstream confirmed the cause
+(2026-09-17): those two concepts' TEXTO templates never reference one of their parameter axes, so
+its values render identically; the RESUMEN does separate them, which is why the delivered
+deduplication, keyed on the (resumen, texto) pair, kept them.
 ColBERT sits on that ceiling: 484 of its 492 misses are duplicate-`texto` leaves, 8 are not, and
 all 492 have the gold tied with rank 1 on score (float16 quantisation), so no rule reading the
 score can fix them ([`tiebreak.md`](../results/S2/tiebreak.md)). `bm25_unigram`'s 4,003 misses
@@ -121,7 +126,11 @@ table are suspended**: upstream reports (2026-09-17, `bc3cat-dataset` `synthetic
 stacked set's `modification_count` / `modification_types` overstate what the TEXTO actually
 shows — rewrites of RESUMEN-only variables were counted when the phrase reappeared through
 another variable, ≈1,800 of them. The texts, and therefore every Acc@1 above, are unaffected;
-any reading *by dose* waits for the corrected sidecar. SINGLE is expected clean, not yet verified.
+any reading *by dose* waits for the corrected `texto_modification_count` /
+`texto_modification_types` fields, delivered upstream on 2026-09-17 and not yet taken in here.
+**SINGLE is verified clean** (4,439 of 4,439 items carry exactly one modification visible in the
+TEXTO), so the L1 slices of findings 2, 3 and 7 — selected by `modification_count == 1` — hold as
+measured; only the stacked by-dose strata move.
 
 **7. ColBERT under L1, with intervals** ([`colbert_vs_bm25.md`](../results/S2/colbert_vs_bm25.md)),
 computed after the audit (F3). ColBERT − BM25, item level: `num_to_text` +0.667
@@ -197,9 +206,11 @@ this reads *proceed*, is **not adopted** (§Decisions raised).
    maintenance band (`i >= 5 horas` → `5 horas o más`).
 8. **Parametric collapse is not universal**: under stacking BM25 loses the concept too (0.3967).
 9. **`normalize_text` reads a synthetic `0.015` as a thousands group** (D-010 note).
-10. **776 OE leaves (292 groups) share their `texto` with another leaf.** No `texto`-only method
-    can reach 1.0 item-level identity on OE; the expected ceiling is 0.9863.
-    `bm25_unigram_params` clears them only through parameter tokens, i.e. off-text information.
+10. **776 OE leaves (292 groups) share their `texto` with another leaf**, all intra-concept
+    (`OEA050$`, `OEG050$`), because those TEXTO templates never reference one parameter axis. No
+    `texto`-only method can reach 1.0 item-level identity on OE; the expected ceiling is 0.9863.
+    Parent level is unaffected. `bm25_unigram_params` clears them only through parameter tokens,
+    i.e. off-text information.
 11. **The stacked set's modification counts overstate the dose visible in the TEXTO** (upstream,
     2026-09-17): ≈1,800 counted modifications are not in the query text. Acc@1 figures stand;
     by-dose readings do not (finding 6).

@@ -508,5 +508,25 @@ them only through parameter tokens, i.e. information a real query does not carry
 stacked set's `modification_count` / `modification_types` overstate the dose visible in the
 TEXTO by ≈1,800 modifications, because the compatibility rule matched strings rather than text
 variables. Texts and therefore Acc@1 are unaffected; every by-dose reading waits for the
-corrected sidecar. SINGLE is expected clean and not yet verified. Both are for upstream; S7 and
-S8 must not regress on the current dose field.
+corrected `texto_modification_count` / `texto_modification_types`, delivered upstream the same
+day (branch `syn/stacked-audit`, `fd4713d`, not yet merged or taken in here). **SINGLE audited
+clean** — 4,439 of 4,439 items carry exactly one modification visible in the TEXTO — so the L1
+slice membership, derived from `modification_count == 1`, stands as measured. S7 and S8 must
+read the corrected field, not the original one.
+
+### D-031 — Duplicate-`texto` leaves: flag them, do not collapse them
+**Status:** Proposed · **Date:** 2026-09-17 · **Owner:** César · **Raised in:** S2 audit response, with `bc3cat-dataset`
+**Context.** 292 groups, 776 leaves, all intra-concept: `OEA050$` 192 groups of 3, `OEG050$` 100
+of 2. Cause, confirmed upstream: those concepts' TEXTO templates never reference one parameter
+axis, so its values render identically; the RESUMEN separates them, which is why a dedup keyed
+on the (resumen, texto) pair kept them. Upstream offers either collapsing them or adding a
+`duplicate_texto_group` field, and has flagged the same class for `OEG010$`.
+**Proposal.** Take the **flag**, not the collapse. Collapsing changes the delivered target pool,
+hence the corpus digest, hence every S2 run and the 70,242-leaf figure the branch reports; a
+flag leaves the numbers standing and lets a scorer exclude or pool the groups when a claim needs
+it. The measured ceiling (0.9863 item-level identity, parent level untouched) is then reportable
+as a property of the benchmark rather than a defect hidden by a rebuild.
+**Consequence if accepted.** Upstream adds the field; this branch reports item-level identity
+against the 0.9863 ceiling and keeps S2's runs valid. If the collapse is chosen instead, S2's
+runs are invalidated by their corpus digest and the sprint must be re-run — a cost that buys a
+cleaner pool and nothing else.

@@ -774,6 +774,17 @@ def write_identity_misses(runs: dict) -> None:
     duplicates = collections.Counter(texto.values())
     repeated = sum(c for c in duplicates.values() if c > 1)
     group_size = {k: duplicates[t] for k, t in texto.items()}
+    groups: dict[str, list[str]] = collections.defaultdict(list)
+    for key, text in texto.items():
+        if duplicates[text] > 1:
+            groups[text].append(key)
+    spread = collections.Counter(
+        (
+            "several concepts" if len({parent[k] for k in members}) > 1 else parent[members[0]],
+            len(members),
+        )
+        for members in groups.values()
+    )
     dev = list(runs[("texto", methods[0])]["_perquery"]["query_item_key"])
     ceiling = sum(1.0 / group_size[k] for k in dev) / len(dev)
     lines += [
@@ -790,6 +801,10 @@ def write_identity_misses(runs: dict) -> None:
         "| method | identity misses | of them, duplicate-`texto` leaves | other misses |",
         "|---|---:|---:|---:|",
     ]
+    concept_rows = [
+        f"| `{concept}` | {size} | {count:,} | {count * size:,} |"
+        for (concept, size), count in sorted(spread.items())
+    ]
     for method in METHODS:
         missed = [
             r["gold_item_key"]
@@ -800,6 +815,16 @@ def write_identity_misses(runs: dict) -> None:
         lines.append(
             f"| {SHORT[method]} | {len(missed):,} | {duplicated:,} | {len(missed) - duplicated:,} |"
         )
+
+    lines += [
+        "",
+        "Where those groups sit. A group spanning two concepts would cap parent-level Acc@1 as",
+        "well; one inside a single concept caps only the item level.",
+        "",
+        "| concept | group size | n groups | n leaves |",
+        "|---|---:|---:|---:|",
+        *concept_rows,
+    ]
     write(OUT / "identity_misses.md", lines + sources(runs, [("texto", m) for m in methods],
                                                      [("data/processed/OE_long_feats.parquet", CORPUS)]))
 
