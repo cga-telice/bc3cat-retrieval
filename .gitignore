@@ -90,3 +90,7 @@ Claude outputs/
 # migration moved no number, so it is versioned despite the blanket *.json rule above.
 !tests/fixtures/
 !tests/fixtures/**
+
+# Sprint records are evidence too: a hand classification (e.g. SPRINT_S2_FAILURES.csv) cannot be
+# regenerated, so it is versioned despite the blanket *.csv rule.
+!docs/synthetic-oe/sprints/*.csv
