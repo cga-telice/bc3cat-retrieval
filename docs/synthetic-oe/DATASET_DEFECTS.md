@@ -118,8 +118,9 @@ The previous study ran **no identity control at all**: its 0.974 is `resumen→t
 test split, not a read-back. No method is required to reach 1.0, and after P1 no `texto`-only
 method can: the 0.98 threshold was set above the corpus ceiling of 0.9863 without anyone noticing.
 
-**How it should read instead.** Each method's identity is reported as **its own ceiling**, beside
-the corpus ceiling for the field it indexes, and every L1 or stacked figure is read against that
-ceiling rather than against 1.0. A gate, if one is kept, tests the harness — one method, known to
-carry enough information, reading its target back — not the whole method set. Proposed for the
-sprint that follows S2; no gate is re-read retroactively.
+**How it reads instead**, ruled by César on 2026-09-17 (**D-032**, Accepted): each method's
+identity is reported as **its own ceiling**, beside the corpus ceiling for the field it indexes,
+and every L1 or stacked figure is read against that ceiling rather than against 1.0. Identity is
+no longer a gate over the method set. Whether a narrow harness control remains — one method,
+known to carry enough information, reading its target back — is part of the S14 design
+discussion. No gate is re-read retroactively: S2's G1 stays *ambiguous* as recorded.

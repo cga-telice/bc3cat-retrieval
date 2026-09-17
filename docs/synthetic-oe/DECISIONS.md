@@ -530,3 +530,24 @@ as a property of the benchmark rather than a defect hidden by a rebuild.
 against the 0.9863 ceiling and keeps S2's runs valid. If the collapse is chosen instead, S2's
 runs are invalidated by their corpus digest and the sprint must be re-run — a cost that buys a
 cleaner pool and nothing else.
+
+### D-032 — Identity is reported as a per-method ceiling, not gated by a threshold
+**Status:** Accepted · **Date:** 2026-09-17 · **Owner:** César · **Raised in:** S2 audit response, closing the G1 reading
+**Context.** S2 gated on identity ≈ 0.98 for BM25 and ColBERT and spent the sprint's close
+arguing about the reading (D-027, D-030). Two questions were conflated: *does the harness read
+its own target back* — a control, which passed at 0.9994 on the same code path — and *can a
+method discriminate siblings from the indexed field alone* — a property of the method, which is
+what this branch exists to measure. Two facts settle it: the previous study ran **no identity
+control at all** (its 0.974 is `resumen→texto` on OEB test, not a read-back), and after P1 the
+corpus ceiling for a `texto`-only method is 0.9863, so the 0.98 threshold was set above what any
+such method could reach.
+**Decision.** Identity stops being a gate over the method set. Every method reports its identity
+Acc@1 as **its own ceiling**, printed beside the corpus ceiling for the field it indexes, and
+every L1, stacked or test figure is read against that ceiling rather than against 1.0. A method
+is not disqualified for failing to reach 1.0; a claim that ignores its method's ceiling is.
+**Consequence.** G1's identity branch is not re-read for S2 — it stays *ambiguous*, as recorded,
+because a gate is not re-run after the fact. From S14 on, the identity table carries a `ceiling`
+column and the reports quote *headroom* (observed ÷ ceiling), not the raw distance to 1.0.
+Whether a narrow harness control survives — one method known to carry enough information, read
+back as proof that the pipeline is wired correctly — is folded into the S14 design discussion.
+D-030 stands for any threshold that does remain.
