@@ -20,8 +20,9 @@ discriminating literals buried in parameter values, comparators inside those val
 that a leaf's identity often lives in a number are not defects — they are the research object. A
 preprocessing step that normalises them away, or that copies parameter values into the indexed
 text, produces a corpus on which retrieval is easy and the finding is vacuous. The failure mode
-has a precedent here: `bm25_unigram_params` reaches 0.9994 identity only because its tokens come
-from the record's parsed `parameters` (D-010), which a real query does not carry.
+has a precedent here: `bm25_unigram_params` reaches 0.9994 identity only because the *query*
+carries the record's parsed `parameters` (D-010 and its second note, where this was checked
+against the code: the scorer is unmodified, the field is what differs).
 
 ---
 
@@ -36,8 +37,10 @@ separate them, so a deduplication keyed on the (resumen, texto) pair kept them.
 **Consequence.** Expected item-level identity Acc@1 for a `texto`-only method caps at **0.9863**,
 not 1.0. Parent level is unaffected, because no group spans two concepts. `bge_m3_colbert` sits on
 that ceiling (484 of its 492 identity misses are these leaves).
-**Disposition.** D-031: flag, do not collapse — a collapse changes the target pool and the corpus
-digest, invalidating every run measured against it. Awaiting César.
+**Disposition.** **D-031 accepted 2026-09-17 (César): flag, do not collapse.** Upstream adds a
+`duplicate_texto_group` field carrying a stable group id; the target pool, the texts and the
+70,242-leaf figure stay as they are, so S2's runs remain valid. The harness can also derive the
+grouping itself from the corpus, deterministically, which is what `identity_misses.md` does.
 **Evidence.** `results/S2/identity_misses.md`, generated. Same class reported upstream for
 `OEG010$`.
 

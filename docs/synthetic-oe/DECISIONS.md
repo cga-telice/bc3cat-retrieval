@@ -515,7 +515,7 @@ slice membership, derived from `modification_count == 1`, stands as measured. S7
 read the corrected field, not the original one.
 
 ### D-031 — Duplicate-`texto` leaves: flag them, do not collapse them
-**Status:** Proposed · **Date:** 2026-09-17 · **Owner:** César · **Raised in:** S2 audit response, with `bc3cat-dataset`
+**Status:** **Accepted** 2026-09-17 (César: "marcamos") · **Date:** 2026-09-17 · **Owner:** César · **Raised in:** S2 audit response, with `bc3cat-dataset`
 **Context.** 292 groups, 776 leaves, all intra-concept: `OEA050$` 192 groups of 3, `OEG050$` 100
 of 2. Cause, confirmed upstream: those concepts' TEXTO templates never reference one parameter
 axis, so its values render identically; the RESUMEN separates them, which is why a dedup keyed
@@ -551,3 +551,37 @@ column and the reports quote *headroom* (observed ÷ ceiling), not the raw dista
 Whether a narrow harness control survives — one method known to carry enough information, read
 back as proof that the pipeline is wired correctly — is folded into the S14 design discussion.
 D-030 stands for any threshold that does remain.
+
+
+### D-010 — second note from S2: where the oracle signal actually comes from, measured
+**Status:** Note on D-010 · **Date:** 2026-09-17 · **Raised by:** César, who asked whether the method had been altered to fire on parameter tokens
+**The question.** Is `bm25_unigram_params` a modified scorer that boosts parameter tokens, or an
+ordinary BM25 over a different field?
+**Checked in the code.** `src/retrievers/bm25_unigram_params.py` is a five-line alias: it loads
+`bm25_unigram`'s `BM25Searcher` unchanged. `src/index_builders/bm25_unigram_params.py` differs
+from the plain one **only in `select_field`**, which returns `word_unigram_params`. Scoring is
+identical — the same `Q_idf @ X_bm25.T`, the same k1 = 0.60, b = 0.35. No bonus, no boost, no
+per-token weight: `grep -niE "bonus|boost|multipli"` over `retrievers/`, `index_builders/` and
+`utils/` returns nothing. (The previous review cycle's "numeric bonus that was dead code" is not
+in this branch's code.)
+**So the difference is the field, on both sides.** `retrieve.ipynb` reads the index's own
+`text_field` and takes the query text from the *same column of the query table*, so both the
+document and the query are `text_word_params` = `text_word` + one `param_token` per axis,
+appended once each, never repeated.
+**Where the query's tokens come from.** The synthetic record carries its own flat `parameters`
+with the rewritten values (upstream schema), and the feature pipeline mints `param_tokens` from
+them. Measured over all 4,439 `single_texto` queries, analysed with the index's own analyzer:
+
+| layer | types | param tokens out of vocabulary |
+|---|---|---|
+| L2 / L3 | `compression`, `expansion`, `paraphrase`, `reorder`, `template_paraphrase` | **0.00** — the query carries the gold's complete parameter fingerprint |
+| L1 | `num_to_text`, `synonym_label`, `unit_conversion`, `unit_expansion` | **exactly 1.00**, the rewritten axis; the other ~3.7 still match |
+
+**But the fingerprint is evidence, not a key.** With every axis matching, item Acc@1 still ranges
+from 0.6159 (`template_paraphrase`) to 1.0000 (`compression`): the tokens are summed with the
+text like any other term, so a sibling sharing most axes and carrying a shorter text can still
+win. The oracle is strong, partial and confined to the L2/L3 layers.
+**Consequence.** D-010's reading stands and is now quantified: the arm is an oracle bound, and
+the reason is the query set, not the scorer. Nothing in the harness needs changing. What S9's
+deployable variant must not do is mint parameter tokens from a parsed `parameters` field, since
+a real query has none.
