@@ -191,3 +191,19 @@ reading it is S2's job, not this report's.
 | D-008 | **amended** | `texto` is the fourth query set; `resumen` is the replication baseline, not the identity rendering |
 | D-016 | **closed** | The alias table is deleted; the retriever comes from `retriever.module` |
 | D-022 | **executed** | Scope widened to five notebooks; verification numeric rather than structural |
+
+## Archive note — 2026-09-17 (added in S2)
+
+S2 re-runs `bm25_unigram_params__k1-0.60__b-0.35__OE` on `texto`, `single_texto` and `stacked_texto` at a clean commit (S2 design,
+work item 4), which overwrites the canonical run directories this report's figures were taken
+from. Before that, the three directories were **copied** — not moved — to `runs/_archive/S1/`,
+every file checksum-verified identical. `runs/OE/resumen/…` is not re-run and stays where it was.
+The archive sits one level deeper than `build_results.py`'s `runs/*/*/*/run_meta.json` glob, so
+it is never mistaken for a current run. Decided by César, 2026-09-17.
+
+| Query set | Archived at | `metrics_dual.json` sha256 |
+|---|---|---|
+| `texto` | `runs/_archive/S1/OE/texto/bm25_unigram_params__k1-0.60__b-0.35__OE/` | `5e996a1d245b43c9…` |
+| `single_texto` | `runs/_archive/S1/OE/single_texto/bm25_unigram_params__k1-0.60__b-0.35__OE/` | `13c34aa893b7d0d1…` |
+| `stacked_texto` | `runs/_archive/S1/OE/stacked_texto/bm25_unigram_params__k1-0.60__b-0.35__OE/` | `0eb7808a64800ce0…` |
+
