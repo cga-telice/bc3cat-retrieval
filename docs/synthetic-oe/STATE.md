@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-27 (S3 work items 1–3 done) · **Updated by:** César
+**Last updated:** 2026-09-27 (S3 work items 1–4 done) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, work items 1–3 done. **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, work items 1–4 done. **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -52,8 +52,10 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-S3 work item 4 — re-stratify the stacked by-dose table on `texto_modification_count`, now that the
-field reaches the feature tables and the re-scored population is settled. Before the GPU block:
+S3 work item 5 — mint the six missing OE configs (`tfidf_unigram_phrases_replace`, `dense_gte`,
+`dense_gte_instrQ`, `dense_es_hiiamsid`, `bge_m3_dense`, `bge_m3_sparse`), each declaring
+`collection` and an explicit `retriever` block, and build their indexes over the full corpus
+(D-023). Before that GPU block:
 resolve and warm the E5, GTE and hiiamsid model revisions, since `hf-cache/hub` holds only
 `BAAI/bge-m3`. ColBERT is the L1 reference (D-029, amended); the identity ceilings above stand.
 
@@ -73,7 +75,11 @@ population, and both are correct about their own.
   only for text-only methods: **`bge_m3_colbert` 0.9861 → 0.9998**, because 484 of its 492 identity
   misses were undecidable from the indexed field. `bm25_unigram_params` is unchanged at 0.9994 with
   **zero** duplicate-gold misses — the oracle signal of D-010, not robustness. Neither is a
-  re-reading of G1 (D-032).
+  re-reading of G1 (D-032). `stacked_by_dose.md` re-stratifies on the corrected
+  `texto_modification_count`: of the 730 dev queries S2 called dose 5, **193** show five
+  modifications in the TEXTO, so S2's by-dose strata were misattributed, not merely uncertain. The
+  cells' concept counts fall 27 → 17 → 8 → 2 → 1 with dose, which is the dose/family confound E3
+  exists to remove — H4 is answered in S8, not here.
 
 ## Open decisions
 

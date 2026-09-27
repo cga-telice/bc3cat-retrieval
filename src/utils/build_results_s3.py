@@ -62,6 +62,7 @@ from utils.build_results_s2 import (  # noqa: E402
 from utils.provenance import sha256_file  # noqa: E402
 
 SIDECAR = REPO / "data" / "processed" / "OE_duplicate_texto_groups.json"
+STACKED_FEATS = REPO / "data" / "processed" / "OE_stacked_texto_feats.parquet"
 OUT = REPO / "docs" / "synthetic-oe" / "results" / "S3" / "s2_rescored"
 GENERATOR = "src/utils/build_results_s3.py"
 
@@ -392,6 +393,163 @@ def write_stacked(runs: dict, flagged: set[str]) -> None:
     write(OUT / "stacked.md", lines + sources(runs, keys))
 
 
+def stacked_dose(runs: dict) -> pd.DataFrame:
+    """S2's stacked per-query rows, carrying the **visible** dose.
+
+    `texto_modification_count` arrived with the 2026-09-27 delivery, after S2's per-query tables
+    were written, so it is joined on from the re-derived feature table — the harness's own table,
+    the one a run reads, rather than the delivered JSON. The join is one-to-one on the query key
+    and must be complete; a single unmatched row would mean the run and the query set disagree.
+    """
+    feats = pd.read_parquet(STACKED_FEATS)
+    columns = ["item_key", "texto_modification_count", "modification_count"]
+    missing = [c for c in columns if c not in feats.columns]
+    if missing:
+        raise SystemExit(
+            f"{STACKED_FEATS.name}: missing {missing}. The corrected stacked set was not taken "
+            "in, or the feature tables were not re-derived (S3 work item 1)."
+        )
+    dose = feats[columns].rename(
+        columns={"item_key": "query_item_key", "modification_count": "_mc_feats"}
+    )
+    frames = {}
+    for method in METHODS:
+        perquery = runs[("stacked_texto", method)]["_perquery"]
+        joined = perquery.merge(dose, on="query_item_key", how="left", validate="one_to_one")
+        unmatched = int(joined["texto_modification_count"].isna().sum())
+        if unmatched:
+            raise SystemExit(
+                f"stacked/{SHORT[method]}: {unmatched} rows found no visible dose. The run and "
+                "the query set disagree about which queries exist."
+            )
+        if not (joined["modification_count"] == joined["_mc_feats"]).all():
+            raise SystemExit(
+                f"stacked/{SHORT[method]}: `modification_count` differs between the run and the "
+                "feature table — the join matched the wrong rows."
+            )
+        frames[method] = joined.drop(columns=["_mc_feats"])
+    return frames
+
+
+def write_stacked_by_dose(runs: dict, flagged: set[str]) -> None:
+    frames = stacked_dose(runs)
+    reference = frames[METHODS[0]]
+
+    lines = header(
+        "stacked by dose, on the corrected field",
+        [
+            "Stratified by **`texto_modification_count`** — the modifications actually visible in",
+            "the TEXTO. Item-level on duplicate-free golds, parent-level on all (D-033); paired",
+            "against the identity rows of the same gold leaves. Query-level paired bootstrap only:",
+            "the strata are not a balanced crossing of modification types, and the concept counts",
+            "below say why a clustered interval would not help.",
+        ],
+    )
+    lines += [
+        "## Why this table replaces S2's",
+        "",
+        "S2 stratified on `distinct_modification_count` — D-025's de-duplicated count of *applied* "
+        "modifications. Upstream then found that the compatibility rule matched strings rather than "
+        "text variables, so a rewrite of a variable used only in the RESUMEN was counted whenever "
+        "its phrase appeared in the TEXTO through another variable. The corrected "
+        "`texto_modification_count` counts only what the retriever can see. **The texts never "
+        "changed, so no Acc@1 moved — but the rows they were attributed to did.**",
+        "",
+        "| S2's dose ↓ / visible dose → | "
+        + " | ".join(str(c) for c in sorted(reference["texto_modification_count"].unique()))
+        + " | all |",
+        "|---" * (2 + reference["texto_modification_count"].nunique()) + "|",
+    ]
+    crosstab = pd.crosstab(
+        reference["distinct_modification_count"], reference["texto_modification_count"]
+    )
+    for dose, row in crosstab.iterrows():
+        cells = " | ".join(f"{int(v):,}" if v else "—" for v in row)
+        lines.append(f"| **{dose}** | {cells} | {int(row.sum()):,} |")
+    totals = " | ".join(f"{int(v):,}" for v in crosstab.sum())
+    lines += [
+        f"| **all** | {totals} | {int(crosstab.to_numpy().sum()):,} |",
+        "",
+        "Read the diagonal against the rows: of the "
+        f"{int(crosstab.loc[5].sum()):,} dev queries S2 called dose 5, only "
+        f"{int(crosstab.loc[5, 5]):,} show five modifications in the TEXTO — "
+        f"{int(crosstab.loc[5, 4]):,} show four, {int(crosstab.loc[5, 3]):,} three and "
+        f"{int(crosstab.loc[5, 2]):,} two. The visible dose never exceeds the applied one, which "
+        "is the direction the defect has to run.",
+        "",
+        "Dev carries no query at visible dose 1: the five such records in the delivered set are all "
+        "on the test side.",
+        "",
+        "## Acc@1 by visible dose",
+        "",
+        "| method | visible dose | n scored | n concepts | excluded | item Acc@1 | CI | identity (same leaves) | item delta | CI (paired) | parent Acc@1 | parent delta | CI (paired) |",
+        "|---|---:|---:|---:|---:|---:|---|---:|---:|---|---:|---:|---|",
+    ]
+    for method in METHODS:
+        frame = frames[method]
+        ident = runs[("texto", method)]["_perquery"][["query_item_key", *METRIC_COLS]].rename(
+            columns={
+                "query_item_key": "gold_item_key",
+                "item_acc1": "id_item_acc1",
+                "parent_acc1": "id_parent_acc1",
+            }
+        )
+        joined = frame.merge(ident, on="gold_item_key", how="left", validate="many_to_one")
+        joined = joined.dropna(subset=["id_item_acc1"])
+        for dose in sorted(joined["texto_modification_count"].unique()):
+            cell = joined[joined["texto_modification_count"] == dose]
+            item_cell = cell[~cell["gold_item_key"].isin(flagged)]
+            label = f"dose|{method}|{int(dose)}"
+            item_delta = (item_cell["item_acc1"] - item_cell["id_item_acc1"]).to_numpy(float)
+            parent_delta = (cell["parent_acc1"] - cell["id_parent_acc1"]).to_numpy(float)
+            q_item = boot_query(
+                np.column_stack([item_cell["item_acc1"], item_delta]), label + "|item"
+            )
+            q_parent = boot_query(
+                np.column_stack([cell["parent_acc1"], parent_delta]), label + "|parent"
+            )
+            lines.append(
+                f"| `{SHORT[method]}` | {int(dose)} | {len(item_cell):,} | "
+                f"{item_cell['gold_parent_key'].nunique()} | {len(cell) - len(item_cell)} | "
+                f"{f4(float(item_cell['item_acc1'].mean()))} | {fci(ci(q_item[:, 0]))} | "
+                f"{f4(float(item_cell['id_item_acc1'].mean()))} | "
+                f"{fd(float(item_delta.mean()))} | {fci(ci(q_item[:, 1]), signed=True)} | "
+                f"{f4(float(cell['parent_acc1'].mean()))} | "
+                f"{fd(float(parent_delta.mean()))} | {fci(ci(q_parent[:, 1]), signed=True)} |"
+            )
+    thin = sorted(
+        int(d)
+        for d in reference["texto_modification_count"].unique()
+        if reference[reference["texto_modification_count"] == d]["gold_parent_key"].nunique() <= 3
+    )
+    lines += [
+        "",
+        "**The cells are not comparable populations.** Dose is not assigned at random: a leaf "
+        "receives many modifications because its concept admits many, so the high-dose cells are "
+        "drawn from progressively fewer and larger families. The `n concepts` column is the honest "
+        "warning — "
+        + (
+            f"visible dose {', '.join(str(d) for d in thin)} rests on three concepts or fewer."
+            if thin
+            else "no cell falls to three concepts or fewer."
+        )
+        + " A dose–response slope read off these rows confounds the dose with the family, which is "
+        "exactly why E3 exists (D-009) and why H4 is answered there and not here.",
+        "",
+        "The paired delta against identity removes the leaf's intrinsic difficulty but not the "
+        "family's composition, so these rows describe the stacked set; they do not estimate a dose "
+        "effect.",
+    ]
+    keys = [("texto", m) for m in METHODS] + [("stacked_texto", m) for m in METHODS]
+    extra = [
+        "",
+        "| derived input | SHA-256 |",
+        "|---|---|",
+        f"| `OE_stacked_texto_feats.parquet` | `{sha256_file(STACKED_FEATS)[:16]}` |",
+    ]
+    write(OUT / "stacked_by_dose.md", lines + sources(runs, keys) + extra)
+
+
 def write_provenance(runs: dict) -> None:
     lines = [
         "# S3 — provenance of the re-scored S2 runs",
@@ -446,6 +604,7 @@ def main() -> None:
     write_identity(runs, flagged)
     write_l1_deltas(runs, flagged)
     write_stacked(runs, flagged)
+    write_stacked_by_dose(runs, flagged)
     write_provenance(runs)
     print(f"written: {OUT.relative_to(REPO)}")
     for path in sorted(OUT.glob("*.md")):

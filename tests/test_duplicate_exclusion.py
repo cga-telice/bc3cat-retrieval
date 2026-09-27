@@ -183,3 +183,112 @@ def test_the_s2_results_directory_still_holds_what_s2_reported():
     identity = (s2 / "identity.md").read_text(encoding="utf-8")
     assert "0.9861" in identity, "S2's ColBERT identity figure is gone from its own record"
     assert "0.8870" in identity, "S2's bm25_unigram identity figure is gone from its own record"
+
+
+# --- work item 4: stratifying on the corrected dose --------------------------------------
+#
+# S2's per-query tables predate `texto_modification_count`, so the by-dose table joins it on from
+# the re-derived feature table. That join is the single point where this table could go quietly
+# wrong: a partial or mis-keyed join would produce a plausible stratification of the wrong rows.
+
+
+@pytest.fixture(scope="module")
+def stacked_feats():
+    pd = pytest.importorskip("pandas")
+    path = PROCESSED / "OE_stacked_texto_feats.parquet"
+    if not path.is_file():
+        pytest.skip("stacked feature table absent")
+    return pd.read_parquet(path)
+
+
+def test_the_feature_table_carries_the_corrected_dose(stacked_feats):
+    """Without S3 work item 1's loader change (A1) the field never reaches here."""
+    assert "texto_modification_count" in stacked_feats.columns
+    assert "texto_modification_types" in stacked_feats.columns
+
+
+def test_the_dose_join_is_one_to_one_and_complete(perquery, stacked_feats):
+    for method in METHODS:
+        frame = perquery[("stacked_texto", method)]
+        joined = frame.merge(
+            stacked_feats[["item_key", "texto_modification_count", "modification_count"]].rename(
+                columns={"item_key": "query_item_key", "modification_count": "mc_feats"}
+            ),
+            on="query_item_key",
+            how="left",
+            validate="one_to_one",
+        )
+        assert len(joined) == len(frame)
+        assert joined["texto_modification_count"].notna().all(), method
+
+
+def test_the_join_matched_the_right_rows(perquery, stacked_feats):
+    """`modification_count` exists on both sides and must agree — a cheap check that the join
+    lined up the rows it claims to, rather than merely finding a key for each."""
+    for method in METHODS:
+        frame = perquery[("stacked_texto", method)]
+        joined = frame.merge(
+            stacked_feats[["item_key", "modification_count"]].rename(
+                columns={"item_key": "query_item_key", "modification_count": "mc_feats"}
+            ),
+            on="query_item_key",
+            validate="one_to_one",
+        )
+        assert (joined["modification_count"] == joined["mc_feats"]).all(), method
+
+
+def test_the_visible_dose_is_never_above_the_field_s2_used(perquery, stacked_feats):
+    """The direction the defect has to run: the TEXTO cannot show more than was applied.
+
+    If this inverted, the correction would be doing something other than what upstream described.
+    """
+    frame = perquery[("stacked_texto", METHODS[0])]
+    joined = frame.merge(
+        stacked_feats[["item_key", "texto_modification_count"]].rename(
+            columns={"item_key": "query_item_key"}
+        ),
+        on="query_item_key",
+        validate="one_to_one",
+    )
+    assert (joined["texto_modification_count"] <= joined["distinct_modification_count"]).all()
+
+
+def test_the_correction_actually_moves_queries_between_strata(perquery, stacked_feats):
+    """Guards against a table that replaces S2's and says the same thing.
+
+    S2 called 730 dev queries dose 5; only 193 show five modifications in the TEXTO. If the two
+    fields agreed, work item 4 would be ceremony.
+    """
+    frame = perquery[("stacked_texto", METHODS[0])]
+    joined = frame.merge(
+        stacked_feats[["item_key", "texto_modification_count"]].rename(
+            columns={"item_key": "query_item_key"}
+        ),
+        on="query_item_key",
+        validate="one_to_one",
+    )
+    moved = (joined["texto_modification_count"] != joined["distinct_modification_count"]).sum()
+    assert moved > 0, "the corrected field changes no stratum — the correction is cosmetic"
+    at_five = joined[joined["distinct_modification_count"] == 5]
+    assert len(at_five) == 730
+    assert int((at_five["texto_modification_count"] == 5).sum()) == 193
+
+
+def test_the_high_dose_cells_rest_on_few_concepts(perquery, stacked_feats):
+    """The confound the table has to declare, asserted so it cannot be quietly dropped.
+
+    Dose is not assigned at random: a leaf receives many modifications because its concept admits
+    many. So the high-dose cells come from progressively fewer, larger families, and a slope read
+    off them confounds dose with family. This is why H4 is answered on E3 (D-009), not here.
+    """
+    frame = perquery[("stacked_texto", METHODS[0])]
+    joined = frame.merge(
+        stacked_feats[["item_key", "texto_modification_count"]].rename(
+            columns={"item_key": "query_item_key"}
+        ),
+        on="query_item_key",
+        validate="one_to_one",
+    )
+    per_dose = joined.groupby("texto_modification_count")["gold_parent_key"].nunique()
+    assert per_dose.loc[2] > per_dose.loc[4] > per_dose.loc[5] >= per_dose.loc[6]
+    assert per_dose.loc[6] <= 3, "the top dose cell is no longer a handful of concepts"

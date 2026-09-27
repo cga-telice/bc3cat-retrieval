@@ -26,7 +26,7 @@ against the code: the scorer is unmodified, the field is what differs).
 
 ---
 
-## P1 — 776 leaves share a `texto` with a sibling · **open**
+## P1 — 776 leaves share a `texto` with a sibling · **flagged and excluded at scoring** (S3, 2026-09-27)
 
 **Measured here.** 292 groups, 776 leaves, every group inside one concept: `OEA050$` 192 groups
 of 3, `OEG050$` 100 of 2. All 776 fall in dev. OEB has **zero** such groups (0 of 47,513), which
@@ -48,8 +48,22 @@ grouping itself from the corpus, deterministically, which is what `identity_miss
 `duplicate_texto_group` field inside the corpus files. **D-033 (2026-09-27): take the sidecar
 only and exclude those queries at scoring time**, leaving the corpus and S2's digests alone; S3
 takes it.
+**Taken in, S3 work item 1.** Sidecar in at `b3cfcad4…`; the corpus files with the field inside were
+refused, so `643f1a72…` / `75477221…` still resolve. The sidecar was checked against the figures
+D-031 was decided on rather than trusted — 292 groups, 776 leaves, 192 triples in `OEA050$` and 100
+pairs in `OEG050$`, no group crossing a concept, every member in the corpus and every group genuinely
+sharing one `texto` (`tests/test_intake_20260927.py`).
+**Resolved at scoring, work item 3.** Item-level excludes duplicate-gold queries; `OEA050$` and
+`OEG050$` contribute parent-level figures only, so item level rests on 40 of 42 dev concepts. **On
+the scored population the ceiling is 1.0, so the 0.9863 cap is gone rather than worked around.** The
+predicted consequence above is confirmed exactly: 484 of `bge_m3_colbert`'s 492 identity misses were
+these leaves, and its identity Acc@1 goes 0.9861 → **0.9998** (n 35,422 → 34,646). Also measured:
+`bm25_unigram_params` loses **nothing** to this defect — zero of its 21 misses had a duplicated gold,
+because parameter tokens separate what the text cannot (D-010's oracle, quantified once more).
+`results/S3/s2_rescored/`, and the two-populations rule in the D-033 note: no item-level figure is
+quoted without its n.
 
-## P2 — The stacked dose fields overstate what the TEXTO shows · **corrected upstream, not taken in**
+## P2 — The stacked dose fields overstate what the TEXTO shows · **corrected and taken in** (S3, 2026-09-27)
 
 **Reported upstream** 2026-09-17: ≈1,800 counted modifications are not visible in the TEXTO,
 because the compatibility rule matched strings rather than text variables, so rewrites of
@@ -67,11 +81,29 @@ with the same ids and texts as ours (checked row for row). Visible-count distrib
 3→1,465, 4→1,799, 5→401, 6→76. Taking it changes that query set's digest, so D-033 keeps the
 current file under a versioned name. `template_paraphrase` is still visible in all 4,998 and
 `reorder` in none, so P3's dose/composition confound survives — E3 exists for that.
+**Taken in, S3 work item 1, and acted on in work item 4.** The corrected file is in at `c34a222a…`,
+the feature tables re-derived, and `QUERY_FIELDS` widened so the field actually reaches them —
+without that the correction would have stopped at the JSON and been silently ignored (design
+amendment A1). The re-derivation moved only the two stacked tables, and inside the new feature table
+all 26 pre-existing columns are identical row for row, so **no Acc@1 moved**, exactly as upstream
+said.
+**What did move is the attribution.** `results/S3/s2_rescored/stacked_by_dose.md` re-stratifies on
+`texto_modification_count` and prints the crosstab against the field S2 used: of the 730 dev queries
+S2 called dose 5, only **193** show five modifications in the TEXTO — 456 show four, 80 three, 1 two.
+S2's suspended by-dose strata are therefore not merely uncertain, they were misattributed, and the
+corrected table replaces them. Dev spans visible dose 2–6; the five dose-1 records are all on test.
 
-## P3 — `template_paraphrase` is counted twice in the stacked set · **open** (D-025)
+## P3 — `template_paraphrase` is counted twice in the stacked set · **resolved by the corrected field** (S3, 2026-09-27)
 
 The distinct dose is one lower than `modification_count` says. Any figure quoting a dose must name
 the field it counted. Overlaps P2 and is expected to be resolved by the same corrected fields.
+**Resolved as expected, and verified.** `texto_modification_types` is delivered de-duplicated:
+`texto_modification_count == len(set(texto_modification_types))` for all 4,998 records, and the same
+holds for both E3 sets (`tests/test_intake_20260927.py`, `tests/test_intake_e3.py`). So the corrected
+field is both *visible* and *distinct*, and `distinct_modification_count` — the workaround D-025
+introduced — is retired: S3 work item 4 stratifies on the delivered field, and nothing downstream
+counts doses itself. The rule stands and is now cheap to obey: any figure quoting a dose names the
+field, and for the stacked set that field is `texto_modification_count`.
 
 ## P4 — `unit_conversion` also rewrites the maintenance band · **acknowledged upstream, labelling only**
 
@@ -88,13 +120,27 @@ analysis excluding them **before any per-type claim**; S2 recorded 10 of 30 samp
 misses as carrying doubling, and the exclusion analysis is deferred to S6. Until it runs, the
 `num_to_text` figure is provisional.
 
-## P6 — E3 dose set: structural limitations · **reported upstream, not independently verified here**
+## P6 — E3 dose set: structural limitations · **verified here** (S3, 2026-09-27)
 
 Delivered 2026-09-17 for S8. Concept coverage is 7 of 83 concepts, all OEB canalizations; two
 pairs never co-occur by construction (`reorder`×`template_paraphrase`,
 `unit_conversion`×`unit_expansion`), so those interactions are not identifiable;
 `unit_conversion` is under-represented within the count-1 cell. S8's split can only partition
-those seven concepts. Cited from upstream's `E3_DELIVERY_RESPONSE.md`; nothing here has checked it.
+those seven concepts.
+**Verified here, S3 work item 2** (`tests/test_intake_e3.py`, 23 tests): every claim re-derived from
+the files rather than cited, and all held — the per-concept leaf counts 61/87/96/93/87/87/89, the two
+zero-co-occurrence pairs, `unit_conversion` at 39 items in the count-1 cell against ≥70 for the other
+eight, all 8,400 gold keys resolving, `available_types` ⊆ `applicable_types` everywhere.
+**And what upstream delivered beyond the request:** all 600 leaves carry the **complete ladder 1–5**,
+**nested** — the types at count *k* are those at *k*−1 plus exactly one — so H4 is a within-item slope
+with paired rung-to-rung contrasts rather than a between-item regression. The isolated set covers the
+same 600 leaves, so the "sum of isolated effects" sums over the ladder's own population.
+**The limitation that binds S8** is the coverage, not the composition: the seven concepts split 4 dev
+/ 3 test, so a dev slope rests on 328 leaves but a **concept-clustered interval on it resamples four
+clusters** — and D-030 reads thresholds against exactly that interval. S8 must report both intervals
+and say which it reads. The tests pin the two zero-co-occurrence pairs deliberately, so a later
+delivery that changes the identifiability fails loudly instead of being inherited in silence.
+**No cost from P1 here:** no ladder leaf is in a duplicate group, E3 being OEB-only.
 
 ---
 
