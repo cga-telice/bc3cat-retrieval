@@ -615,3 +615,54 @@ with the field inside, because their digest changes even though the texts do not
 would stop resolving against the tree. Taking the corrected stacked file (`c34a222a…`, P2) does
 change that query set's digest, so the current `OE_stacked_texto.json` (`1bde2115…`) is kept under
 a versioned name and both digests are recorded in `MANIFEST.md`.
+
+### D-012 — closed: the method scope on OE is ten arms, and the derived families wait for S4
+**Status:** **Accepted** (closes D-012, Open since 2026-09-14) · **Date:** 2026-09-27 · **Owner:** César · **Raised in:** S3 opening
+**Context.** D-012 asked for "the canonical set from the previous paper, with or without a full
+BM25 grid re-sweep", and gated S3. The question could not be answered in 2026-09-14's terms,
+because *promising* meant something different once S2 had run: the previous study's ranking and
+the ranking under rendering variation are nearly inverted. BM25-params led at 0.974 on OEB and
+falls to 0.098 under `num_to_text` on OE; ColBERT was a mediocre 0.448 on OEB and is the only
+arm still retrieving the right leaf most of the time (0.404 stacked, 0.765 `num_to_text`).
+**Decision.** Ten arms get an identity ceiling and a `resumen` replication on OE dev:
+`bm25_unigram_params`, `bm25_unigram`, `tfidf_unigram_phrases_replace`, `dense_e5`, `dense_gte`,
+`dense_gte_instrQ`, `dense_es_hiiamsid`, `bge_m3_dense`, `bge_m3_sparse`, `bge_m3_colbert`.
+The `k1`/`b` grid **is** re-swept, in full, on both BM25 field variants over three query sets.
+**Why these ten and not fewer.** Four are load-bearing: ColBERT (the L1 reference, D-029), the
+two BM25s (the claim under test, and its deployable twin per D-010), and `bge_m3_sparse` — the
+most interesting untested arm in the set, because a learned sparse representation expands a
+token to its neighbours and may survive `synonym_label` and `unit_expansion` where raw BM25
+cannot. Nobody has measured that. The two GTEs and `hiiamsid` cannot show degradation from 1.3
+– 2.4 % item-level, and were kept anyway for two specific reasons: GTE's **0.837** parent-level
+is the one neural counterexample to H1's claim that parent accuracy sits at its ceiling, and
+`hiiamsid` was evaluated and silently dropped from the previous submission, so a reuse of that
+method set reports it. They are single-vector and cheap — about 3 h against ColBERT's 6.
+**Why not more.** RRF, PRF and cross-encoder reranking are computed **from** these runs'
+top-100 lists and need no retrieval of their own, so their ceilings belong in S4 where they are
+assembled. PRF is additionally already refuted for this domain: the previous study measured RM3
+at +0.001 (n.s.) and Rocchio at −0.012 (significant degradation).
+**Consequence.** Six OE configs are minted in S3 (work item 5), each declaring `collection` and
+an explicit `retriever` block. New methods are not introduced here: S3 builds the yardstick that
+S9 (normalisation), S10 (learned representations) and S11 (two-stage) are measured against, and
+a new method's number means nothing before that yardstick exists.
+
+### D-009 — note: the E3 delivery arrived on 2026-09-17 and went unrecorded for ten days
+**Status:** Note on D-009 · **Date:** 2026-09-27 · **Raised in:** S3 entry-state verification
+**What happened.** `bc3cat-dataset` delivered the balanced dose set at `4d10af2` on 2026-09-17
+— `OE_dose_texto.json` (3,000 queries, 600 leaves × 5 rungs, exactly 600 per count, the ladder
+nested within leaf as requested), `OE_isolated_texto.json` (5,400), `OE_leaf_applicability.jsonl`,
+and `docs/synthetic/E3_DELIVERY_RESPONSE.md` answering `requests/E3_BALANCED_DOSE.md` point by
+point. Nothing on this branch recorded it: `STATE.md` still listed it under *Blocked / waiting*,
+D-009 was still `Proposed`, and no digest was on file. It was found by re-hashing the handoff
+directory while verifying S3's entry state, ten days later.
+**Why it matters beyond the delay.** This is the failure class operating rule 1 exists for. The
+delivery was on disk and the branch's own status file asserted the opposite; had S8 opened on
+that file it would have reported a blocked dependency that was not blocked, and gate G3 would
+have been read against a fiction.
+**Caveats, measured now rather than discovered in S8.** The set covers **7 OEB concepts only**
+(`OEB020$ 030$ 040$ 230$ 280$ 290$ 300$`), and they straddle the split: 4 dev, 3 test, so 1,640
+of the 3,000 queries are dev-side and a dev dose slope rests on 4 concepts. The request asked for
+coverage, the delivery is balanced but narrow; whether that supports H4 as a backbone claim or
+only as an exploratory one is S8's to decide, with this written down beforehand.
+**Action.** S3 takes the three files in and registers their digests (work item 2), runs nothing
+with them, and moves D-009 to *Delivered* and S8 to `planned` when that intake lands.

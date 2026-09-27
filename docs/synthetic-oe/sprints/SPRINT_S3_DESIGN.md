@@ -1,6 +1,6 @@
 # Sprint S3 — E0 controls, replication and overlap characterisation · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `8353cf7` · `2026-09-27`
 > This section is read-only from that commit. Changes go in **Amendments** below, dated and
 > justified — never as in-place edits. `git log -- <this file>` after the freeze date is an
 > audit trail; keep it honest.
