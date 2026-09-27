@@ -86,9 +86,19 @@ def build(cfg: Dict, long_df, text_field: str) -> Tuple[Dict, None, None]:
         "faiss_file.json": {"filename": "faiss.index"}
     }
 
-    # Persist FAISS index into data/
+    # Persist FAISS index into data/ — index/{collection}/{save_as}/{data_dirname}, the layout the
+    # resolver uses (D-008, D-023).
+    #
+    # This builder wrote to index/{save_as} until S3, so the OE index came out split across two
+    # directories: the notebook's artifacts landed in index/OE/bge_m3_dense__OE/data/ and this
+    # faiss.index in index/bge_m3_dense__OE/data/, where the retriever does not look. Both of its
+    # runs then failed with "could not open .../faiss.index". `bge_m3_colbert` carried the identical
+    # bug and was fixed in S2, when S2 ran ColBERT; this arm was left behind because no sprint ran
+    # it. The line below is that fix, copied rather than reinvented.
     out_dirname = cfg["method"].get("save_as", cfg["method"]["name"])
-    data_dir = Path(cfg["paths"]["index_root"]) / out_dirname / cfg["io"]["data_dirname"]
+    data_dir = (
+        Path(cfg["paths"]["index_root"]) / cfg["collection"] / out_dirname / cfg["io"]["data_dirname"]
+    )
     data_dir.mkdir(parents=True, exist_ok=True)
     faiss.write_index(index, str(data_dir / "faiss.index"))
 
