@@ -39,11 +39,21 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
   (image `quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8`, main checkout → `/work`,
   `HF_HOME=/work/hf-cache`, `--gpus all`, `sleep infinity`; papermill 2.7.0 installed by hand).
   Identical core libraries to `bc3cat-s2` — python 3.11.8, pandas 2.2.2, numpy 1.26.4, pyarrow
-  15.0.2, sklearn 1.4.2 — which is why the seven unchanged tables reproduce byte for byte.
-  **Do not use the `jupyter-pytorch` container:** it mounts
-  `.claude/worktrees/structured-retrieval-type-5aeb7f` as `/work`, not this checkout, with the
-  main `data/`, `index/`, `runs/` bound in over it. Running this branch's notebooks there would
-  execute another branch's code against this branch's data (D-018).
+  15.0.2, sklearn 1.4.2 — which is why the seven unchanged tables reproduce byte for byte. It
+  reports *unhealthy*: the image's healthcheck expects JupyterLab on 8888 and we run
+  `sleep infinity`. Harmless, and `bc3cat-s2` was the same throughout S2.
+- **Worktree hazard: closed 2026-09-27 (D-018, amended).** Two containers were mounting paths
+  inside `.claude/worktrees/structured-retrieval-type-5aeb7f` as `/work` while binding the main
+  checkout's `data/`, `index/` and `runs/` in over them. `jupyter-pytorch` is **removed** (its
+  layer kept as the image `jupyter-pytorch-backup:20260927`, so it is reversible); `bge-m3` is
+  **recreated** from the main checkout and now mounts only `work/` and `hf-cache/`, no `data/`.
+  The resolver now **refuses** a linked worktree at both entry points, before reading any input
+  (`BC3CAT_ALLOW_LINKED_WORKTREE=1` for the deliberate S9–S11 case), so D-018 is enforced rather
+  than merely written down — `tests/test_worktree_guard.py`, 9 tests against a real worktree.
+  **S2's ColBERT embeddings are unaffected:** the `bge-m3` image's `serve.py` is byte-identical to
+  this branch's `apis/bge-m3/serve.py`, and the image was not rebuilt. The worktree itself is
+  clean and its commits are on `paper/autcon-r1-revision` locally and on origin; whether to
+  remove it is open — it is paper work, not this branch's.
 - **[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)** — every corpus defect in one place, classified
   by who fixes it. Opened 2026-09-17.
 - **Upstream delivery of 2026-09-27 (`synthetic` @ `f2457fa`) — taken in.** Work item 1 closed

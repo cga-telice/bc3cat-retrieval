@@ -666,3 +666,56 @@ coverage, the delivery is balanced but narrow; whether that supports H4 as a bac
 only as an exploratory one is S8's to decide, with this written down beforehand.
 **Action.** S3 takes the three files in and registers their digests (work item 2), runs nothing
 with them, and moves D-009 to *Delivered* and S8 to `planned` when that intake lands.
+
+### D-018 — enforced: the resolver refuses a linked worktree, and two containers were pointing at one
+**Status:** Amendment to D-018 · **Date:** 2026-09-27 · **Raised in:** S3 work item 1, remediated the same day
+**Context.** D-018 has said since 2026-09-15 that work happens in the main checkout. It was prose.
+Nothing checked it, and on 2026-09-27 the gap turned out to be occupied. Two containers were
+mounting paths inside `.claude/worktrees/structured-retrieval-type-5aeb7f` as `/work` while binding
+the **main checkout's** `data/`, `index/` and `runs/` in over them:
+
+| Container | `/work` was | Also mounted | Risk as found |
+|---|---|---|---|
+| `jupyter-pytorch` (created 2026-09-09) | the worktree itself | `data/`, `index/`, `runs/`, `models/` **rw** | **Real.** Running `data.ipynb` there executes *another branch's* `corpus_prep` and rewrites the feature tables S2's runs are stamped against. Every resulting digest would still have looked plausible. |
+| `bge-m3` (created 2026-09-09) | `<worktree>/work` | `data/` **rw** | **Latent.** `serve.py` is baked into the image at `/app`; `/work` is never read. Pointless exposure, not a live defect. |
+
+Neither was created by this repository's `docker-compose.yml` as it stands: both came from a
+`docker compose up` run *inside* the worktree, where `.` and `./work` resolve there, plus extra
+`-v` mounts. The worktree is not even structured-retrieval work despite its name — it holds
+`paper/autcon-r1-revision` at `345eef4`.
+
+**What was checked before acting.** The worktree is clean (0 modified files) and `345eef4` is the
+tip of `paper/autcon-r1-revision`, present locally *and* on `origin`, so nothing was at risk. The
+`bge-m3` image's `/app/serve.py` is **byte-identical** to this branch's `apis/bge-m3/serve.py`
+(`1d5a7ed74223362f`), unchanged since before the image was built — so **S2's ColBERT embeddings did
+come from this branch's server code.** That was the one question that could have invalidated a
+reported number, and the answer is no.
+
+**Decision — three parts.**
+1. **Enforced, not documented.** `run_context.assert_work_root_is_the_main_checkout()` refuses to
+   resolve paths when `work_root` is a linked git worktree, detected the total way: a linked
+   worktree's `.git` is a *file* holding `gitdir: …`, the main checkout's is a directory. Called
+   from both entry points — `data_paths()` and `load_run_context()` — and **before** any input is
+   read, so a worktree that *does* carry the data junctions (the dangerous container's exact shape)
+   cannot slip past on a later check. A `work_root` that is no git tree at all is left alone, since
+   there is then nothing to disagree with. `BC3CAT_ALLOW_LINKED_WORKTREE=1` opens the gate for the
+   deliberate parallel worktree `STATE.md` contemplates for S9–S11; only exactly `"1"` counts,
+   because a guard that accepts `"true"` and `"yes"` is a guard that will be waved through. Nine
+   tests in `tests/test_worktree_guard.py`, using a **real** worktree made by `git worktree add`,
+   because a hand-written `.git` file would let the guard and its test agree on a fiction.
+2. **`jupyter-pytorch` removed.** All six of its mounts were binds, so nothing was stored in it;
+   its writable layer is preserved as the image `jupyter-pytorch-backup:20260927` (14.6 GB) so the
+   removal is reversible. `docker compose up -d jupyter-pytorch` from the main checkout recreates
+   it **correctly**, mounting `.:/work`.
+3. **`bge-m3` recreated from the main checkout.** Its mounts are now exactly what compose declares
+   — `work/` and `hf-cache/`, no `data/` at all. Same image (`9fa0b69f32ff`, built 2025-09-11,
+   **not** rebuilt), same `serve.py`, same weights from the same `hf-cache`; its writable layer held
+   only caches (`__pycache__`, CUDA ComputeCache, apt). Verified healthy on the RTX 4090 at fp16
+   and returning deterministic 1024-d dense vectors. What it computes did not change, because
+   `/work` was never an input to it.
+**Consequence.** The audit that found the second container is worth keeping as a habit: list every
+container's `/work` source before a sprint's GPU block. Of the remainder, `bc3cat-s1`, `bc3cat-s2`
+and `bc3cat-s3` all mount the main checkout, and `bc3cat-sprint06` mounts `bc3cat-dataset`, which
+is a different repository and not this branch's concern. **Whether the worktree itself should be
+removed is left to César:** it is clean and its commits are pushed, so removing it loses nothing,
+but it is paper work rather than an artefact of this branch and the guard now makes it harmless.

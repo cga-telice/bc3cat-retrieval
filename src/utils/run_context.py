@@ -20,10 +20,52 @@ Paths inside a config are written for the container, where the repo is mounted a
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+
+#: Set to "1" to resolve paths from a linked worktree anyway — the deliberate case STATE.md
+#: describes, where a parallel worktree is created *with* its junctions and recorded while it
+#: lives. Anything else is the accident this guard exists for.
+WORKTREE_OVERRIDE_ENV = "BC3CAT_ALLOW_LINKED_WORKTREE"
+
+
+def assert_work_root_is_the_main_checkout(work_root: Path) -> None:
+    """Refuse to resolve paths when the code tree is a *linked git worktree* (D-018).
+
+    D-018 says work happens in the main checkout, and until S3 nothing enforced it. The failure
+    it prevents is not hypothetical: a container was found mounting
+    `.claude/worktrees/…` as `/work` while binding the main checkout's `data/`, `index/` and
+    `runs/` in over it — another branch's code, one commit behind or ahead on a different line of
+    work, holding the write end of this branch's artefacts. Running `data.ipynb` there would have
+    rewritten the feature tables that S2's runs are stamped against, using a `corpus_prep` that
+    lacks this branch's changes, and every digest would still have looked plausible.
+
+    Detection is the cheap, total one: a linked worktree's `.git` is a *file* holding
+    `gitdir: …`, where the main checkout's is a directory. A `work_root` that is not a git tree
+    at all — a tmp dir in a test, a container without git — is left alone, because there is then
+    nothing to disagree with.
+    """
+    if os.environ.get(WORKTREE_OVERRIDE_ENV) == "1":
+        return
+    dot_git = Path(work_root) / ".git"
+    if not dot_git.is_file():
+        return
+    try:
+        pointer = dot_git.read_text(encoding="utf-8").strip()
+    except OSError:  # unreadable: not something to guess about
+        return
+    raise RuntimeError(
+        f"{work_root} is a linked git worktree, not the main checkout ({pointer}).\n"
+        "This branch's data, index and runs belong to the main checkout, and resolving them "
+        "from a worktree means one branch's code writing another branch's artefacts (D-018).\n"
+        "Run from the main checkout. For this branch that is the container bc3cat-s3, which "
+        "mounts it at /work.\n"
+        f"If the worktree is deliberate and carries its own junctions, set "
+        f"{WORKTREE_OVERRIDE_ENV}=1 and record it in STATE.md while it lives."
+    )
 
 #: The query sets a run may be asked for. `balanced_texto` arrives only if E3 lands (D-009).
 QUERY_SETS = ("texto", "resumen", "single_texto", "stacked_texto", "balanced_texto")
@@ -97,6 +139,7 @@ def data_paths(
     than assumed — OEB has none, and asking for them must not invent a path.
     """
     work_root = Path(work_root)
+    assert_work_root_is_the_main_checkout(work_root)
     directory = Path(data_dir) if data_dir else work_root / "data" / "processed"
 
     short_json = directory / f"{collection}_resumen.json"
@@ -191,6 +234,7 @@ def load_run_context(
     """
     config_path = Path(config_path)
     work_root = Path(work_root)
+    assert_work_root_is_the_main_checkout(work_root)
 
     # queryset=None is an index build: an index is made from the corpus and carries no
     # query set, so demanding one there would force the caller to name one arbitrarily.
