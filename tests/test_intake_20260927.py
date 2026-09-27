@@ -155,6 +155,62 @@ def test_a_query_set_without_the_field_does_not_gain_a_null_column():
     assert "gold_item_key" in df.columns, "the gold must still be projected"
 
 
+# --- the derived tables: the digest moved, the retrieval inputs did not ----------------
+#
+# This is the claim that keeps S2's three stacked runs alive. They are stamped against the
+# feature table `7b0894e6…`, which the re-derivation superseded with `f34c1798…`. That is only
+# harmless if the new table differs from the old one *solely* by the two appended columns — if
+# any indexed column had shifted, S2's stacked Acc@1 would be a number about a query set that no
+# longer exists, and the sprint would owe a re-run.
+
+FEATS = PROCESSED / "OE_stacked_texto_feats.parquet"
+FEATS_SUPERSEDED = PROCESSED / "OE_stacked_texto_feats__7b0894e6.parquet"
+
+
+@pytest.fixture(scope="module")
+def feats_pair():
+    pd = pytest.importorskip("pandas")
+    if not (FEATS.exists() and FEATS_SUPERSEDED.exists()):
+        pytest.skip("stacked feature tables absent; work item 1 not complete")
+    return pd.read_parquet(FEATS_SUPERSEDED), pd.read_parquet(FEATS)
+
+
+def test_the_new_feature_table_only_appends(feats_pair):
+    old, new = feats_pair
+    assert len(old) == len(new) == 4998
+    assert [c for c in old.columns if c not in new.columns] == [], "a column was dropped"
+    added = [c for c in new.columns if c not in old.columns]
+    assert set(added) == {"texto_modification_count", "texto_modification_types"}
+
+
+def test_every_pre_existing_column_is_identical_row_for_row(feats_pair):
+    old, new = feats_pair
+    differing = [
+        c for c in old.columns
+        if old[c].astype(str).tolist() != new[c].astype(str).tolist()
+    ]
+    assert not differing, f"the re-derivation moved {differing} — S2's stacked runs are invalid"
+
+
+@pytest.mark.parametrize(
+    "column",
+    ["text_norm", "text_word", "text_word_params", "text_char", "numbers", "param_tokens"],
+)
+def test_the_indexed_columns_are_identical(feats_pair, column):
+    """Named one by one, because these are the fields the retrievers actually score."""
+    old, new = feats_pair
+    assert old[column].astype(str).tolist() == new[column].astype(str).tolist()
+
+
+def test_the_visible_dose_survived_into_the_feature_table(feats_pair):
+    """A1: without the loader change the corrected field would stop at the JSON."""
+    _, new = feats_pair
+    assert new["texto_modification_count"].tolist() == [
+        len(set(t)) for t in new["texto_modification_types"]
+    ]
+    assert new["texto_modification_count"].between(1, 6).all()
+
+
 # --- the duplicate sidecar agrees with the decision taken on it ------------------------
 
 

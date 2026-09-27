@@ -30,24 +30,34 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## In flight
 
-- **S3 is open and frozen** ([`SPRINT_S3_DESIGN.md`](sprints/SPRINT_S3_DESIGN.md) @ `8353cf7`).
-  Eleven work items: the two intakes, the duplicate-aware re-score of S2's 15 runs, six new OE
-  configs, ten identity ceilings + ten `resumen` replications on dev, the 150-run `k1`/`b` grid,
-  the overlap tables. **D-012 closed** on the ten-method set. Nothing has run yet.
+- **S3 is open and frozen** ([`SPRINT_S3_DESIGN.md`](sprints/SPRINT_S3_DESIGN.md) @ `8353cf7`,
+  amendments A1–A2). Eleven work items: the two intakes, the duplicate-aware re-score of S2's 15
+  runs, six new OE configs, ten identity ceilings + ten `resumen` replications on dev, the 150-run
+  `k1`/`b` grid, the overlap tables. **D-012 closed** on the ten-method set.
+  **Work item 1 done** (2026-09-27); 2–11 open.
+- **Container:** this branch runs one per sprint — `bc3cat-s1`, `bc3cat-s2`, now **`bc3cat-s3`**
+  (image `quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8`, main checkout → `/work`,
+  `HF_HOME=/work/hf-cache`, `--gpus all`, `sleep infinity`; papermill 2.7.0 installed by hand).
+  Identical core libraries to `bc3cat-s2` — python 3.11.8, pandas 2.2.2, numpy 1.26.4, pyarrow
+  15.0.2, sklearn 1.4.2 — which is why the seven unchanged tables reproduce byte for byte.
+  **Do not use the `jupyter-pytorch` container:** it mounts
+  `.claude/worktrees/structured-retrieval-type-5aeb7f` as `/work`, not this checkout, with the
+  main `data/`, `index/`, `runs/` bound in over it. Running this branch's notebooks there would
+  execute another branch's code against this branch's data (D-018).
 - **[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)** — every corpus defect in one place, classified
   by who fixes it. Opened 2026-09-17.
-- **Upstream delivery of 2026-09-27 (`synthetic` @ `f2457fa`), ruled on, not yet taken in.**
-  Both digests verified against `D:/…/bc3cat-dataset/data/synthetic/handoff_OE/`. **S3 takes it**
-  under **D-033** (work item 1): the sidecar `OE_duplicate_texto_groups.json` only — never the
-  corpus files with the field inside, whose digest would change and break S2's runs — and the
-  corrected stacked file beside a versioned copy of the current one, **its feature tables
-  versioned too**, since S2's stacked runs are stamped with the feature-table digest `7b0894e6…`
-  and not the JSON's. Verified while opening S3: the corrected file agrees with the current one
-  row for row on `text`, `id`, `item_key` and `gold_item_key`, adding only
-  `texto_modification_count` / `texto_modification_types` — so S2's stacked Acc@1 stands under the
-  new digest. Item-level scoring excludes queries whose gold is a duplicate (776/35,422 `texto`,
-  29/2,206 `single_texto`, 55/2,521 `stacked_texto`; dev only, test is clean), so every scored
-  query has exactly one valid answer.
+- **Upstream delivery of 2026-09-27 (`synthetic` @ `f2457fa`) — taken in.** Work item 1 closed
+  2026-09-27. Sidecar `OE_duplicate_texto_groups.json` `b3cfcad4…` and corrected
+  `OE_stacked_texto.json` `c34a222a…` in; the corpus files with the flag inside deliberately
+  refused. Stacked derived tables re-derived: norm `81cd501b…` → `4939d99f…`, feats `7b0894e6…` →
+  `f34c1798…`, with **all 26 pre-existing columns identical row for row** — so S2's stacked Acc@1
+  stands, and the superseded trio survives under digest-stamped names so those runs still resolve.
+  The other seven OE derived tables came out **byte-identical**. Digests in
+  [`MANIFEST.md`](MANIFEST.md), narrative in [`INTAKE.md §2.1`](INTAKE.md), proof in
+  `tests/test_intake_20260927.py` (30 tests) and `src/utils/check_run_inputs.py`.
+  Item-level scoring excludes queries whose gold is a duplicate (776/35,422 `texto`, 29/2,206
+  `single_texto`, 55/2,521 `stacked_texto`; dev only, test is clean), so every scored query has
+  exactly one valid answer — applied from work item 3 on.
 - **E3 balanced dose set — arrived 2026-09-17, recorded 2026-09-27, not yet taken in.** S3 work
   item 2 copies and registers `OE_dose_texto.json` (`555fab84…`), `OE_isolated_texto.json`
   (`054041ff…`) and `OE_leaf_applicability.jsonl` (`eda12d17…`), and runs nothing with them.
@@ -71,13 +81,13 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-Execute S3 work item 1 — the 2026-09-27 intake under D-033: sidecar join, the current stacked
-query set versioned **with its feature tables**, the corrected stacked file in and re-derived,
-`MANIFEST.md` regenerated. Then work item 2 (E3 intake, registration only), then the
-duplicate-aware re-score of S2's 15 runs from their stored top-100 lists — the control S3
-inherits. Before the GPU block: resolve and warm the E5, GTE and hiiamsid model revisions, since
-`hf-cache/hub` holds only `BAAI/bge-m3`. ColBERT is the L1 reference (D-029, amended); the
-identity ceilings above stand.
+S3 work item 2 — the E3 intake: copy and register the three dose files, validate the ladder,
+record the 7-concept and split-straddling caveats, move D-009 to *Delivered* and S8 to `planned`.
+Then work item 3, the duplicate-aware re-score of S2's 15 runs from their stored top-100 lists —
+the control S3 inherits — and work item 4, re-stratifying the stacked by-dose table on
+`texto_modification_count`, now that the field reaches the feature tables. Before the GPU block:
+resolve and warm the E5, GTE and hiiamsid model revisions, since `hf-cache/hub` holds only
+`BAAI/bge-m3`. ColBERT is the L1 reference (D-029, amended); the identity ceilings above stand.
 
 ## Latest results
 

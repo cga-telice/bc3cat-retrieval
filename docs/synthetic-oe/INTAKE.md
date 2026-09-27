@@ -52,6 +52,51 @@ NTFS junctions to the main checkout, not copies.
   rewrite menus). Reports: `docs/synthetic/OE_*_report.md`, `HANDOFF.md`, `DATA_CARD.md`
   in `bc3cat-dataset`.
 
+### 2.1 Second delivery — 2026-09-27 (taken in S3 work item 1, under D-033)
+
+Producer: `bc3cat-dataset`, branch `synthetic` @ `f2457fa`; the files themselves were
+repackaged at `903d07b8` from the generation run `e3-20260917T093057Z` (seed 42, generated at
+`e057907`). Verified by re-hashing `D:/…/bc3cat-dataset/data/synthetic/handoff_OE/` against that
+repository's own `MANIFEST.md`, not by trusting either.
+
+| File | SHA-256 prefix | Taken |
+|---|---|---|
+| `OE_duplicate_texto_groups.json` | `b3cfcad47c71c5eb` | yes — the D-031 flag as a sidecar |
+| `OE_stacked_texto.json` | `c34a222ae2af05a0` | yes — adds `texto_modification_{count,types}` |
+| `OE_texto.json` / `OE_resumen.json` with `duplicate_texto_group` inside | — | **no**, deliberately |
+
+**Why the corpus files were refused.** They carry the same grouping as the sidecar, but embedding
+it changes their digest although no text changes — and every S2 run is stamped against
+`OE_long_feats.parquet` `643f1a72…` / `OE_long_norm.parquet` `75477221…` derived from them. The
+sidecar delivers the same information at no provenance cost (D-033).
+
+**The superseded stacked query set is kept, and so are its derived tables.** S2's three stacked
+runs are stamped against the *feature table* `7b0894e6…`, not the JSON, so versioning the JSON
+alone would have left them dangling. All three survive under digest-stamped names:
+`OE_stacked_texto__1bde2115.json`, `OE_stacked_texto_norm__81cd501b.parquet`,
+`OE_stacked_texto_feats__7b0894e6.parquet`. They are not a query set — `run_context` resolves
+query sets by exact canonical name — so nothing can be run on them; they exist so that a stamp
+still resolves. `src/utils/check_run_inputs.py` is what demonstrates it.
+
+**What the re-derivation actually moved.** `data.ipynb` + `features.ipynb` re-run on
+`COLLECTION=OE` at commit `17d36ba` (`logs/S3/rederive_stacked.sh`, container `bc3cat-s3`).
+Seven of the nine OE derived tables came out **byte-identical**, including every digest S2's
+other twelve runs depend on. Only the stacked pair moved: norm `81cd501b…` → `4939d99f…`, feats
+`7b0894e6…` → `f34c1798…`. Inside the new feature table, **all 26 pre-existing columns are
+identical row for row** and only `texto_modification_count` / `texto_modification_types` are
+appended — so S2's stacked Acc@1 describes exactly the inputs it described before, and the digest
+change is metadata. Asserted by `tests/test_intake_20260927.py`, not by this paragraph.
+
+**The corrected dose, which is the point of the delivery.** `texto_modification_count` runs 1–6
+(mode 4: 5 · 1,252 · 1,465 · 1,799 · 401 · 76) where the original `modification_count` runs 2–8
+(mode 5). Five stacked queries carry a single visible modification. S3 work item 4 re-stratifies
+S2's by-dose table on the corrected field; `modification_count` is not used for any
+stratification again (D-025).
+
+**Digests of the delivered files as taken in are in [`MANIFEST.md`](MANIFEST.md)**, which now also
+covers the derived tables — it listed only the deliveries until S3, so every OE run made before
+then was stamped against a digest this branch did not record.
+
 ## 3. Schema as observed
 
 Corpus record (`OE_texto.json` / `OE_resumen.json`) — same as OEB:
