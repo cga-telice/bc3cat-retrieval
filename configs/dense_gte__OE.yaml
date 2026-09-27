@@ -1,0 +1,57 @@
+# Dense GTE (multilingual) on OE — S3 work item 5.
+#
+# MODEL IDENTITY. The model is `Alibaba-NLP/gte-multilingual-base`, which is what
+# configs/dense_gte.yaml declares and what the manuscript's prose describes. The manuscript's
+# results table instead labels its two GTE rows `GTE-large-en-v1.5` and `GTE-Qwen2-instruct` —
+# different models entirely — so the previous study's GTE rows cannot be reproduced from
+# (config, code commit). Recorded as a reporting defect; the config is the code of record and S3
+# follows it (D-035, César 2026-09-27).
+#
+# ENVIRONMENT. This model cannot be loaded under requirements.txt's former pin: sentence-transformers
+# 2.2.2 has no `trust_remote_code` parameter, and transformers 4.26.0 cannot resolve the model's
+# cross-repo remote-code reference. S3 moved the local dense arms to transformers >= 4.41 and
+# sentence-transformers >= 2.7 and rebuilt all four of them on it (D-034).
+#
+# Kept in the set despite 0.013 item-level on OEB because its 0.837 *parent*-level is H1's one
+# neural counterexample: the only neural arm that does not sit at the parent ceiling.
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+# Parquet, not the JSON corpus: index_builder.ipynb's `_read_df` reads a one-line JSON array with
+# lines=True and gets one row of 70,242 columns. The feature tables' `text` column equals the JSON
+# `text` row for row (established for dense_e5__OE in S2).
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: dense
+  name: dense_gte__OE
+  impl: dense_gte
+  save_as: dense_gte__OE
+  params:
+    model_name: Alibaba-NLP/gte-multilingual-base
+    batch_size: 256
+    max_length: 512
+    normalize: true
+    # Docs (applied at index time):
+    add_doc_prefix: true
+    doc_prefix: "passage: "
+    # Queries (applied at retrieval time) — the ONLY difference from dense_gte_instrQ__OE:
+    add_query_prefix: true
+    query_prefix: "query: "
+    device: "cuda"
+    trust_remote_code: true
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.dense_gte
+  entrypoint: load

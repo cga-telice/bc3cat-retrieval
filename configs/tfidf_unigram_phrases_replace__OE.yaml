@@ -1,0 +1,50 @@
+# TF-IDF unigram with parameter phrases replaced, on OE — S3 work item 5.
+#
+# The previous study's best TF-IDF (item Acc@1 0.708, parent 0.990 on OEB test) and the best
+# parent-level method it reported. Same parameters as the OEB config.
+#
+# ORACLE ARM (D-010). `phrase_field_policy: replace` substitutes multi-word parameter phrases with
+# single tokens, and those phrases are derived from the record's `parameters` field — which a real
+# query does not carry. This arm is reported as an upper bound, always beside a text-only
+# counterpart, never alone.
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats:  "{data_dir}/{collection}_long_feats.parquet"
+  features_meta: "{data_dir}/{collection}_features_meta.json"
+
+method:
+  family: tfidf
+  name: tfidf_unigram_phrases_replace__OE
+  # Declared, not inferred. The OEB config omits `impl` and relies on the notebook's
+  # `name.split("__", 1)[0]` fallback — which on an `__OE` name happens to give the right answer
+  # and would silently give a wrong one for any other suffix (root CLAUDE.md, D-016).
+  impl: tfidf_unigram_phrases_replace
+  save_as: tfidf_unigram_phrases_replace__OE
+  params:
+    analyzer: word
+    ngram_range: [1, 1]
+    norm: l2
+    use_idf: true
+    smooth_idf: true
+    sublinear_tf: false
+    dtype: float32
+    lowercase: true
+    token_pattern: '(?u)\b\w+\b'
+    strip_accents: null
+    phrase_field_policy: "replace"
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.tfidf_unigram_phrases_replace
+  entrypoint: load

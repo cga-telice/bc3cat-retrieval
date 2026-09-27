@@ -1,0 +1,44 @@
+# BGE-M3 dense on OE — S3 work item 5, one of the ten arms D-012 fixed.
+#
+# Same model and parameters as configs/bge_m3_dense.yaml (the OEB config of the previous study);
+# only `collection`, the names and the input tables differ. Encoding happens in the `bge-m3`
+# container over HTTP, so this arm does not depend on the notebook container's transformers
+# version — unlike the local dense arms, which S3 had to move to a newer stack (D-034).
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+# `_norm`, not `_feats`, matching bge_m3_colbert__OE: the BGE arms index `text_norm`.
+inputs:
+  long_feats: "{data_dir}/{collection}_long_norm.parquet"
+  short_feats: "{data_dir}/{collection}_short_norm.parquet"
+
+method:
+  family: dense
+  name: bge_m3_dense__OE
+  impl: bge_m3_dense
+  save_as: bge_m3_dense__OE
+  params:
+    api_base: "http://host.docker.internal:8800"
+
+model:
+  name: BAAI/bge-m3
+  use_fp16: true
+  max_length_doc: 2048
+  max_length_query: 256
+  api_base: "http://host.docker.internal:8800"
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+# Declared explicitly even though it restates the default: a run must be reproducible from
+# (config, code commit, query-set digest) alone, and 72 of 77 configs once left this to a
+# notebook default (root CLAUDE.md, D-016).
+retriever:
+  module: src.retrievers.bge_m3_dense
+  entrypoint: load

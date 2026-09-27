@@ -1,0 +1,47 @@
+# Dense Spanish sentence-similarity model on OE — S3 work item 5.
+#
+# WHY THIS ARM EXISTS. `hiiamsid/sentence_similarity_spanish_es` was evaluated for the previous
+# submission and never reported: the manuscript describes it as one of the seven neural
+# configurations but it appears in no results table, while runs/dense_es_hiiamsid/metrics_dual.json
+# holds item Acc@1 0.0244 / parent 0.3952. The root CLAUDE.md records this as a reporting defect of
+# that submission, and any reuse of the method set must include it. D-012 keeps it for exactly that
+# reason, not for its accuracy.
+#
+# ENVIRONMENT. Rebuilt on transformers >= 4.41 / sentence-transformers >= 2.7 with the other three
+# local dense arms, so every dense ceiling in S3 comes from one stack (D-034).
+#
+# Same model and parameters as configs/dense_es_hiiamsid.yaml. Note there is no doc prefix and no
+# query prefix: this model is trained for plain sentence similarity, and the OEB config's
+# `add_query_prefix: false` is deliberate.
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: dense
+  name: dense_es_hiiamsid__OE
+  impl: dense_es_hiiamsid
+  save_as: dense_es_hiiamsid__OE
+  params:
+    model_name: hiiamsid/sentence_similarity_spanish_es
+    batch_size: 256
+    max_length: 512
+    normalize: true
+    add_query_prefix: false
+    trust_remote_code: true
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.dense_es_hiiamsid
+  entrypoint: load

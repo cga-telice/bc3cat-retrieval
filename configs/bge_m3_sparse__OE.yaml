@@ -1,0 +1,42 @@
+# BGE-M3 sparse (SPLADE-style learned weights) on OE — S3 work item 5.
+#
+# The most interesting untested arm in the set (D-012): a learned sparse representation expands a
+# token to its neighbours, which raw BM25 cannot, so it may survive `synonym_label` and
+# `unit_expansion` where BM25 breaks. Nobody has measured that. Same parameters as the OEB config.
+# Encoding is done by the `bge-m3` container, so this arm is independent of the notebook
+# container's transformers version.
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats:  "{data_dir}/{collection}_long_feats.parquet"
+  features_meta: "{data_dir}/{collection}_features_meta.json"
+
+method:
+  family: sparse
+  name: bge_m3_sparse__OE
+  impl: bge_m3_sparse
+  save_as: bge_m3_sparse__OE
+  params:
+    mode: sparse
+    analyzer: word
+    lowercase: true
+    token_pattern: '(?u)\b\w+\b'
+    strip_accents: unicode
+    api_url: "http://host.docker.internal:8800/encode_batch"
+    batch_size: 64
+    timeout: 300
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.bge_m3_sparse
+  entrypoint: load
