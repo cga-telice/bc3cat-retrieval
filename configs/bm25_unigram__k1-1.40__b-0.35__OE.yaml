@@ -1,0 +1,40 @@
+{
+  "collection": "OE",
+  "paths": {
+    "data_dir": "/work/data/processed",
+    "index_root": "/work/index"
+  },
+  "inputs": {
+    "short_feats": "{data_dir}/{collection}_short_feats.parquet",
+    "long_feats": "{data_dir}/{collection}_long_feats.parquet",
+    "features_meta": "{data_dir}/{collection}_features_meta.json"
+  },
+  "method": {
+    "family": "bm25",
+    "name": "bm25_unigram__k1-1.40__b-0.35__OE",
+    "impl": "bm25_unigram",
+    "save_as": "bm25_unigram__k1-1.40__b-0.35__OE",
+    "params": {
+      "analyzer": "word",
+      "ngram_range": [
+        1,
+        1
+      ],
+      "lowercase": true,
+      "token_pattern": "(?u)\\b\\w+\\b",
+      "strip_accents": "unicode",
+      "k1": 1.4,
+      "b": 0.35
+    }
+  },
+  "io": {
+    "data_dirname": "data",
+    "mapping_file": "mapping.jsonl",
+    "fields_file": "fields.json",
+    "meta_file": "meta.json"
+  },
+  "retriever": {
+    "module": "src.retrievers.bm25_unigram",
+    "entrypoint": "load"
+  }
+}
