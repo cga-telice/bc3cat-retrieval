@@ -46,6 +46,13 @@ def _encode_dense_remote(texts, api_base: str, max_length: int, timeout_s: int =
     faiss.normalize_L2(X)
     return X
 
+#: Query rows encoded and searched per block (S3). Mirrors retrievers.dense_e5. Here the bound
+#: that matters is the HTTP request to the embedding container, not a score matrix: FAISS keeps
+#: scoring out of core.
+DEFAULT_BATCH_SIZE = 2048
+_USE_DEFAULT = object()
+
+
 class _Searcher:
     def __init__(self, index_dir: Path, model_name: str, use_fp16: bool, max_length_query: int, api_base: str | None):
         self.dir = Path(index_dir)
@@ -82,7 +89,35 @@ class _Searcher:
         faiss.normalize_L2(Q)
         return Q
 
-    def search_batch(self, texts, k=10):
+    def search_batch(self, texts, k=10, batch_size=_USE_DEFAULT):
+        """Encode and search `texts` in blocks of `batch_size` (S3); `None` means one block.
+
+        This arm fails differently from the other four blocked in S3. FAISS does not build a
+        B x N score matrix, so scoring was never the problem: `_encode` posts **every** query to
+        the embedding container in a single request, and 35,422 texts in one body — with ~290 MB
+        of float32 coming back as JSON numbers, which balloon several-fold as Python objects —
+        killed the kernel. Blocking here bounds the request as well as the response, because each
+        block encodes only its own queries. Defect H6.
+
+        A query's neighbours depend on no other query, so this changes memory, not results.
+        """
+        if batch_size is _USE_DEFAULT:
+            batch_size = DEFAULT_BATCH_SIZE
+        if batch_size is not None and batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer or None, got {batch_size!r}")
+        texts = list(texts)
+        if batch_size is None or batch_size >= len(texts):
+            return self._search_block(texts, k)
+        blocks = [
+            self._search_block(texts[s : s + batch_size], k)
+            for s in range(0, len(texts), batch_size)
+        ]
+        return (
+            np.concatenate([i for i, _ in blocks], axis=0),
+            np.concatenate([sc for _, sc in blocks], axis=0),
+        )
+
+    def _search_block(self, texts, k=10):
         Q = self._encode(texts)
         D, I = self.index.search(Q, int(k))
         return I, D

@@ -33,6 +33,12 @@ def _l2norm(X: np.ndarray, axis=1, eps: float = 1e-8) -> np.ndarray:
     n = np.maximum(n, eps)
     return X / n
 
+#: Query rows scored per block (S3). Mirrors retrievers.dense_e5: the score block is B x N, and
+#: the 35,422 OE dev identity queries in one block are ~9.3 GiB in float32.
+DEFAULT_BATCH_SIZE = 2048
+_USE_DEFAULT = object()
+
+
 class DenseGTESearcher:
     def __init__(self, index_dir: Path):
         index_dir = Path(index_dir)
@@ -137,7 +143,33 @@ class DenseGTESearcher:
         top_idx = part[order]
         return top_idx, sims[top_idx]
 
-    def search_batch(self, queries: List[str], k: int = 100):
+    def search_batch(self, queries: List[str], k: int = 100, batch_size=_USE_DEFAULT):
+        """Score `queries` in blocks of `batch_size` rows (S3); `None` means one block.
+
+        A query's scores depend on no other query, so blocking changes memory, not results —
+        see tests/test_retriever_batching.py. Added in S3 work item 6, after all ten runs of
+        this arm at 35,422 dev queries died with DeadKernelError: the unblocked path builds a
+        B x N dense score matrix, 9.3 GiB in float32 against ~20 GiB of container RAM. S1 had
+        blocked bm25_unigram, dense_e5 and bge_m3_colbert — the three methods S2 needed — and
+        this arm was simply never run at that scale before (defect H6).
+        """
+        if batch_size is _USE_DEFAULT:
+            batch_size = DEFAULT_BATCH_SIZE
+        if batch_size is not None and batch_size < 1:
+            raise ValueError(f"batch_size must be a positive integer or None, got {batch_size!r}")
+        queries = list(queries)
+        if batch_size is None or batch_size >= len(queries):
+            return self._search_block(queries, k)
+        blocks = [
+            self._search_block(queries[s : s + batch_size], k)
+            for s in range(0, len(queries), batch_size)
+        ]
+        return (
+            np.concatenate([i for i, _ in blocks], axis=0),
+            np.concatenate([sc for _, sc in blocks], axis=0),
+        )
+
+    def _search_block(self, queries: List[str], k: int = 100):
         Q = self.encode(queries)
         sims = (Q @ self.X_docs.T)
         sims = np.nan_to_num(sims, copy=False)
