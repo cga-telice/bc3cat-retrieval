@@ -22,6 +22,14 @@ OUT = REPO / "docs" / "synthetic-oe" / "MANIFEST.md"
 OE_CORPUS = ["OE_texto.json", "OE_resumen.json"]
 OE_QUERIES = ["OE_single_texto.json", "OE_stacked_texto.json"]
 OE_OTHER = ["OE_concept_schema.json", "OE_duplicate_texto_groups.json"]
+# The E3 balanced dose set (D-009), delivered upstream 2026-09-17 and taken in S3 work item 2.
+# Registered, not yet run on: S8 is the sprint that uses them. They are not declared query sets,
+# so nothing resolves a run against them yet.
+OE_E3 = [
+    "OE_dose_texto.json",
+    "OE_isolated_texto.json",
+    "OE_leaf_applicability.jsonl",
+]
 # The tables a run is actually stamped against. `run_meta.json` records `query_set_sha256` of
 # the *derived* table it read — `OE_stacked_texto_feats.parquet`, not the JSON — so a manifest
 # that lists only the deliveries cannot answer "does this run's query set still exist?". They
@@ -64,6 +72,10 @@ INTAKE_PREFIXES = {
     # lives on below, under its own name.
     "OE_stacked_texto.json": "c34a222ae2af05a0",
     "OE_duplicate_texto_groups.json": "b3cfcad47c71c5eb",
+    # E3, from that repository's own handoff manifest, run `e3-20260917T093057Z`.
+    "OE_dose_texto.json": "555fab84d134886f",
+    "OE_isolated_texto.json": "054041ff05349fae",
+    "OE_leaf_applicability.jsonl": "eda12d17c323add4",
     "OE_concept_schema.json": "2d3273ddb3e443a1",
     "OE_texto.json": "02a2c270d7ffe147",
     "OE_resumen.json": "0cd380e9e44ad8c5",
@@ -96,6 +108,8 @@ def record_count(path: Path) -> int | str:
         import pyarrow.parquet as pq
 
         return pq.ParquetFile(path).metadata.num_rows
+    if path.suffix == ".jsonl":
+        return sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
     obj = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(obj, list):
         return len(obj)
@@ -114,7 +128,7 @@ def main() -> None:
     ).strip()
 
     rows: list[tuple[str, int, int | str, str, str]] = []
-    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_DERIVED + OE_SUPERSEDED + OEB:
+    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OEB:
         p = DATA / name
         digest = sha256(p)
         expected = INTAKE_PREFIXES.get(name)

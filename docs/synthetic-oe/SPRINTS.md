@@ -23,7 +23,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S5 | backbone | planned | E1 ablation — Track B (structured) | H3 | S4 |
 | S6 | backbone | planned | Statistical analysis and mediation | H1, H2, H5 | S4, S5 |
 | S7 | backbone | planned | E2 stacked headline and stratifications | H1, H4 | S6 |
-| S8 | backbone | blocked | E3 balanced dose design | H4 | S7 + upstream (D-009) |
+| S8 | backbone | planned | E3 balanced dose design | H4 | S7 |
 | S9 | backbone | planned | Track C — query-side normalisation and rewriting | H6 | S6 |
 | S10 | backbone | planned | Track D — learned representations | O4 | S6, G2 |
 | S11 | backbone | planned | Track E — two-stage architecture | O4 | S6, G2 |
@@ -40,7 +40,7 @@ S14+, probes take S91+.
 |---|---|---|---|
 | G1 | S2 | Does BM25 fall under L1 variation? | Reframe before S3; re-scope O4 |
 | G2 | S5 | Does the structured/lexical ranking invert? | Method contribution moves from S11 to S10 |
-| G3 | S8 | Did the balanced dose set arrive? | H4 becomes exploratory; sprint halves |
+| G3 | S8 | ~~Did the balanced dose set arrive?~~ **It did** (2026-09-17, recorded 2026-09-27). Re-read: is H4 identifiable on it? | The two blocked interactions stay unclaimed; coverage is 7 concepts, 4 on dev, so a clustered interval is near-useless and the paired within-leaf slope carries the claim |
 | G4 | S12 | Test split frozen | Any reopening is documented and re-run whole |
 
 ## Critical path
@@ -75,3 +75,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-17 | S2 | active → **done** | G1 re-read under the frozen design: **ambiguous** — `bm25_unigram` 0.8870 (clustered [0.7996, 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling), L1 branch *proceed*. D-027 rejected, D-030 accepted (thresholds read on the clustered interval), D-028/D-029 amended. New generated tables: `identity_misses.md`, `colbert_vs_bm25.md`, `tiebreak.md`; design amendment A6 |
 | 2026-09-27 | S3 | planned → **active** | Design frozen at `8353cf7`; entry state verified in the tree. D-012 closed on the ten-method set; dev-only reading of the plan's `resumen→texto` scope recorded as a design constraint; first work item is the 2026-09-27 intake under D-033 |
 | 2026-09-27 | S8 | — | Not a transition: the E3 balanced dose set was found to have arrived upstream on 2026-09-17 (`4d10af2`) and gone unrecorded here for ten days. S3 takes it in; S8 moves `blocked` → `planned` when that intake lands |
+| 2026-09-27 | S8 | blocked → **planned** | S3 work item 2 took the E3 delivery in and verified it: nested ladder on all 600 leaves, 600 per rung, every claim re-derived (23 tests). D-009 **Delivered**. G3 has no absence left to rule on and is re-read as an identifiability question; three limitations recorded, of which the binding one is 7 concepts / 4 on dev |

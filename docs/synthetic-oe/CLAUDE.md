@@ -147,6 +147,9 @@ runs/{collection}/{queryset}/{method}
 docs/synthetic-oe/
   CLAUDE.md STATE.md SPLITS.md INTAKE.md                # contracts
   DECISIONS.md                                          # record — append-only, searched
+  DELIVERIES.md                                         # record — one section per upstream
+                                                        #   delivery; split out of INTAKE.md on
+                                                        #   2026-09-27 when it passed 12 KB
   DATASET_DEFECTS.md                                    # record — what is wrong with the corpus,
                                                         #   classified P (upstream) / H (harness) /
                                                         #   C (property of the catalogue)

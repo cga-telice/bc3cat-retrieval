@@ -719,3 +719,44 @@ and `bc3cat-s3` all mount the main checkout, and `bc3cat-sprint06` mounts `bc3ca
 is a different repository and not this branch's concern. **Whether the worktree itself should be
 removed is left to César:** it is clean and its commits are pushed, so removing it loses nothing,
 but it is paper work rather than an artefact of this branch and the guard now makes it harmless.
+
+### D-009 — Delivered, verified, and S8 unblocked
+**Status:** **Delivered** (closes the request; D-009's own decision stands as taken) · **Date:** 2026-09-27 · **Raised in:** S3 work item 2
+**What landed.** `OE_dose_texto.json` (3,000 queries), `OE_isolated_texto.json` (5,400) and
+`OE_leaf_applicability.jsonl` (1,500 probed leaves), seed 42, run `e3-20260917T093057Z`. Digests in
+`MANIFEST.md`, narrative in [`DELIVERIES.md`](DELIVERIES.md), verification in
+`tests/test_intake_e3.py` (23 tests).
+**The request was met on the part that mattered most.** `requests/E3_BALANCED_DOSE.md §2` asked for
+a within-leaf ladder and said we would rather be told in advance if only one count per leaf were
+feasible. All 600 leaves carry the complete ladder 1–5, and it is **nested** — the types at count
+*k* are the types at *k*−1 plus exactly one — so consecutive rungs on a leaf differ by a single
+modification. H4 is therefore a within-item slope with paired rung-to-rung contrasts, not a
+between-item regression, which is the stronger of the two designs the request contemplated. The
+isolated set covers the same 600 leaves, so "the sum of the isolated effects" is a sum over the
+same population as the ladder rather than over a different one.
+**Every claim upstream made was re-derived rather than quoted**, including the awkward ones: the
+39/160 `unit_conversion` counts, the per-concept leaf counts, the two zero-co-occurrence pairs. All
+held. The verification is ours; the numbers are theirs.
+**Three limitations, binding on S8 and written down before it opens.**
+1. **`reorder` × `template_paraphrase` and `unit_conversion` × `unit_expansion` never co-occur**,
+   each pair rewriting the same span. Those two interactions are **not identifiable**. S8 must not
+   claim them, and the tests fail if a later delivery changes it — a limitation that vanishes
+   quietly is as dangerous as one that appears quietly.
+2. **7 of 83 concepts**, all OEB canalizations, straddling our split: dev `OEB020$ 030$ 230$ 290$`
+   (328 leaves, 1,640 dose queries), test `OEB040$ 280$ 300$` (272 leaves, 1,360). The within-leaf
+   slope is well powered; a **concept-clustered interval on it resamples four clusters**, and D-030
+   says that is what a threshold is read against. So H4's dev-side slope will have a tight paired
+   interval and a near-useless clustered one, and S8 must report both and say which it is reading.
+   Upstream's reason for the narrowness is structural and worth accepting: a clean count-5 cell
+   needs leaves admitting ≥6 types on distinct TEXTO spans, and relaxing that would fix the
+   composition at count 5 — reinstating the exact confound E3 exists to remove.
+3. **`unit_conversion` is thin**: 39 items at count 1 against ≥70 for the other eight, 18 on dev.
+**Consequence.** **Gate G3 no longer has an absence to rule on**, and S8 moves `blocked` →
+`planned`. H4 stays a backbone claim rather than dropping to the fallback of an exploratory
+regression on the stacked set — subject to limitation 2, which constrains how its interval is read,
+not whether the claim can be made.
+**Left open for S8, deliberately.** `run_context.QUERY_SETS` reserves the single name
+`balanced_texto` (D-008 amended) and the delivery is **two** query sets. Naming them, and deciding
+whether the isolated set is a query set in its own right or the reference the dose slope is
+measured against, is S8's first design question. S3 registers the files and wires nothing: a
+half-wired query set is worse than an unwired one, because it runs.

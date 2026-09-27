@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-27 (S3 opened) · **Updated by:** César
+**Last updated:** 2026-09-27 (S3 work items 1–2 done) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — design frozen at `8353cf7`, 2026-09-27, no work started. **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, work items 1–2 done. **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -30,48 +30,16 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## In flight
 
-- **S3 is open and frozen** ([`SPRINT_S3_DESIGN.md`](sprints/SPRINT_S3_DESIGN.md) @ `8353cf7`,
-  amendments A1–A2). Eleven work items: the two intakes, the duplicate-aware re-score of S2's 15
-  runs, six new OE configs, ten identity ceilings + ten `resumen` replications on dev, the 150-run
-  `k1`/`b` grid, the overlap tables. **D-012 closed** on the ten-method set.
-  **Work item 1 done** (2026-09-27); 2–11 open.
-- **Container:** this branch runs one per sprint — `bc3cat-s1`, `bc3cat-s2`, now **`bc3cat-s3`**
-  (image `quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8`, main checkout → `/work`,
-  `HF_HOME=/work/hf-cache`, `--gpus all`, `sleep infinity`; papermill 2.7.0 installed by hand).
-  Identical core libraries to `bc3cat-s2` — python 3.11.8, pandas 2.2.2, numpy 1.26.4, pyarrow
-  15.0.2, sklearn 1.4.2 — which is why the seven unchanged tables reproduce byte for byte. It
-  reports *unhealthy*: the image's healthcheck expects JupyterLab on 8888 and we run
-  `sleep infinity`. Harmless, and `bc3cat-s2` was the same throughout S2.
-- **Worktree hazard: closed 2026-09-27 (D-018, amended).** Two containers were mounting paths
-  inside `.claude/worktrees/structured-retrieval-type-5aeb7f` as `/work` while binding the main
-  checkout's `data/`, `index/` and `runs/` in over them. `jupyter-pytorch` is **removed** (its
-  layer kept as the image `jupyter-pytorch-backup:20260927`, so it is reversible); `bge-m3` is
-  **recreated** from the main checkout and now mounts only `work/` and `hf-cache/`, no `data/`.
-  The resolver now **refuses** a linked worktree at both entry points, before reading any input
-  (`BC3CAT_ALLOW_LINKED_WORKTREE=1` for the deliberate S9–S11 case), so D-018 is enforced rather
-  than merely written down — `tests/test_worktree_guard.py`, 9 tests against a real worktree.
-  **S2's ColBERT embeddings are unaffected:** the `bge-m3` image's `serve.py` is byte-identical to
-  this branch's `apis/bge-m3/serve.py`, and the image was not rebuilt. The worktree itself is
-  clean and its commits are on `paper/autcon-r1-revision` locally and on origin; whether to
-  remove it is open — it is paper work, not this branch's.
-- **[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)** — every corpus defect in one place, classified
-  by who fixes it. Opened 2026-09-17.
-- **Upstream delivery of 2026-09-27 (`synthetic` @ `f2457fa`) — taken in.** Work item 1 closed
-  2026-09-27. Sidecar `OE_duplicate_texto_groups.json` `b3cfcad4…` and corrected
-  `OE_stacked_texto.json` `c34a222a…` in; the corpus files with the flag inside deliberately
-  refused. Stacked derived tables re-derived: norm `81cd501b…` → `4939d99f…`, feats `7b0894e6…` →
-  `f34c1798…`, with **all 26 pre-existing columns identical row for row** — so S2's stacked Acc@1
-  stands, and the superseded trio survives under digest-stamped names so those runs still resolve.
-  The other seven OE derived tables came out **byte-identical**. Digests in
-  [`MANIFEST.md`](MANIFEST.md), narrative in [`INTAKE.md §2.1`](INTAKE.md), proof in
-  `tests/test_intake_20260927.py` (30 tests) and `src/utils/check_run_inputs.py`.
-  Item-level scoring excludes queries whose gold is a duplicate (776/35,422 `texto`, 29/2,206
-  `single_texto`, 55/2,521 `stacked_texto`; dev only, test is clean), so every scored query has
-  exactly one valid answer — applied from work item 3 on.
-- **E3 balanced dose set — arrived 2026-09-17, recorded 2026-09-27, not yet taken in.** S3 work
-  item 2 copies and registers `OE_dose_texto.json` (`555fab84…`), `OE_isolated_texto.json`
-  (`054041ff…`) and `OE_leaf_applicability.jsonl` (`eda12d17…`), and runs nothing with them.
-
+- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A4).
+  **Work items 1–2 done** 2026-09-27; 3–11 open. D-012 closed on the ten-method set.
+- **Runs in the sprint's own container, `bc3cat-s3`** — main checkout → `/work`, libraries
+  identical to `bc3cat-s2`, papermill installed by hand; `logs/S3/` holds the executed notebooks.
+  It reports *unhealthy* because the image expects JupyterLab and we run `sleep infinity`.
+- **Worktree hazard closed** 2026-09-27: `run_context` now refuses a linked worktree, and the two
+  containers that mounted one as `/work` are gone or repointed. D-018 amended.
+- **Both upstream deliveries taken in** — see [`DELIVERIES.md`](DELIVERIES.md) for what was
+  verified. Item-level scoring excludes duplicate-gold queries from work item 3 on (D-033).
+- **[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)** — every corpus defect, classified by who fixes it.
 
 ## Incident — 2026-09-14
 
@@ -80,21 +48,12 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Blocked / waiting
 
-- ~~**E3 balanced dose set**~~ — **it arrived.** Delivered upstream 2026-09-17 (`4d10af2`) and
-  unrecorded here for ten days; found by re-hashing the handoff while verifying S3's entry state.
-  3,000 dose queries (600 leaves × 5 rungs, nested, 600 per count), 5,400 isolated effects,
-  per-leaf applicability, plus an upstream response answering the request point by point. Two
-  caveats for S8: **7 OEB concepts only**, straddling the split (4 dev, 3 test), so a dev dose
-  slope rests on 4 concepts. S8 goes `blocked` → `planned` when S3's work item 2 lands; gate G3
-  no longer has an absence to rule on. See the D-009 note of 2026-09-27.
 - **Real-query anchor** (200–500 Telice queries) — not requested. Off the path.
 
 ## Next action
 
-S3 work item 2 — the E3 intake: copy and register the three dose files, validate the ladder,
-record the 7-concept and split-straddling caveats, move D-009 to *Delivered* and S8 to `planned`.
-Then work item 3, the duplicate-aware re-score of S2's 15 runs from their stored top-100 lists —
-the control S3 inherits — and work item 4, re-stratifying the stacked by-dose table on
+S3 work item 3 — the duplicate-aware re-score of S2's 15 runs from their stored top-100 lists, the
+control S3 inherits — then work item 4, re-stratifying the stacked by-dose table on
 `texto_modification_count`, now that the field reaches the feature tables. Before the GPU block:
 resolve and warm the E5, GTE and hiiamsid model revisions, since `hf-cache/hub` holds only
 `BAAI/bge-m3`. ColBERT is the L1 reference (D-029, amended); the identity ceilings above stand.
