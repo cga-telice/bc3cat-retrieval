@@ -760,3 +760,46 @@ not whether the claim can be made.
 whether the isolated set is a query set in its own right or the reference the dose slope is
 measured against, is S8's first design question. S3 registers the files and wires nothing: a
 half-wired query set is worse than an unwired one, because it runs.
+
+### D-033 — note: every item-level Acc@1 now has two values, and which one is quoted matters
+**Status:** Note on D-033 · **Date:** 2026-09-27 · **Raised in:** S3 work item 3
+**The hazard.** After the re-score, each S2 run has **two** item-level figures: the one S2 reported,
+on all queries, and the one on the duplicate-free population. They are not a correction and a
+mistake — they are the same run scored on two populations, and both are correct about their own.
+`bge_m3_colbert` identity is **0.9861** on 35,422 queries and **0.9998** on 34,646. Quoting one
+without its n is how the README's results table went wrong in the first place.
+**Rule.** Every item-level figure is quoted with its scored n, and the two directories are kept
+apart: `results/S2/` is the record of **what S2 reported**, `results/S3/s2_rescored/` is the control
+**S3 inherits**. The re-score never overwrites the former; a test asserts S2's own figures are still
+in its own record. From S4 on, only the duplicate-free population is used, so the ambiguity
+disappears — it exists only for S2's already-published numbers.
+**What the re-score changed, measured.** L1 and stacked move in the third decimal: the largest
+item-level shift is ColBERT stacked +0.0066, and no S2 conclusion depends on it. **Identity moves
+materially, and only for text-only methods**, because that is where the defect bit:
+
+| method | identity misses | duplicate-gold | share | item Acc@1, all → scored |
+|---|---:|---:|---:|---|
+| `bm25_unigram_params` | 21 | 0 | 0.0 % | 0.9994 → 0.9994 |
+| `bm25_unigram` | 4,003 | 532 | 13.3 % | 0.8870 → 0.8998 |
+| `bge_m3_colbert` | 492 | **484** | **98.4 %** | 0.9861 → **0.9998** |
+| `structured_rules` | 8,117 | 583 | 7.2 % | 0.7708 → 0.7825 |
+| `structured_valuenorm` | 7,035 | 579 | 8.2 % | 0.8014 → 0.8137 |
+
+**Two readings, neither of which is a gate.** G1 is not re-read: D-032 stopped gating on identity and
+a gate is not re-run after the fact.
+1. **ColBERT's identity ambiguity at G1 was the corpus defect, not the method.** 484 of 492 misses
+   were undecidable from the indexed field; 8 remain out of 34,646. D-032 argued that a threshold
+   set above what a `texto`-only method could reach disqualifies the corpus, not the method — this
+   quantifies that argument on the arm it was made about.
+2. **`bm25_unigram_params` is untouched, and that is evidence rather than robustness.** Zero of its
+   21 misses had a duplicated gold, because it separates leaves sharing a `texto` through parameter
+   tokens minted from the query's own `parameters` field (D-010). A text-only method cannot do this
+   even in principle. The arm's imperviousness to a corpus defect that bites every other arm is one
+   more measurement of the oracle, and `tests/test_duplicate_exclusion.py` fails if it ever stops
+   being zero.
+**Why subsetting is legitimate.** The re-score performs no retrieval. It subsets S2's own
+`results_perquery.parquet` and re-averages, and the generator asserts *before filtering* that the
+mean of those columns reproduces each run's `metrics_dual.json` to 5e-5, for all fifteen runs. Acc@1,
+Recall@k, RR and nDCG@10 are per-query values whose metric is their mean, so the mean over a subset
+is exactly the metric on that subset. A metric that is not a per-query mean could not be re-scored
+this way, and the assertion is what would catch one being added.
