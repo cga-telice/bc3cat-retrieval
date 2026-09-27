@@ -121,12 +121,19 @@ documentation stops being useful — a contract that grows into an archive stops
 | Class | Changes | The agent… | Budget |
 |---|---|---|---|
 | **Contract** | almost never | reads in full, always | ≤ 12 KB each |
-| **Plan** | at sprint boundaries | reads the active one | ≤ 8 KB |
+| **Plan** | at sprint boundaries | reads the active one | ≤ 20 KB |
 | **Record** | append-only | *searches*; never reads wholesale | unbounded |
 | **Derived** | every run | *regenerates*; never hand-edits | unbounded |
 
 If a document grows past its budget, do not trim it — **split it**, and demote the growing
 part to a record.
+
+The Plan budget was ≤ 8 KB until 2026-09-27, and every sprint design broke it: S0 9 KB, S1
+11 KB, S2 14 KB, S3 17.5 KB. A rule that nothing obeys is not a constraint, it is noise, and
+the documents were not the thing at fault — a design that freezes an experiment before it runs
+has to carry its constraints and its exit criteria in full or it cannot be audited against
+them. Raised to ≤ 20 KB, which is above the largest design written so far and still small
+enough that the split rule bites before a design becomes an archive.
 
 Per-branch documentation lives in `docs/{branch-name}/`. See `docs/synthetic-oe/`.
 

@@ -2,7 +2,8 @@
 
 Branch-specific contract. Read after the root [`CLAUDE.md`](../../CLAUDE.md), together with
 [`STATE.md`](STATE.md) and the active sprint's design document. That is the complete
-start-of-session context; target under 25 KB combined.
+start-of-session context; target under 45 KB combined (raised from 25 KB on 2026-09-27, with
+the Plan budget in the root contract; the four together stood at 41 KB when S3 opened).
 
 ## Session preamble — do this first, every time
 
