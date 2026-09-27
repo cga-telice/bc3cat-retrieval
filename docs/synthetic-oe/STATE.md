@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-27 (S3 work items 1–5 done) · **Updated by:** César
+**Last updated:** 2026-09-28 (S3 work items 1–7 done) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, work items 1–5 done. **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, work items 1–7 done. **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -30,8 +30,8 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## In flight
 
-- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A6).
-  **Work items 1–5 done** 2026-09-27; 6–11 open. D-012 closed on the ten-method set.
+- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A8).
+  **Work items 1–7 done** 2026-09-28; 8–11 open (`k1`/`b` grid, overlap, tables, tests). D-012 closed on the ten-method set.
 - **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one
   `code_dirty: false`: `bm25_*` at `6336974`, `bge_m3_colbert` at `31bf1a1`, the other seven at
   `2dd653d`. The four **local dense** arms run on `transformers 4.57.6` / `sentence-transformers
@@ -61,13 +61,38 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-S3 work items 6 and 7 — the ten identity (`texto`) runs and the ten `resumen` replication runs on
-dev. Retrieval only: the indexes are built and the models are warm. Four identity runs exist from S2
-and are reused by digest; **E0(b) runs all ten**, because the one existing `resumen` run is an S1
-plumbing run from a dirty tree (amendment A2, archived to `runs/_archive/S1/`). ColBERT is the L1
-reference (D-029, amended); the identity ceilings above stand.
+S3 work item 8 — the `k1`/`b` grid: 25 points × 2 BM25 field variants × 3 query sets = 150 runs,
+dev only, under two hours. The selection rule is already fixed by the frozen design (argmax of item
+Acc@1 on dev `single_texto` pooled, per variant, with 0.60/0.35 always reported beside it as the
+transferred arm). Then work item 9, the overlap tables — validated against the review analysis's OEB
+figures (94.09 % lexical / 99.93 % numeric) *before* being applied to OE — and 10–11, the generated
+`results/S3/` tables and the remaining regression tests.
 
 ## Latest results
+
+**E0 is measured: all ten arms, identity and `resumen`, dev split** — 32 of 32 OE runs resolve
+against the tree. Full tables come with work item 10; the two things already settled:
+
+**The identity ceiling is a real instrument.** For a `texto`-only method the corpus permits at most
+**0.9863** (292 of 776 duplicate-gold queries correct in expectation, so 484 unavoidable misses of
+35,422). Three arms sit exactly on it — `bge_m3_colbert` 0.9861, `bge_m3_dense` 0.9861,
+`dense_es_hiiamsid` 0.9864 — and the **only** two that exceed it are the two oracle arms,
+`bm25_unigram_params` 0.9994 and `tfidf_unigram_phrases_replace` 0.9970, which can separate
+identical `texto` only because they index the record's `parameters` (D-010, confirmed independently).
+Below the ceiling and genuinely so: `bm25_unigram` 0.8870, `dense_e5` 0.5073, `dense_gte_instrQ`
+0.1083, `dense_gte` 0.0975, **`bge_m3_sparse` 0.0509**.
+
+**`bge_m3_sparse` fails in the opposite direction to the one predicted.** D-012 kept it as the most
+interesting untested arm, on the expectation that learned sparse expansion might *survive* L1
+variation. Its identity ceiling is 0.0509: it cannot retrieve a document from that document's own
+text. Diagnosed, not assumed — the gold sits at rank 2–6 with no ties, and the doc vectors are **not
+L2-normalised** (norms 0.47–1.09, a 2.3× spread) while scoring is a raw dot product, so a sibling
+with a heavier vector out-scores the document against its own. That is BGE-M3's intended lexical
+scoring, so it is a method property and a ceiling, not a harness defect — but it leaves the arm no
+headroom to lose, and every later figure for it is read against 0.0509 (D-032).
+
+### Earlier, from S2 and its re-score
+
 
 Two directories, deliberately kept apart. **Every item-level figure is quoted with its scored n**
 (D-033 note): the same run has one value on all queries and another on the duplicate-free

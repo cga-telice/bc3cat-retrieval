@@ -214,6 +214,41 @@ guard lives in a **git-ignored** directory, as S2's did: it protects this sprint
 vanish if `logs/` were cleaned. The durable place for it is `utils/provenance.py`, where it would
 cover every run and index rather than the ones this script drives.
 
+## H6 — Five retrievers scored every query in one block, so ten arms could not run at scale · **fixed** (S3)
+
+**Found in S3 work items 6–7**: the first E0 pass lost **12 of 17 runs** to `DeadKernelError`.
+**Cause.** Batching is each retriever's own business — `retrieve.ipynb` sets `BATCH_SIZE = None`,
+meaning "the retriever's default" — and S1 blocked only the three methods S2 needed
+(`bm25_unigram`, `dense_e5`, `bge_m3_colbert`). D-012 widened the set to ten, and the five new arms
+had never been run at 35,422 queries. Four densify a B × N score matrix — 35,422 × 70,242 is
+**9.3 GiB** in float32 against ~20 GiB of container RAM — and `bge_m3_dense` posted every query to
+the embedding container in a single HTTP request, ~290 MB of float32 returning as JSON numbers.
+**Fixed** in all five, following S1's pattern: `DEFAULT_BATCH_SIZE = 2048`, the old body renamed
+`_search_block`, `search_batch` delegating to it. One scoring path per arm.
+`tests/test_retriever_batching.py`, 55 tests — blocks equal one block across seven block sizes,
+shapes hold, nonsense sizes refused, and **every arm's default is 2048 rather than `None`**, since an
+arm defaulting to one block dies however careful the caller is.
+**Generalisation worth keeping.** The harness only ever gets exercised at the scale some sprint
+happens to need. Any arm D-012 did not already include should be assumed unbatched until run.
+
+## H7 — `bge_m3_dense`'s builder wrote its FAISS index outside the collection layout · **fixed** (S3)
+
+**Found in S3 work item 6**: both `bge_m3_dense` runs failed with
+`could not open .../faiss.index`, *after* the build had reported `num_docs 70,242` and a clean stamp.
+**Cause.** The builder derived `index_root/{save_as}/data` itself instead of
+`index_root/{collection}/{save_as}/data`, so the OE index came out split across two directories —
+the notebook's artefacts under `index/OE/bge_m3_dense__OE/data/` and `faiss.index` under
+`index/bge_m3_dense__OE/data/`, where the retriever does not look. Path construction outside the
+resolver is what D-022 forbade.
+**`bge_m3_colbert` carried the identical bug and was fixed in S2**, when S2 ran ColBERT; its builder
+still carries the comment describing the split. This arm was left behind because no sprint ran it.
+The fix is that same line, copied rather than reinvented.
+**Left behind:** the stray `index/bge_m3_dense__OE/` directory (275 MB). Agents hold no delete
+permission over `index/` (D-019), so removing it is César's call.
+**Same lesson as H6**, from the other end: a build can report success, a clean stamp and the right
+document count while writing a required artefact somewhere nothing will read it. `num_docs` is not an
+integrity check.
+
 ## C1 — Identity is a control, not a quality bar · **recorded 2026-09-17**
 
 S2 gated on identity ≈0.98 for BM25 and ColBERT. Two things were conflated:
