@@ -21,7 +21,31 @@ OUT = REPO / "docs" / "synthetic-oe" / "MANIFEST.md"
 
 OE_CORPUS = ["OE_texto.json", "OE_resumen.json"]
 OE_QUERIES = ["OE_single_texto.json", "OE_stacked_texto.json"]
-OE_OTHER = ["OE_concept_schema.json"]
+OE_OTHER = ["OE_concept_schema.json", "OE_duplicate_texto_groups.json"]
+# The tables a run is actually stamped against. `run_meta.json` records `query_set_sha256` of
+# the *derived* table it read — `OE_stacked_texto_feats.parquet`, not the JSON — so a manifest
+# that lists only the deliveries cannot answer "does this run's query set still exist?". They
+# were absent here until S3 work item 1; every OE run made before then is stamped against a
+# digest this file did not carry.
+OE_DERIVED = [
+    "OE_long_norm.parquet",
+    "OE_short_norm.parquet",
+    "OE_long_feats.parquet",
+    "OE_short_feats.parquet",
+    "OE_features_meta.json",
+    "OE_single_texto_norm.parquet",
+    "OE_single_texto_feats.parquet",
+    "OE_stacked_texto_norm.parquet",
+    "OE_stacked_texto_feats.parquet",
+]
+# Superseded by the 2026-09-27 delivery and kept under digest-stamped names, so that S2's three
+# stacked runs remain resolvable against the tree (D-033). Not a query set: `run_context` resolves
+# query sets by exact canonical name, so these are provenance only and nothing can run on them.
+OE_SUPERSEDED = [
+    "OE_stacked_texto__1bde2115.json",
+    "OE_stacked_texto_norm__81cd501b.parquet",
+    "OE_stacked_texto_feats__7b0894e6.parquet",
+]
 OEB = [
     "OEB_texto.json",
     "OEB_resumen.json",
@@ -32,13 +56,22 @@ OEB = [
     "OEB_features_meta.json",
 ]
 
-# SHA-256 prefixes recorded at copy time, INTAKE.md §2.
+# SHA-256 prefixes recorded at copy time, INTAKE.md §2. A mismatch stops the sprint: these are
+# the digests every run's provenance is quoted against.
 INTAKE_PREFIXES = {
     "OE_single_texto.json": "b6a43961295cc2ca",
-    "OE_stacked_texto.json": "1bde21157ef97421",
+    # Corrected stacked set, taken 2026-09-27 under D-033. The superseded `1bde21157ef97421`
+    # lives on below, under its own name.
+    "OE_stacked_texto.json": "c34a222ae2af05a0",
+    "OE_duplicate_texto_groups.json": "b3cfcad47c71c5eb",
     "OE_concept_schema.json": "2d3273ddb3e443a1",
     "OE_texto.json": "02a2c270d7ffe147",
     "OE_resumen.json": "0cd380e9e44ad8c5",
+    # The superseded artefacts are checked against the digest their own filename claims. A copy
+    # whose name lies about its contents is worse than no copy, because it would be trusted.
+    "OE_stacked_texto__1bde2115.json": "1bde21157ef97421",
+    "OE_stacked_texto_norm__81cd501b.parquet": "81cd501b305b17db",
+    "OE_stacked_texto_feats__7b0894e6.parquet": "7b0894e6bc5c82d3",
 }
 
 # Counts INTAKE.md claims, asserted here against what the files actually hold.
@@ -67,6 +100,10 @@ def record_count(path: Path) -> int | str:
     if isinstance(obj, list):
         return len(obj)
     if isinstance(obj, dict):
+        # The duplicate sidecar is a wrapper, so len() would report its four header keys and
+        # call it four records. Report the grouping it actually carries.
+        if "groups" in obj and isinstance(obj["groups"], dict):
+            return len(obj["groups"])
         return len(obj)
     return "n/a"
 
@@ -77,7 +114,7 @@ def main() -> None:
     ).strip()
 
     rows: list[tuple[str, int, int | str, str, str]] = []
-    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OEB:
+    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_DERIVED + OE_SUPERSEDED + OEB:
         p = DATA / name
         digest = sha256(p)
         expected = INTAKE_PREFIXES.get(name)
@@ -143,6 +180,20 @@ def main() -> None:
     L.append("|---|---:|---:|---|---|")
     for name, size, n, digest, check in rows:
         L.append(f"| `{name}` | {size:,} | {n:,} | `{digest}` | {check} |")
+    L.append("")
+    L.append(
+        "**The 2026-09-27 delivery (D-033).** `OE_stacked_texto.json` is now the corrected file "
+        "`c34a222a…`, which adds `texto_modification_count` / `texto_modification_types` and "
+        "changes no text: all 4,998 records agree row for row with the superseded file on "
+        "`text`, `id`, `item_key` and `gold_item_key` (`tests/test_intake_20260927.py`). The "
+        "three `__`-suffixed rows are that superseded query set, kept under digest-stamped names "
+        "so S2's stacked runs — stamped against the *feature table* `7b0894e6…`, not the JSON — "
+        "still resolve against the tree. They are not a query set: `run_context` resolves query "
+        "sets by exact canonical name, so nothing can be run on them. `OE_texto.json` and "
+        "`OE_resumen.json` were deliberately **not** re-taken with `duplicate_texto_group` "
+        "inside, because their digests would change although their texts would not, and all 15 "
+        "S2 runs would stop resolving; the sidecar carries the same grouping instead."
+    )
     L.append("")
     L.append(
         "The seven `OEB_*` files carry no digest anywhere before this manifest: they were "
@@ -221,7 +272,10 @@ def main() -> None:
     L.append("")
 
     OUT.write_text("\n".join(L) + "\n", encoding="utf-8", newline="\n")
-    print(f"written: {OUT.relative_to(REPO)}")
+    try:
+        print(f"written: {OUT.relative_to(REPO)}")
+    except ValueError:  # OUT redirected out of the tree, e.g. a dry run
+        print(f"written: {OUT}")
     for key, claimed in INTAKE_COUNTS.items():
         print(f"  {key}: claimed {claimed}, observed {observed[key]}")
     print(f"  single gold missing/mismatch: {s_missing}/{s_mismatch}")

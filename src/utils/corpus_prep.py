@@ -258,7 +258,18 @@ def add_param_token_columns(df: pd.DataFrame) -> pd.DataFrame:
 #: what they carry beyond it is the gold and the slice metadata, so it must not be dropped
 #: (INTAKE §4 breakpoint 3).
 CORPUS_FIELDS = ("id", "item_key", "parent_key", "ud", "concept", "parameters", "text")
-QUERY_FIELDS = ("gold_item_key", "modification_types", "modification_count")
+#: `texto_modification_*` arrived with the 2026-09-27 delivery and is the *visible* dose — the
+#: modifications that actually reach the TEXTO. `modification_*` counts every applied record and
+#: overstates the dose in the stacked set (D-025, and the D-004/D-025 note of 2026-09-17), so
+#: every stratification by dose or by type reads the `texto_` field. Only the stacked set carries
+#: it: SINGLE is exact by construction, so there the two would be equal and upstream emits one.
+QUERY_FIELDS = (
+    "gold_item_key",
+    "modification_types",
+    "modification_count",
+    "texto_modification_types",
+    "texto_modification_count",
+)
 
 
 def _as_record_from_obj(doc: Any, extra_fields: tuple[str, ...] = ()) -> Dict[str, Any]:
@@ -293,8 +304,14 @@ def _as_record_from_obj(doc: Any, extra_fields: tuple[str, ...] = ()) -> Dict[st
         "parameters": params,
         "text": text if isinstance(text, str) else pick("text", ""),
     }
+    # An extra field is carried only when the record actually has it. Adding an all-null column
+    # to a query set the delivery never gave the field to would change that table's parquet
+    # digest for no information — and those digests are what `runs/*/run_meta.json` stamps, so
+    # the churn would invalidate runs that are still perfectly valid. Absence is then loud at
+    # read time instead of silently stratifying on nulls.
     for field in extra_fields:
-        record[field] = pick(field)
+        if field in md or field in root:
+            record[field] = pick(field)
     return record
 
 
