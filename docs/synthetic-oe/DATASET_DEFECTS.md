@@ -43,6 +43,11 @@ that ceiling (484 of its 492 identity misses are these leaves).
 grouping itself from the corpus, deterministically, which is what `identity_misses.md` does.
 **Evidence.** `results/S2/identity_misses.md`, generated. Same class reported upstream for
 `OEG010$`.
+**Delivered 2026-09-27, not yet taken in.** `OE_duplicate_texto_groups.json`
+(`b3cfcad47c71c5eb…`, 292 groups / 776 leaves, verified against the handoff) plus the
+`duplicate_texto_group` field inside the corpus files. **D-033 (2026-09-27): take the sidecar
+only and exclude those queries at scoring time**, leaving the corpus and S2's digests alone; S3
+takes it.
 
 ## P2 — The stacked dose fields overstate what the TEXTO shows · **corrected upstream, not taken in**
 
@@ -56,6 +61,12 @@ by-dose strata are suspended in its report.
 here. S7 and S8 must read the corrected field.
 **SINGLE is clean**: audited upstream, 4,439 of 4,439 with exactly one modification visible in the
 TEXTO, so L1 slice membership — derived from `modification_count == 1` — stands as measured.
+**Delivered 2026-09-27, not yet taken in.** `syn/stacked-audit` is merged; `OE_stacked_texto.json`
+(`c34a222ae2af05a0…`, verified) carries `texto_modification_count` / `texto_modification_types`,
+with the same ids and texts as ours (checked row for row). Visible-count distribution 1→5, 2→1,252,
+3→1,465, 4→1,799, 5→401, 6→76. Taking it changes that query set's digest, so D-033 keeps the
+current file under a versioned name. `template_paraphrase` is still visible in all 4,998 and
+`reorder` in none, so P3's dose/composition confound survives — E3 exists for that.
 
 ## P3 — `template_paraphrase` is counted twice in the stacked set · **open** (D-025)
 

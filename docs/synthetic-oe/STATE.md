@@ -3,7 +3,7 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-17 (S2 audited and closed) · **Updated by:** César
+**Last updated:** 2026-09-27 (upstream delivery ruled on) · **Updated by:** César
 
 ---
 
@@ -32,12 +32,13 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 - **S3** — not yet opened. Run `/sprint-open S3`.
 - **[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)** — every corpus defect in one place, classified
   by who fixes it. Opened 2026-09-17.
-- **Upstream, from `bc3cat-dataset` 2026-09-17:** corrected stacked dose fields
-  (`texto_modification_count`) delivered on `syn/stacked-audit` `fd4713d`, not merged and not
-  taken in here — stacked by-dose readings stay suspended until they are. SINGLE audited clean,
-  so the L1 slices stand. The 292 duplicate-`texto` groups are all intra-concept: item-level
-  identity caps at 0.9863, parent level is untouched. **D-031 awaits your ruling:** flag those
-  groups (proposed) or collapse them, which would invalidate S2's runs by corpus digest.
+- **Upstream delivery of 2026-09-27 (`synthetic` @ `f2457fa`), ruled on, not yet taken in.**
+  Both digests verified against `D:/…/bc3cat-dataset/data/synthetic/handoff_OE/`. **S3 takes it**
+  under **D-033**: the sidecar `OE_duplicate_texto_groups.json` only — never the corpus files with
+  the field inside, whose digest would change and break S2's runs — and the corrected stacked file
+  beside a versioned copy of the current one. Item-level scoring excludes queries whose gold is a
+  duplicate (776/35,422 `texto`, 29/2,206 `single_texto`, 55/2,521 `stacked_texto`; dev only, test
+  is clean), so every scored query has exactly one valid answer.
 
 
 ## Incident — 2026-09-14
@@ -53,8 +54,10 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-`/sprint-open S3`, with ColBERT as the L1 reference (D-029, amended) and the two identity
-ceilings recorded above.
+`/sprint-open S3`. Its first work item is the 2026-09-27 intake under D-033 — sidecar join,
+corrected stacked file, MANIFEST digests — then a duplicate-aware re-score of S2's 15 runs from
+their stored top-100 lists, as the control S3 inherits. ColBERT is the L1 reference (D-029,
+amended); the identity ceilings above stand.
 
 ## Latest results
 

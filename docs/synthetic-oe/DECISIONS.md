@@ -585,3 +585,33 @@ win. The oracle is strong, partial and confined to the L2/L3 layers.
 the reason is the query set, not the scorer. Nothing in the harness needs changing. What S9's
 deployable variant must not do is mint parameter tokens from a parsed `parameters` field, since
 a real query has none.
+
+### D-033 — Duplicate-`texto` leaves are excluded at scoring time, not from the corpus
+**Status:** Accepted · **Date:** 2026-09-27 · **Owner:** César · **Raised in:** the 2026-09-27 upstream delivery (P1 fixed by flag, D-031)
+**Requirement.** Every scored query must have one and only one valid answer.
+**Decision.** Item-level scoring **excludes the queries whose gold leaf belongs to a
+`duplicate_texto_group`**, and reports the excluded n beside every figure. The corpus is **not**
+touched: all 70,242 leaves stay indexed, and the duplicated leaves remain as distractors.
+Parent-level scoring excludes nothing, because no group spans two concepts.
+**Why this satisfies the requirement.** Ambiguity is a property of the gold, not of the pool. If a
+query's gold has a unique `texto`, no second leaf can be a valid answer for it — a duplicated pair
+elsewhere in the catalogue is not identical to *this* gold, so a duplicate winning is a real miss.
+A query whose gold does share its text is undecidable from the indexed field and is the one thing
+excluded.
+**Alternatives rejected, with their cost.** *Collapse to one leaf per group* (fuera 484 leaves,
+corpus 69,758) and *drop both concepts* (776 leaves, corpus 69,466) each change the target pool,
+hence the corpus digest, hence all 15 S2 runs: ≈7 h of rebuilding (ColBERT dominates) to buy a
+stronger claim — "every leaf has a unique `texto`" — and nothing else. Kept available as an S3
+sensitivity if that claim is ever needed.
+**Consequence.** Dev item-level n drops by 776 of 35,422 on `texto`, 29 of 2,206 on `single_texto`
+(5 `unit_conversion`, 2 `num_to_text`) and 55 of 2,521 on `stacked_texto`; `OEA050$` (576/576) and
+`OEG050$` (200/200) are wholly duplicated, so dev item-level rests on 40 of 42 concepts while both
+concepts keep their parent-level figures. **Test carries zero duplicate groups, so S12 is
+unaffected.** Every table states the corpus size and the scored n separately. D-032's ceiling
+column becomes 1.0 for the scored population, which is the point.
+**Intake rules for the delivery (S3).** Take the sidecar `OE_duplicate_texto_groups.json`
+(`b3cfcad4…`) and join on `gold_item_key`; do **not** re-take `OE_texto.json` / `OE_resumen.json`
+with the field inside, because their digest changes even though the texts do not, and S2's runs
+would stop resolving against the tree. Taking the corrected stacked file (`c34a222a…`, P2) does
+change that query set's digest, so the current `OE_stacked_texto.json` (`1bde2115…`) is kept under
+a versioned name and both digests are recorded in `MANIFEST.md`.
