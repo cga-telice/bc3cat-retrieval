@@ -15,6 +15,13 @@ corpus, who owns each item, and what may be done about it.
 | **H — harness defect** | this repo, with a test | Our code mis-reads a corpus that is correct. Fix it here; never patch the data. |
 | **C — property of the catalogue** | nobody | The thing the benchmark exists to measure. "Fixing" it destroys the phenomenon. |
 
+> **`H` here means *harness*, not *hypothesis*.** This register's `H1…H5` are defects in our code;
+> the proposal's `H1…H6` are the research hypotheses, and the two sets are unrelated — `H4` is a
+> missing version stamp here and super-additivity there. The collision was harmless while the
+> register stopped at `H3`; S3 added `H4` and `H5` and made it actively misleading. Renaming the
+> classes would touch every reference in this file and in `DECISIONS.md`, so it is flagged rather
+> than done: **cite a harness defect as "defect H4", never bare "H4".**
+
 **A preprocessing pass may act on P and H. It must not act on C.** Near-identical siblings,
 discriminating literals buried in parameter values, comparators inside those values, and the fact
 that a leaf's identity often lives in a number are not defects — they are the research object. A
@@ -164,6 +171,48 @@ Worth ≤0.007 to the BM25 arms and ColBERT, and −0.05/−0.06 to the structur
 requires the tie-free reading for every family.
 
 ---
+
+## H4 — `index/*/meta.json` does not stamp the ML stack that produced the embeddings · **open** (D-034)
+
+**Found in S3 work item 5.** An index's `meta.json` records `software: {python, sklearn}` and nothing
+else. For the four local dense arms the embeddings are produced by `torch`, `transformers` and
+`sentence-transformers`, none of which is recorded anywhere in the artefact.
+**Why it matters.** The branch's first operating rule says a number must be reproducible from
+`{run_id, config SHA, code commit, query-set digest}`. For a neural arm that set is **incomplete**: the
+same config and commit on two different `transformers` versions can produce different vectors, and
+nothing in the index says which produced these. The blocker behind D-034 was invisible for exactly
+this reason — it surfaced only when a model was actually loaded and failed, not from any stamp.
+**Interim.** The versions are recorded in `logs/S3/build_indexes.sh`'s captured output (torch
+2.2.2+cu121, transformers 4.57.6, sentence-transformers 3.4.1, sklearn 1.4.2). That is a log, not a
+stamp: it lives in a git-ignored directory and is not attached to the artefact.
+**Fix.** Have the builders record the versions of the libraries they actually imported. It touches
+every builder's `write_index_payload` call, so it is not a mid-sprint change; it should land before
+S12, since the frozen test evaluation is the one run that cannot be repeated.
+
+## H5 — The dirty-tree check disagrees between host and container, so stamps read `code_dirty: true` on a clean tree · **worked around** (S3)
+
+**Found in S3 work item 5**, after the first build pass stamped all seven OE indexes
+`code_dirty: true` over `src/index_builders/README.md`, a file nobody had touched.
+**Cause.** The repo sets `core.autocrlf=true` and `.gitattributes` pins `eol=lf` for `.py`, `.yaml`
+and `.sh` — but says nothing about `.md`. That README therefore sits on disk as CRLF against an LF
+blob: the host's git normalises it and reports a clean tree, while a container git with `autocrlf`
+unset reports all 54 of its lines modified. `provenance_stamp` asks git inside the container, so it
+got the false answer.
+**Reach.** Wider than the stamp. The same phantom is why `logs/S3/rederive_stacked.sh` printed
+`dirty=57` in work item 1, and why the S1 `resumen` run archived under design amendment A2 carries
+`code_dirty: true` on `src/index_builders/README.md` and `src/utils/build_results.py`. **That
+archiving was still correct** — an index or run stamped dirty cannot be cited either way — but the
+cause was line endings, not an uncommitted change.
+**Worked around.** `logs/S3/build_indexes.sh` sets `core.autocrlf=true` in the container so it agrees
+with the host, and **refuses to build at all** when `src/` or `configs/` is dirty. Checked before
+relying on it that the fix agrees rather than blinds: a real append to the same file still shows
+as ` M`. All seven indexes then rebuilt clean at `2dd653d`.
+**Not fixed, and why.** The permanent fix is `*.md text eol=lf` in `.gitattributes`, which only works
+alongside `git add --renormalize` over every markdown file — rewriting the frozen S3 design and making
+`git log -- SPRINT_S3_DESIGN.md` noisy, the opposite of what the freeze rule asks of it. Also note the
+guard lives in a **git-ignored** directory, as S2's did: it protects this sprint's builds and would
+vanish if `logs/` were cleaned. The durable place for it is `utils/provenance.py`, where it would
+cover every run and index rather than the ones this script drives.
 
 ## C1 — Identity is a control, not a quality bar · **recorded 2026-09-17**
 

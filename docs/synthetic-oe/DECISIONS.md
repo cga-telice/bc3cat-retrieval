@@ -803,3 +803,56 @@ mean of those columns reproduces each run's `metrics_dual.json` to 5e-5, for all
 Recall@k, RR and nDCG@10 are per-query values whose metric is their mean, so the mean over a subset
 is exactly the metric on that subset. A metric that is not a per-query mean could not be re-scored
 this way, and the assertion is what would catch one being added.
+
+### D-034 — The local dense arms move to a newer transformers, and all four are rebuilt on it
+**Status:** Accepted · **Date:** 2026-09-27 · **Owner:** César · **Raised in:** S3 work item 5
+**The blocker.** `Alibaba-NLP/gte-multilingual-base` cannot be loaded under `requirements.txt`'s pin
+(`transformers==4.26.0`, `sentence-transformers==2.2.2`), by either path the builder tries:
+sentence-transformers 2.2.2 has no `trust_remote_code` parameter at all, and transformers 4.26.0
+cannot resolve the model's cross-repo remote-code reference — it looks for a file literally named
+`Alibaba-NLP/new-impl--configuration.py` and gets a 404. Verified in a throwaway container that
+`transformers 4.57.6` + `sentence-transformers 3.4.1` loads GTE, E5 and hiiamsid, all 768-d.
+**Decision.** Upgrade the notebook container to `transformers>=4.41` / `sentence-transformers>=2.7`,
+and **rebuild all four local dense arms on it** — `dense_e5`, `dense_es_hiiamsid`, `dense_gte`,
+`dense_gte_instrQ`. Not just the two that needed it.
+**Why all four.** A ceiling table exists to be compared across arms. An E5 index built on the old
+pin sitting beside GTE indexes built on the new one would make the dense half of it incomparable,
+and the incomparability would be invisible in the numbers. `requirements.txt`'s pin is inherited
+from the previous study — its comment says "downgrade transformers to be compatible with PyTorch
+2.2.2" — not a scientific commitment; torch stays at 2.2.2+cu121 and the newer stack runs on it.
+**What is not rebuilt, and why that is safe.** The two BM25 arms are scikit-learn and the three
+BGE-M3 arms encode in the `bge-m3` container over HTTP, so none of them touches the notebook
+container's `transformers`. Their S2 stamps stay valid: `bm25_*` at `6336974`, `bge_m3_colbert` at
+`31bf1a1`. Rebuilding them would buy nothing and would cost ColBERT's 3 h.
+**Consequence.** All ten arms' indexes now report 70,242 docs and `code_dirty: false`; the seven
+built in S3 share commit `2dd653d`. The versions are recorded in `logs/S3/build_indexes.sh`'s output
+because **`index/*/meta.json` stamps only `{python, sklearn}`** — it does not record torch,
+transformers or sentence-transformers, which is exactly why this blocker was invisible until a model
+was actually loaded. Fixing that stamp touches every builder and is left as a tracked harness defect
+(H4) rather than done mid-sprint.
+
+### D-035 — The GTE arms follow the config, and the manuscript's GTE rows are a reporting defect
+**Status:** Accepted · **Date:** 2026-09-27 · **Owner:** César · **Raised in:** S3 work item 5
+**The problem.** Three sources disagree about which model the previous study's GTE rows describe:
+
+| Source | Model |
+|---|---|
+| `configs/dense_gte.yaml`, `configs/dense_gte_instrQ.yaml` | `Alibaba-NLP/gte-multilingual-base` for **both**, differing only in `query_prefix` |
+| `paper_28.tex` prose (L413, L758) | `Alibaba-NLP/gte-multilingual-base`, "base" and "instruct variant" |
+| `paper_28.tex` results table (L771–777) | **`GTE-large-en-v1.5`** (0.013) and **`GTE-Qwen2-instruct`** (0.014) |
+
+Those table labels name two entirely different models — one English-only, one 7B-class Qwen2-based.
+At most one account can be right, so **the previous study's GTE rows cannot be reproduced from
+`(config, code commit)`**, which is the contract this branch exists to enforce.
+**Decision.** S3 follows the **config**: `Alibaba-NLP/gte-multilingual-base` for both arms, differing
+only in the query prefix. It is the code of record and the only internally consistent account.
+**Verified, not assumed.** The two OE configs differ in exactly two lines, `name` and `query_prefix`,
+and their built indexes' `data/embeddings.npy` are **byte-identical** (`89be548e8ed6dd35`). The arms
+therefore differ only at query time, as declared. They still get separate index directories because
+`save_as` drives both the index *and* the run path, so sharing one would collide the runs.
+**Recorded as a defect of the previous submission**, the third of its kind after the unreported
+`hiiamsid` row and the wrong README results table. All three share a shape: a number published
+without a reproducible path back to what produced it.
+**And a hypothesis worth testing later.** If an **English-only** model really was run against a
+Spanish corpus, that explains GTE's 0.013 far better than "GTE is bad at this task". Testing it needs
+an eleventh arm, which D-012 does not have; it is a candidate probe sprint (S91+), not S3 work.
