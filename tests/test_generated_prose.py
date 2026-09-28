@@ -9,7 +9,8 @@ could emit, so the only way a number reaches a table is through a computed value
 Exempt: docstrings (never emitted), the cited reference tables (`PREVIOUS`, `OEB_REFERENCE`,
 whose provenance is the paper and the review analysis they name), and a short allowlist of
 numbers that are definitions rather than results — the 95 % interval level, the 100 % identity
-control, a ceiling of 1.0, the top-100 cutoff, a section number and a date.
+control, a ceiling of 1.0, the top-100 cutoff, a section number and a date. A metric's cutoff
+written into its name (`nDCG@10`) is part of the name, not a number.
 """
 
 from __future__ import annotations
@@ -21,7 +22,11 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-GENERATORS = ["src/utils/build_results_e0.py", "src/utils/build_overlap.py"]
+GENERATORS = [
+    "src/utils/build_results_e0.py",
+    "src/utils/build_overlap.py",
+    "src/utils/build_results_s3.py",
+]
 
 #: Tables of cited figures whose source is named beside them.
 CITED = {"PREVIOUS", "OEB_REFERENCE", "WORDS"}
@@ -29,7 +34,7 @@ CITED = {"PREVIOUS", "OEB_REFERENCE", "WORDS"}
 #: Numbers that are definitions, not results.
 ALLOWED = {"1.0", "95 %", "100", "100 %", "20.000", "2.6"}
 
-NUMBER = re.compile(r"(?<![\w.$§/-])\d+(?:[.,]\d+)*(?:\s?%)?(?![\w-])")
+NUMBER = re.compile(r"(?<![\w.$§/@-])\d+(?:[.,]\d+)*(?:\s?%)?(?![\w-])")
 
 
 def _docstrings(tree: ast.AST) -> set[int]:
@@ -92,6 +97,12 @@ def test_the_guard_catches_a_typed_p_value(tmp_path):
     bad = tmp_path / "bad.py"
     bad.write_text('lines = ["the two exceptions are noise (p = 0.845 and 0.417)"]\n', encoding="utf-8")
     assert [t for _, t in typed_numbers(bad)] == ["0.845", "0.417"]
+
+
+def test_the_guard_ignores_a_metric_name(tmp_path):
+    ok = tmp_path / "ok.py"
+    ok.write_text('lines = ["Acc@1, Recall@k, RR and nDCG@10 are per-query values"]\n', encoding="utf-8")
+    assert typed_numbers(ok) == []
 
 
 def test_the_guard_ignores_computed_values(tmp_path):

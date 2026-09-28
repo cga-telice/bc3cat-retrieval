@@ -29,7 +29,7 @@ How many of each method's identity misses were undecidable from the indexed fiel
 Two readings follow, and neither is a gate: D-032 stopped gating on identity, and a gate is not re-run after the fact.
 
 1. **`bge_m3_colbert`'s identity shortfall was almost entirely the corpus defect.** Of 492 misses, 484 were undecidable; 8 remain out of 34,646. G1 recorded this arm *ambiguous* because the clustered interval on 0.9861 straddled 0.98 — on the population where every query has one answer it reads its target back essentially perfectly. This is what D-032 anticipated in refusing to disqualify a method for failing to reach a ceiling its corpus denied it, and it is recorded as information, not as a re-reading of G1.
-2. **`bm25_unigram_params` is untouched by the exclusion — zero of its 21 misses were duplicate-gold.** That is not robustness; it is the oracle signal of D-010. It separates leaves that share a `texto` because it also indexes parameter tokens minted from the query's own `parameters` field, which a real query does not carry. A text-only method cannot do this even in principle.
+2. **`bm25_unigram_params` is untouched by the exclusion — 0 of its 21 misses were duplicate-gold.** That is not robustness; it is the oracle signal of D-010. It separates leaves that share a `texto` because it also indexes parameter tokens minted from the query's own `parameters` field, which a real query does not carry.
 
 `bm25_unigram`'s 3,471 remaining misses are consistent with S2's diagnosis in `results/S2/identity_misses.md`: the dominant mechanism is token subsumption between maintenance bands, not duplication.
 

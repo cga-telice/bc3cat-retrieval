@@ -66,6 +66,10 @@ STACKED_FEATS = REPO / "data" / "processed" / "OE_stacked_texto_feats.parquet"
 OUT = REPO / "docs" / "synthetic-oe" / "results" / "S3" / "s2_rescored"
 GENERATOR = "src/utils/build_results_s3.py"
 
+#: Gate G1's identity threshold, as frozen in SPRINT_S2_DESIGN.md (read against the
+#: concept-clustered interval, D-030). A definition, not a result.
+G1_THRESHOLD = 0.98
+
 #: The corpus stays whole (D-033); only the scored population shrinks.
 CORPUS_LEAVES = 70_242
 
@@ -218,7 +222,7 @@ def write_identity(runs: dict, flagged: set[str]) -> None:
         "| method | n scored | item, S2 reported | item, re-scored | Δ | CI (query) | CI (concept) | parent, S2 | parent, re-scored |",
         "|---|---:|---:|---:|---:|---|---|---:|---:|",
     ]
-    miss_rows = []
+    miss_rows, stats = [], {}
     for method in METHODS:
         perquery = runs[("texto", method)]["_perquery"]
         kept = scored(perquery, flagged, "item")
@@ -236,11 +240,21 @@ def write_identity(runs: dict, flagged: set[str]) -> None:
         )
         missed = perquery[perquery["item_acc1"] == 0]
         undecidable = int(missed["gold_item_key"].isin(flagged).sum())
+        stats[SHORT[method]] = {
+            "before": before,
+            "misses": len(missed),
+            "undecidable": undecidable,
+            "remaining": len(missed) - undecidable,
+            "scored": len(kept),
+        }
         miss_rows.append(
             f"| `{SHORT[method]}` | {len(missed):,} | {undecidable:,} | "
             f"{len(missed) - undecidable:,} | "
             f"{undecidable / len(missed) if len(missed) else float('nan'):.1%} |"
         )
+    colbert, params, unigram = (
+        stats["bge_m3_colbert"], stats["bm25_unigram_params"], stats["bm25_unigram"]
+    )
     lines += [
         "",
         "Parent level is identical by construction: no duplicate group crosses a concept, so the "
@@ -258,21 +272,23 @@ def write_identity(runs: dict, flagged: set[str]) -> None:
         "Two readings follow, and neither is a gate: D-032 stopped gating on identity, and a gate "
         "is not re-run after the fact.",
         "",
-        "1. **`bge_m3_colbert`'s identity shortfall was almost entirely the corpus defect.** Of 492 "
-        "misses, 484 were undecidable; 8 remain out of 34,646. G1 recorded this arm *ambiguous* "
-        "because the clustered interval on 0.9861 straddled 0.98 — on the population where every "
-        "query has one answer it reads its target back essentially perfectly. This is what D-032 "
-        "anticipated in refusing to disqualify a method for failing to reach a ceiling its corpus "
-        "denied it, and it is recorded as information, not as a re-reading of G1.",
-        "2. **`bm25_unigram_params` is untouched by the exclusion — zero of its 21 misses were "
-        "duplicate-gold.** That is not robustness; it is the oracle signal of D-010. It separates "
-        "leaves that share a `texto` because it also indexes parameter tokens minted from the "
-        "query's own `parameters` field, which a real query does not carry. A text-only method "
-        "cannot do this even in principle.",
+        f"1. **`bge_m3_colbert`'s identity shortfall was almost entirely the corpus defect.** Of "
+        f"{colbert['misses']:,} misses, {colbert['undecidable']:,} were undecidable; "
+        f"{colbert['remaining']:,} remain out of {colbert['scored']:,}. G1 recorded this arm "
+        f"*ambiguous* because the clustered interval on {f4(colbert['before'])} straddled "
+        f"{G1_THRESHOLD} — on the population where every query has one answer it reads its target "
+        "back essentially perfectly. This is what D-032 anticipated in refusing to disqualify a "
+        "method for failing to reach a ceiling its corpus denied it, and it is recorded as "
+        "information, not as a re-reading of G1.",
+        f"2. **`bm25_unigram_params` is untouched by the exclusion — {params['undecidable']:,} of "
+        f"its {params['misses']:,} misses were duplicate-gold.** That is not robustness; it is the "
+        "oracle signal of D-010. It separates leaves that share a `texto` because it also indexes "
+        "parameter tokens minted from the query's own `parameters` field, which a real query does "
+        "not carry.",
         "",
-        "`bm25_unigram`'s 3,471 remaining misses are consistent with S2's diagnosis in "
-        "`results/S2/identity_misses.md`: the dominant mechanism is token subsumption between "
-        "maintenance bands, not duplication.",
+        f"`bm25_unigram`'s {unigram['remaining']:,} remaining misses are consistent with S2's "
+        "diagnosis in `results/S2/identity_misses.md`: the dominant mechanism is token subsumption "
+        "between maintenance bands, not duplication.",
     ]
     write(OUT / "identity.md", lines + sources(runs, [("texto", m) for m in METHODS]))
 
