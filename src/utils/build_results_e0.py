@@ -19,6 +19,7 @@ typed into this file that no committed code produced, beside a table that printe
 from __future__ import annotations
 
 import gzip
+import importlib
 import json
 import re
 import sys
@@ -27,6 +28,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
+import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
@@ -77,7 +79,7 @@ METHOD_OF = {short: method for method, short, _ in TEN}
 #: The previous study's figures, from `docs/reviews/paper_28.tex` — the authoritative source; the
 #: README's table disagrees with it and must never be cited. `(item, parent, note)`.
 PREVIOUS = {
-    "bm25_unigram_params": (0.974, 0.985, "its own tuned point, `k1`=0.60/`b`=0.35"),
+    "bm25_unigram_params": (0.974, None, "its own tuned point, `k1`=0.60/`b`=0.35; parent given only as the BM25 0.873–0.985 range"),
     "bm25_unigram": (0.869, None, "reported at `k1`=0.80/`b`=0.35; parent given only as a 0.873–0.985 range"),
     "tfidf_phrases_replace": (0.708, 0.990, "the previous study's best TF-IDF, and its best parent-level arm"),
     "bge_m3_colbert": (0.448, 0.997, "its best neural arm"),
@@ -210,6 +212,42 @@ def gold_position(rec: dict) -> tuple[int | None, float | None, float]:
 # --------------------------------------------------------------------------- measurements
 
 
+def indexed_field(method: str) -> str:
+    """The corpus column the arm's index was built from, as its own builder chooses it."""
+    run = meta("texto", method)
+    cfg = yaml.safe_load((REPO / "configs" / Path(run["config"]).name).read_text(encoding="utf-8"))
+    feats_meta = json.loads((DATA / "OE_features_meta.json").read_text(encoding="utf-8"))
+    return importlib.import_module(f"index_builders.{cfg['method']['impl']}").select_field(feats_meta)
+
+
+def field_ceiling(field: str, dev: set[str]) -> tuple[int, float]:
+    """Unavoidable misses and Acc@1 ceiling on the dev queries when retrieval sees only `field`.
+
+    Leaves whose indexed text is identical cannot be told apart; of the m dev members of such a
+    group at most one can be ranked first, so m − 1 are unavoidable.
+    """
+    corpus = pd.read_parquet(DATA / "OE_long_feats.parquet", columns=["item_key", field])
+    corpus = corpus[corpus["item_key"].isin(dev)]
+    unavoidable = unavoidable_misses(corpus[field])
+    return unavoidable, 1 - unavoidable / len(dev)
+
+
+def unavoidable_misses(texts: pd.Series) -> int:
+    """Σ (m − 1) over groups of identical texts: all but one member of each group must miss."""
+    return int((texts.value_counts() - 1).sum())
+
+
+def top_k_selection(short: str) -> str:
+    """How the arm's retriever takes its top k, read from the retriever's source."""
+    module = meta("texto", METHOD_OF[short])["retriever_module"]
+    source = (REPO / "src" / Path(*module.split("."))).with_suffix(".py").read_text(encoding="utf-8")
+    if "argpartition" in source:
+        return "`np.argpartition`"
+    if ".search(" in source:
+        return "FAISS `index.search`"
+    raise ValueError(f"{module}: top-k selection not recognised")
+
+
 def ceiling_rows(dup: set[str]) -> dict[str, dict]:
     """Everything the ceiling table and its prose print, per arm, computed once."""
     groups = list(sidecar()["groups"].values())
@@ -217,18 +255,26 @@ def ceiling_rows(dup: set[str]) -> dict[str, dict]:
     rows = {}
     for method, short, oracle in TEN:
         frame = perquery("texto", method)
+        field = indexed_field(method)
+        unavoidable, ceiling = field_ceiling(field, set(frame["gold_item_key"]))
         kept = scored(frame, dup, "item")
         dups = frame[frame["gold_item_key"].isin(dup)]
         ranked = top_lists("texto", method, set(dups["gold_item_key"]))
-        tied = outside = 0
+        tied = outside = sibling_above = 0
         for rec in ranked.values():
             _, gold_score, top = gold_position(rec)
-            tied += gold_score is not None and gold_score == top
-            outside += rec["candidates"][0]["index_item_key"] not in group_of[rec["gold_item_key"]]
+            level = gold_score is not None and gold_score == top
+            inside = rec["candidates"][0]["index_item_key"] in group_of[rec["gold_item_key"]]
+            tied += level
+            outside += not inside
+            sibling_above += inside and not level
         hit = dict(zip(dups["gold_item_key"], dups["item_acc1"]))
         per_group = [sum(hit[m] for m in g) for g in groups]
         rows[short] = {
             "oracle": oracle,
+            "field": field,
+            "unavoidable": unavoidable,
+            "ceiling": ceiling,
             "n_all": len(frame),
             "all": float(frame["item_acc1"].mean()),
             "item": stats(kept, "item", f"ceil|{short}"),
@@ -236,6 +282,7 @@ def ceiling_rows(dup: set[str]) -> dict[str, dict]:
             "undecidable": len(dups),
             "resolved": int(dups["item_acc1"].sum()),
             "tied_at_top": tied,
+            "sibling_above": sibling_above,
             "rank1_outside": outside,
             "groups_multi": sum(h > 1 for h in per_group),
             "groups_zero": sum(h == 0 for h in per_group),
@@ -299,8 +346,12 @@ def sweep(dup: set[str]) -> list[dict]:
         for queryset in SWEEP_SETS:
             surface = {(k1, b): sweep_acc(variant, k1, b, queryset, dup) for k1 in K1_VALUES for b in B_VALUES}
             surface = {k: v for k, v in surface.items() if v is not None}
-            best = max(surface, key=surface.get)
+            top = max(surface.values())
+            argmaxes = sorted(k for k, v in surface.items() if v == top)
+            # An exact tie that includes the transferred point is reported as a tie, never as a win.
+            best = TRANSFERRED if TRANSFERRED in argmaxes else argmaxes[0]
             cell = {"variant": variant, "queryset": queryset, "surface": surface, "best": best,
+                    "argmaxes": argmaxes,
                     "ref": surface[TRANSFERRED], "delta": surface[best] - surface[TRANSFERRED]}
             if best != TRANSFERRED:
                 a = perquery(queryset, point(variant, *best))
@@ -317,6 +368,21 @@ def sweep(dup: set[str]) -> list[dict]:
                                      meta(queryset, point(variant, *TRANSFERRED))["query_set_sha256"]))
             cells.append(cell)
     return cells
+
+
+def argmax_outcome(cells: list[dict]) -> str:
+    """How often the transferred point is the unique argmax, ties for it, or is beaten."""
+    unique = [c for c in cells if c["argmaxes"] == [TRANSFERRED]]
+    tied = [c for c in cells if TRANSFERRED in c["argmaxes"] and len(c["argmaxes"]) > 1]
+    text = f"the unique argmax in {len(unique)} of {len(cells)} cells"
+    if tied:
+        text += (
+            f" and ties exactly for it in {WORDS[len(tied)]} more ("
+            + "; ".join(f"`{c['variant']}` / `{c['queryset']}` with "
+                        + english_list([pt(a) for a in c["argmaxes"] if a != TRANSFERRED]) for c in tied)
+            + ")"
+        )
+    return text
 
 
 def shape_in_b(cells: list[dict]) -> tuple[int, int, list[tuple[float, int]], int]:
@@ -367,15 +433,22 @@ def write_ceiling(dup: set[str], rows: dict[str, dict], sparse: dict, resumen_hi
         "Both levels carry a query-level and a concept-clustered interval. The parent level is scored on "
         "every query: a duplicate's gold concept is decidable even where its leaf is not.",
         "",
-        "| method | | item, all queries | corpus ceiling | headroom | item, scored | n scored | CI (query) | CI (concept) | parent | CI (query) | CI (concept) |",
-        "|---|---|---:|---:|---:|---:|---:|---|---|---:|---|---|",
+        "`field ceiling` is the ceiling of the column the arm actually indexes, as its builder's "
+        "`select_field` names it: leaves whose indexed text is identical cannot be told apart, so each "
+        "such group costs all but one of its members. For an arm that indexes `texto` in any rendering "
+        "this is the corpus ceiling above; for an arm that also indexes the record's `parameters` it is "
+        "not, because the parameters differ where the `texto` does not. Headroom is observed ÷ field "
+        "ceiling.",
+        "",
+        "| method | | indexed field | item, all queries | field ceiling | headroom | item, scored | n scored | CI (query) | CI (concept) | parent | CI (query) | CI (concept) |",
+        "|---|---|---|---:|---:|---:|---:|---:|---|---|---:|---|---|",
     ]
     for _, short, oracle in TEN:
         r = rows[short]
         s, p = r["item"], r["parent"]
         lines.append(
-            f"| `{short}` | {'**oracle**' if oracle else ''} | {f4(r['all'])} | {corpus_ceiling:.4f} | "
-            f"{r['all'] / corpus_ceiling:.4f} | **{f4(s['acc'])}** | "
+            f"| `{short}` | {'**oracle**' if oracle else ''} | `{r['field']}` | {f4(r['all'])} | {r['ceiling']:.4f} | "
+            f"{r['all'] / r['ceiling']:.4f} | **{f4(s['acc'])}** | "
             f"{s['n']:,} | {fci(s['q'])} | {fci(s['c'])} | {f4(p['acc'])} | {fci(p['q'])} | {fci(p['c'])} |"
         )
 
@@ -384,7 +457,9 @@ def write_ceiling(dup: set[str], rows: dict[str, dict], sparse: dict, resumen_hi
     at_ceiling = [s for s in text_only if rows[s]["item"]["acc"] >= AT_CEILING]
     above = [s for s in text_only if rows[s]["resolved"] > n_groups]
     below = sorted((s for s in text_only if rows[s]["resolved"] < n_groups), key=lambda s: -rows[s]["resolved"])
-    over_text = [s for s in text_only if rows[s]["all"] > corpus_ceiling]
+    over_text = [s for s in text_only if rows[s]["all"] > rows[s]["ceiling"]]
+    texto_bound = [s for s in rows if rows[s]["unavoidable"] == unavoidable]
+    assert set(text_only) <= set(texto_bound), "a text-only arm's field has a different ceiling"
     best_oracle = max(oracles, key=lambda s: rows[s]["resolved"])
     other_oracle = [s for s in oracles if s != best_oracle]
 
@@ -427,12 +502,22 @@ def write_ceiling(dup: set[str], rows: dict[str, dict], sparse: dict, resumen_hi
                             f"{rows[s]['groups_zero']:,} entirely" for s in above])
             + ", with the gold's score **exactly** equal to rank 1's on "
             + english_list([f"{rows[s]['tied_at_top']:,}" for s in above])
-            + " of the undecidable queries respectively, so which member wins is the tie-break. The "
-            "retrievers take the top k with `np.argpartition`, which does not break ties stably, so queries "
-            "with the same text can resolve the same tie differently, and the surplus is a coin that "
-            "happened to land favourably. No text-only arm resolves the undecidable queries: the oracle "
-            "arms are not *better* at identity, they are answering a different question, one in which the "
-            "answer is determined.",
+            + " of the undecidable queries respectively, so which member wins is the tie-break. "
+            + english_list([f"`{s}` takes its top k with {top_k_selection(s)}" for s in above])
+            + "; neither orders an exact tie by anything the query controls, so queries with the same text "
+            "can resolve the same tie differently, and the surplus is a coin that happened to land "
+            "favourably. No text-only arm resolves the undecidable queries: the oracle arms are not "
+            "*better* at identity, they are answering a different question, one in which the answer is "
+            "determined.",
+            "",
+            "Not every undecidable query is an exact tie, though: a group sibling holds rank 1 with a "
+            "score strictly above the gold's on "
+            + english_list([f"{rows[s]['sibling_above']:,} of `{s}`'s {rows[s]['undecidable']:,}" for s in above])
+            + ". The sibling and the gold have the same indexed text, so for these arms identical inputs did "
+            "not always encode to identical scores. Batched encoding on a GPU is not guaranteed "
+            "bit-reproducible across batch composition, which would produce this; it was not tested, "
+            "and it is why A7's claim that blocking changes memory and not results cannot be checked "
+            "exactly for the dense arms.",
         ]
     lines += [
         "",
@@ -443,15 +528,17 @@ def write_ceiling(dup: set[str], rows: dict[str, dict], sparse: dict, resumen_hi
         + " often put a document outside the group at rank 1, so they lose these queries the way they "
         "lose their others rather than by picking the wrong sibling.",
         "",
-        "**Headroom** is observed ÷ corpus ceiling, as D-032 requires. It exceeds 1.0 by a margin for the "
-        "oracle arms — "
-        + english_list([f"`{s}` {rows[s]['all'] / corpus_ceiling:.4f}" for s in oracles])
-        + " — because the ceiling binds a `texto`-only method and does not bind an arm that also indexes "
-        "the record's `parameters`."
+        "**Headroom** is observed ÷ field ceiling, as D-032 requires. The oracle arms' fields are not "
+        "bound by the `texto` duplicates: "
+        + english_list([f"`{s}`'s `{rows[s]['field']}` leaves {rows[s]['unavoidable']:,} unavoidable, a "
+                        f"ceiling of {rows[s]['ceiling']:.4f} and headroom {rows[s]['all'] / rows[s]['ceiling']:.4f}"
+                        for s in oracles])
+        + ". Against the `texto` ceiling they would read above 1.0, which is the sign that the `texto` "
+        "ceiling is not theirs."
         + (
-            " A text-only arm can exceed it only by a tie-breaking surplus, and one does: "
-            + english_list([f"`{s}` at {rows[s]['all'] / corpus_ceiling:.5f}, "
-                            f"{round((rows[s]['all'] - corpus_ceiling) * n_all):,} query's worth" for s in over_text])
+            " A text-only arm can exceed its ceiling only by a tie-breaking surplus, and one does: "
+            + english_list([f"`{s}` at {rows[s]['all'] / rows[s]['ceiling']:.5f}, "
+                            f"{round((rows[s]['all'] - rows[s]['ceiling']) * n_all):,} query's worth" for s in over_text])
             + "."
             if over_text else ""
         )
@@ -510,7 +597,7 @@ def write_ceiling(dup: set[str], rows: dict[str, dict], sparse: dict, resumen_hi
 # --------------------------------------------------------------------------- E0(b) replication
 
 
-def write_replication(dup: set[str], cells: list[dict], coverage: tuple[dict, dict, int]) -> dict:
+def write_replication(dup: set[str], rows: dict[str, dict], cells: list[dict], coverage: tuple[dict, dict, int]) -> dict:
     oe_texto = json.loads((DATA / "OE_texto.json").read_text(encoding="utf-8"))
     oeb_texto = json.loads((DATA / "OEB_texto.json").read_text(encoding="utf-8"))
     n_sub = len({r["parent_key"][:3] for r in oe_texto})
@@ -529,19 +616,27 @@ def write_replication(dup: set[str], cells: list[dict], coverage: tuple[dict, di
         "query. The previous figures are quoted from `docs/reviews/paper_28.tex`, which is "
         "authoritative; the README's results table disagrees with it and must never be cited.",
         "",
-        "| method | | OE item | n scored | CI (query) | CI (concept) | OE parent | CI (query) | CI (concept) | previous item | previous parent | note |",
-        "|---|---|---:|---:|---|---|---:|---|---|---:|---:|---|",
+        "Each arm is read against **its own ceiling** (D-032): `ceiling` is the arm's identity Acc@1 "
+        "from `ceiling.md` at the same level and on the same population — scored at item level, all "
+        "queries at parent level — and `headroom` is `resumen` ÷ ceiling, the share of what the arm can "
+        "do on its own target that survives the summary.",
+        "",
+        "| method | | OE item | n scored | CI (query) | CI (concept) | ceiling | headroom | OE parent | CI (query) | CI (concept) | ceiling | headroom | previous item | previous parent | note |",
+        "|---|---|---:|---:|---|---|---:|---:|---:|---|---|---:|---:|---:|---:|---|",
     ]
-    item = {}
+    item, item_parent = {}, {}
     for method, short, oracle in TEN:
         frame = perquery("resumen", method)
         s = stats(scored(frame, dup, "item"), "item", f"rep|{short}")
         p = stats(frame, "parent", f"repp|{short}")
         item[short] = s
+        item_parent[short] = p["acc"]
         prev_i, prev_p, note = PREVIOUS[short]
+        ceil_i, ceil_p = rows[short]["item"]["acc"], rows[short]["parent"]["acc"]
         lines.append(
             f"| `{short}` | {'**oracle**' if oracle else ''} | **{f4(s['acc'])}** | {s['n']:,} | {fci(s['q'])} | "
-            f"{fci(s['c'])} | {f4(p['acc'])} | {fci(p['q'])} | {fci(p['c'])} | {prev_i:.3f} | "
+            f"{fci(s['c'])} | {f4(ceil_i)} | {s['acc'] / ceil_i:.4f} | {f4(p['acc'])} | {fci(p['q'])} | "
+            f"{fci(p['c'])} | {f4(ceil_p)} | {p['acc'] / ceil_p:.4f} | {prev_i:.3f} | "
             f"{f'{prev_p:.3f}' if prev_p is not None else '—'} | {note} |"
         )
 
@@ -558,6 +653,22 @@ def write_replication(dup: set[str], cells: list[dict], coverage: tuple[dict, di
             f"{pt(TRANSFERRED)} — so the row is not an artefact of the point we carry.",
         ]
 
+    over_parent = [short for _, short, _ in TEN
+                   if item_parent[short] > rows[short]["parent"]["acc"]]
+    if over_parent:
+        lines += [
+            "",
+            "A headroom above 1.0 means the summary does better than the arm's own target text: "
+            + english_list([f"`{s}` finds the concept from `resumen` at {f4(item_parent[s])} against "
+                            f"{f4(rows[s]['parent']['acc'])} from its own `texto`" for s in over_parent])
+            + ". Its identity figure is depressed by the unnormalised scoring `ceiling.md` diagnoses, so "
+            "its own target is not an upper bound for it; why a summary suffers less from that was not "
+            "tested."
+            if over_parent == ["bge_m3_sparse"] else
+            "A headroom above 1.0 means the summary does better than the arm's own target text: "
+            + english_list([f"`{s}` at parent level" for s in over_parent]) + ".",
+        ]
+
     oeb, oe_resumen, oeb_in_test = coverage
     moved = [c for c in cells if c["best"] != TRANSFERRED]
     lines += [
@@ -570,8 +681,8 @@ def write_replication(dup: set[str], cells: list[dict], coverage: tuple[dict, di
         "reference, not a contrast.",
         "",
         f"1. **Tuning was not tested on `resumen`.** The sweep ran on {english_list([f'`{q}`' for q in SWEEP_SETS])}. "
-        f"There, {pt(TRANSFERRED)} is the argmax in {len(cells) - len(moved)} of {len(cells)} cells and the "
-        "other cells gain nothing detectable ("
+        f"There, {pt(TRANSFERRED)} is {argmax_outcome(cells)}, and the cells where it is beaten gain "
+        "nothing detectable ("
         + "; ".join(f"{fd(c['delta'])}, p = {fp(c['p'])}" for c in moved)
         + "). On `resumen` itself there are two points, "
         + (f"{f4(item['bm25_unigram']['acc'])} and {f4(item['bm25_unigram@previous']['acc'])} for "
@@ -626,7 +737,8 @@ def write_transferability(cells: list[dict], lengths: dict[str, float]) -> None:
         else:
             extra = ("—", "—", "—")
         rows.append(
-            f"| `{c['variant']}` | `{c['queryset']}` | {pt(c['best'])} | {f4(c['surface'][c['best']])} | "
+            f"| `{c['variant']}` | `{c['queryset']}` | {' = '.join(pt(a) for a in c['argmaxes'])} | "
+            f"{f4(c['surface'][c['best']])} | "
             f"{f4(c['ref'])} | {fd(c['delta'])} | {extra[0]} | {extra[1]} | {extra[2]} |"
         )
     lines += [
@@ -634,8 +746,8 @@ def write_transferability(cells: list[dict], lengths: dict[str, float]) -> None:
         "|---|---|---|---:|---:|---:|---|---:|---|",
         *rows,
         "",
-        f"**In {len(cells) - len(moved)} of {len(cells)} cells the argmax *is* the transferred point.** In the "
-        f"{WORDS[len(moved)]} where it is not, the paired contrast straddles 0 and the flip counts are near-symmetric: "
+        f"**The transferred point is {argmax_outcome(cells)}.** In the "
+        f"{WORDS[len(moved)]} where it is beaten, the paired contrast straddles 0 and the flip counts are near-symmetric: "
         "those settings reshuffle which queries succeed rather than retrieving better. Both variants "
         f"therefore keep **{pt(TRANSFERRED)}** into S4 (D-036, referred to César because the frozen rule "
         "names the argmax and S2 rejected D-027 for reinterpreting a rule after seeing results).",
@@ -649,11 +761,13 @@ def write_transferability(cells: list[dict], lengths: dict[str, float]) -> None:
         "",
     ]
     mono, peaked, peak_b, total = shape_in_b(cells)
-    corners = sorted({pt(c["best"]) for c in cells})
-    k1_best = sorted({f"{c['best'][0]:.2f}" for c in cells})
+    corners = sorted({pt(a) for c in cells for a in c["argmaxes"]})
+    k1_every = set.intersection(*({a[0] for a in c["argmaxes"]} for c in cells))
     lines += [
-        f"Item Acc@1 on the duplicate-free population. Every argmax sits at {english_list(corners)}, so "
-        f"always at `k1` = {english_list(k1_best)}, the lowest value swept. In `b` the surface is "
+        f"Item Acc@1 on the duplicate-free population. The argmaxes sit at {english_list(corners)}"
+        + (f", and every cell has one at `k1` = {min(K1_VALUES):.2f}, the lowest value swept"
+           if min(K1_VALUES) in k1_every else "")
+        + ". In `b` the surface is "
         f"single-peaked in {peaked} of {total} (variant, set, `k1`) rows, the peak is at `b` = "
         + english_list([f"{b:.2f} in {n}" for b, n in peak_b])
         + f", and accuracy falls at every step up in `b` in only {mono}: it rises to a peak at low `b` "
@@ -745,7 +859,7 @@ def main() -> None:
     hiiamsid = stats(scored(perquery("resumen", METHOD_OF["dense_es_hiiamsid"]), dup, "item"), "item",
                      "rep|dense_es_hiiamsid")
     write_ceiling(dup, rows, sparse_diagnosis(dup), hiiamsid)
-    write_replication(dup, cells, replication_coverage())
+    write_replication(dup, rows, cells, replication_coverage())
     write_transferability(cells, query_lengths())
     write_provenance()
     print(f"written: {OUT.relative_to(REPO)}")
