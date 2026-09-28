@@ -54,6 +54,14 @@ OE_SUPERSEDED = [
     "OE_stacked_texto_norm__81cd501b.parquet",
     "OE_stacked_texto_feats__7b0894e6.parquet",
 ]
+# S91's two renderings of `resumen` and the decoder table they come from
+# (`src/utils/build_resumen_renderings.py`). Generated here, not delivered, so no intake digest;
+# recorded so the S91 runs, stamped against their derived tables, have a source on record.
+OE_S91 = [
+    "OE_resumen_decoded.json",
+    "OE_resumen_stripped.json",
+    "OE_resumen_decoder.json",
+]
 OEB = [
     "OEB_texto.json",
     "OEB_resumen.json",
@@ -128,7 +136,7 @@ def main() -> None:
     ).strip()
 
     rows: list[tuple[str, int, int | str, str, str]] = []
-    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OEB:
+    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OEB:
         p = DATA / name
         digest = sha256(p)
         expected = INTAKE_PREFIXES.get(name)
