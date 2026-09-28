@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 work items 1–8 done) · **Updated by:** César
+**Last updated:** 2026-09-28 (S3 work items 1–9 done) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, work items 1–8 done. **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, work items 1–9 done. **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -30,8 +30,8 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## In flight
 
-- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A9).
-  **Work items 1–8 done** 2026-09-28; 9–11 open (overlap tables, generated tables, tests). D-012 closed on the ten-method set.
+- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A10).
+  **Work items 1–9 done** 2026-09-28; 10–11 open (the generated `results/S3/` tables, remaining tests). D-012 closed on the ten-method set.
 - **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one
   `code_dirty: false`: `bm25_*` at `6336974`, `bge_m3_colbert` at `31bf1a1`, the other seven at
   `2dd653d`. The four **local dense** arms run on `transformers 4.57.6` / `sentence-transformers
@@ -82,6 +82,25 @@ against the tree. Full tables come with work item 10; the two things already set
 identical `texto` only because they index the record's `parameters` (D-010, confirmed independently).
 Below the ceiling and genuinely so: `bm25_unigram` 0.8870, `dense_e5` 0.5073, `dense_gte_instrQ`
 0.1083, `dense_gte` 0.0975, **`bge_m3_sparse` 0.0509**.
+
+**OE is a less verbatim benchmark than OEB, and that explains the replication gap.** The overlap
+generator validates itself against the review analysis's OEB figures before reporting anything —
+94.09 → **94.10 %** lexical mean, median **exact**, numeric 99.93 → 99.96 % — so the definition is the
+one the reviewers' objection was granted on. On OE dev, `resumen→texto` lexical coverage is
+**79.38 %**: fifteen points less verbatim. With the operating point shown to transfer (D-036), that is
+the mechanism behind tuned BM25's 0.974 on OEB against **0.6473** here. **The previous headline was
+measured on the chapter where the task is most nearly lexical containment** (D-037). Carry the
+confound: chapter and regime are not separable, so the claim is "does not replicate *on OE*", not
+"the number was wrong".
+
+**Numeric coverage is blind to two of the four L1 types** (D-038). `num_to_text` removes exactly one
+number per query (4.14 → 3.14) and `unit_expansion` 0.64, by spelling them out — the number is not
+*missed*, it is gone from the query, so coverage stays pinned at 100 %. Only `unit_conversion`, which
+rewrites a value, shows as lost coverage (79.14 %, barely half its queries keeping all numbers). H5 is
+therefore stated over **both** coverage and the query-vs-gold number count; over coverage alone it
+would score the sprint's sharpest L1 condition as doing nothing. D-004's sensitivity is done: dropping
+doubled-token queries moves lexical mean by 0.08–0.28 pp, so the pantry artefact does not distort the
+distribution.
 
 **The BM25 operating point transfers, and that is a negative result worth having.** 25 points × 2
 variants × 3 query sets, 144 runs, 0 failures. In 4 of 6 cells the argmax **is** `k1`=0.60 / `b`=0.35;

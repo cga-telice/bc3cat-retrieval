@@ -892,3 +892,51 @@ S2's for nothing measurable in return.
 threat to the previous study's tuning instead of confirming one. The previous headline's weakness is
 not its operating point. S4 inherits 0.60/0.35 for both variants, and the full surface is reported so
 that the claim is checkable rather than asserted.
+
+### D-037 — OE is a *less* verbatim benchmark than OEB, and that is what the replication gap measures
+**Status:** Finding · **Date:** 2026-09-28 · **Raised in:** S3 work item 9
+**The measurement, validated before it was used.** The overlap generator recomputes the review
+analysis's OEB figures first and refuses to report anything if they do not return: lexical mean
+94.09 → **94.10 %**, median 94.74 → **94.74 %** (exact), fully contained 7.72 → **7.80 %**, numeric
+99.93 → **99.96 %**. So the definition is the one the reviewers' objection was granted on, not a close
+relative: distinct normalised query tokens looked up in the target's token set.
+**The finding.** On OE dev, `resumen→texto` lexical coverage is **79.38 %**, against OEB's 94.09 % —
+**15 points less verbatim**. The identity control returns exactly 100 % on every coverage column, so
+this is a property of the corpus and not of the measurement.
+**Why it matters.** It supplies the mechanism for E0(b)'s result. Tuned BM25 scored 0.974 on OEB and
+reaches **0.6473** on OE dev, and D-036 established that the operating point transfers — so the drop
+is not tuning. It is that OE's summaries are markedly less verbatim copies of its long descriptions
+than OEB's were. **The previous headline was not merely tuned to a chapter; it was measured on the
+chapter where the task is most nearly lexical containment.** This is H5's claim arriving early and
+from an unexpected direction: not as mediation of the *modification* effects, but as an explanation of
+the baseline itself.
+**A caveat this branch should carry from here on.** Chapter is confounded with regime. OEB is 67.6 %
+of the corpus and the only chapter the previous study used; OE is what this branch measures. Any
+claim of the form "the previous result does not replicate" must say *on OE*, and the honest reading is
+that the two chapters pose different tasks, not that one of the numbers is wrong.
+
+### D-038 — Numeric coverage is blind to two of the four L1 types, so H5 needs two columns
+**Status:** Finding · **Date:** 2026-09-28 · **Raised in:** S3 work item 9
+**Measured on the same leaves**, query against its own gold:
+
+| type | numeric coverage | numbers / query | gold numbers / query | Δ |
+|---|---:|---:|---:|---:|
+| `num_to_text` | **100.00 %** | 3.14 | 4.14 | **−1.00** |
+| `unit_expansion` | **100.00 %** | 3.68 | 4.32 | −0.64 |
+| `unit_conversion` | 79.14 % | 4.28 | 4.43 | −0.15 |
+| the other six | 100.00 % | — | — | +0.00 |
+
+**The point.** `num_to_text` removes exactly one number per query by spelling it out, and
+`unit_expansion` removes 0.64. The affected number is not *missed* by the target — it is no longer in
+the query to miss — so numeric coverage stays pinned at 100 % while the numeric surface the retriever
+matches on has shrunk. Only `unit_conversion`, which rewrites a value rather than removing it, shows
+as lost coverage, at 79.14 % with barely half its queries retaining all their numbers.
+**Consequence.** H5 is stated over **both** numeric coverage and the query-vs-gold number count.
+Stated over coverage alone it would score `num_to_text` — the condition under which tuned BM25 falls
+to 0.098 item-level, the sprint's sharpest L1 result — as doing nothing at all. The overlap table
+carries both columns and S6's mediation model must use both.
+**D-004 sensitivity, done as required.** Excluding queries with a doubled token moves lexical mean by
+0.08 pp on `single_texto` (93.90 → 93.82) and 0.28 pp on `stacked_texto` (68.04 → 67.76). The pantry
+artefact does not distort the overlap distribution. The detector is the text itself — an immediately
+repeated token — and it is sound here because the rate across the corpus's own `texto` is **zero**,
+asserted over all 70,242 documents by `tests/test_overlap.py`.
