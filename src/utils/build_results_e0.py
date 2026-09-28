@@ -162,8 +162,8 @@ def write_ceiling(dup: set[str]) -> None:
         "those queries (D-033), which is why the scored column below has a ceiling of exactly **1.0** "
         "and headroom is the observed value itself.",
         "",
-        "| method | | item, all queries | item, scored | n scored | CI (query) | CI (concept) | parent | CI (query) |",
-        "|---|---|---:|---:|---:|---|---|---:|---|",
+        "| method | | item, all queries | corpus ceiling | headroom | item, scored | n scored | CI (query) | CI (concept) | parent | CI (query) |",
+        "|---|---|---:|---:|---:|---:|---:|---|---|---:|---|",
     ]
     for method, short, oracle in TEN:
         frame = perquery("texto", method)
@@ -171,8 +171,10 @@ def write_ceiling(dup: set[str]) -> None:
         s = stats(kept, "item", f"ceil|{short}")
         p = stats(frame, "parent", f"ceilp|{short}")
         mark = "**oracle**" if oracle else ""
+        all_q = float(frame["item_acc1"].mean())
         lines.append(
-            f"| `{short}` | {mark} | {f4(float(frame['item_acc1'].mean()))} | **{f4(s['acc'])}** | "
+            f"| `{short}` | {mark} | {f4(all_q)} | {corpus_ceiling:.4f} | "
+            f"{all_q / corpus_ceiling:.3f} | **{f4(s['acc'])}** | "
             f"{s['n']:,} | {fci(s['q'])} | {fci(s['c'])} | {f4(p['acc'])} | {fci(p['q'])} |"
         )
     lines += [
@@ -208,6 +210,11 @@ def write_ceiling(dup: set[str]) -> None:
         "read as tie-breaking skill: `bm25_unigram` at 244, `dense_e5` at 125, the GTE pair at 104 and "
         "`bge_m3_sparse` at 65 frequently retrieve no member of the group at all, so they lose these "
         "queries the same way they lose their others rather than by picking the wrong sibling.",
+        "",
+        "**Headroom** is observed ÷ corpus ceiling, as D-032 requires. It exceeds 1.0 only for the "
+        "two oracle arms, and that is the whole of their advantage: the ceiling binds a `texto`-only "
+        "method and does not bind an arm that also indexes the record's `parameters`. On the scored "
+        "column the ceiling is exactly 1.0, so there headroom is the observed value itself.",
         "",
         "D-010 was argued from the code in S2 and measured on query sets. This is a third and sharper "
         "confirmation: **776 of 776 against a chance baseline of 292.** Neither oracle arm may be "

@@ -292,3 +292,35 @@ def test_the_high_dose_cells_rest_on_few_concepts(perquery, stacked_feats):
     per_dose = joined.groupby("texto_modification_count")["gold_parent_key"].nunique()
     assert per_dose.loc[2] > per_dose.loc[4] > per_dose.loc[5] >= per_dose.loc[6]
     assert per_dose.loc[6] <= 3, "the top dose cell is no longer a handful of concepts"
+
+
+# --- criterion 13: a superseded query set stays resolvable ------------------------------
+
+
+def test_the_superseded_stacked_feature_table_is_still_findable_by_digest():
+    """S2's three stacked runs are stamped `7b0894e6…`, which the S3 re-derivation superseded.
+
+    Versioning the JSON alone would not have saved them: `run_meta.json` records the digest of the
+    *derived* table the run actually read. So the check is not that a file with a similar name
+    exists, but that some file in `data/processed` still carries the exact digest those runs name.
+    """
+    import hashlib
+
+    stamped = {
+        json.loads((RUNS / "stacked_texto" / m / "run_meta.json").read_text(encoding="utf-8"))[
+            "query_set_sha256"
+        ]
+        for m in METHODS
+    }
+    assert len(stamped) == 1, "S2's stacked runs disagree about their query set"
+    wanted = stamped.pop()
+
+    def sha256(path):
+        h = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for block in iter(lambda: fh.read(1 << 20), b""):
+                h.update(block)
+        return h.hexdigest()
+
+    carriers = [p.name for p in PROCESSED.iterdir() if p.is_file() and sha256(p) == wanted]
+    assert carriers, f"no file carries {wanted[:16]}…; S2's stacked runs no longer resolve"
