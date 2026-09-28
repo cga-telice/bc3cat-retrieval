@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 work items 1–11 done; report pending) · **Updated by:** César
+**Last updated:** 2026-09-28 (S3 report written; audit pending) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, **all 11 work items done**; report and audit pending. **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, all 11 work items done, [report written](sprints/SPRINT_S3_REPORT.md). **Not `done` until `/audit S3` returns in a fresh session.** **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -63,13 +63,14 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-`/sprint-close S3` — write `SPRINT_S3_REPORT.md` against the frozen design, criterion by criterion,
-with every number read from `results/S3/`. Then `/audit S3` in a session that did not do the work.
-Two things the report must carry beyond the criteria: the ten amendments, which are unusually many and
-four of which are unplanned harness repairs (H5–H7 and the batching fix); and the fact that S3's
-headline findings are mostly **negative or mechanistic** — the operating point transfers, the chapter
-is less verbatim, the oracle advantage is exactly the undecidable queries — rather than the
-refutation the sprint was framed to look for.
+**`/audit S3`, in a session that did not do this work.** The auditor receives the report and `runs/`
+and nothing else; its value comes entirely from not having seen the reasoning that produced them.
+Three things are worth pointing it at: the ten amendments, four of which are unplanned harness
+repairs; the one declared deviation with no amendment (the provenance tables sit under `e0/` and
+`s2_rescored/`, not at `results/S3/run_provenance.md` as the frozen design names); and the fact that
+the report's `resumen` figures were corrected during close from the full-population values to the
+duplicate-free ones — the exact error D-033's note exists to prevent, caught by checking `runs/`
+rather than recalling.
 
 ## Latest results
 
