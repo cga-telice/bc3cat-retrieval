@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 work items 1–7 done) · **Updated by:** César
+**Last updated:** 2026-09-28 (S3 work items 1–8 done) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, work items 1–7 done. **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, work items 1–8 done. **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -30,8 +30,8 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## In flight
 
-- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A8).
-  **Work items 1–7 done** 2026-09-28; 8–11 open (`k1`/`b` grid, overlap, tables, tests). D-012 closed on the ten-method set.
+- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A9).
+  **Work items 1–8 done** 2026-09-28; 9–11 open (overlap tables, generated tables, tests). D-012 closed on the ten-method set.
 - **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one
   `code_dirty: false`: `bm25_*` at `6336974`, `bge_m3_colbert` at `31bf1a1`, the other seven at
   `2dd653d`. The four **local dense** arms run on `transformers 4.57.6` / `sentence-transformers
@@ -61,11 +61,12 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-S3 work item 8 — the `k1`/`b` grid: 25 points × 2 BM25 field variants × 3 query sets = 150 runs,
-dev only, under two hours. The selection rule is already fixed by the frozen design (argmax of item
-Acc@1 on dev `single_texto` pooled, per variant, with 0.60/0.35 always reported beside it as the
-transferred arm). Then work item 9, the overlap tables — validated against the review analysis's OEB
-figures (94.09 % lexical / 99.93 % numeric) *before* being applied to OE — and 10–11, the generated
+S3 work item 9 — the overlap tables, and the only one of S3's measurements that is validated before
+it is trusted: the implementation must reproduce the review analysis's OEB figures (94.09 % lexical /
+99.93 % numeric) *before* being applied to OE. Per query against its gold: mean and median lexical
+coverage, full-containment rate, mean numeric coverage, all-numbers-present rate, ≥1-number rate,
+numbers per query — for `resumen`, `texto`, `single_texto` per type and `stacked_texto` per
+`texto_modification_count`, with the D-004 sensitivity column. Then work items 10–11: the generated
 `results/S3/` tables and the remaining regression tests.
 
 ## Latest results
@@ -81,6 +82,15 @@ against the tree. Full tables come with work item 10; the two things already set
 identical `texto` only because they index the record's `parameters` (D-010, confirmed independently).
 Below the ceiling and genuinely so: `bm25_unigram` 0.8870, `dense_e5` 0.5073, `dense_gte_instrQ`
 0.1083, `dense_gte` 0.0975, **`bge_m3_sparse` 0.0509**.
+
+**The BM25 operating point transfers, and that is a negative result worth having.** 25 points × 2
+variants × 3 query sets, 144 runs, 0 failures. In 4 of 6 cells the argmax **is** `k1`=0.60 / `b`=0.35;
+in the other two the gain is +0.0014 (p=0.845) and +0.0049 (p=0.417), with near-symmetric flip counts
+— those settings reshuffle which queries succeed rather than retrieving better. `b` dominates, more
+length normalisation monotonically hurts, and both variants agree. **Both keep 0.60/0.35 into S4**
+(D-036, referred to César rather than resolved in passing, because the frozen rule names the argmax and
+D-027 was rejected for reinterpreting a rule after results). So a five-fold change in query length does
+not move the operating point: the previous study's tuning is not where its headline is weak.
 
 **`bge_m3_sparse` fails in the opposite direction to the one predicted.** D-012 kept it as the most
 interesting untested arm, on the expectation that learned sparse expansion might *survive* L1
