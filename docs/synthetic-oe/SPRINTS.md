@@ -30,6 +30,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S12 | backbone | planned | Frozen test evaluation and artefact release | O5 | S8–S11 |
 | S13 | backbone | planned | Manuscript | — | S12 |
 | S90 | probe | planned | Real-query anchor (Telice estimator queries) | validity | external (D-014) |
+| S91 | probe | **active** | Coded vs decoded `resumen` | D-037, D-039, H5 | S3 |
 
 Emergent sprints take the next free ID: backbone work continues the S0–S13 sequence at
 S14+, probes take S91+.
@@ -82,3 +83,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-28 | S3 | re-audited fresh | **PASS WITH FINDINGS** (`SPRINT_S3_AUDIT.md`, above the FAIL record): 9 findings, 2 major. Every headline figure, both sweep contrasts (independent seed) and byte-identical regeneration reproduced. Major: `build_results_s3.py` outside the prose guard (F1); `replication.md` without D-032's ceiling and headroom (F2) |
 | 2026-09-28 | S3 | active → **done** | All nine re-audit findings fixed (§Audit response, Re-audit); design amendment A12, D-036 second amendment. Ceilings now per indexed field (oracle arms 1.0000 / 0.9972); the transferred point is the unique argmax in 3 of 6 cells plus one exact tie. No run and no retrieval figure changed. Suite 984 passed, 1 xfailed |
 | 2026-09-28 | S3 | audited fresh (third) | **PASS WITH FINDINGS** (`SPRINT_S3_AUDIT.md`, at the top): 3 minor, none critical or major. Headline figures, both sweep contrasts, per-commit run counts and byte-identical regeneration of all 11 tables reproduced. All three resolved (§Third audit): identity ties stated as ties, `transferability.md` gains n scored / excluded, ceiling and headroom, the `src/` diff qualified as retrieval-path. Design amendment A13. No run and no retrieval figure changed; status stays **done** |
+| 2026-09-28 | S91 | → planned → **active** | Emergent probe from D-039. Design frozen at `09d11f7`; entry state verified in the tree. Three paired renderings of dev `resumen` (coded, stripped, decoded) × ten arms; shared-words rule for TRABAJO `-`; 3-day time-box; stops if any retriever, builder or index must change (S9 territory) |

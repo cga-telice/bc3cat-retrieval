@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 third audit PASS WITH FINDINGS, three minor → resolved; **S3 done**) · **Updated by:** Claude, `/audit S3`
+**Last updated:** 2026-09-28 (**S91 active**) · **Updated by:** Claude, `/sprint-open S91`
 
 ---
 
 ## Where we are
 
-**No active sprint. S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: `/sprint-open S4`.** **S2 is done**
+**Active: S91** (probe, coded vs decoded `resumen`, frozen at `09d11f7`, 3-day time-box to 2026-10-01) — [design](sprints/SPRINT_S91_DESIGN.md). It answers D-039: the catalogue's `resumen` codes its work-regime values, the previous study expanded them. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: S91 work item 1; then `/sprint-open S4`.** **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -64,7 +64,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/sprint-open S4`** (E1 ablation, Track A). It inherits the per-arm ceilings (read every delta
+**S91 work item 1**: build the decoded and stripped renderings. Then **`/sprint-open S4`** (E1 ablation, Track A), which does not depend on S91 since its query sets carry no codes. S4 inherits the per-arm ceilings (read every delta
 against them, D-032), 0.60/0.35 for both BM25 variants (D-036), the duplicate-free scoring
 population (D-033), and the debt in the S3 report's last section — above all H4 (index stamps omit
 the ML stack) and the dirty-tree refusal that still lives outside committed code.

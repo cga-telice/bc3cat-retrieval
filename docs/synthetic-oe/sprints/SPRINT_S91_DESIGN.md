@@ -1,6 +1,6 @@
 # Sprint S91 — Coded vs decoded `resumen` · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `09d11f7` · `2026-09-28`
 > This section is read-only from that commit. Changes go in **Amendments** below, dated and
 > justified — never as in-place edits. `git log -- <this file>` after the freeze date is an
 > audit trail; keep it honest.
