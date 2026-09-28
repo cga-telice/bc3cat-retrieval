@@ -856,3 +856,39 @@ without a reproducible path back to what produced it.
 **And a hypothesis worth testing later.** If an **English-only** model really was run against a
 Spanish corpus, that explains GTE's 0.013 far better than "GTE is bad at this task". Testing it needs
 an eleventh arm, which D-012 does not have; it is a candidate probe sprint (S91+), not S3 work.
+
+### D-036 — The OEB operating point transfers; both BM25 variants keep `k1`=0.60 / `b`=0.35
+**Status:** Accepted · **Date:** 2026-09-28 · **Owner:** César · **Raised in:** S3 work item 8
+**The question D-012 left open.** `k1`=0.60 / `b`=0.35 was fitted to OEB `resumen` queries of ~14
+tokens. OE `texto` queries run ~74–78. Does the point transfer, or was the previous study's headline
+partly an artefact of a fit to short queries?
+**Measured.** 25 points × 2 field variants × 3 query sets on dev, 144 new runs, 0 failures, each point
+with its own index because `k1` and `b` are baked into the document weights. `b` dominates: more
+length normalisation monotonically hurts, low `k1` wins, and the surface is smooth with its optimum in
+the low-`k1`/low-`b` corner. Both variants agree.
+**Answer: it transfers.** In **4 of 6** (variant × query set) cells the argmax **is** 0.60/0.35. In the
+two where it is not, the paired contrast on duplicate-free golds says the difference is noise:
+
+| cell | argmax | Δ vs 0.60/0.35 | query CI | p | flips |
+|---|---|---:|---|---:|---|
+| `bm25_unigram` / `single_texto` | 0.60/0.20 | +0.0014 | [−0.0106, +0.0133] | 0.845 | +90 / −87 |
+| `bm25_unigram_params` / `stacked_texto` | 0.60/0.50 | +0.0049 | [−0.0065, +0.0166] | 0.417 | +114 / −102 |
+
+The near-symmetric flip counts are the point: those settings reshuffle which queries succeed, they do
+not retrieve better.
+**Decision.** Both variants keep **0.60 / 0.35** into S4.
+**Why this is not D-027 again.** D-027 was rejected in S2 for re-defining a *stop rule* to change a
+verdict's direction. Here the rule's arithmetic is not in dispute — the argmax is the argmax — and the
+same design paragraph that names the argmax also requires 0.60/0.35 to be "always reported beside it
+as the transferred arm, so transferability is a paired contrast with an interval rather than a
+narrative". Reading that interval is applying the design. What the design did not settle is whether to
+adopt a numerically-higher but statistically indistinguishable point, and that is what this decision
+settles. **It is recorded as a decision rather than as an amendment to the frozen rule**, because the
+rule stands: it was simply never a rule about ties, and César was asked rather than told.
+**Why keeping also costs less.** S2's fifteen runs and the whole re-scored control are at 0.60/0.35.
+Moving one variant on a five-query difference would make S4's deltas for that arm incomparable with
+S2's for nothing measurable in return.
+**Consequence.** The transferability verdict is a *negative* result in the useful sense: it removes a
+threat to the previous study's tuning instead of confirming one. The previous headline's weakness is
+not its operating point. S4 inherits 0.60/0.35 for both variants, and the full surface is reported so
+that the claim is checkable rather than asserted.
