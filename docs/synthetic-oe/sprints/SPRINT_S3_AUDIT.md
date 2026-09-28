@@ -1,3 +1,109 @@
+# Sprint S3 — audit (re-audit after the 2026-09-28 FAIL)
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-09-28 · report `eaa184f` · runs `runs/OE/texto` (60), `runs/OE/resumen` (11), `runs/OE/single_texto` (53), `runs/OE/stacked_texto` (53)
+
+## Verified
+- **Headline replication figures.** I recomputed every row of `replication.md` from `results_perquery.parquet` with the sidecar `b3cfcad4`, and all match. Examples: `bm25_unigram_params` 0.6394 (run-level 0.6473, n=34,646), `bm25_unigram` 0.0142 and 0.0148 at k1=0.80 (`2a9ffdb`), `dense_es_hiiamsid` 0.0093 / parent 0.5989, `bge_m3_colbert` 0.0437 / 0.9587.
+- **Ceiling table.** All ten rows match at both item levels (all queries and scored) and at parent level. This covers `hiiamsid` 1.0000, sparse 0.0501/0.0509/0.8845 and colbert 0.9861/0.9998. Undecidable hits also match: 776/244/676/292/293/65/125/293/104/104. The corpus ceiling is (35,422−484)/35,422 = 0.9863.
+- **Sparse diagnosis.** 32,909 misses. 20,717 have the gold at rank 2–100 (median 18) and 12,192 have it past rank 100. Matches.
+- **Sweep contrasts.** I ran an independent bootstrap with a different seed. `single_texto`/`bm25_unigram`: Δ +0.0014, CI [−0.0106, +0.0133], p≈0.855, +90/−87. `stacked`/`params`: Δ +0.0049, CI [−0.0069, +0.0166], p≈0.418, +114/−102. Both agree with 0.8507 / 0.4250 within Monte Carlo error.
+- **Overlap.** I recomputed `resumen` dev lexical coverage independently: 79.38 % mean, 80.00 % median, n=35,422. Matches.
+- **Regeneration.** I ran all three generators into scratch, and all 11 tables came out byte-identical to the committed ones. The tree stayed clean.
+- **One sample, one claim.** Within each query set, every run has the same (query key, gold) set, split `dev`, `code_dirty: false`, and scored n: 34,646 / 34,646 / 2,177 / 2,466.
+  - There are two digest pairs. `OE_long_norm` vs `OE_long_feats` (and the `short` pair) are the same queries. Stacked `7b0894e6` vs `f34c1798`: I checked all 26 common columns of the two feats parquets and they are identical.
+  - No table mixes samples.
+- **Design freeze.** `git diff 8353cf7..HEAD` on the design is only the freeze stamp plus amendment rows A1–A11, append-only in every commit.
+  - A9 (the operating point kept against the frozen argmax rule for `bm25_unigram`) is declared and dated.
+- **Split discipline.** All 177 `runs/OE` runs are `dev`. No test-split run was created during the sprint. The OEB overlap validation reads test-side concepts; this is declared, and no parameter is set from it.
+- **Run inputs.** `check_run_inputs.py`: 177 of 177 `runs/OE` resolve, and the five failures are the ones the report names. `run_provenance.md` has 169 rows, 0 dirty.
+- **Tests.** `pytest`: 979 passed, 1 xfailed, reproduced.
+- **Manifest.** The five delivered digests match `bc3cat-dataset/data/synthetic/handoff_OE/MANIFEST.md`.
+- **Carried caveats honoured.** Stacked by-dose uses paired deltas against identity, with concept counts. No interaction claim is drawn from the stacked set. D-004 sensitivity is run per type and per dose. Thin slices carry concept-clustered intervals.
+- **Identical embeddings.** The two GTE arms' `embeddings.npy` are byte-identical (A6).
+
+## Findings
+
+### F1 — major — The prose guard covers two of the three generators; `build_results_s3.py` still types numbers
+- **What the report says.** The header states that no number in the prose of the 11 tables is typed (`tests/test_generated_prose.py`).
+- **What the code says.** `GENERATORS` lists only `build_results_e0.py` and `build_overlap.py`.
+- **What the guard finds when applied to the third generator.** `build_results_s3.py` types eight literals, lines 261–273 and 588: `492`, `484`, `34,646`, `0.9861`, `0.98`, `21`, `3,471`, `10`. They are emitted into `s2_rescored/identity.md`.
+- **Current values.** They are correct today (I recomputed them), but this is the defect class of the previous critical finding.
+- **A withdrawn phrase survives.** The same prose still says "A text-only method cannot do this even in principle", which the F6 response says was withdrawn.
+- **Must change.** Add the generator to `GENERATORS`, interpolate the eight literals, and drop the phrase.
+
+### F2 — major — The design constraint "every table carries a `ceiling` column and quotes headroom" is not honoured in `replication.md`
+- **What the design requires.** D-032 as frozen: every table carries a ceiling column and quotes headroom.
+- **What the table has.** `replication.md` has neither column, and no amendment covers this.
+- **Why it matters here.** The table reports `bge_m3_sparse` at 0.0205 on `resumen` with no reference to its 0.0501 identity ceiling, and `dense_e5` at 0.0224 against 0.5150. That is exactly the reading D-032 exists to force.
+- **Must change.** Add ceiling and headroom (resumen ÷ identity, scored) per arm, or file an amendment.
+
+### F3 — minor — The tie-break mechanism is credited on a path where it does not run
+- **What the report says.** Finding 1 and `ceiling.md` attribute the surplus hits of `bge_m3_dense` and `dense_es_hiiamsid` to `np.argpartition`.
+- **What the code says.** `bge_m3_dense` ranks with FAISS `self.index.search` (`src/retrievers/bge_m3_dense.py:122`), not argpartition.
+- **An unexplained gap.** Both arms show identical-text queries whose gold does not tie rank 1: 19 of 776 for dense (757 level) and 6 for hiiamsid (770). Identical texts are therefore not always encoded to identical scores. The report does not discuss this, and it bears on A7's "memory, not results".
+- **Must change.** Restate the mechanism per arm.
+
+### F4 — minor — The ceiling column for the two oracle arms is not the ceiling of their indexed field
+- **The requirement.** Exit criterion 5 asks for "the corpus ceiling of the indexed field".
+- **What is printed.** `bm25_unigram_params` and `tfidf_phrases_replace` index `texto`+`parameters`, yet the table prints the `texto` ceiling 0.9863.
+- **Consequence.** This yields headroom 1.0133 and 1.0108. Their field's ceiling is empirically 1.0 (776/776 resolved).
+- The prose explains the >1 values but does not fix the column.
+
+### F5 — minor — "In 4 of 6 cells the argmax is the transferred point" counts an exact tie as a win
+- **The tie.** In `bm25_unigram_params`/`texto`, 0.60/0.35 and 0.80/0.35 both score 34,625/34,646.
+- **How it was broken.** `max(surface, key=...)` breaks the tie by iteration order (`build_results_e0.py:302`).
+- **What it should say.** "3 of 6, plus one exact tie". "Always at k1 = 0.60" is likewise not unique there.
+- This does not affect the selection cell (`single_texto`).
+
+### F6 — minor — Report prose inaccurate against the artefacts
+- **"Ten arms indexed … clean, at one commit."** Index stamps are at `6336974` (BM25), `31bf1a1` (ColBERT), `2dd653d` (six arms) and `a5700a6` (`bge_m3_dense`). The header's "Indexes at `2dd653d` (seven S3 arms)" is also wrong for `bge_m3_dense`.
+- **"The only changes on the retrieval path are `corpus_prep` … and `run_context` … everything else is analysis code."** `git diff 31bf1a1..HEAD -- src/` also changes five retrievers and the `bge_m3_dense` builder. The reuse conclusion still holds: the three reused arms' retrievers are unchanged.
+- **"Five new test files."** Eight were added since the freeze.
+
+### F7 — minor — Overclaims in the report's prose
+- **H2 row.** "Overlap orders the types as the layer taxonomy predicts (`reorder` 99.65 %, `template_paraphrase` 77.47 %)" cites two L3 types. The taxonomy predicts L3 near-free for bag-of-words, and `template_paraphrase` has the lowest lexical coverage of any single type. The example does not support the claim.
+- **Finding 4.** "Doubling concentrates in exactly these types" puts `unit_expansion` at 17.2 %, but `synonym_label` is at 16.2 %.
+- **Finding 4's H5 re-specification.** It rests on `unit_conversion`'s 79.14 % / 57.35 %, which are quoted with no interval. The table carries none for numeric coverage.
+
+### F8 — minor — Previous-study parent reference for `bm25_unigram_params` is not attributable
+- **What the table cites.** `replication.md` cites 0.985 as its parent Acc@1 from `paper_28.tex`.
+- **What the paper contains.** The paper gives BM25 parent-level only as a range, "0.873 to 0.985" (l. 559). The generator treats that same range as "range only" for `bm25_unigram`. The only per-method 0.985 is Recall@10 on numeric queries (l. 640).
+- **Must change.** Print "—" with the range note, as for `bm25_unigram`.
+
+### F9 — minor — Undeclared-by-amendment path change
+- Exit criterion 4 names `results/S3/run_provenance.md`, but the stamps are in `e0/` and `s2_rescored/`.
+- This is declared in the report's prose but not in the Amendments table.
+
+## Unverifiable
+- **A7: blocking changes memory, not results.** No pre-blocking runs survive to compare, and F3's non-identical scores for identical texts weaken the claim for `bge_m3_dense`.
+- **"12 of 17 runs lost to `DeadKernelError`".** Git-ignored logs only.
+- **ML-stack versions of the dense arms (H4).** Not stamped in `index/*/meta.json`.
+- **Regeneration "from a clean checkout".** Verified from a clean working tree at HEAD. A fresh clone cannot hold the git-ignored data.
+- **OEB validation's 22,305 test-side pairs.** Generator output only, not independently recounted.
+
+## Exit criteria
+| Criterion | Met | Evidence |
+|---|---|---|
+| 1 Manifest digests | yes | Five delivered digests match upstream `handoff_OE/MANIFEST.md`; superseded JSON/norm/feats re-hash to their suffixes |
+| 2 Row-for-row identity test | yes | All 26 common columns of `feats__7b0894e6` vs `feats` identical (independent check) |
+| 3 S2 runs resolve | yes | `check_run_inputs.py`: 177/177 `runs/OE` |
+| 4 Twenty E0 runs, clean, listed | yes | 21 runs recomputed, all `dev`, `code_dirty: false`; listed in `e0/run_provenance.md` (path differs, F9) |
+| 5a Item/parent × query/concept CIs | yes | `ceiling.md`, regenerated byte-identically |
+| 5b Corpus ceiling of indexed field + headroom | no for 2 of 10 arms | Oracle arms carry the `texto` ceiling (F4) |
+| 6 Replication table, statement, hiiamsid row | yes | `replication.md`; all ten rows recomputed |
+| 7 150 sweep cells, argmax, paired Δ with CI | yes | 150 runs present; contrasts reproduced; tie in one cell (F5) |
+| 8 OEB reference within 0.5 pp | yes | 94.10 / 99.96 %, regenerated |
+| 9 Overlap for four sets, seven statistics | yes | `overlap.md`, spot-checked 79.38 % |
+| 10 Re-score, n printed, byte-identical | yes | `s2_rescored/` regenerated byte-identically |
+| 11 By-dose on `texto_modification_count` | yes | `stacked_by_dose.md`; 730→193 cross-tab present |
+| 12 D-012 / D-009 / S8 | yes | `DECISIONS.md` D-012 closed, D-009 Delivered; `SPRINTS.md` log line 78 |
+| 13 Regression tests, suite passes | yes | Duplicate-exclusion, overlap-reference and versioned-set tests present; 979 passed, 1 xfailed (re-run) |
+
+---
+
+*The first audit of this sprint (FAIL, report `4a3f9ef`) follows unchanged.*
+
 # Sprint S3 — audit
 
 **Verdict:** FAIL
