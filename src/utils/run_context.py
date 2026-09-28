@@ -68,7 +68,13 @@ def assert_work_root_is_the_main_checkout(work_root: Path) -> None:
     )
 
 #: The query sets a run may be asked for. `balanced_texto` arrives only if E3 lands (D-009).
-QUERY_SETS = ("texto", "resumen", "single_texto", "stacked_texto", "balanced_texto")
+#: `resumen_decoded` / `resumen_stripped` are S91's renderings of the catalogue's `resumen`, its
+#: parameter-code suffix decoded or removed (`build_resumen_renderings.py`, D-039). They resolve
+#: like any synthetic set, from their own JSON and the tables derived from it.
+QUERY_SETS = (
+    "texto", "resumen", "single_texto", "stacked_texto", "balanced_texto",
+    "resumen_decoded", "resumen_stripped",
+)
 
 #: The three shapes `inputs` takes across the 77 configs, in the order they are looked for.
 #: `feats` is the lexical family (70 configs), `text` the neural one (5), `norm` the hybrid

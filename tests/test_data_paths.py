@@ -75,7 +75,10 @@ def test_the_real_collections_resolve():
     oe = data_paths("OE", work_root=REPO)
     oeb = data_paths("OEB", work_root=REPO)
 
-    assert set(oe.query_json) == {"single_texto", "stacked_texto"}
+    # S91 adds the two `resumen` renderings; they are generated here, not delivered, so a checkout
+    # that has not run build_resumen_renderings.py lacks them.
+    assert {"single_texto", "stacked_texto"} <= set(oe.query_json)
+    assert set(oe.query_json) <= {"single_texto", "stacked_texto", "resumen_decoded", "resumen_stripped"}
     assert oeb.query_json == {}
 
 
