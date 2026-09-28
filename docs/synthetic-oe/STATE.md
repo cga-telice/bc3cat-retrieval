@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 report written; audit pending) · **Updated by:** César
+**Last updated:** 2026-09-28 (S3 audit FAIL → reopened → findings resolved; re-audit pending) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, all 11 work items done, [report written](sprints/SPRINT_S3_REPORT.md). **Not `done` until `/audit S3` returns in a fresh session.** **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, all 11 work items done, [report written](sprints/SPRINT_S3_REPORT.md). **Audit returned FAIL 2026-09-28 — reopened; all 11 findings resolved the same day** ([audit](sprints/SPRINT_S3_AUDIT.md)). **Not `done` until a fresh re-audit passes.** **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -30,10 +30,10 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## In flight
 
-- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A10).
+- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A11).
   **All 11 work items done** 2026-09-28. 177 of 177 runs resolve; 11 generated tables under
-  [`results/S3/`](results/S3) regenerate byte-identically; suite 971 passed, 1 xfailed.
-  **Next: `/sprint-close S3`, then `/audit S3` in a fresh session.** D-012 closed on the ten-method set.
+  [`results/S3/`](results/S3) regenerate byte-identically; suite 979 passed, 1 xfailed.
+  **Audit FAIL 2026-09-28**, reopened, findings resolved (A11; D-036–D-038 amended). D-012 closed on the ten-method set.
 - **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one
   `code_dirty: false`: `bm25_*` at `6336974`, `bge_m3_colbert` at `31bf1a1`, the other seven at
   `2dd653d`. The four **local dense** arms run on `transformers 4.57.6` / `sentence-transformers
@@ -63,83 +63,36 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S3`, in a session that did not do this work.** The auditor receives the report and `runs/`
-and nothing else; its value comes entirely from not having seen the reasoning that produced them.
-Three things are worth pointing it at: the ten amendments, four of which are unplanned harness
-repairs; the one declared deviation with no amendment (the provenance tables sit under `e0/` and
-`s2_rescored/`, not at `results/S3/run_provenance.md` as the frozen design names); and the fact that
-the report's `resumen` figures were corrected during close from the full-population values to the
-duplicate-free ones — the exact error D-033's note exists to prevent, caught by checking `runs/`
-rather than recalling.
+**`/audit S3`, again, in a fresh session** — one that has seen neither the work nor this remediation.
+All eleven findings of the first audit are resolved or accepted with reasons in the report's
+§Audit response. The re-audit should check that F1's guard (`tests/test_generated_prose.py`) actually
+covers every emitted string, and that the narrowed claims in finding 3, D-036 and D-037 now stay
+inside the frozen design. On PASS, mark S3 `done`.
 
 ## Latest results
 
-**All of S3's tables are generated and regenerate byte-identically** —
-[`results/S3/e0/`](results/S3/e0) (ceiling, replication, transferability, provenance for 168 runs),
-[`results/S3/overlap/`](results/S3/overlap), [`results/S3/s2_rescored/`](results/S3/s2_rescored).
+**All of S3's tables are generated, regenerate byte-identically, and type no number into their
+prose** — [`results/S3/e0/`](results/S3/e0) (ceiling, replication, transferability, provenance for
+169 runs), [`results/S3/overlap/`](results/S3/overlap), [`results/S3/s2_rescored/`](results/S3/s2_rescored).
 Every item-level figure carries its scored n; the oracle arms are marked in every table they appear in.
+Read the [report](sprints/SPRINT_S3_REPORT.md) for the findings. Its short form:
 
-**The identity ceiling, and what it showed.** Splitting each arm at the 776 undecidable queries makes
-the structure categorical rather than gradual: `bm25_unigram_params` resolves **776 of 776**,
-`tfidf_phrases_replace` 676, and **no text-only arm beats the chance baseline of 292** — the three at
-their corpus ceiling land on 292, 293, 293. The oracle arms are not better at identity; they are
-answering a question whose answer is determined for them (D-010, confirmed from a third direction).
-On the decidable population `dense_es_hiiamsid` is **perfect** (1.0000), above both oracle arms — the
-model the previous submission never reported has the cleanest identity behaviour in the set, and
-collapses to 0.0096 on `resumen`, which is exactly why a ceiling is measured per method before any
-degradation is read against it (D-032).
-
-### Earlier
-
-
-**E0 is measured: all ten arms, identity and `resumen`, dev split** — 32 of 32 OE runs resolve
-against the tree. Full tables come with work item 10; the two things already settled:
-
-**The identity ceiling is a real instrument.** For a `texto`-only method the corpus permits at most
-**0.9863** (292 of 776 duplicate-gold queries correct in expectation, so 484 unavoidable misses of
-35,422). Three arms sit exactly on it — `bge_m3_colbert` 0.9861, `bge_m3_dense` 0.9861,
-`dense_es_hiiamsid` 0.9864 — and the **only** two that exceed it are the two oracle arms,
-`bm25_unigram_params` 0.9994 and `tfidf_unigram_phrases_replace` 0.9970, which can separate
-identical `texto` only because they index the record's `parameters` (D-010, confirmed independently).
-Below the ceiling and genuinely so: `bm25_unigram` 0.8870, `dense_e5` 0.5073, `dense_gte_instrQ`
-0.1083, `dense_gte` 0.0975, **`bge_m3_sparse` 0.0509**.
-
-**OE is a less verbatim benchmark than OEB, and that explains the replication gap.** The overlap
-generator validates itself against the review analysis's OEB figures before reporting anything —
-94.09 → **94.10 %** lexical mean, median **exact**, numeric 99.93 → 99.96 % — so the definition is the
-one the reviewers' objection was granted on. On OE dev, `resumen→texto` lexical coverage is
-**79.38 %**: fifteen points less verbatim. With the operating point shown to transfer (D-036), that is
-the mechanism behind tuned BM25's 0.974 on OEB against **0.6473** here. **The previous headline was
-measured on the chapter where the task is most nearly lexical containment** (D-037). Carry the
-confound: chapter and regime are not separable, so the claim is "does not replicate *on OE*", not
-"the number was wrong".
-
-**Numeric coverage is blind to two of the four L1 types** (D-038). `num_to_text` removes exactly one
-number per query (4.14 → 3.14) and `unit_expansion` 0.64, by spelling them out — the number is not
-*missed*, it is gone from the query, so coverage stays pinned at 100 %. Only `unit_conversion`, which
-rewrites a value, shows as lost coverage (79.14 %, barely half its queries keeping all numbers). H5 is
-therefore stated over **both** coverage and the query-vs-gold number count; over coverage alone it
-would score the sprint's sharpest L1 condition as doing nothing. D-004's sensitivity is done: dropping
-doubled-token queries moves lexical mean by 0.08–0.28 pp, so the pantry artefact does not distort the
-distribution.
-
-**The BM25 operating point transfers, and that is a negative result worth having.** 25 points × 2
-variants × 3 query sets, 144 runs, 0 failures. In 4 of 6 cells the argmax **is** `k1`=0.60 / `b`=0.35;
-in the other two the gain is +0.0014 (p=0.845) and +0.0049 (p=0.417), with near-symmetric flip counts
-— those settings reshuffle which queries succeed rather than retrieving better. `b` dominates, more
-length normalisation monotonically hurts, and both variants agree. **Both keep 0.60/0.35 into S4**
-(D-036, referred to César rather than resolved in passing, because the frozen rule names the argmax and
-D-027 was rejected for reinterpreting a rule after results). So a five-fold change in query length does
-not move the operating point: the previous study's tuning is not where its headline is weak.
-
-**`bge_m3_sparse` fails in the opposite direction to the one predicted.** D-012 kept it as the most
-interesting untested arm, on the expectation that learned sparse expansion might *survive* L1
-variation. Its identity ceiling is 0.0509: it cannot retrieve a document from that document's own
-text. Diagnosed, not assumed — the gold sits at rank 2–6 with no ties, and the doc vectors are **not
-L2-normalised** (norms 0.47–1.09, a 2.3× spread) while scoring is a raw dot product, so a sibling
-with a heavier vector out-scores the document against its own. That is BGE-M3's intended lexical
-scoring, so it is a method property and a ceiling, not a harness defect — but it leaves the arm no
-headroom to lose, and every later figure for it is read against 0.0509 (D-032).
+- **Identity ceiling.** For a `texto`-only method the corpus permits at most 0.9863. The oracle arms
+  resolve 776 and 676 of the 776 undecidable queries; the text-only arms at their ceiling land on
+  292 / 293 / 293 against a chance expectation of 292. The one-query surplus is exact-score ties
+  broken by `np.argpartition`, now counted in `ceiling.md`.
+- **Replication.** Tuned BM25 0.6394 on OE dev `resumen` (n = 34,646 scored) against 0.974 on OEB
+  test: does not replicate *on OE*. The cause is **not** established. Tuning was not swept on
+  `resumen`, and OE's lower lexical coverage (79.38 % against 94.10 % on OEB) is descriptive only
+  (D-036, D-037 amended).
+- **Operating point.** Both BM25 variants keep 0.60/0.35. On the three swept sets no gain is detected
+  (p = 0.8507, 0.4250), which is not equivalence.
+- **Overlap.** Numeric coverage is blind to `num_to_text` and `unit_expansion`, and this survives
+  excluding both D-004 artefacts per type (D-038 amended). H5 needs two covariates.
+- **`bge_m3_sparse`** cannot read back its own document (0.0501 scored). Its vectors are unnormalised
+  under a raw dot product; the gold's rank on a miss has a median of 18, not "2–6".
+- **`dense_es_hiiamsid`** is perfect on the decidable identity population (1.0000) and falls to
+  0.0093 on `resumen` (n = 34,646 scored).
 
 ### Earlier, from S2 and its re-score
 
@@ -149,7 +102,7 @@ Two directories, deliberately kept apart. **Every item-level figure is quoted wi
 population, and both are correct about their own.
 
 - [`results/S2/`](results/S2) — **what S2 reported.** Tuned BM25 falls under L1 (item Acc@1 0.608
-  `unit_conversion`, 0.098 `num_to_text`, dev); the rules pipeline overtakes it in no contrast;
+  `unit_conversion`, 0.098 `num_to_text`, dev, all queries); the rules pipeline overtakes it in no contrast;
   ColBERT holds best under L1 and stacking, its advantage over *tuned* BM25 under
   `unit_conversion` being +0.083 [−0.010, +0.177], the one L1 contrast that does not invert.
 - [`results/S3/s2_rescored/`](results/S3/s2_rescored) — **the control S3 inherits**, item-level on

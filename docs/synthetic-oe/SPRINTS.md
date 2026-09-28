@@ -18,7 +18,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S0 | backbone | **done** | Reproducibility foundation and splits | all | — |
 | S1 | backbone | **done** | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
 | S2 | backbone | **done** | Go/no-go probe ⚑ | H3 | S1 |
-| S3 | backbone | **active** | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
+| S3 | backbone | **active** (reopened after audit FAIL) | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
 | S4 | backbone | planned | E1 ablation — Track A | H1, H2 | S3 |
 | S5 | backbone | planned | E1 ablation — Track B (structured) | H3 | S4 |
 | S6 | backbone | planned | Statistical analysis and mediation | H1, H2, H5 | S4, S5 |
@@ -77,3 +77,5 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-27 | S8 | — | Not a transition: the E3 balanced dose set was found to have arrived upstream on 2026-09-17 (`4d10af2`) and gone unrecorded here for ten days. S3 takes it in; S8 moves `blocked` → `planned` when that intake lands |
 | 2026-09-27 | S8 | blocked → **planned** | S3 work item 2 took the E3 delivery in and verified it: nested ladder on all 600 leaves, 600 per rung, every claim re-derived (23 tests). D-009 **Delivered**. G3 has no absence left to rule on and is re-read as an identifiability question; three limitations recorded, of which the binding one is 7 concepts / 4 on dev |
 | 2026-09-28 | S3 | report written | All 13 exit criteria met; 177 of 177 runs resolve; 11 generated tables regenerate byte-identically; suite 971 passed, 1 xfailed. Ten amendments, four of them unplanned harness repairs (H5–H7 and the batching fix). Headline findings are negative or mechanistic: the operating point **transfers** (D-036), OE is **15 points less verbatim** than OEB (D-037), and the oracle advantage is **exactly** the 776 undecidable queries. `done` withheld until `/audit S3` in a session that did not do the work |
+| 2026-09-28 | S3 | audited fresh → **reopened** | **FAIL** (`SPRINT_S3_AUDIT.md`): 11 findings — 1 critical, 4 major, 6 minor. The headline numbers trace and all three result directories regenerate byte-identically, but the reported p-values (0.845 / 0.417) cannot be reproduced from committed code (F1). Exit criterion 5 is not met (F4). S3 stays **active** until every finding is resolved and a fresh audit passes |
+| 2026-09-28 | S3 | findings resolved | All 11 findings addressed (§Audit response): nine fixed, F10 and F11 accepted with reasons. Generators now compute their prose, guarded by `tests/test_generated_prose.py`. Making the prose computed exposed three more misstatements, all corrected (query length, surface shape, sparse gold ranks). The mechanism and tuning claims are narrowed to what the design allows. Design amendment A11; D-036/037/038 amended. No run and no retrieval figure changed. **Re-audit pending** in a fresh session |

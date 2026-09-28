@@ -940,3 +940,58 @@ carries both columns and S6's mediation model must use both.
 artefact does not distort the overlap distribution. The detector is the text itself — an immediately
 repeated token — and it is sound here because the rate across the corpus's own `texto` is **zero**,
 asserted over all 70,242 documents by `tests/test_overlap.py`.
+
+### D-036 — amendment: the p-values were misreported, and "transfers" means "no gain detected on the swept sets"
+**Status:** Amendment to D-036 · **Date:** 2026-09-28 · **Raised in:** S3 audit (F1, F3)
+**The p-values.** The table above prints p = 0.845 and 0.417. No committed code produces them: they
+come from a bootstrap seeded with a label the generator does not use. The committed generator, and
+`results/S3/e0/transferability.md`, give **0.8507** and **0.4250**. Those are the values. The deltas,
+intervals and flip counts in the table above are correct.
+**Two more misstatements, found when the prose was made computed.** OEB `resumen` queries average
+**20.8** normalised tokens, not "~14"; the OE dev sets swept run 73.9 / 78.1 / 80.1. And "`b`
+dominates: more length normalisation monotonically hurts" is false. Accuracy falls at every step up
+in `b` in 5 of 30 (variant, set, `k1`) rows. The surface is single-peaked in 28, with the peak at
+`b` = 0.35 in 21. What does hold: every argmax has `k1` = 0.60.
+**The scope.** The sweep covers `texto`, `single_texto` and `stacked_texto`, and on those no point
+improves detectably on 0.60/0.35. The intervals admit a gain of up to +0.0166. That is "no
+detectable gain", not equivalence. The sweep did not cover `resumen`, where the replication gap
+lives. So **"whatever is wrong with the 0.974 headline, it is not the operating point" is
+withdrawn**: whether tuning explains part of that gap is open.
+**The decision stands.** Both variants keep 0.60/0.35 into S4, for the reasons given above.
+Comparability with S2 does not depend on the p-values.
+
+### D-037 — amendment: a description, not the mechanism of the replication gap
+**Status:** Amendment to D-037 · **Date:** 2026-09-28 · **Raised in:** S3 audit (F2, F9, F10)
+**What is withdrawn.** The title's "that is what the replication gap measures", "it supplies the
+mechanism for E0(b)'s result", and "H5's claim arriving early". The frozen design keeps overlap
+descriptive in S3 and makes no causal or mediation claim. The comparison here is also only two
+populations: OE dev across seven subchapters against all of OEB, with chapter, corpus size and
+split all differing. It is consistent with the gap and does not explain it. A within-OE comparison
+(OEB-subchapter dev leaves against the rest) is S6's.
+**Figures corrected.** OEB lexical coverage is quoted as recomputed, **94.10 %**; 94.09 % is the
+review analysis's reference. Tuned BM25 on OE dev `resumen` is **0.6394** item-level on the
+duplicate-free population (n = 34,646); 0.6473 is the all-queries figure and should not be quoted
+without its n (D-033's note).
+**Declared.** The OEB validation reads all 47,514 OEB pairs, and **22,305** of them belong to
+concepts on OE's test side. It fixes only the overlap definition; no retrieval parameter, threshold
+or model choice is set from it.
+**What stands.** OE dev `resumen→texto` lexical coverage is 79.38 %, and the chapter confound
+applies to every replication claim.
+
+### D-038 — amendment: the D-004 sensitivity was run only at `all`; now per type, and the finding survives
+**Status:** Amendment to D-038 · **Date:** 2026-09-28 · **Raised in:** S3 audit (F5, F7)
+**What was wrong.** "D-004 sensitivity, done as required" was run only on each set's `all` row,
+while the claims are per type. It also ignored the second artefact D-004 names, the "con topo" →
+"con topografía" drift. And doubling is not spread evenly: it carries 30.5 % of `num_to_text` and
+17.2 % of `unit_expansion` queries, which are the types the claim is about.
+**Now.** `results/S3/overlap/overlap.md` excludes both artefacts at every level a claim is made:
+per type on `single_texto` and per dose on `stacked_texto`. The drift is detected as a query saying
+*topografía* against a target that does not; the corpus never says it (asserted in
+`tests/test_overlap.py`). It hits 19 `single_texto` queries (`expansion` 13, `paraphrase` 6) and 117
+`stacked_texto` queries.
+**The finding survives.** On the clean subset, `num_to_text` is at 100.00 % numeric coverage with
+Δ −1.00, and `unit_expansion` at 100.00 % with Δ −0.52 (−0.64 before exclusion). `unit_conversion`
+has no flagged queries and stays at 79.14 %. Its Δ numbers interval, [−0.54, +0.19], straddles 0: its
+signal is lost coverage, not fewer numbers. All overlap slices now carry concept-clustered intervals.
+**One figure corrected.** "tuned BM25 falls to 0.098 item-level" on `num_to_text` is **0.0958** on
+the duplicate-free population, n = 313 (`results/S3/s2_rescored/l1_deltas.md`).

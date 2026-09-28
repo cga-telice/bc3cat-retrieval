@@ -23,6 +23,7 @@ from utils.build_overlap import (
     OEB_REFERENCE,
     TOLERANCE_PP,
     has_doubled_token,
+    has_topo_drift,
     lexical_coverage,
     measure,
     numeric_coverage,
@@ -123,3 +124,22 @@ def test_the_detector_does_not_fire_anywhere_in_the_corpus():
     corpus = json.loads((DATA / "OE_texto.json").read_text(encoding="utf-8"))
     hits = [r["item_key"] for r in corpus if has_doubled_token(r["text"])]
     assert not hits, f"{len(hits)} corpus documents contain a doubled token, e.g. {hits[:3]}"
+
+
+# --- the D-004 "con topo" drift detector (S3 audit F5) ------------------------------------
+
+
+def test_the_topo_detector_fires_on_the_documented_drift():
+    assert has_topo_drift("excavacion con topografia de tunel", "excavacion con topo de tunel")
+
+
+def test_the_topo_detector_needs_the_target_to_lack_the_word():
+    assert not has_topo_drift("con topografia", "levantamiento con topografia")
+    assert not has_topo_drift("con topo", "con topo")
+
+
+def test_the_corpus_never_says_topografia():
+    """What makes the detector a marker: the word only enters through the rewrite."""
+    corpus = json.loads((DATA / "OE_texto.json").read_text(encoding="utf-8"))
+    hits = [r["item_key"] for r in corpus if "topograf" in r["text"].lower()]
+    assert not hits, f"{len(hits)} corpus documents say topografia, e.g. {hits[:3]}"

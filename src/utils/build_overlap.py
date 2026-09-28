@@ -13,8 +13,15 @@ does not reproduce the number the objection was granted on is measuring somethin
 figure downstream of it would inherit that silently. The definition was chosen by reproducing the
 reference, not asserted: distinct normalised query tokens, looked up in the target's token set.
 
-Overlap is computed on the **dev** split only. It describes the benchmark rather than a run, but
-looking at test queries before S12 is looking at test (operating rule 2).
+The OE figures are computed on the **dev** split only. They describe the benchmark rather than a
+run, but looking at test queries before S12 is looking at test (operating rule 2). **The OEB
+validation is the exception, and it is declared rather than hidden:** it reads every OEB
+`resumen`/`texto` pair, because that is the population the reference was measured on, and roughly
+half of those pairs belong to concepts that are on OE's *test* side (the table prints how many).
+No retrieval parameter is set from it; it fixes only which overlap definition is used (S3 audit F10).
+
+Every number in the prose is interpolated from a computed value (S3 audit F1), and every slice
+carries a concept-clustered interval, because the thin ones cannot be read without one (F7).
 
     python src/utils/build_overlap.py
 """
@@ -30,6 +37,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
+from utils.build_results_s2 import B, SEED, boot_cluster, ci  # noqa: E402
 from utils.corpus_prep import extract_numbers, normalize_text, tokenize_words  # noqa: E402
 from utils.provenance import sha256_file  # noqa: E402
 from utils.splits import load_split  # noqa: E402
@@ -118,14 +126,55 @@ def measure(pairs: list[tuple[str, str]]) -> dict:
     }
 
 
+
+
+def has_topo_drift(query: str, target: str) -> bool:
+    """The one documented semantic drift of D-004: "con topo" rewritten as "con topografía".
+
+    The corpus never says "topografía" (asserted in `tests/test_overlap.py`), so a query that does,
+    against a target that does not, carries the drift.
+    """
+    return "topograf" in query.lower() and "topograf" not in target.lower()
+
+
+def per_pair(pairs: list[tuple[str, str]]) -> dict[str, np.ndarray]:
+    """Per-pair values behind the two columns that carry an interval; NaN where undefined."""
+    lex = [lexical_coverage(q, d) for q, d in pairs]
+    return {
+        "lexical": np.array([np.nan if x is None else x for x in lex], dtype=float),
+        "delta": np.array([numbers_in(q) - numbers_in(d) for q, d in pairs], dtype=float),
+    }
+
+
+def intervals(pairs: list[tuple[str, str]], clusters: list[str], label: str) -> dict[str, tuple[float, float]]:
+    """Concept-clustered 95 % intervals for lexical mean (in %) and Δ numbers."""
+    values = per_pair(pairs)
+    clusters = np.asarray(clusters)
+    out: dict = {"concepts": len(set(clusters.tolist()))}
+    if out["concepts"] < 2:
+        # Resampling one concept returns that concept every time: an interval of width zero that
+        # would read as certainty. Print no interval instead, and say why.
+        return out
+    for key, scale in (("lexical", 100.0), ("delta", 1.0)):
+        v = values[key]
+        keep = ~np.isnan(v)
+        draws = boot_cluster(v[keep][:, None], clusters[keep], f"overlap|{key}|{label}")
+        lo, hi = ci(draws[:, 0])
+        out[key] = (scale * lo, scale * hi)
+    return out
+
+
 # --------------------------------------------------------------------------- the gate
 
 
-def validate_against_oeb() -> tuple[dict, list[str]]:
+def oeb_pairs() -> list[tuple[dict, tuple[str, str]]]:
     resumen = json.loads((DATA / "OEB_resumen.json").read_text(encoding="utf-8"))
     texto = {r["item_key"]: r["text"] for r in json.loads((DATA / "OEB_texto.json").read_text(encoding="utf-8"))}
-    pairs = [(r["text"], texto[r["item_key"]]) for r in resumen if r["item_key"] in texto]
-    observed = measure(pairs)
+    return [(r, (r["text"], texto[r["item_key"]])) for r in resumen if r["item_key"] in texto]
+
+
+def validate_against_oeb() -> tuple[dict, list[str]]:
+    observed = measure([p for _, p in oeb_pairs()])
     lines, failures = [], []
     for key, expected in OEB_REFERENCE.items():
         got = observed[key]
@@ -143,6 +192,12 @@ def validate_against_oeb() -> tuple[dict, list[str]]:
     return observed, lines
 
 
+def oeb_pairs_in_test() -> int:
+    """How many validation pairs belong to concepts on OE's test side (S3 audit F10)."""
+    test = load_split("test")
+    return sum(r.get("parent_key") in test for r, _ in oeb_pairs())
+
+
 # --------------------------------------------------------------------------- OE slices
 
 
@@ -150,56 +205,90 @@ def load(name: str) -> list[dict]:
     return json.loads((DATA / f"OE_{name}.json").read_text(encoding="utf-8"))
 
 
-def oe_slices() -> list[tuple[str, str, list[tuple[str, str]]]]:
-    """(query set, slice label, pairs) on the dev split only."""
+Slice = tuple[str, str, list[tuple[str, str]], list[str]]
+
+
+def oe_slices() -> list[Slice]:
+    """(query set, slice label, pairs, concept of each pair) on the dev split only."""
     dev = load_split("dev")
     corpus = load("texto")
     target_of = {r["item_key"]: r["text"] for r in corpus}
 
-    out: list[tuple[str, str, list[tuple[str, str]]]] = []
+    def mk(query_set: str, label: str, rows: list[dict], gold: str) -> Slice:
+        return (query_set, label, [(r["text"], target_of[r[gold]]) for r in rows],
+                [r["parent_key"] for r in rows])
+
+    out: list[Slice] = []
 
     # The replication regime: the leaf's own summary asked of its own long description.
-    resumen = [r for r in load("resumen") if r["parent_key"] in dev]
-    out.append(("`resumen`", "all", [(r["text"], target_of[r["item_key"]]) for r in resumen]))
+    out.append(mk("`resumen`", "all", [r for r in load("resumen") if r["parent_key"] in dev], "item_key"))
 
     # The identity rendering. Coverage is 1.0 by construction; it is here as a control on the
     # measurement, not as a finding.
-    ident = [r for r in corpus if r["parent_key"] in dev]
-    out.append(("`texto` (identity)", "all", [(r["text"], target_of[r["item_key"]]) for r in ident]))
+    out.append(mk("`texto` (identity)", "all", [r for r in corpus if r["parent_key"] in dev], "item_key"))
 
     single = [r for r in load("single_texto") if r["parent_key"] in dev]
-    out.append(("`single_texto`", "all", [(r["text"], target_of[r["gold_item_key"]]) for r in single]))
+    out.append(mk("`single_texto`", "all", single, "gold_item_key"))
     for mod_type in sorted({r["modification_types"][0] for r in single}):
-        rows = [r for r in single if r["modification_types"][0] == mod_type]
-        out.append(("`single_texto`", f"`{mod_type}`", [(r["text"], target_of[r["gold_item_key"]]) for r in rows]))
+        out.append(mk("`single_texto`", f"`{mod_type}`",
+                      [r for r in single if r["modification_types"][0] == mod_type], "gold_item_key"))
 
     stacked = [r for r in load("stacked_texto") if r["parent_key"] in dev]
-    out.append(("`stacked_texto`", "all", [(r["text"], target_of[r["gold_item_key"]]) for r in stacked]))
+    out.append(mk("`stacked_texto`", "all", stacked, "gold_item_key"))
     for dose in sorted({r["texto_modification_count"] for r in stacked}):
-        rows = [r for r in stacked if r["texto_modification_count"] == dose]
-        out.append(("`stacked_texto`", f"dose {dose}", [(r["text"], target_of[r["gold_item_key"]]) for r in rows]))
+        out.append(mk("`stacked_texto`", f"dose {dose}",
+                      [r for r in stacked if r["texto_modification_count"] == dose], "gold_item_key"))
 
     return out
 
 
-def sensitivity_slices() -> list[tuple[str, list, list, list]]:
-    """(query set, all, without a doubled token, with one) — the D-004 check.
+def replication_coverage() -> tuple[dict, dict, int]:
+    """(OEB observed, OE dev `resumen`, OEB pairs on OE's test side) — for E0(b)'s prose."""
+    observed, _ = validate_against_oeb()
+    _, _, pairs, _ = oe_slices()[0]
+    return observed, measure(pairs), oeb_pairs_in_test()
 
-    Partitioned by the predicate on each record, not by differencing the pair lists: two queries
-    can carry the same text against the same target, and a set difference would then drop or
-    double-count them. The three counts are asserted to add up.
+
+#: D-004's two pantry artefacts, each a predicate over (record, target text).
+ARTEFACTS = {
+    "doubled": lambda r, target: has_doubled_token(r["text"]),
+    "topo": lambda r, target: has_topo_drift(r["text"], target),
+}
+
+Item = tuple[tuple[str, str], str]
+
+
+def sensitivity_rows() -> list[tuple[str, str, dict[str, list[Item]]]]:
+    """(query set, slice, partition) — the D-004 check at every level a claim is made.
+
+    Partitioned by the predicates on each record, not by differencing pair lists: two queries can
+    carry the same text against the same target, and a set difference would then drop or
+    double-count them. Every query is either clean or flagged, and that is asserted.
     """
     dev = load_split("dev")
     target_of = {r["item_key"]: r["text"] for r in load("texto")}
     out = []
-    for name in ("single_texto", "stacked_texto"):
+    for name, key in (("single_texto", lambda r: f"`{r['modification_types'][0]}`"),
+                      ("stacked_texto", lambda r: f"dose {r['texto_modification_count']}")):
         rows = [r for r in load(name) if r["parent_key"] in dev]
-        pairs = [(r, (r["text"], target_of[r["gold_item_key"]])) for r in rows]
-        clean = [p for r, p in pairs if not has_doubled_token(r["text"])]
-        doubled = [p for r, p in pairs if has_doubled_token(r["text"])]
-        allp = [p for _, p in pairs]
-        assert len(clean) + len(doubled) == len(allp), f"{name}: partition does not add up"
-        out.append((f"`{name}`", allp, clean, doubled))
+        slices = [("all", rows)] + [(k, [r for r in rows if key(r) == k]) for k in sorted({key(r) for r in rows})]
+        for label, members in slices:
+            part: dict[str, list[Item]] = {"all": [], "doubled": [], "topo": [], "clean": []}
+            flagged = 0
+            for r in members:
+                target = target_of[r["gold_item_key"]]
+                item = ((r["text"], target), r["parent_key"])
+                part["all"].append(item)
+                flags = {k: f(r, target) for k, f in ARTEFACTS.items()}
+                for k, hit in flags.items():
+                    if hit:
+                        part[k].append(item)
+                if any(flags.values()):
+                    flagged += 1
+                else:
+                    part["clean"].append(item)
+            assert len(part["clean"]) + flagged == len(part["all"]), f"{name}/{label}: partition does not add up"
+            out.append((f"`{name}`", label, part))
     return out
 
 
@@ -219,23 +308,48 @@ COLUMNS = [
 ]
 
 
-def row(label_a: str, label_b: str, stats: dict) -> str:
+WORDS = {0: "none", 1: "one", 2: "two", 3: "three", 4: "four"}
+
+
+def fci_pc(iv: dict | None) -> str:
+    if not iv or "lexical" not in iv:
+        return "— (one concept)" if iv else "—"
+    return f"[{iv['lexical'][0]:.2f}, {iv['lexical'][1]:.2f}]"
+
+
+def fci_d(iv: dict | None) -> str:
+    if not iv or "delta" not in iv:
+        return "— (one concept)" if iv else "—"
+    return f"[{iv['delta'][0]:+.2f}, {iv['delta'][1]:+.2f}]"
+
+
+def row(label_a: str, label_b: str, stats: dict, iv: dict) -> str:
     cells = [fmt.format(stats[key]) for key, _, fmt in COLUMNS]
+    cells.insert(1, f"{iv['concepts']:,}")
+    cells.insert(3, fci_pc(iv))
+    cells.append(fci_d(iv))
     return f"| {label_a} | {label_b} | " + " | ".join(cells) + " |"
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     observed, validation_rows = validate_against_oeb()
+    in_test = oeb_pairs_in_test()
+    dev = load_split("dev")
 
-    head = "| query set | slice | " + " | ".join(name for _, name, _ in COLUMNS) + " |"
-    rule = "|---|---|" + "---:|" * len(COLUMNS)
+    names = [name for _, name, _ in COLUMNS]
+    head = "| query set | slice | " + " | ".join(
+        names[:1] + ["concepts"] + names[1:2] + ["CI (concept)"] + names[2:] + ["CI (concept)"]) + " |"
+    rule = "|---|---|" + "---:|" * 3 + "---|" + "---:|" * (len(COLUMNS) - 2) + "---|"
 
+    ref = OEB_REFERENCE
+    exact = abs(observed["lexical_median"] - ref["lexical_median"]) < 0.005
     lines = [
         "# S3 — lexical and numeric overlap with the target",
         "",
-        f"Generated by `{GENERATOR}`. **Dev split only** — overlap describes the benchmark rather "
-        "than a run, but reading test queries before S12 is reading test (operating rule 2).",
+        f"Generated by `{GENERATOR}`. **OE figures: dev split only** — overlap describes the benchmark "
+        "rather than a run, but reading test queries before S12 is reading test (operating rule 2). "
+        "**The OEB validation below is the declared exception** (see there).",
         "",
         "Lexical coverage is the share of the query's **distinct** normalised tokens that appear in "
         "the target; numeric coverage the share of its numbers. Both use this repo's own "
@@ -244,11 +358,11 @@ def main() -> None:
         "",
         "## The definition is validated before it is used",
         "",
-        "The reviewers' objection was granted on the strength of one measurement: on OEB, the target "
-        "holds 94.09 % of the query's tokens and 99.93 % of its numbers "
-        "(`docs/reviews/AUTCON_analisis_revision.md` §2.6). This generator recomputes those figures "
-        "first and **refuses to report anything if they do not come back**, because a definition that "
-        "cannot reproduce them is measuring something else and every OE figure would inherit that "
+        f"The reviewers' objection was granted on the strength of one measurement: on OEB, the target "
+        f"holds {ref['lexical_mean']:.2f} % of the query's tokens and {ref['numeric_mean']:.2f} % of its "
+        "numbers (`docs/reviews/AUTCON_analisis_revision.md` §2.6). This generator recomputes those "
+        "figures first and **refuses to report anything if they do not come back**, because a definition "
+        "that cannot reproduce them is measuring something else and every OE figure would inherit that "
         "silently.",
         "",
         "| statistic | reference | recomputed | gap | |",
@@ -256,51 +370,105 @@ def main() -> None:
         *validation_rows,
         "",
         f"Tolerance {TOLERANCE_PP:.1f} pp. The reference was measured on \"20.000 pares alineados\"; "
-        f"these reproduce on all {observed['n']:,}, and the median lands **exactly** — which a "
-        "different tokenisation would not. The residual on *fully contained* is the sampling "
-        "difference, not a definitional one.",
+        f"these reproduce on all {observed['n']:,}, and the median lands "
+        + ("**exactly** — which a different tokenisation would not" if exact else "within tolerance")
+        + ". The residual on *fully contained* is the sampling difference, not a definitional one.",
+        "",
+        f"**This check reads test-split concepts.** It uses every OEB pair, because that is the population "
+        f"the reference was measured on, and {in_test:,} of the {observed['n']:,} belong to concepts on OE's "
+        "test side. The overlap definition was chosen by matching them. Nothing else was: no retrieval "
+        "parameter, threshold or model choice is set from this table, and every OE figure below is dev.",
         "",
         "## OE, by query set and slice",
+        "",
+        "Intervals are concept-clustered percentile 95 % intervals — a slice's concepts are resampled "
+        "whole, since siblings are not independent draws. They are what makes the thin slices readable.",
         "",
         head,
         rule,
     ]
-    for query_set, label, pairs in oe_slices():
-        lines.append(row(query_set, label, measure(pairs)))
+    by_slice = {}
+    for query_set, label, pairs, clusters in oe_slices():
+        stats = measure(pairs)
+        by_slice[(query_set, label)] = stats
+        lines.append(row(query_set, label, stats, intervals(pairs, clusters, f"{query_set}|{label}")))
 
+    sens = sensitivity_rows()
+    clean = {(qs, label): measure([p for p, _ in part["clean"]]) for qs, label, part in sens}
+
+    def s(t: str) -> dict:
+        return by_slice[("`single_texto`", f"`{t}`")]
+
+    def c(t: str) -> dict:
+        return clean[("`single_texto`", f"`{t}`")]
+
+    def blind(stats: dict) -> bool:
+        return stats["numeric_mean"] == 100 and stats["delta_numbers"] < 0
+
+    removing = [t for t in ("num_to_text", "unit_expansion") if blind(s(t)) and blind(c(t))]
+    nt, ue, uc = s("num_to_text"), s("unit_expansion"), s("unit_conversion")
     lines += [
         "",
         "`texto` is the identity rendering, where the query **is** the target: 100 % on every "
         "coverage column is the control that the measurement is wired correctly, not a result.",
         "",
-        "**Numeric coverage cannot see two of the four L1 types, and the last two columns are why.** "
-        "`num_to_text` removes exactly **one** number per query (4.14 → 3.14 against the same gold) "
-        "by spelling it out, and `unit_expansion` removes 0.64; the affected number is not *missed* "
-        "by the target, it is no longer in the query to miss, so numeric coverage stays at 100 % "
-        "while the numeric surface the retriever matches on has shrunk. Only `unit_conversion` — "
-        "which rewrites a value rather than removing it — appears as lost coverage, at 79.14 % with "
-        "barely half its queries retaining all their numbers. **H5 must therefore be stated over "
-        "both columns**, because numeric coverage alone would score two of the three most damaging "
-        "L1 types as doing nothing at all.",
+        f"**Numeric coverage cannot see {WORDS[len(removing)]} of the four L1 types, and the last columns are "
+        f"why.** `num_to_text` changes numbers / query by {nt['delta_numbers']:+.2f} against the same gold "
+        f"({nt['gold_numbers_per_query']:.2f} → {nt['numbers_per_query']:.2f}) by spelling a number out, and "
+        f"`unit_expansion` by {ue['delta_numbers']:+.2f}. The affected number is not *missed* by the target, "
+        f"it is no longer in the query to miss, so numeric coverage stays at {nt['numeric_mean']:.2f} % and "
+        f"{ue['numeric_mean']:.2f} % while the numeric surface the retriever matches on has shrunk. "
+        f"`unit_conversion`, which rewrites a value rather than removing it, appears as lost coverage: "
+        f"{uc['numeric_mean']:.2f} %, with {uc['all_numbers']:.2f} % of its queries retaining all their "
+        "numbers. **H5 must therefore be stated over both columns.**",
         "",
-        "## D-004 sensitivity: excluding the pantry artefact",
+        "**The pattern survives removing both pantry artefacts** (next section): on the clean subset "
+        + ", ".join(f"`{t}` is at {c(t)['numeric_mean']:.2f} % numeric coverage with Δ {c(t)['delta_numbers']:+.2f}"
+                    for t in ("num_to_text", "unit_expansion", "unit_conversion"))
+        + "."
+        if len(removing) == 2 else
+        "**The pattern does not fully survive removing the pantry artefacts** — read the next section "
+        "before any per-type figure.",
         "",
-        "Upstream kept token doubling (\"tubos tubos\", \"mm mm\") as documented stress, and D-004 "
-        "requires a sensitivity analysis excluding it **before any per-type claim**. Doubling is "
-        "detected from the text — an immediately repeated token — rather than from upstream's "
-        "modifications sidecar, which this branch has not taken in. That detector is sound here: the "
-        "rate is **0 %** across the corpus's own `texto`, so immediate repetition does not occur "
-        "naturally in this catalogue.",
+        "## D-004 sensitivity: excluding the pantry artefacts, at every level a claim is made",
         "",
-        "| query set | slice | " + " | ".join(name for _, name, _ in COLUMNS) + " |",
-        rule,
+        "Upstream kept two artefacts as documented stress, and D-004 requires a sensitivity analysis "
+        "excluding them **before any per-type claim**:",
+        "",
+        "- **token doubling** (\"tubos tubos\", \"mm mm\"), detected from the text as an immediately "
+        "repeated token rather than from upstream's modifications sidecar, which this branch has not "
+        "taken in. The detector is sound here because immediate repetition never occurs in the corpus's "
+        "own `texto` (asserted over every document by `tests/test_overlap.py`);",
+        "- **the \"con topo\" → \"con topografía\" drift**, detected as a query saying *topografía* "
+        "against a target that does not. The corpus never does (asserted by the same file).",
+        "",
+        "*Clean* excludes a query carrying either. The interval is on the clean subset.",
+        "",
+        "| query set | slice | n | doubled | topo drift | n clean | lexical mean | clean | CI (concept) | "
+        "numeric mean | clean | Δ numbers | clean | CI (concept) |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---|",
     ]
-    for name, allp, clean, doubled in sensitivity_slices():
-        lines.append(row(name, "all", measure(allp)))
-        lines.append(row(name, "no doubled token", measure(clean)))
-        lines.append(row(name, "*the doubled ones*", measure(doubled)))
+    for qs, label, part in sens:
+        a = measure([p for p, _ in part["all"]])
+        k = clean[(qs, label)]
+        cp = [p for p, _ in part["clean"]]
+        iv = intervals(cp, [g for _, g in part["clean"]], f"clean|{qs}|{label}") if len(cp) > 1 else None
+        lines.append(
+            f"| {qs} | {label} | {a['n']:,} | {len(part['doubled']):,} | {len(part['topo']):,} | {k['n']:,} | "
+            f"{a['lexical_mean']:.2f} % | {k['lexical_mean']:.2f} % | {fci_pc(iv)} | "
+            f"{a['numeric_mean']:.2f} % | {k['numeric_mean']:.2f} % | "
+            f"{a['delta_numbers']:+.2f} | {k['delta_numbers']:+.2f} | {fci_d(iv)} |"
+        )
 
+    single = {label: part for qs, label, part in sens if qs == "`single_texto`"}
+    share = {label: len(p["doubled"]) / len(p["all"]) for label, p in single.items() if label != "all" and p["all"]}
+    top = sorted(share, key=share.get, reverse=True)[:3]
     lines += [
+        "",
+        f"Doubling is not spread evenly: {len(single['all']['doubled']):,} of {len(single['all']['all']):,} "
+        "`single_texto` queries carry it, concentrated in "
+        + ", ".join(f"{t} ({100 * share[t]:.1f} %)" for t in top)
+        + ". That is why the check has to be per type and not only on `all`.",
         "",
         "## Sources",
         "",
@@ -311,7 +479,7 @@ def main() -> None:
                  "OE_single_texto.json", "OE_stacked_texto.json"):
         lines.append(f"| `{name}` | `{sha256_file(DATA / name)[:16]}` |")
     lines.append("")
-    lines.append("Split: `dev`, from `SPLITS.md` (42 concepts).")
+    lines.append(f"Split: `dev`, from `SPLITS.md` ({len(dev)} concepts). Bootstrap: B = {B:,}, seed = {SEED}.")
 
     (OUT / "overlap.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"written: {(OUT / 'overlap.md').relative_to(REPO)}")
