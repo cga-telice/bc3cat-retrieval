@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 work items 1–9 done) · **Updated by:** César
+**Last updated:** 2026-09-28 (S3 work items 1–11 done; report pending) · **Updated by:** César
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, work items 1–9 done. **S2 is done**
+**Active sprint: S3** — frozen at `8353cf7`, **all 11 work items done**; report and audit pending. **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -31,7 +31,9 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 ## In flight
 
 - **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A10).
-  **Work items 1–9 done** 2026-09-28; 10–11 open (the generated `results/S3/` tables, remaining tests). D-012 closed on the ten-method set.
+  **All 11 work items done** 2026-09-28. 177 of 177 runs resolve; 11 generated tables under
+  [`results/S3/`](results/S3) regenerate byte-identically; suite 971 passed, 1 xfailed.
+  **Next: `/sprint-close S3`, then `/audit S3` in a fresh session.** D-012 closed on the ten-method set.
 - **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one
   `code_dirty: false`: `bm25_*` at `6336974`, `bge_m3_colbert` at `31bf1a1`, the other seven at
   `2dd653d`. The four **local dense** arms run on `transformers 4.57.6` / `sentence-transformers
@@ -61,15 +63,33 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-S3 work item 9 — the overlap tables, and the only one of S3's measurements that is validated before
-it is trusted: the implementation must reproduce the review analysis's OEB figures (94.09 % lexical /
-99.93 % numeric) *before* being applied to OE. Per query against its gold: mean and median lexical
-coverage, full-containment rate, mean numeric coverage, all-numbers-present rate, ≥1-number rate,
-numbers per query — for `resumen`, `texto`, `single_texto` per type and `stacked_texto` per
-`texto_modification_count`, with the D-004 sensitivity column. Then work items 10–11: the generated
-`results/S3/` tables and the remaining regression tests.
+`/sprint-close S3` — write `SPRINT_S3_REPORT.md` against the frozen design, criterion by criterion,
+with every number read from `results/S3/`. Then `/audit S3` in a session that did not do the work.
+Two things the report must carry beyond the criteria: the ten amendments, which are unusually many and
+four of which are unplanned harness repairs (H5–H7 and the batching fix); and the fact that S3's
+headline findings are mostly **negative or mechanistic** — the operating point transfers, the chapter
+is less verbatim, the oracle advantage is exactly the undecidable queries — rather than the
+refutation the sprint was framed to look for.
 
 ## Latest results
+
+**All of S3's tables are generated and regenerate byte-identically** —
+[`results/S3/e0/`](results/S3/e0) (ceiling, replication, transferability, provenance for 168 runs),
+[`results/S3/overlap/`](results/S3/overlap), [`results/S3/s2_rescored/`](results/S3/s2_rescored).
+Every item-level figure carries its scored n; the oracle arms are marked in every table they appear in.
+
+**The identity ceiling, and what it showed.** Splitting each arm at the 776 undecidable queries makes
+the structure categorical rather than gradual: `bm25_unigram_params` resolves **776 of 776**,
+`tfidf_phrases_replace` 676, and **no text-only arm beats the chance baseline of 292** — the three at
+their corpus ceiling land on 292, 293, 293. The oracle arms are not better at identity; they are
+answering a question whose answer is determined for them (D-010, confirmed from a third direction).
+On the decidable population `dense_es_hiiamsid` is **perfect** (1.0000), above both oracle arms — the
+model the previous submission never reported has the cleanest identity behaviour in the set, and
+collapses to 0.0096 on `resumen`, which is exactly why a ceiling is measured per method before any
+degradation is read against it (D-032).
+
+### Earlier
+
 
 **E0 is measured: all ten arms, identity and `resumen`, dev split** — 32 of 32 OE runs resolve
 against the tree. Full tables come with work item 10; the two things already settled:
