@@ -350,8 +350,10 @@ def sweep(dup: set[str]) -> list[dict]:
             argmaxes = sorted(k for k, v in surface.items() if v == top)
             # An exact tie that includes the transferred point is reported as a tie, never as a win.
             best = TRANSFERRED if TRANSFERRED in argmaxes else argmaxes[0]
+            keys = perquery(queryset, point(variant, *TRANSFERRED))["gold_item_key"]
+            n_scored = int((~keys.isin(dup)).sum())
             cell = {"variant": variant, "queryset": queryset, "surface": surface, "best": best,
-                    "argmaxes": argmaxes,
+                    "argmaxes": argmaxes, "n_scored": n_scored, "n_excluded": len(keys) - n_scored,
                     "ref": surface[TRANSFERRED], "delta": surface[best] - surface[TRANSFERRED]}
             if best != TRANSFERRED:
                 a = perquery(queryset, point(variant, *best))
@@ -551,20 +553,24 @@ def write_ceiling(dup: set[str], rows: dict[str, dict], sparse: dict, resumen_hi
 
     best_scored = max(rows, key=lambda s: rows[s]["item"]["acc"])
     if best_scored not in ORACLE:
+        top = rows[best_scored]["item"]["acc"]
+        level = [s for s in rows if s != best_scored and rows[s]["item"]["c"][1] >= top]
         lines += [
             "",
-            f"And on the decidable population the ranking is not what the full-population column suggests: "
-            f"`{best_scored}` reads its own target back at **{f4(rows[best_scored]['item']['acc'])}**, above "
-            f"both oracle arms."
+            f"On the decidable population `{best_scored}` reads its own target back at **{f4(top)}** "
+            f"(n = {rows[best_scored]['item']['n']:,} scored). That is **level, not ahead**: the "
+            "concept-clustered interval of "
+            + english_list([f"`{s}` ({fci(rows[s]['item']['c'])})" for s in level])
+            + f" reaches {f4(top)}, and no paired contrast between arms was computed, so the table ranks "
+            "none of them above another."
             + (
-                f" A Spanish sentence-similarity model that the previous submission never reported has the "
-                f"cleanest identity behaviour in the set — which says nothing yet about retrieval under "
-                f"variation, where it falls to {f4(resumen_hiiamsid['acc'])} on `resumen` "
-                f"(n = {resumen_hiiamsid['n']:,} scored)"
+                f" What does separate `{best_scored}` is what happens under variation: it falls to "
+                f"{f4(resumen_hiiamsid['acc'])} on `resumen` (n = {resumen_hiiamsid['n']:,} scored), a "
+                "Spanish sentence-similarity model the previous submission never reported"
                 if best_scored == "dense_es_hiiamsid" else ""
             )
-            + ", and everything about why a ceiling must be measured per method before any degradation "
-            "is read against it (D-032).",
+            + ". That is why a ceiling must be measured per method before any degradation is read "
+            "against it (D-032).",
         ]
 
     sp_all = rows["bge_m3_sparse"]["all"]
@@ -714,7 +720,7 @@ def write_replication(dup: set[str], rows: dict[str, dict], cells: list[dict], c
 # --------------------------------------------------------------------------- the sweep
 
 
-def write_transferability(cells: list[dict], lengths: dict[str, float]) -> None:
+def write_transferability(cells: list[dict], lengths: dict[str, float], ceiling: dict[str, dict]) -> None:
     n_cells = len(K1_VALUES) * len(B_VALUES) * len(SWEEP_VARIANTS) * len(SWEEP_SETS)
     lines = header(
         "the `k1`/`b` transferability verdict (dev)",
@@ -739,12 +745,22 @@ def write_transferability(cells: list[dict], lengths: dict[str, float]) -> None:
         rows.append(
             f"| `{c['variant']}` | `{c['queryset']}` | {' = '.join(pt(a) for a in c['argmaxes'])} | "
             f"{f4(c['surface'][c['best']])} | "
-            f"{f4(c['ref'])} | {fd(c['delta'])} | {extra[0]} | {extra[1]} | {extra[2]} |"
+            f"{f4(c['ref'])} | {fd(c['delta'])} | {extra[0]} | {extra[1]} | {extra[2]} | "
+            f"{c['n_scored']:,} | {c['n_excluded']:,} | {f4(ceiling[c['variant']]['item']['acc'])} | "
+            f"{f4(c['ref'] / ceiling[c['variant']]['item']['acc'])} |"
         )
     lines += [
-        f"| variant | query set | argmax | its Acc@1 | {pt(TRANSFERRED)} | Δ | CI (paired) | p | queries up / down |",
-        "|---|---|---|---:|---:|---:|---|---:|---|",
+        f"| variant | query set | argmax | its Acc@1 | {pt(TRANSFERRED)} | Δ | CI (paired) | p | queries up / down "
+        f"| n scored | n excluded | ceiling | headroom |",
+        "|---|---|---|---:|---:|---:|---|---:|---|---:|---:|---:|---:|",
         *rows,
+        "",
+        "Every Acc@1 and Δ above is item-level on the duplicate-free population: `n scored` queries, after "
+        "`n excluded` whose gold shares its `texto` with a sibling (D-033). `ceiling` is the variant's own "
+        f"identity ceiling at {pt(TRANSFERRED)} on the scored population "
+        "([`ceiling.md`](ceiling.md), D-032), and `headroom` is the "
+        f"{pt(TRANSFERRED)} column divided by it. Every row takes the ceiling at the transferred point; "
+        "each sweep point's own identity figure is its cell in the `texto` surfaces below.",
         "",
         f"**The transferred point is {argmax_outcome(cells)}.** In the "
         f"{WORDS[len(moved)]} where it is beaten, the paired contrast straddles 0 and the flip counts are near-symmetric: "
@@ -860,7 +876,7 @@ def main() -> None:
                      "rep|dense_es_hiiamsid")
     write_ceiling(dup, rows, sparse_diagnosis(dup), hiiamsid)
     write_replication(dup, rows, cells, replication_coverage())
-    write_transferability(cells, query_lengths())
+    write_transferability(cells, query_lengths(), rows)
     write_provenance()
     print(f"written: {OUT.relative_to(REPO)}")
     for path in sorted(OUT.glob("*.md")):

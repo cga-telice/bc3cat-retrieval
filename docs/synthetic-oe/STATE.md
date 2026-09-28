@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 re-audit PASS WITH FINDINGS → resolved → **S3 done**) · **Updated by:** Claude, `/audit S3`
+**Last updated:** 2026-09-28 (S3 third audit PASS WITH FINDINGS, three minor → resolved; **S3 done**) · **Updated by:** Claude, `/audit S3`
 
 ---
 
 ## Where we are
 
-**No active sprint. S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: `/sprint-open S4`.** **S2 is done**
+**No active sprint. S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: `/sprint-open S4`.** **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -32,7 +32,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## In flight
 
-- **S3 closed** at `8353cf7` + amendments A1–A12. 177 of 177 runs resolve; 11 generated tables under
+- **S3 closed** at `8353cf7` + amendments A1–A13. 177 of 177 runs resolve; 11 generated tables under
   [`results/S3/`](results/S3) regenerate byte-identically, all three generators under the prose
   guard; suite 984 passed, 1 xfailed. D-012 closed on the ten-method set.
 - **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one

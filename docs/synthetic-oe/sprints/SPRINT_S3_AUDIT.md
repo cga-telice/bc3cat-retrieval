@@ -1,3 +1,105 @@
+# Sprint S3 — audit
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-09-28 · report `e7536c6` (HEAD, tree clean) · runs `runs/OE/{texto,resumen,single_texto,stacked_texto}` (177 run dirs, split `dev`)
+
+I found no critical defects. Every number I sampled reproduces from the per-query files, all three generators regenerate the committed tables byte for byte, and the design is unchanged since the freeze apart from its amendments. There are three minor findings.
+
+## Verified
+- **Headline: tuned BM25 on `resumen` = 0.6394 (n = 34,646 scored).** Recomputed from `OE/resumen/bm25_unigram_params__k1-0.60__b-0.35__OE/results_perquery.parquet` with the duplicate sidecar (`b3cfcad4`). Value matches. The run stamp matches: config `c695c126` (the config file on disk hashes the same), commit `2e49566`, query set `f041a8e8` (= `OE_short_feats.parquet`), `code_dirty: false`.
+- **`bm25_unigram` on `resumen`: 0.0142 at 0.60/0.35 and 0.0148 at 0.80/0.35.** Both match; the 0.80 run's config `3d04c803` and commit `2a9ffdb` also match.
+- **`dense_es_hiiamsid`: 1.0000 on `texto` and 0.0093 on `resumen`.** Both match. So do `bge_m3_sparse` (0.0501 / 0.0509 / parent 0.8845) and the undecidable hits: 776, 676, 292, 293, 293.
+- **Sparse diagnosis.** 32,909 misses, 12,192 of them past rank 100, median gold rank 18. Document-vector norms are 0.47–1.09, computed from `index/OE/bge_m3_sparse__OE/data/sparse_docs.npz`. The retriever scores with a raw dot product and no normalisation.
+- **ColBERT misses.** 484 of its 492 misses have a duplicate gold; 8 remain among the decidable queries. Matches.
+- **`tfidf_phrases_replace` field ceiling.** Its indexed field has 100 groups of identical text. It hits exactly one member of each group, so its 100 misses on the undecidable queries are those groups. Matches.
+- **Sweep contrasts, re-bootstrapped with my own seed.**
+  - `bm25_unigram` / `single_texto`: +0.0014, CI [−0.0106, +0.0133], flips +90/−87, n = 2,177.
+  - `bm25_unigram_params` / `stacked_texto`: +0.0049, CI [−0.0069, +0.0166], flips +114/−102, n = 2,466.
+  - The p-values reproduce within bootstrap noise.
+  - The "exact tie" (`bm25_unigram_params` / `texto`, 0.80/0.35 against 0.60/0.35) is identical query by query: 0 up, 0 down.
+- **Surface-shape prose in `transferability.md`.** "5 of 30 rows fall monotonically", "single-peaked in 28", "peaks 6/21/3" all check out by hand against the grids.
+- **One sample, one claim.**
+  - All ten arms in `ceiling.md` and `replication.md` share an identical set of 35,422 query keys.
+  - The mixed digests `75477221` / `643f1a72` (and `28d09f40` / `f041a8e8`) are the same sample: each `_norm` table is a column subset of its `_feats` table, with every shared column identical row for row.
+  - The stacked sweep pairs a reference run on `7b0894e6` with an argmax run on `f34c1798`. The two feature tables are identical on all 26 old columns and the new one only adds the two dose fields. This is declared.
+- **Provenance totals.** 177 of 177 `runs/OE` runs are `split: dev` and `code_dirty: false`. Counts per commit match the header exactly: 789a6d7 ×144, 31bf1a1 ×15, 922ae53 ×10, 2e49566 ×5, a5700a6 ×2, 2a9ffdb ×1. `check_run_inputs.py` reports 177/182, and the 5 failures are the ones the report declares.
+- **Regeneration.** `build_overlap.py`, `build_results_s3.py` and `build_results_e0.py` were re-run with their output redirected to a scratchpad. All 11 tables are byte-identical to the committed ones, and no tracked file changed.
+- **Design freeze.** `git diff 8353cf7..HEAD` on the design has 1 deletion (the freeze-stamp placeholder) and 13 additions (the stamp itself plus the dated amendment rows A1–A12). No edit to a hypothesis, constraint or exit criterion.
+- **Mechanisms actually run on the reported path.**
+  - The OEB validation raises `SystemExit` before any OE figure is computed.
+  - `has_doubled_token` and `has_topo_drift` are called on every record in `sensitivity_rows`.
+  - Duplicate exclusion is confirmed by my own recompute.
+  - The `argpartition` / FAISS `index.search` top-k paths are confirmed in the retriever source.
+  - The worktree guard is present in `run_context.py`.
+  - The six new configs each declare `collection: OE` and a `retriever` block.
+  - The GTE pair's `embeddings.npy` files are byte-identical (A6).
+- **Previous-study figures** (0.974, 0.869 at `k1`=0.80, 0.708 / 0.990, 0.448, 0.014 / 0.697) are traced to `docs/reviews/paper_28.tex`.
+- **Test suite:** 984 passed, 1 xfailed, as reported.
+
+## Findings
+
+### F1 — minor — Directional identity claims made without a paired contrast
+The report's findings 1–2 and `ceiling.md` say `dense_es_hiiamsid` is "perfect (1.0000) — above both oracle arms" and has "the cleanest identity behaviour in the set".
+
+- The gaps are 0.9994 and 0.9998 against 1.0000, about 7–21 queries out of 34,646.
+- `bge_m3_colbert` and `bge_m3_dense` also sit at 0.9998.
+- The oracle arms' concept-clustered intervals include 1.0000: [0.9976, 1.0000] and [0.9992, 1.0000].
+- No paired test between arms was computed, although the design allows arm-vs-arm comparisons only when paired by query.
+
+The H2 row has the same problem: `reorder` 99.65 % [98.57, 100] is put at an "extreme" although `compression` is at 99.23 % [99.18, 99.36], and the per-type populations differ in concepts (5 to 42).
+
+**Change:** state these as ties within interval, or add a paired contrast.
+
+### F2 — minor — `transferability.md` omits the scored n, the excluded n and the ceiling column
+The design constraints require that every table print corpus size, scored n and excluded n (D-033), and carry a ceiling column (D-032).
+
+- `transferability.md` prints Acc@1 on the duplicate-free population, but its only count is the run's `queries` column: 2,206 and 2,521.
+- The Acc@1 values are actually computed on n = 2,177 and 2,466.
+- Report finding 3 quotes +0.0014 and +0.0049 without an n. That breaks the "no item-level figure without its n" rule the report hands to S4.
+
+**Change:** add n scored and n excluded to that table, and either add ceiling/headroom or state why the table is exempt.
+
+### F3 — minor — The `src/` diff since S2 is presented as complete but is not
+The report lists what `git diff 31bf1a1..HEAD -- src/` changes: `corpus_prep`, `run_context`, five retrievers and the `bge_m3_dense` builder. The re-audit disposition calls this "named in full".
+
+The actual diff also includes:
+- `structured_stages.py`
+- `failure_sample.py`
+- `build_results_s2.py`, `build_results_e0.py`, `build_results_s3.py`, `build_overlap.py`
+- `build_manifest.py`, `check_run_inputs.py`, `make_bm25_grid_configs.py`
+
+None of these is on a retrieval path, so the conclusion about reusing S2's runs still holds. The claim of completeness does not. **Change:** qualify it as "retrieval-path changes".
+
+## Unverifiable
+- **"12 of 17 runs lost to `DeadKernelError`" (A7/H6):** the evidence is only in the git-ignored `logs/S3/`, which is not a stamped artefact.
+- **A7's "blocking changes memory, not results" for the dense arms:** the report concedes this cannot be checked exactly, because 19 and 6 queries with identical text scored differently.
+- **"`bge_m3_sparse` is a ceiling, not a defect":** the scoring path is confirmed, but that 0.0501 reflects the method rather than this implementation is asserted, not tested.
+- **The ML-stack versions behind the neural indexes (H4):** they are not stamped in `meta.json`.
+- **A3's claim that `serve.py` is byte-identical to the image:** I did not inspect the image.
+- **Regeneration from a fresh clone:** I regenerated from the clean HEAD working tree, not a fresh clone.
+- **OEB validation and test concepts (declared, not a defect):** the check reads 22,305 OEB pairs that fall on OE's test side. It fixes only the overlap definition against the published reference. No retrieval outcome, parameter or threshold is fit on it.
+
+## Exit criteria
+| Criterion | Met | Evidence |
+|---|---|---|
+| 1 Manifest digests | yes | `MANIFEST.md` rows 16–33: sidecar, corrected stacked, the superseded JSON and both feature tables, and the three E3 files, each "matches" |
+| 2 Row-for-row test | yes | `tests/test_intake_20260927.py` passes; I independently found the 26 shared columns identical |
+| 3 S2 runs resolve | yes | `check_run_inputs.py`: 177/177 `runs/OE` |
+| 4 20 E0 runs, clean, listed | yes | 11 `resumen` + 10 `texto` arms, all dev and clean; listing path deviation declared in A12(a) |
+| 5 Ceiling table | yes | `ceiling.md`: item and parent level, query-level and concept-clustered CIs, field ceiling, headroom |
+| 6 Replication table | yes | `replication.md`: ten arms, "reference, not a paired contrast", `dense_es_hiiamsid` row present |
+| 7 150 sweep runs, verdict | yes | 50 BM25 runs per query set × 3; argmax, Acc@1, paired Δ, CI and p per cell (n missing, F2) |
+| 8 OEB reproduced first | yes | 94.10 / 99.96 % within 0.5 pp; `SystemExit` guard runs before any OE computation |
+| 9 Overlap, four sets, seven statistics | yes | `overlap.md` |
+| 10 Re-score, n printed, byte-identical | yes | `exclusion.md` and the other re-score tables; regenerated identically (from a clean tree, not a fresh clone) |
+| 11 Dose on `texto_modification_count` | yes | `stacked_by_dose.md` |
+| 12 D-012 / D-009 / S8 | yes | DECISIONS.md lines 619 and 723; SPRINTS.md line 78 |
+| 13 Three regression tests, suite passes | yes | `test_duplicate_exclusion.py`, `test_overlap.py`, `test_intake_20260927.py`; 984 passed, 1 xfailed |
+
+---
+
+*The second audit of this sprint (re-audit, PASS WITH FINDINGS, report `eaa184f`) and the first (FAIL, report `4a3f9ef`) follow unchanged.*
+
 # Sprint S3 — audit (re-audit after the 2026-09-28 FAIL)
 
 **Verdict:** PASS WITH FINDINGS

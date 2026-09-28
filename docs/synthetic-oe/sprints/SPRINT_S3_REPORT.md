@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| **Design** | [`SPRINT_S3_DESIGN.md`](SPRINT_S3_DESIGN.md) · frozen at `8353cf7` · amendments A1–A12 |
-| **Closed** | 2026-09-28. First close at `4a3f9ef`; [audit](SPRINT_S3_AUDIT.md) returned **FAIL** and the sprint was reopened; all eleven findings resolved the same day. The fresh re-audit returned **PASS WITH FINDINGS**; its nine findings are resolved or accepted below (§Audit response) |
+| **Design** | [`SPRINT_S3_DESIGN.md`](SPRINT_S3_DESIGN.md) · frozen at `8353cf7` · amendments A1–A13 |
+| **Closed** | 2026-09-28. First close at `4a3f9ef`; [audit](SPRINT_S3_AUDIT.md) returned **FAIL** and the sprint was reopened; all eleven findings resolved the same day. The fresh re-audit returned **PASS WITH FINDINGS**; its nine findings are resolved or accepted below (§Audit response). A third audit returned **PASS WITH FINDINGS** with three minor findings, all resolved (§Third audit) |
 | **Code commit** | Indexes: the BM25 arms at `6336974`, `bge_m3_colbert` at `31bf1a1`, six arms at `2dd653d`, `bge_m3_dense` at `a5700a6` (after the FAISS fix), the 48 sweep indexes at `789a6d7`. S3's 162 runs: `2e49566` (5) → `922ae53` (10, after the batching fix) → `a5700a6` (2, after the FAISS fix) → `789a6d7` (144, the sweep) → `2a9ffdb` (1, `bm25_unigram` at `k1`=0.80 on `resumen`). S2's 15 re-scored runs stay at `31bf1a1`. Every run `code_dirty: false` |
 | **Query-set digests** | `texto` `643f1a72` (ColBERT and `bge_m3_dense` read `OE_long_norm` `75477221`) · `resumen` `f041a8e8` (ColBERT and `bge_m3_dense` read `28d09f40`) · `single_texto` `e5b79ae4` · `stacked_texto` `f34c1798` (corrected; S2's five runs remain on the superseded `7b0894e6`) |
 | **Runs** | `runs/OE/{texto,resumen,single_texto,stacked_texto}` · split `dev` · **177 of 177 resolve** (`src/utils/check_run_inputs.py`) |
@@ -25,8 +25,8 @@ repeated here.
 | Sweep | 25 points × 2 variants × 3 query sets = 150 cells, 144 new, one index per point | [`e0/transferability.md`](../results/S3/e0/transferability.md) |
 | Overlap | 4 query sets, per condition, validated against OEB first | [`overlap/overlap.md`](../results/S3/overlap/overlap.md) |
 
-Reuse of S2's three identity runs was verified, not assumed. `git diff 31bf1a1..HEAD -- src/` changes
-`corpus_prep`'s `QUERY_FIELDS` (which touches the stacked query table, not the `texto` one —
+Reuse of S2's three identity runs was verified, not assumed. On the retrieval path, `git diff
+31bf1a1..HEAD -- src/` changes `corpus_prep`'s `QUERY_FIELDS` (which touches the stacked query table, not the `texto` one —
 established byte-identical in work item 1), `run_context`'s worktree guard (a precondition check),
 five retrievers that gained blocking (A7) and the `bge_m3_dense` builder (A8). None of the three reused
 arms' retrievers or builders is among them.
@@ -52,10 +52,13 @@ batched GPU encoding would do this; it was not tested. The oracle arms are not b
 answer the parameters determine. D-010 was argued from the code in S2 and measured on query sets;
 this is a third confirmation.
 
-**2. On the decidable population, `dense_es_hiiamsid` is perfect (1.0000)** — above both oracle arms —
-and falls to **0.0093** on `resumen` (n = 34,646 scored). The arm the previous submission never
-reported has the cleanest identity behaviour in the set. That is D-032's argument in one row: a
-ceiling is a per-method property, and no degradation means anything until it is read against one.
+**2. On the decidable population, `dense_es_hiiamsid` reads its own target back at 1.0000** (n =
+34,646 scored), level within interval with both oracle arms and with `bge_m3_colbert` and
+`bge_m3_dense` — each of their concept-clustered intervals reaches 1.0000, and no arm-vs-arm paired
+contrast was computed, so none is ranked above another. It then falls to **0.0093** on `resumen` (n =
+34,646 scored). The arm the previous submission never reported is at the identity ceiling and collapses
+under variation. That is D-032's argument in one row: a ceiling is a per-method property, and no
+degradation means anything until it is read against one.
 
 **3. The replication does not reproduce the previous headline on OE.** Tuned BM25 reaches **0.6394**
 on OE dev `resumen→texto` against 0.974 on OEB test; `bm25_unigram` reaches **0.0142** against 0.869
@@ -65,7 +68,8 @@ why they differ. Two measurements bear on it, and neither is causal:
 - **Tuning is untested on `resumen`.** The sweep ran on `texto`, `single_texto` and `stacked_texto`,
   where `k1`=0.60/`b`=0.35 is the unique argmax in 3 of 6 cells, ties exactly in a fourth, and is
   beaten in the other two by nothing detectable
-  (+0.0014, p = 0.8507; +0.0049, p = 0.4250). On `resumen` there are only the two points above.
+  (+0.0014, p = 0.8507, n = 2,177 scored on `single_texto`; +0.0049, p = 0.4250, n = 2,466 scored on
+  `stacked_texto`; [`transferability.md`](../results/S3/e0/transferability.md)). On `resumen` there are only the two points above.
 - **OE's summaries are less verbatim than OEB's.** `resumen→texto` lexical coverage is **79.38 %** on
   OE dev against **94.10 %** on OEB ([`overlap.md`](../results/S3/overlap/overlap.md)). That compares
   two populations that also differ in chapter, corpus and split (and 22,305 of the OEB pairs are on
@@ -98,7 +102,7 @@ single concept, and the overlap table prints no interval for it rather than one 
 | Hypothesis | Movement | Evidence |
 |---|---|---|
 | **H1** (widening collapse) | **not addressed** | S3 measures ceilings and the baseline, not the collapse gap under variation. S4's ablation addresses it. |
-| **H2** (layer specificity) | **not addressed** | Lexical overlap does **not** sort the types by layer: the two L3 types sit at both extremes (`reorder` 99.65 %, `template_paraphrase` 77.47 %, the lowest of any single type). Either way it is a property of the *queries*, not of any method's accuracy. |
+| **H2** (layer specificity) | **not addressed** | Lexical overlap does **not** sort the types by layer: the two L3 types do not sit together. `template_paraphrase` (77.47 % [73.05, 80.69]) lies below every other type's concept-clustered interval, while `reorder` (99.65 % [98.57, 100.00]) is level within interval with the top of the range (`compression` 99.23 % [99.18, 99.36]), not above it. The per-type populations differ in concepts (5 to 42), so these are descriptions, not paired contrasts. Either way it is a property of the *queries*, not of any method's accuracy. |
 | **H3** (rank inversion) | **not addressed** | S2's territory; nothing in S3 bears on it. |
 | **H4** (super-additivity) | **not addressed** | The by-dose re-stratification is bookkeeping, and its dose/family confound is why H4 belongs to S8. |
 | **H5** (overlap mediation) | **not addressed; re-specified** | The mediator is measured and its distribution known, but S3 makes no mediation claim, which the frozen design rules out. What moves is the *specification*: numeric coverage alone is blind to two L1 types (finding 4), so H5 is stated over two covariates. Mediation is tested in S6. |
@@ -215,10 +219,27 @@ regeneration. No run and no retrieval figure changed in resolving it. Dispositio
 The re-audit's *unverifiable* list stands as written; F3's counts now bear on A7 and are recorded
 against it in `ceiling.md`.
 
+### Third audit
+
+A third `/audit S3`, in a fresh session on 2026-09-28 against `e7536c6`, returned **PASS WITH
+FINDINGS**: three minor, no critical or major ([`SPRINT_S3_AUDIT.md`](SPRINT_S3_AUDIT.md), verbatim,
+at the top). It reproduced the headline figures, both sweep contrasts under its own seed, the per-commit
+run counts and byte-identical regeneration of all 11 tables. No run and no retrieval figure changed in
+resolving it; the suite stays at 984 passed, 1 xfailed. Disposition:
+
+| Finding | Disposition |
+|---|---|
+| F1 — `dense_es_hiiamsid` "above both oracle arms", H2's `reorder` "extreme", without a paired contrast | **Fixed.** `ceiling.md`'s prose now computes which arms' concept-clustered intervals reach the top value and says the arms are level, not ranked; finding 2 says the same. H2 places `reorder` level within interval with `compression` and keeps only the claim the intervals carry (`template_paraphrase` below every other type's interval) |
+| F2 — `transferability.md` without n scored, n excluded, ceiling | **Fixed.** Four columns: n scored and n excluded per cell (34,646 / 776, 2,177 / 29, 2,466 / 55), the variant's identity ceiling at 0.60/0.35 and the reference column's headroom; finding 3 quotes its two Δs with their n. A13 |
+| F3 — the `src/` diff since S2 called complete | **Fixed.** The sentence is qualified as the *retrieval-path* changes. The re-audit's F6 disposition above ("named in full") is left as recorded; it is corrected here, not rewritten |
+
+The *unverifiable* list stands as written. Its last item (OEB validation reading pairs on OE's test
+side) was already declared in finding 3.
+
 ## Deviations from design
 
-Twelve amendments, each recorded in the design's table. Four are unplanned harness repairs; the
-eleventh and twelfth are the two audits' remediation.
+Thirteen amendments, each recorded in the design's table. Four are unplanned harness repairs; the
+eleventh to thirteenth are the three audits' remediation.
 
 | # | Deviation | Why |
 |---|---|---|
@@ -234,6 +255,7 @@ eleventh and twelfth are the two audits' remediation.
 | A10 | Overlap gained two columns | The design's seven would have scored `num_to_text` as doing nothing |
 | A11 | Audit remediation: tie diagnostics in the ceiling table, concept counts and clustered intervals in the overlap table, the prose guard | The audit's F1, F4–F7; no run and no retrieval number changed |
 | A12 | Re-audit remediation, and the run-provenance path: the design names `results/S3/run_provenance.md`, the stamps live in `e0/` and `s2_rescored/` | Two run populations with different provenance stories; declared in prose at first close but missing from the amendments (re-audit F9). No stamp is missing |
+| A13 | Third-audit remediation: `transferability.md` gains n scored, n excluded, ceiling and headroom; identity ties stated as ties | Restores D-032 / D-033 to the one table that lacked them (third audit F1, F2). No run and no retrieval number changed |
 
 ## What the next sprint inherits
 

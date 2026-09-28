@@ -50,7 +50,7 @@ The arms *below* chance are below it for a different reason, and the column shou
 
 D-010 was argued from the code in S2 and measured on query sets. This is a third confirmation: **776 of 776 against a chance baseline of 292.** Neither oracle arm may be quoted without its text-only counterpart.
 
-And on the decidable population the ranking is not what the full-population column suggests: `dense_es_hiiamsid` reads its own target back at **1.0000**, above both oracle arms. A Spanish sentence-similarity model that the previous submission never reported has the cleanest identity behaviour in the set — which says nothing yet about retrieval under variation, where it falls to 0.0093 on `resumen` (n = 34,646 scored), and everything about why a ceiling must be measured per method before any degradation is read against it (D-032).
+On the decidable population `dense_es_hiiamsid` reads its own target back at **1.0000** (n = 34,646 scored). That is **level, not ahead**: the concept-clustered interval of `bm25_unigram_params` ([0.9976, 1.0000]), `tfidf_phrases_replace` ([0.9992, 1.0000]), `bge_m3_colbert` ([0.9989, 1.0000]) and `bge_m3_dense` ([0.9989, 1.0000]) reaches 1.0000, and no paired contrast between arms was computed, so the table ranks none of them above another. What does separate `dense_es_hiiamsid` is what happens under variation: it falls to 0.0093 on `resumen` (n = 34,646 scored), a Spanish sentence-similarity model the previous submission never reported. That is why a ceiling must be measured per method before any degradation is read against it (D-032).
 
 ## Two arms are far below their corpus ceiling, and for different reasons
 
