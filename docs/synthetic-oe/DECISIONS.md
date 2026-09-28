@@ -995,3 +995,15 @@ has no flagged queries and stays at 79.14 %. Its Δ numbers interval, [−0.54, 
 signal is lost coverage, not fewer numbers. All overlap slices now carry concept-clustered intervals.
 **One figure corrected.** "tuned BM25 falls to 0.098 item-level" on `num_to_text` is **0.0958** on
 the duplicate-free population, n = 313 (`results/S3/s2_rescored/l1_deltas.md`).
+
+### D-036 — second amendment: one of the four "wins" is an exact tie
+**Status:** Amendment to D-036 · **Date:** 2026-09-28 · **Raised in:** S3 re-audit (F5)
+**The count.** "In 4 of 6 cells the argmax is 0.60/0.35" counted a tie as a win. In
+`bm25_unigram_params` / `texto`, 0.60/0.35 and 0.80/0.35 score identically (34,625 of 34,646), and
+`max()` returned 0.60/0.35 because it came first in iteration order. The correct statement: 0.60/0.35
+is the **unique argmax in 3 of 6 cells and ties exactly for it in a fourth**; it is beaten, by an
+undetectable margin, in the other two. "Every argmax has `k1` = 0.60" becomes "every cell has an
+argmax at `k1` = 0.60". The generator now reports ties as ties (`argmax_outcome`,
+`tests/test_e0_ties_and_field_ceiling.py`).
+**The decision stands.** A tie at identity is not a reason to move, and the selection cell
+(`single_texto`) is unaffected.

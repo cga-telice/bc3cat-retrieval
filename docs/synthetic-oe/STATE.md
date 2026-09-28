@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-28 (S3 audit FAIL → reopened → findings resolved; re-audit pending) · **Updated by:** César
+**Last updated:** 2026-09-28 (S3 re-audit PASS WITH FINDINGS → resolved → **S3 done**) · **Updated by:** Claude, `/audit S3`
 
 ---
 
 ## Where we are
 
-**Active sprint: S3** — frozen at `8353cf7`, all 11 work items done, [report written](sprints/SPRINT_S3_REPORT.md). **Audit returned FAIL 2026-09-28 — reopened; all 11 findings resolved the same day** ([audit](sprints/SPRINT_S3_AUDIT.md)). **Not `done` until a fresh re-audit passes.** **S2 is done**
+**No active sprint. S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: `/sprint-open S4`.** **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -27,13 +27,14 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
   scoring. The OEB fixture reproduces to ten decimals: the migration moved no number.
 - **S2 2026-09-17** — 15 stamped runs, 5 methods × 3 query sets on OE dev. Tuned BM25 falls
   under L1; the rules pipeline overtakes it in none of 8 contrasts; ColBERT inverts in 3 of 4.
+- **S3 2026-09-28** — ten arms' identity ceilings, the `resumen` replication, the 150-cell sweep,
+  overlap. The only sprint whose first audit **failed** (untraceable p-values); passed on re-audit.
 
 ## In flight
 
-- **S3 open, frozen at `8353cf7`** ([design](sprints/SPRINT_S3_DESIGN.md), amendments A1–A11).
-  **All 11 work items done** 2026-09-28. 177 of 177 runs resolve; 11 generated tables under
-  [`results/S3/`](results/S3) regenerate byte-identically; suite 979 passed, 1 xfailed.
-  **Audit FAIL 2026-09-28**, reopened, findings resolved (A11; D-036–D-038 amended). D-012 closed on the ten-method set.
+- **S3 closed** at `8353cf7` + amendments A1–A12. 177 of 177 runs resolve; 11 generated tables under
+  [`results/S3/`](results/S3) regenerate byte-identically, all three generators under the prose
+  guard; suite 984 passed, 1 xfailed. D-012 closed on the ten-method set.
 - **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one
   `code_dirty: false`: `bm25_*` at `6336974`, `bge_m3_colbert` at `31bf1a1`, the other seven at
   `2dd653d`. The four **local dense** arms run on `transformers 4.57.6` / `sentence-transformers
@@ -63,11 +64,10 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S3`, again, in a fresh session** — one that has seen neither the work nor this remediation.
-All eleven findings of the first audit are resolved or accepted with reasons in the report's
-§Audit response. The re-audit should check that F1's guard (`tests/test_generated_prose.py`) actually
-covers every emitted string, and that the narrowed claims in finding 3, D-036 and D-037 now stay
-inside the frozen design. On PASS, mark S3 `done`.
+**`/sprint-open S4`** (E1 ablation, Track A). It inherits the per-arm ceilings (read every delta
+against them, D-032), 0.60/0.35 for both BM25 variants (D-036), the duplicate-free scoring
+population (D-033), and the debt in the S3 report's last section — above all H4 (index stamps omit
+the ML stack) and the dirty-tree refusal that still lives outside committed code.
 
 ## Latest results
 
@@ -80,13 +80,13 @@ Read the [report](sprints/SPRINT_S3_REPORT.md) for the findings. Its short form:
 - **Identity ceiling.** For a `texto`-only method the corpus permits at most 0.9863. The oracle arms
   resolve 776 and 676 of the 776 undecidable queries; the text-only arms at their ceiling land on
   292 / 293 / 293 against a chance expectation of 292. The one-query surplus is exact-score ties
-  broken by `np.argpartition`, now counted in `ceiling.md`.
+  (FAISS or `np.argpartition`, neither stable). The oracle arms' own fields cap at 1.0000 / 0.9972.
 - **Replication.** Tuned BM25 0.6394 on OE dev `resumen` (n = 34,646 scored) against 0.974 on OEB
   test: does not replicate *on OE*. The cause is **not** established. Tuning was not swept on
   `resumen`, and OE's lower lexical coverage (79.38 % against 94.10 % on OEB) is descriptive only
   (D-036, D-037 amended).
-- **Operating point.** Both BM25 variants keep 0.60/0.35. On the three swept sets no gain is detected
-  (p = 0.8507, 0.4250), which is not equivalence.
+- **Operating point.** Both BM25 variants keep 0.60/0.35: unique argmax in 3 of 6 cells, an exact tie
+  in a fourth, no detectable gain elsewhere (p = 0.8507, 0.4250), which is not equivalence.
 - **Overlap.** Numeric coverage is blind to `num_to_text` and `unit_expansion`, and this survives
   excluding both D-004 artefacts per type (D-038 amended). H5 needs two covariates.
 - **`bge_m3_sparse`** cannot read back its own document (0.0501 scored). Its vectors are unnormalised
