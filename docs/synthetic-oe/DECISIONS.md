@@ -1007,3 +1007,29 @@ argmax at `k1` = 0.60". The generator now reports ties as ties (`argmax_outcome`
 `tests/test_e0_ties_and_field_ceiling.py`).
 **The decision stands.** A tie at identity is not a reason to move, and the selection cell
 (`single_texto`) is unaffected.
+
+### D-039 — The previous study's `resumen` was an edited rendering; OE's is the catalogue's own
+**Status:** Accepted · **Date:** 2026-09-28 · **Owner:** César · **Raised in:** review of S3 results
+**Finding.** The 47,508 leaves shared by `OEB_resumen.json` (`2562c4c4`) and `OE_resumen.json`
+(`0cd380e9`) differ in **every** `resumen`. After whitespace normalisation, 44,964 of them differ
+only in the final parenthesised parameter suffix. The previous study expanded the catalogue's codes
+into their values, e.g. `(Nocturno/i < "3" horas/Volumen relevante)`, while the OE delivery keeps
+the catalogue's own codes, e.g. `(N/<3/R)`. The remaining 2,544 differ elsewhere and are not yet
+characterised. `texto` (`7f435ded` / `02a2c270`) and `parameters` are identical across the two
+deliveries after whitespace normalisation.
+**Ruling (César).** OE's rendering is the catalogue's own, and the previous study's edit is the
+departure. The S3 runs are in order. What does not hold is any **numerical comparison** between
+OE `resumen→texto` and the previous study's figures. Besides chapter, corpus size and split
+(D-037), the query text itself differs, and in the part that names the discriminating parameters.
+The phenomenon both show is the same: **parametric collapse**. The previous study never measured
+an identity ceiling (D-032).
+**Consequence.** `results/S3/e0/replication.md`'s "previous" columns stay as reference only. Every
+report or manuscript sentence that sets OE against 0.974 must name the rendering difference as
+well as the chapter. D-037's 79.38 % vs 94.10 % lexical coverage is therefore not a like-for-like
+chapter comparison either: the OEB figure was measured on the expanded rendering.
+**Open, not decided here.** Whether `bm25_unigram_params`, or all arms, should get a query-side
+decoder from the catalogue's codes to their values. A data-level observation bears on this: several
+suffix codes are rare as corpus tokens (`e` appears in 72 of 70,242 documents, `n` in 576, `r` in
+1,152; `nni` and `ne` in none), so under IDF weighting they may pull lexical arms towards unrelated
+documents rather than merely adding nothing. This is untested and computed ad hoc from
+`OE_resumen.json` and `OE_long_feats.parquet`, not from a run.
