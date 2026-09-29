@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| **Design** | [`SPRINT_S4_DESIGN.md`](SPRINT_S4_DESIGN.md) · frozen at `dd407c6` · amendments A1–A4 |
-| **Closed** | 2026-09-29 (report written). First audit **FAIL**, reopened; findings resolved in [Audit response](#audit-response). `done` waits for a fresh re-audit |
+| **Design** | [`SPRINT_S4_DESIGN.md`](SPRINT_S4_DESIGN.md) · frozen at `dd407c6` · amendments A1–A5 in [`SPRINT_S4_AMENDMENTS.md`](SPRINT_S4_AMENDMENTS.md) (moved there after the re-audit, D-045) |
+| **Closed** | 2026-09-29 (report written). First audit **FAIL**, reopened; findings resolved. Re-audit 2026-09-30 **PASS WITH FINDINGS**; all six resolved. **done** 2026-09-30. See [Audit response](#audit-response) |
 | **Code commit** | 17 new runs at `36bed7a`, all `code_dirty: false`. 13 reused runs at `31bf1a1`, `922ae53`, `2e49566`, `a5700a6`. Generator `src/utils/build_results_s4.py` |
 | **Query-set digests** | `single_texto` `e5b79ae4` · `texto` `643f1a72` (ColBERT and `bge_m3_dense` read `OE_long_norm` `75477221`) |
 | **Runs** | `runs/OE/{texto,single_texto}/<arm>` · split `dev` · 214 of 214 OE runs resolve (`check_run_inputs.py`, now following derived runs to their components) |
@@ -27,7 +27,10 @@ its own gold (treatment effect on the treated). Every stamp is in
 P7 query are excluded. Parent level scores all 2,206. Every figure below is on that population,
 from the table named. **L2 is thin.** Its three types and its pool cover **5 of the 42 concepts** (T2),
 so every L2 figure below is a dev observation on those 5 concepts. The wider build (9 / 9 / 8, D-043) is
-S6's.
+S6's. **Layers are different leaves.** Only the leaves that admit a type receive it, so any figure set
+against another across layers or types is **between-population**: it compares both the edit and the
+leaves (design constraint; S6 separates them). **Pantry artefacts are in.** Every figure includes the
+kept token doublings and the one semantic drift (D-004); the sensitivity analysis excluding them is S6's.
 
 ## Findings
 
@@ -51,35 +54,43 @@ for ColBERT and from 0.8951 to 0.6115 for `bm25_unigram`. The right-parent / wro
 oracle BM25, the arm the previous study led with, goes from 0.0028 to 0.2574 (T3).
 
 **3. L1 is where lexical arms break (H2).** `bm25_unigram` retains 0.3036 under pooled L1, against
-0.7832 under L2 (5 concepts) and 0.6989 under L3. Both P2 contrasts are supported for both BM25 arms
+0.7832 under L2 (5 concepts) and 0.6989 under L3. These are between-population contrasts: each layer's
+pool is a different set of leaves. Both P2 contrasts are supported for both BM25 arms
 (T6). The L1-vs-L2 pair rests on 5 L2 clusters, which T6 marks ‡. A percentile interval under-covers at
 that count, so this reading is weaker than its interval suggests. The L1-vs-L3 pair rests on 39 and 40. The
-extreme is `num_to_text`: retention 0.1178 for `bm25_unigram` and 0.0958 for the oracle, against
-0.7700 for ColBERT on the same leaves (T2; side by side, not a contrast).
+extreme is `num_to_text`, on 9 concepts: retention 0.1178 [0.0808, 0.1984] for `bm25_unigram` and
+0.0958 [0.0761, 0.1667] for the oracle, against 0.7700 [0.6914, 0.8318] for ColBERT on the same leaves
+(T2, concept-clustered; side by side, not a contrast). Nine clusters is below T6's ‡ threshold of 10,
+so these intervals under-cover too.
 
 **4. `reorder` behaves exactly as H2 says; L3 as a layer does not.** `reorder` item δ is +0.0000 for
 all three lexical arms (P3 supported) and negative for the order-sensitive encoders: −0.1333 ColBERT,
 −0.3400 `bge_m3_dense`, −0.1100 `dense_es_hiiamsid` (P4 supported). But `template_paraphrase`, the
-other L3 type, costs every arm: retention 0.3864 for `bm25_unigram` and 0.2823 for `bge_m3_dense`. It
-is not an order change. On the item-scored queries, its mean token distance to the gold is 0.3221,
-against 0.0023 for `reorder` (T4).
+other L3 type, costs every non-floor arm, each of the 12 with an item δ interval below zero (T2):
+retention 0.3864 for `bm25_unigram` and 0.2823 for `bge_m3_dense`. The three floor arms' intervals reach
+or cross zero. It is not an order change. On the item-scored queries, its mean token distance to the
+gold is 0.3221, against 0.0023 for `reorder` (T4). The two types reach different leaves, so this
+comparison is between-population.
 
-**5. On L2's 5 concepts, BM25 leaves the concept and the encoders mostly do not.** Every figure here
+**5. On L2's 5 concepts, BM25 leaves the concept and the encoders do not detectably.** Every figure here
 rests on the 5 L2 concepts.
 - **BM25.** Among `bm25_unigram`'s item losses, the share that also leaves the concept is higher under
-  L2 than under L1 by +0.4010. P5 is supported, but on 5 L2 clusters (‡ in T6).
+  L2 than under L1 by +0.4010, a between-population contrast. P5 is supported, but on 5 L2 clusters
+  (‡ in T6).
 - **ColBERT.** P5 cannot hold: under L2 its parent level stays at 1.0000 while item δ is −0.1434
   (T3, T2), so P5 is not supported. Of the encoders, only ColBERT is hurt at item level alone.
-- **Other encoders.** They lose a little of the concept under L2. Parent modified is 0.9963 for
-  `bge_m3_dense`, 0.9945 for `dense_es_hiiamsid` and 0.9706 for `ce_bge_m3_colbert` (T3).
+- **Other encoders.** Any loss of the concept under L2 is not distinguishable from zero. Parent
+  modified is 0.9963 for `bge_m3_dense`, 0.9945 for `dense_es_hiiamsid` and 0.9706 for
+  `ce_bge_m3_colbert` (T3). Each parent δ's concept-clustered interval reaches 0.
 
 **6. Derived arms (reference, no contrast claimed).**
 - **Identity ceilings (T1), side by side.** `rrf` 0.9547 and `ce_bge_m3_colbert` 0.9457 scored.
   ColBERT's is 0.9998 (S3 `ceiling.md`). No paired test compares them. Whether fusion or reranking
   lowers the ceiling is an arm-vs-arm contrast the design does not claim.
 - **Under modification, side by side.** The CE blend over ColBERT retains 0.6700; ColBERT alone retains
-  0.7791. On `num_to_text` the figures are 0.2919 and 0.7700.
-- **RRF.** Deployable RRF retains 0.7876, and 0.8987 on `num_to_text`.
+  0.7791. On `num_to_text` (9 concepts) the figures are 0.2919 [0.2424, 0.3885] and
+  0.7700 [0.6914, 0.8318].
+- **RRF.** Deployable RRF retains 0.7876, and 0.8987 [0.8766, 0.9107] on `num_to_text` (9 concepts).
 - **Status.** Whether any derived arm beats its base is not an S4 claim (design).
 
 **7. Ties are common for BM25 under L1, and T5 detects no sort-order bias in them.** Under
@@ -93,8 +104,10 @@ score alike. No table tests that mechanism.
   third of its L1 hits come from a tie, not from discrimination.
 
 **8. Floor arms.** `bge_m3_sparse` 0.0625, `dense_gte` 0.0951 and `dense_gte_instrQ` 0.1062 identity item
-Acc@1 on the treated leaves; reported, excluded from every prediction. GTE's parent level stays below the
-others (0.9665 modified), the H1 counterexample D-012 kept it for.
+Acc@1 on the treated leaves; reported, excluded from every prediction. The two GTE arms' parent level
+stays below the four non-floor single encoders' (`dense_gte` 0.9665 and `dense_gte_instrQ` 0.9402
+modified, against 0.9810 to 0.9995; T3), the H1 counterexample D-012 kept GTE for. `bm25_unigram`, its
+oracle twin, `ce_bm25_unigram`, `rrf` and `bge_m3_sparse` sit lower still (0.8001 to 0.9157).
 
 **9. Two carried caveats, counted (T4).**
 - **The decimal artefact (DATASET_DEFECTS H1).** H1's reach is the design's set: queries carrying a
@@ -105,15 +118,16 @@ others (0.9665 modified), the H1 counterexample D-012 kept it for.
   match. So a miss is attributed to the artefact only in those 5.
 - **Four untreated `synonym_label` queries (P8, candidate).** They differ from their gold only in
   letter case, so for an arm reading normalised text they are the identity query. They are kept in.
-  Without them, `synonym_label` item δ moves from −0.6434 to −0.6525 [−0.7090, −0.5141] for
-  `bm25_unigram`, and from −0.3007 to −0.3050 for ColBERT. No reading changes.
+  Without them, `synonym_label` item δ moves from −0.6434 to −0.6525 for `bm25_unigram`
+  (query-level [−0.7057, −0.5957], concept-clustered [−0.7090, −0.5141], 37 concepts), and from
+  −0.3007 to −0.3050 for ColBERT. No reading changes.
 
 ## Hypotheses
 
 | Hypothesis | Movement | Evidence |
 |---|---|---|
 | **H1** (widening collapse) | **supported** on dev for `bm25_unigram`, `bm25_unigram_params`, `bge_m3_colbert` (S4 reading; S6 resolves) | Finding 2; P1 ×3 supported |
-| **H2** (layer specificity) | **L1 clause supported**, the **`reorder` clauses supported**; the **L2 clause supported for BM25 only, on 5 L2 concepts**; **L3 as a layer not supported descriptively**: `template_paraphrase` costs bag-of-words (not a registered test; S6 to test) | Findings 3–5; P2 ×4, P3 ×3, P4 ×3 supported (two P2 on 5 L2 clusters); P5 1 of 2, on 5 L2 clusters |
+| **H2** (layer specificity) | **L1 clause supported**, the **`reorder` clauses supported**; the **L2 clause supported for BM25 only, on 5 L2 concepts**; **L3 as a layer not supported descriptively**: `template_paraphrase` costs bag-of-words (not a registered test; S6 to test). Every layer contrast is between-population | Findings 3–5; P2 ×4, P3 ×3, P4 ×3 supported (two P2 on 5 L2 clusters); P5 1 of 2, on 5 L2 clusters |
 | **H3** (rank inversion) | **not addressed** | S5's; no arm-vs-arm contrast here |
 | **H4** (super-additivity) | **not addressed** | S8 |
 | **H5** (overlap mediation) | **not addressed** | T4 is descriptive; S6 |
@@ -146,7 +160,7 @@ others (0.9665 modified), the H1 counterexample D-012 kept it for.
 | 1 | yes | `36bed7a`: modules, five configs naming components by method (A1b), `tests/test_derived_runs.py`; suite green including the OEB fixture |
 | 2 | yes | Count 1, amendment A2 before any reading |
 | 3 | yes | 17 runs clean at `36bed7a`; CE runs stamp their ML stack; T7 computes the reuse diffs |
-| 4 | yes, after the audit | T1–T7 regenerate byte-identically. T1–T3 print n, n scored and n excluded per cell, and T4 per level (audit F2; first reported "yes" without them). Every δ has both CIs and its concept count. T4 no longer mixes populations (audit F1) |
+| 4 | yes, after both audits | T1–T7 regenerate byte-identically. T1–T3 print n, n scored and n excluded per cell, and T4 per level (first audit F2; first reported "yes" without them). Every δ has both CIs and its concept count: the re-audit (F2) found T3's collapse Δs and T4's P8 "δ without" printed with the clustered CI only, and both now carry the query-level CI and concepts (A5). T4 no longer mixes populations (first audit F1) |
 | 5 | yes | 15 arms × 9 types × 2 levels plus three layer pools; no empty cell |
 | 6 | yes | T6: 14 supported, 1 not supported, 0 contradicted |
 | 7 | yes | `requests/WIDER_THIN_SLICES.md`; `RESEARCH_PLAN.md` §5 |
@@ -160,6 +174,7 @@ others (0.9665 modified), the H1 counterexample D-012 kept it for.
 | A2 | P7 query excluded at item level; one dirty run archived to `runs/_archive/S4/`; base runs re-run by a faulty resume | Work item 4's own stop rule; operating rule 1 |
 | A3 | P3 mirror rule and floor scope made explicit; T5 restricted to item-scored queries and extended with the decisive-tie table | T5 as first generated mixed a corpus property into a retriever measurement |
 | A4 | After the first audit: T4 computed per level on that level's population; T1–T3 gain n / n scored / n excluded; T5 gains hits and an excess-over-uniform interval; T6 gains concept counts and a ‡ flag below 10 clusters; T4 gains the decimal-artefact reconciliation and the P8 sensitivity | Audit F1, F2, F3, F6, F7, F8. No run changed. Figures other than T4's item-level d_tok means and δ / d_tok ratios are unchanged |
+| A5 | After the re-audit: T3's collapse Δs and T4's P8 "δ without" gain a query-level CI and concept counts | Re-audit F2. Columns only; no earlier cell moved |
 
 Not an amendment, recorded for the auditor: the reorder upstream fix, the P7 test list, and
 `OE_single_l2_texto.json` (D-043) arrived during S4 and touch no S4 run.
@@ -218,3 +233,23 @@ its item-level d_tok means and δ / d_tok ratios moved. Disposition:
 
 The auditor's unverifiable items stand as it listed them. The full suite was re-run for this response
 (see the commit).
+
+### Re-audit
+
+`/audit S4` ran again in a fresh session on 2026-09-30 and returned **PASS WITH FINDINGS**
+([`SPRINT_S4_AUDIT.md`](SPRINT_S4_AUDIT.md), at the top, verbatim). It recomputed the headline figure and
+every figure changed after the first audit from `runs/` without the generator's code, and found all of
+them exact. It found T1–T7 byte-identical on regeneration, and found every first-audit disposition in the
+artefacts. It raised 1 major and 5 minor findings. No run was re-made. The generator gained columns
+only (A5). Every changed row keeps its earlier cells in order, so no earlier figure moved. Disposition:
+
+| Finding | Disposition |
+|---|---|
+| F1 — layer contrasts not labelled between-population; pantry artefacts unstated | **Fixed.** The population paragraph states once that cross-layer and cross-type comparisons are between-population and that pantry artefacts are in every figure (D-004; sensitivity is S6's). Findings 3, 4 and 5 and the H2 row label their contrasts |
+| F2 — exit criterion 4: two δ tables lack the query-level CI and concept count | **Fixed** (A5). T3's collapse table prints concepts and a query-level CI for Δ RP/WI and Δ gap. T4's P8 table prints concepts with and without the four queries, and a query-level CI for δ without. Finding 9 quotes both intervals. The EC4 row records the gap and the fix |
+| F3 — "GTE's parent level stays below the others" is false | **Fixed.** Finding 8 compares the two GTE arms with the four non-floor single encoders (0.9810 to 0.9995) and names the arms that sit lower |
+| F4 — "other encoders lose a little of the concept under L2" | **Fixed.** Finding 5 says any loss is not distinguishable from zero, since each interval reaches 0. The heading reads "do not detectably", which is consistent with the S6 inheritance line |
+| F5 — "`template_paraphrase` costs every arm" | **Fixed.** Finding 4 says every non-floor arm, each of the 12 with an interval below zero, and that the floor arms' intervals reach or cross zero |
+| F6 — `num_to_text` on 9 concepts, quoted without interval | **Fixed.** Findings 3 and 6 give the concept count and the concept-clustered interval for every `num_to_text` figure, and note that 9 clusters is below the ‡ threshold |
+
+S4 is marked **done**.

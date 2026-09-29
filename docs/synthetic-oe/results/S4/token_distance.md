@@ -99,23 +99,23 @@ These queries differ from their gold `texto` only in what `normalize_text` remov
 
 Per arm, item level, on the cells that hold them: how many of them keep the identity result (modified hit = identity hit), and the cell's δ with and without them.
 
-| arm | scope | same result | δ with | n | δ without | n | CI (concept), without |
-|---|---|---:|---:|---:|---:|---:|---|
-| `bm25_unigram_params` **oracle** | synonym_label | 4 of 4 | -0.6643 | 286 | -0.6738 | 282 | [-0.7386, -0.5240] |
-| `bm25_unigram` | synonym_label | 4 of 4 | -0.6434 | 286 | -0.6525 | 282 | [-0.7090, -0.5141] |
-| `tfidf_phrases_replace` **oracle** | synonym_label | 4 of 4 | -0.7308 | 286 | -0.7411 | 282 | [-0.7903, -0.6683] |
-| `bge_m3_colbert` | synonym_label | 4 of 4 | -0.3007 | 286 | -0.3050 | 282 | [-0.3629, -0.1962] |
-| `bge_m3_dense` | synonym_label | 4 of 4 | -0.3636 | 286 | -0.3688 | 282 | [-0.4367, -0.2139] |
-| `bge_m3_sparse` | synonym_label | 4 of 4 | -0.0175 | 286 | -0.0177 | 282 | [-0.0526, -0.0040] |
-| `dense_e5` | synonym_label | 4 of 4 | -0.1993 | 286 | -0.2021 | 282 | [-0.2461, -0.1309] |
-| `dense_es_hiiamsid` | synonym_label | 2 of 4 | -0.5350 | 286 | -0.5355 | 282 | [-0.6165, -0.4384] |
-| `dense_gte` | synonym_label | 3 of 4 | -0.0140 | 286 | -0.0177 | 282 | [-0.0510, +0.0054] |
-| `dense_gte_instrQ` | synonym_label | 4 of 4 | -0.0245 | 286 | -0.0248 | 282 | [-0.0721, +0.0083] |
-| `rrf` | synonym_label | 4 of 4 | -0.4161 | 286 | -0.4220 | 282 | [-0.5057, -0.2622] |
-| `rrf_params` **oracle** | synonym_label | 4 of 4 | -0.4371 | 286 | -0.4433 | 282 | [-0.5198, -0.3105] |
-| `ce_bm25_unigram` | synonym_label | 4 of 4 | -0.4650 | 286 | -0.4716 | 282 | [-0.5843, -0.3117] |
-| `ce_bge_m3_colbert` | synonym_label | 4 of 4 | -0.3357 | 286 | -0.3404 | 282 | [-0.3836, -0.2466] |
-| `ce_rrf` | synonym_label | 3 of 4 | -0.3357 | 286 | -0.3440 | 282 | [-0.4575, -0.2278] |
+| arm | scope | same result | δ with | n | concepts | δ without | n | concepts | CI (query), without | CI (concept), without |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|
+| `bm25_unigram_params` **oracle** | synonym_label | 4 of 4 | -0.6643 | 286 | 37 | -0.6738 | 282 | 37 | [-0.7270, -0.6170] | [-0.7386, -0.5240] |
+| `bm25_unigram` | synonym_label | 4 of 4 | -0.6434 | 286 | 37 | -0.6525 | 282 | 37 | [-0.7057, -0.5957] | [-0.7090, -0.5141] |
+| `tfidf_phrases_replace` **oracle** | synonym_label | 4 of 4 | -0.7308 | 286 | 37 | -0.7411 | 282 | 37 | [-0.7908, -0.6879] | [-0.7903, -0.6683] |
+| `bge_m3_colbert` | synonym_label | 4 of 4 | -0.3007 | 286 | 37 | -0.3050 | 282 | 37 | [-0.3582, -0.2518] | [-0.3629, -0.1962] |
+| `bge_m3_dense` | synonym_label | 4 of 4 | -0.3636 | 286 | 37 | -0.3688 | 282 | 37 | [-0.4255, -0.3121] | [-0.4367, -0.2139] |
+| `bge_m3_sparse` | synonym_label | 4 of 4 | -0.0175 | 286 | 37 | -0.0177 | 282 | 37 | [-0.0355, -0.0035] | [-0.0526, -0.0040] |
+| `dense_e5` | synonym_label | 4 of 4 | -0.1993 | 286 | 37 | -0.2021 | 282 | 37 | [-0.2553, -0.1525] | [-0.2461, -0.1309] |
+| `dense_es_hiiamsid` | synonym_label | 2 of 4 | -0.5350 | 286 | 37 | -0.5355 | 282 | 37 | [-0.5922, -0.4787] | [-0.6165, -0.4384] |
+| `dense_gte` | synonym_label | 3 of 4 | -0.0140 | 286 | 37 | -0.0177 | 282 | 37 | [-0.0390, +0.0035] | [-0.0510, +0.0054] |
+| `dense_gte_instrQ` | synonym_label | 4 of 4 | -0.0245 | 286 | 37 | -0.0248 | 282 | 37 | [-0.0567, +0.0035] | [-0.0721, +0.0083] |
+| `rrf` | synonym_label | 4 of 4 | -0.4161 | 286 | 37 | -0.4220 | 282 | 37 | [-0.4787, -0.3617] | [-0.5057, -0.2622] |
+| `rrf_params` **oracle** | synonym_label | 4 of 4 | -0.4371 | 286 | 37 | -0.4433 | 282 | 37 | [-0.5035, -0.3865] | [-0.5198, -0.3105] |
+| `ce_bm25_unigram` | synonym_label | 4 of 4 | -0.4650 | 286 | 37 | -0.4716 | 282 | 37 | [-0.5355, -0.4078] | [-0.5843, -0.3117] |
+| `ce_bge_m3_colbert` | synonym_label | 4 of 4 | -0.3357 | 286 | 37 | -0.3404 | 282 | 37 | [-0.3972, -0.2837] | [-0.3836, -0.2466] |
+| `ce_rrf` | synonym_label | 3 of 4 | -0.3357 | 286 | 37 | -0.3440 | 282 | 37 | [-0.4113, -0.2730] | [-0.4575, -0.2278] |
 
 ## Sources
 

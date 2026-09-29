@@ -227,7 +227,7 @@ def collapse(frame: pd.DataFrame, label: str) -> dict:
     """H1's quantities on the item-scored queries: RP/WI rate, D, the gap, and their changes."""
     f = level_frame(frame, "item")
     clusters = f["concept"].to_numpy()
-    out = {"n": len(f), "excluded": len(frame) - len(f)}
+    out = {"n": len(f), "excluded": len(frame) - len(f), "concepts": int(f["concept"].nunique())}
     for side in ("id", "mod"):
         item, parent = f[f"item_{side}"].to_numpy(), f[f"parent_{side}"].to_numpy()
         out[f"rpwi_{side}"] = float(((parent == 1) & (item == 0)).mean())
@@ -399,14 +399,15 @@ def write_profile(level: str, stats: dict, floors: dict, pops: dict) -> None:
                   "modified − identity.", ""]
         for short in stats:
             lines += [f"### {name(short)}", "",
-                      "| scope | n scored | n excluded | RP/WI id | RP/WI mod | Δ RP/WI | CI (concept) | D id | D mod | gap id | gap mod | Δ gap | CI (concept) |",
-                      "|---|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|"]
+                      "| scope | n scored | n excluded | concepts | RP/WI id | RP/WI mod | Δ RP/WI | CI (query) | CI (concept) | D id | D mod | gap id | gap mod | Δ gap | CI (query) | CI (concept) |",
+                      "|---|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---:|---|---|"]
             for sc in SCOPES:
                 k = stats[short][(sc, "collapse")]
                 lines.append(
-                    f"| {sc} | {k['n']:,} | {k['excluded']:,} | {f4(k['rpwi_id'])} | {f4(k['rpwi_mod'])} | {fd(k['d_rpwi'])} | "
-                    f"{fci(k['d_rpwi_c'], True)} | {f4(k['D_id'])} | {f4(k['D_mod'])} | {f4(k['gap_id'])} | "
-                    f"{f4(k['gap_mod'])} | {fd(k['d_gap'])} | {fci(k['d_gap_c'], True)} |"
+                    f"| {sc} | {k['n']:,} | {k['excluded']:,} | {k['concepts']} | {f4(k['rpwi_id'])} | {f4(k['rpwi_mod'])} | "
+                    f"{fd(k['d_rpwi'])} | {fci(k['d_rpwi_q'], True)} | {fci(k['d_rpwi_c'], True)} | {f4(k['D_id'])} | "
+                    f"{f4(k['D_mod'])} | {f4(k['gap_id'])} | {f4(k['gap_mod'])} | {fd(k['d_gap'])} | "
+                    f"{fci(k['d_gap_q'], True)} | {fci(k['d_gap_c'], True)} |"
                 )
             lines.append("")
     lines += sources_block(["texto", "single_texto"])
@@ -474,8 +475,8 @@ def write_token_distance(stats: dict, frames: dict, frame0: pd.DataFrame, qtext:
         lines.append(f"- `{k}` → `{g}` ({t})")
     lines += ["", "Per arm, item level, on the cells that hold them: how many of them keep the identity result "
               "(modified hit = identity hit), and the cell's δ with and without them.", "",
-              "| arm | scope | same result | δ with | n | δ without | n | CI (concept), without |",
-              "|---|---|---:|---:|---:|---:|---:|---|"]
+              "| arm | scope | same result | δ with | n | concepts | δ without | n | concepts | CI (query), without | CI (concept), without |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|"]
     keys = set(same["q"])
     for short, frame in frames.items():
         for sc in sorted(set(same["type"])):
@@ -484,9 +485,10 @@ def write_token_distance(stats: dict, frames: dict, frame0: pd.DataFrame, qtext:
             rest = cellf[~cellf["q"].isin(keys)]
             d_all, d_rest = delta_item(cellf), delta_item(rest)
             draws = boot_cluster(d_rest[:, None], rest["concept"].to_numpy(), f"s4|normsame|{short}|{sc}")[:, 0]
+            draws_q = boot_query(d_rest[:, None], f"s4|normsame|{short}|{sc}")[:, 0]
             lines.append(f"| {name(short)} | {sc} | {int((inside['item_mod'] == inside['item_id']).sum())} of {len(inside)} | "
-                         f"{fd(d_all.mean())} | {len(cellf):,} | {fd(d_rest.mean())} | {len(rest):,} | "
-                         f"{fci(ci(draws), True)} |")
+                         f"{fd(d_all.mean())} | {len(cellf):,} | {cellf['concept'].nunique()} | {fd(d_rest.mean())} | {len(rest):,} | "
+                         f"{rest['concept'].nunique()} | {fci(ci(draws_q), True)} | {fci(ci(draws), True)} |")
     lines += sources_block(["single_texto"], inputs=(SINGLE_JSON, CORPUS_JSON))
     write(OUT / "token_distance.md", lines)
 
