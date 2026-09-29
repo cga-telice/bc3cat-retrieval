@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-29 (**S91 done**) · **Updated by:** Claude, `/audit S91`
+**Last updated:** 2026-09-29 (**S4 active**) · **Updated by:** Claude, `/sprint-open S4`
 
 ---
 
 ## Where we are
 
-**Active: none.** **S91 is done** (2026-09-29; probe, coded vs decoded `resumen`, frozen at `09d11f7`) — first audit FAIL, reopened, all eight resolved; re-audit **PASS WITH FINDINGS**, all eight resolved (design A4); D-039 and D-037 amendments accepted by César ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039's open question: a catalogue-only decoder is viable in-sample (80.9 %). Ruled 2026-09-29: `resumen` results are reported coded **and** decoded (D-039, second amendment); `resumen`-identical siblings are excluded at item level (D-040, 9,348 dev leaves; not yet in the harness). D-041 (document-side expansion probe) undecided. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: `/sprint-open S4`.** **S2 is done**
+**Active: S4** (E1 ablation, Track A; backbone), design frozen at `dd407c6` 2026-09-29 ([design](sprints/SPRINT_S4_DESIGN.md)): 15 arms (ten indexed, two RRF, three CE-blend; no PRF) × nine single types on dev, paired against identity on the same leaves; P1–P5 registered. **S91 is done** (2026-09-29; probe, coded vs decoded `resumen`, frozen at `09d11f7`) — first audit FAIL, reopened, all eight resolved; re-audit **PASS WITH FINDINGS**, all eight resolved (design A4); D-039 and D-037 amendments accepted by César ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039's open question: a catalogue-only decoder is viable in-sample (80.9 %). Ruled 2026-09-29: `resumen` results are reported coded **and** decoded (D-039, second amendment); `resumen`-identical siblings are excluded at item level (D-040, 9,348 dev leaves; not yet in the harness). D-041 (document-side expansion probe) declined; its two questions go to S9. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -64,10 +64,11 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/sprint-open S4`** (E1 ablation, Track A), which does not depend on S91 since its query sets carry no codes. S4 inherits the per-arm ceilings (read every delta
-against them, D-032), 0.60/0.35 for both BM25 variants (D-036), the duplicate-free scoring
-population (D-033), and the debt in the S3 report's last section — above all H4 (index stamps omit
-the ML stack) and the dirty-tree refusal that still lives outside committed code.
+**S4 work item 2**: port RRF and the cross-encoder blend into committed modules driven by
+`run_context`, with their tests (item 3) and the dirty-tree refusal moved into `provenance.py`,
+before any run. Then item 4 (undecidable-query check on `single_texto`) and the 17 runs. S4
+inherits the per-arm ceilings (D-032), 0.60/0.35 (D-036), the duplicate-free population (D-033);
+H4 stays debt before S12.
 
 ## Latest results
 

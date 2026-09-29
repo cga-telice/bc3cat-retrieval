@@ -1,6 +1,6 @@
 # Sprint S4 — E1 ablation, Track A · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `dd407c6` · `2026-09-29`
 > This section is read-only from that commit. Changes go in **Amendments** below, dated and
 > justified — never as in-place edits. `git log -- <this file>` after the freeze date is an
 > audit trail; keep it honest.

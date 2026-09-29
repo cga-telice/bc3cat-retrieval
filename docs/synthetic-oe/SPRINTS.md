@@ -19,7 +19,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S1 | backbone | **done** | Harness adaptation to BC3CAT-Syn/OE | all | S0 |
 | S2 | backbone | **done** | Go/no-go probe ⚑ | H3 | S1 |
 | S3 | backbone | **done** | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
-| S4 | backbone | planned | E1 ablation — Track A | H1, H2 | S3 |
+| S4 | backbone | **active** | E1 ablation — Track A | H1, H2 | S3 |
 | S5 | backbone | planned | E1 ablation — Track B (structured) | H3 | S4 |
 | S6 | backbone | planned | Statistical analysis and mediation | H1, H2, H5 | S4, S5 |
 | S7 | backbone | planned | E2 stacked headline and stratifications | H1, H4 | S6 |
@@ -89,3 +89,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-29 | S91 | findings resolved | All eight audit findings resolved (report, Audit response). F1: coverage compared on S3's own population; decoded OE does not reach OEB's coverage, D-037 proposal rewritten. F2: every table stamps the runs and files it reads. F3: finding 1 names `bm25_unigram`. F4–F6: T2's rule, T5's rare share (85.6 %), the zero-delta claim withdrawn. F8: ceilings at both levels everywhere; every parent ceiling 1.0. F7: `tests/test_report_traceability.py`. No accuracy moved; no run re-done. S91 stays **active** until a fresh re-audit passes |
 | 2026-09-29 | S91 | re-audited fresh → findings resolved | **PASS WITH FINDINGS** (`SPRINT_S91_AUDIT.md`, above the first): 3 major, 5 minor. Every T2 cell, headline interval, ceiling and T5 figure reproduces; full suite 1059 passed, 1 xfailed; tables byte-identical on regeneration. F1 (waiver recorded as design A4), F2 (params-arm parent move not a detected gain, Holm p 0.0896), F4–F8 (neural rows exploratory; stratum, population and in-sample wording; header) fixed in the report. **F3 open: exit criterion 7 waits on César's ruling on D-039/D-037.** S91 stays **active** until it lands |
 | 2026-09-29 | S91 | active → **done** | Re-audit F3 closed: César accepted the proposed D-039 and D-037 amendments, appended to `DECISIONS.md`. Exit criterion 7 met; all nine exit criteria met. Still open under D-039: whether future `resumen` results are reported coded, decoded or both. D-040 and D-041 raised, not decided |
+| 2026-09-29 | S4 | planned → **active** | Design frozen at `dd407c6`; entry state verified in the tree. Fifteen arms (ten indexed, two RRF, three CE-blend; PRF excluded, César) × nine single types on dev, paired against identity on the same leaves; 17 new runs, 13 reused; P1–P5 registered; thin-slice request issued as a work item |
