@@ -48,7 +48,7 @@ rule: `bm25_unigram_params` moves +0.3692 [+0.2177, +0.4091] but at Holm p 0.070
 supported**), and `tfidf_phrases_replace` moves +0.0365 at Holm p 0.1824. [`rare_codes.md`](../results/S91/rare_codes.md)
 shows the pattern: in 85.6 % of `bm25_unigram`'s coded parent misses (16,980 of 19,832), the
 rank-1 document holds a *rare* suffix code token that the gold lacks, one in fewer than 1,200 of
-70,242 documents (`e`, `n`, `r`; any cutoff from 1,153 to 2,140 gives the same set). Counting any
+70,242 documents (`e`, `n`, `r`; any cutoff above 1,152 and up to 2,140 gives the same set). Counting any
 code token, including `de`, which every document contains, gives 91.1 %. `tfidf_phrases_replace`
 shows the rare pattern in 0.4 % of its parent misses. The coded loss is an OEB phenomenon: `bm25_unigram` parent is 0.2170 on OEB and
 0.9587 on the rest ([`subchapter.md`](../results/S91/subchapter.md), descriptive).
@@ -144,7 +144,7 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 | # | Met | Evidence |
 |---|---|---|
 | 1 | yes | Both renderings, the decoder and the four derived tables are in `MANIFEST.md`; `test_each_s91_input_matches_its_manifest_digest` |
-| 2 | yes | `tests/test_resumen_renderings.py` 30 passed; full suite **1057 passed, 1 xfailed** at `58a2c6c` |
+| 2 | yes | `tests/test_resumen_renderings.py` 30 passed; full suite **1057 passed, 1 xfailed** at `58a2c6c`; after the audit fixes, with the two traceability tests added, **1059 passed, 1 xfailed** |
 | 3 | yes | 20 runs, all `cf92bc8`, `code_dirty: false`, `dev`, 35,422 queries; 197/202 resolve; reuse diff recorded in `renderings.md` |
 | 4 | yes | T1–T5 regenerate byte-identically (two consecutive runs compared after the audit fixes); every Acc@1 row carries n; each condition's ceiling is printed at both levels in T2, in the secondary table and per stratum in T4 (A2c; audit F8) |
 | 5 | yes | P1 and P2 each read, per arm, in `renderings.md` §"The registered predictions" |
@@ -155,7 +155,7 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 
 | # | Deviation | Why |
 |---|---|---|
-| A1 | 1 % floor in the shared-words rule; an absent axis contributes no value | `OEB160a/b` mis-order their suffix and would empty CONDICIONES `-` for 9,380 dev leaves (`OE_resumen_decoder.json`, `7ee4557f`); ruled by César before any run |
+| A1 | 1 % floor in the shared-words rule; an absent axis contributes no value | `OEB160a/b` mis-order their suffix and would empty CONDICIONES `-`, a code with 9,382 dev values ([`decoder.md`](../results/S91/decoder.md); `OE_resumen_decoder.json`, `7ee4557f`); ruled by César before any run |
 | A2 | Tables derived by a new generator; verdict rule made explicit; T5 at both levels | The notebooks would rewrite the tables that stamp the coded runs; the rule was committed before results |
 | A3 | A false design sentence corrected | Decoding cannot split identical-text groups |
 
@@ -199,5 +199,5 @@ of the eight findings:
 | F4 — T2's printed rule differs from the code's | **Fixed.** The generated sentence now states the rule `verdict()` applies: the clustered interval excludes 0 on the predicted side **and** Holm p < α, with α interpolated from the code. It adds that the interval is not Holm-adjusted, which is how the params arm excludes 0 and still reads not supported. Regenerated: that sentence is the only change; no reading moved |
 | F5 — T5 counts common code tokens | **Fixed.** T5 now also counts rank-1 hits on *rare* code tokens only, those in fewer than `RARE_MAX_DOCS` = 1,200 documents (the auditor's cutoff), and prints the band of cutoffs that give the same set (above 1,152, up to 2,140). `bm25_unigram` parent: 16,980 of 19,832 = 85.6 %, the auditor's figure. Finding 1 quotes the rare share and gives the any-token 91.1 % beside it; `nni` and `ne`, which no document contains and so no rank-1 document can, are no longer cited. Regenerated: `rare_codes.md` only |
 | F6 — ungenerated P2 claim | **Fixed.** "Resamples without them return a zero delta" is withdrawn: no artefact computes it, and T4's per-concept table leaves `OEB100$` and `OEB160$` nonzero. The P2 row now cites only what T4 prints: which six concepts gain and their sizes |
-| F7 — report typed by hand | open |
+| F7 — report typed by hand | **Fixed by test, as César chose.** The report stays the implementer's typed record, as S3's did; the design's "every figure in S91's prose is interpolated by the generator" is read as the generated tables' prose, which `test_generated_prose.py` enforces. The gap the audit named is closed from the other side: `tests/test_report_traceability.py` fails when a decimal or grouped count in the report appears in none of its cited generated artefacts (`results/S91/`, and S3's `overlap.md` for the coverage it cites). Run on the report as first closed it flags one figure, `9,380`, a per-value count T1 never printed; the A1 row now cites T1's 9,382 instead, and the cutoff band is quoted as T5 prints it. The test traces figures, not claims: an F6-style sentence without a number still passes, and says so |
 | F8 — T4 and secondary table without ceilings | **Fixed.** `text_ceiling` now computes the parent-level ceiling as well: per group of identical query text, only the members of its most common concept, since every member gets the same rank-1 document. T4 prints both ceilings per stratum and condition (OEB item 0.8334 / 0.0139 / 0.8333, rest 0.8427 / 0.0224 / 0.8427). The secondary table prints them on its own populations (item 0.8680 / 0.2158 / 0.8680 on the 34,646 scored). T2 gains the parent row. Every parent ceiling is 1.0000, which the design asserted ("parent level is unaffected") and now shows. No accuracy moved. While regenerating, the F5 change was found to list the rare tokens in hash order where two share a count; they are now sorted by count then name, and two consecutive runs are byte-identical |
