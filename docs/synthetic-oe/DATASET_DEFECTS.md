@@ -179,6 +179,23 @@ match no leaf, so the equality test cannot see them, but they are not referent-p
 They get the same treatment, applied in S12 from a key-only list, since test is not read before then.
 Dev has no other case.
 
+## P8 — `synonym_label` rewrote a label to itself in another case · **candidate; kept in, measured** (S4 audit F8, 2026-09-29)
+
+Four dev `synonym_label` queries differ from their gold TEXTO in one token only, `semi-rocoso` →
+`Semi-Rocoso`: `OED010bkabc_syn_85a4f552cd1b`, `OED030babca_syn_609ea3a72274`,
+`OED050bcbdc_syn_c59e212d9862`, `OED080bhbda_syn_7575e67f784b`. The synonym menu offered a case variant
+as a synonym. For an arm that reads `normalize_text` output the query is the identity query, so it is
+untreated and its δ is 0 by construction. That dilutes the treatment-on-the-treated reading of its cell.
+- **Class.** Candidate P: the rewrite is upstream's. It becomes a non-treatment only through the
+  harness's case folding. An arm reading raw case (the dense tokenizers) does see a change.
+- **Scope, dev only.** 4 of 291 `synonym_label` queries; none in another type. Found by the S4
+  auditor, not by work item 4, whose equality test compares raw text.
+- **Handling.** Not excluded, because the design names no such rule and S4's figures had been read. T4
+  lists the four and prints `synonym_label` item δ with and without them for every arm. The largest
+  move is 0.0103 (`tfidf_phrases_replace`, −0.7308 → −0.7411). For `bm25_unigram` it is −0.6434 →
+  −0.6525. No reading changes. Upstream is not yet told.
+  Whether to raise it, and whether S6 excludes them, is César's call.
+
 ## H1 — `normalize_text` reads a synthetic decimal as a thousands group · **open** (D-010 note)
 
 `\d\.\d{3}` is rewritten as a thousands separator, so `0.03x0.015 m` becomes `0.03x0015 m` in

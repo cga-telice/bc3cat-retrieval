@@ -89,6 +89,9 @@ LEVELS = ("item", "parent")
 FLOOR = 0.20
 #: P3's equivalence margin on `reorder` item δ.
 MARGIN = 0.02
+#: A concept-clustered percentile interval resting on fewer clusters than this is flagged in T6: percentile
+#: intervals under-cover at small cluster counts (S4 audit F3). A flag, not a change of reading rule.
+FEW_CLUSTERS = 10
 
 #: Queries excluded by a design amendment, with the amendment and the levels it applies to.
 AMENDMENT_EXCLUDED: dict[str, dict] = {
@@ -210,7 +213,7 @@ def cell(frame: pd.DataFrame, level: str, label: str) -> dict:
         ret_c = c[:, 1] / c[:, 2]
     ret_c = ret_c[np.isfinite(ret_c)]
     return {
-        "n": len(f), "concepts": int(f["concept"].nunique()),
+        "n_all": len(frame), "n": len(f), "excluded": len(frame) - len(f), "concepts": int(f["concept"].nunique()),
         "id": float(ident.mean()), "mod": float(mod.mean()),
         "delta": float(d.mean()), "q": ci(q[:, 0]), "c": ci(c[:, 0]), "p": boot_p(c[:, 0]),
         "retention": float((ident * mod).sum() / kept) if kept else float("nan"),
@@ -224,7 +227,7 @@ def collapse(frame: pd.DataFrame, label: str) -> dict:
     """H1's quantities on the item-scored queries: RP/WI rate, D, the gap, and their changes."""
     f = level_frame(frame, "item")
     clusters = f["concept"].to_numpy()
-    out = {"n": len(f)}
+    out = {"n": len(f), "excluded": len(frame) - len(f)}
     for side in ("id", "mod"):
         item, parent = f[f"item_{side}"].to_numpy(), f[f"parent_{side}"].to_numpy()
         out[f"rpwi_{side}"] = float(((parent == 1) & (item == 0)).mean())
@@ -266,7 +269,20 @@ def delta_item(f: pd.DataFrame) -> np.ndarray:
     return (f["item_mod"] - f["item_id"]).to_numpy(float)
 
 
+def clusters(frame: pd.DataFrame, *pools: str) -> dict[str, int]:
+    """Concepts behind each pool a test reads, at item level."""
+    return {p: int(level_frame(scope(frame, p), "item")["concept"].nunique()) for p in pools}
+
+
 def evaluate_prediction(kind: str, short: str, frame: pd.DataFrame) -> dict:
+    r = _evaluate_prediction(kind, short, frame)
+    pools = {"gap": ("all",), "l1_vs_l2": ("L1", "L2"), "l1_vs_l3": ("L1", "L3"), "reorder_equiv": ("reorder",),
+             "reorder_neg": ("reorder",), "l2_concept": ("L2", "L1")}[kind]
+    r["clusters"] = clusters(frame, *pools)
+    return r
+
+
+def _evaluate_prediction(kind: str, short: str, frame: pd.DataFrame) -> dict:
     label = f"s4|pred|{kind}|{short}"
     if kind == "gap":
         est, draws = pool_draws(frame, "item",
@@ -366,12 +382,12 @@ def write_profile(level: str, stats: dict, floors: dict, pops: dict) -> None:
               "text-only twin: " + ", ".join(f"{name(o)} with `{t}`" for o, t in TWIN.items()) + ".", ""]
     for short in stats:
         lines += [f"## {name(short)}", "",
-                  "| scope | n | concepts | identity | modified | δ | CI (query) | CI (concept) | retention | CI (concept) | lost | gained |",
-                  "|---|---:|---:|---:|---:|---:|---|---|---:|---|---:|---:|"]
+                  "| scope | n | n scored | n excluded | concepts | identity | modified | δ | CI (query) | CI (concept) | retention | CI (concept) | lost | gained |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---|---:|---:|"]
         for sc in SCOPES:
             c = stats[short][(sc, level)]
             lines.append(
-                f"| {sc} | {c['n']:,} | {c['concepts']} | {f4(c['id'])} | {f4(c['mod'])} | {fd(c['delta'])} | "
+                f"| {sc} | {c['n_all']:,} | {c['n']:,} | {c['excluded']:,} | {c['concepts']} | {f4(c['id'])} | {f4(c['mod'])} | {fd(c['delta'])} | "
                 f"{fci(c['q'], True)} | {fci(c['c'], True)} | {f4(c['retention'])} | {fci(c['ret_c'])} | "
                 f"{c['down']:,} | {c['up']:,} |"
             )
@@ -383,12 +399,12 @@ def write_profile(level: str, stats: dict, floors: dict, pops: dict) -> None:
                   "modified − identity.", ""]
         for short in stats:
             lines += [f"### {name(short)}", "",
-                      "| scope | n | RP/WI id | RP/WI mod | Δ RP/WI | CI (concept) | D id | D mod | gap id | gap mod | Δ gap | CI (concept) |",
-                      "|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|"]
+                      "| scope | n scored | n excluded | RP/WI id | RP/WI mod | Δ RP/WI | CI (concept) | D id | D mod | gap id | gap mod | Δ gap | CI (concept) |",
+                      "|---|---:|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---|"]
             for sc in SCOPES:
                 k = stats[short][(sc, "collapse")]
                 lines.append(
-                    f"| {sc} | {k['n']:,} | {f4(k['rpwi_id'])} | {f4(k['rpwi_mod'])} | {fd(k['d_rpwi'])} | "
+                    f"| {sc} | {k['n']:,} | {k['excluded']:,} | {f4(k['rpwi_id'])} | {f4(k['rpwi_mod'])} | {fd(k['d_rpwi'])} | "
                     f"{fci(k['d_rpwi_c'], True)} | {f4(k['D_id'])} | {f4(k['D_mod'])} | {f4(k['gap_id'])} | "
                     f"{f4(k['gap_mod'])} | {fd(k['d_gap'])} | {fci(k['d_gap_c'], True)} |"
                 )
@@ -404,32 +420,73 @@ def token_distance(q: str, g: str) -> float:
     return 1.0 - len(a & b) / len(union) if union else 0.0
 
 
-def write_token_distance(stats: dict, frame0: pd.DataFrame, qtext: dict, ctext: dict) -> None:
+def write_token_distance(stats: dict, frames: dict, frame0: pd.DataFrame, qtext: dict, ctext: dict) -> None:
     f = frame0.copy()
     f["d_tok"] = [token_distance(qtext[k], ctext[g]) for k, g in zip(f["q"], f["gold"])]
     f["d_num"] = [len(extract_numbers(normalize_text(qtext[k]))) - len(extract_numbers(normalize_text(ctext[g])))
                   for k, g in zip(f["q"], f["gold"])]
+    f["decimal_any"] = [bool(_DECIMAL.findall(qtext[k])) for k in f["q"]]
     f["decimal"] = [bool(set(_DECIMAL.findall(qtext[k])) - set(_DECIMAL.findall(ctext[g])))
                     for k, g in zip(f["q"], f["gold"])]
+    f["norm_same"] = [normalize_text(qtext[k]) == normalize_text(ctext[g]) and qtext[k] != ctext[g]
+                      for k, g in zip(f["q"], f["gold"])]
     lines = header("T4: token distance to the gold `texto`, per cell (dev)", [
         "d_tok = 1 − Jaccard of the distinct tokens of the query and its gold `texto`, with the S3 overlap's",
-        "`normalize_text` / `tokenize_words`; 0 for the identity rendering. δ / d_tok divides the cell's mean δ",
-        "by its mean d_tok. Δ numbers is the query's number count minus the gold's (D-038). Descriptive: no",
-        "mediation is claimed here (H5 is S6's).",
+        "`normalize_text` / `tokenize_words`; 0 for the identity rendering. Every mean is taken on the level's",
+        "own scored population, so δ / d_tok divides a level's mean δ by the mean d_tok of the same queries.",
+        "Δ numbers is the query's number count minus the gold's (D-038). Descriptive: no mediation is claimed",
+        "here (H5 is S6's).",
     ])
-    lines += [f"`decimal artefact` counts queries carrying a `d.ddd` decimal their gold lacks, which `normalize_text` "
-              "reads as a thousands group (D-010, adjacent note): a miss there is a feature artefact.", ""]
-    lines += ["| scope | n | mean d_tok | Δ numbers | decimal artefact |", "|---|---:|---:|---:|---:|"]
+    lines += ["## Mean d_tok and Δ numbers per level", "",
+              "| scope | level | n scored | mean d_tok | Δ numbers |", "|---|---|---:|---:|---:|"]
+    means = {}
     for sc in SCOPES:
-        s = scope(f, sc)
-        lines.append(f"| {sc} | {len(s):,} | {f4(s['d_tok'].mean())} | {fd(s['d_num'].mean())} | {int(s['decimal'].sum())} |")
+        for level in LEVELS:
+            s = level_frame(scope(f, sc), level)
+            means[(sc, level)] = s["d_tok"].mean()
+            lines.append(f"| {sc} | {level} | {len(s):,} | {f4(means[(sc, level)])} | {fd(s['d_num'].mean())} |")
     lines += ["", "## δ / d_tok per arm, item and parent level", "",
               "| arm | " + " | ".join(SCOPES) + " |", "|---|" + "---:|" * len(SCOPES)]
-    means = {sc: scope(f, sc)["d_tok"].mean() for sc in SCOPES}
     for short in stats:
         for level in LEVELS:
             lines.append(f"| {name(short)} {level} | " + " | ".join(
-                fd(stats[short][(sc, level)]["delta"] / means[sc]) if means[sc] else "—" for sc in SCOPES) + " |")
+                fd(stats[short][(sc, level)]["delta"] / means[(sc, level)]) if means[(sc, level)] else "—"
+                for sc in SCOPES) + " |")
+
+    lines += ["", "## The decimal artefact (DATASET_DEFECTS H1)", "",
+              "`normalize_text` reads a `d.ddd` decimal as a thousands group (D-010, adjacent note). Two counts, "
+              "over every dev query of the cell. **In query** is H1's reach, the set the design names: queries "
+              "carrying such a decimal at all. **Absent from gold** is its subset whose decimal the gold does not "
+              "carry. Where the gold carries the same decimal, query and document are mangled alike and still "
+              "match, so only a miss in the second set is attributed to the artefact.", "",
+              "| scope | n | in query | absent from gold | absent from gold, item-scored |", "|---|---:|---:|---:|---:|"]
+    for sc in SCOPES:
+        s = scope(f, sc)
+        lines.append(f"| {sc} | {len(s):,} | {int(s['decimal_any'].sum())} | {int(s['decimal'].sum())} | "
+                     f"{int(level_frame(s, 'item')['decimal'].sum())} |")
+
+    same = f[f["norm_same"]]
+    lines += ["", "## Queries identical to their gold after normalisation", "",
+              "These queries differ from their gold `texto` only in what `normalize_text` removes (letter case). "
+              "For an arm that reads normalised text they are the identity query, and their δ is 0 by "
+              "construction. They are kept in every cell above; this section shows what they do to their cells.", ""]
+    for k, g, t in zip(same["q"], same["gold"], same["type"]):
+        lines.append(f"- `{k}` → `{g}` ({t})")
+    lines += ["", "Per arm, item level, on the cells that hold them: how many of them keep the identity result "
+              "(modified hit = identity hit), and the cell's δ with and without them.", "",
+              "| arm | scope | same result | δ with | n | δ without | n | CI (concept), without |",
+              "|---|---|---:|---:|---:|---:|---:|---|"]
+    keys = set(same["q"])
+    for short, frame in frames.items():
+        for sc in sorted(set(same["type"])):
+            cellf = level_frame(scope(frame, sc), "item")
+            inside = cellf[cellf["q"].isin(keys)]
+            rest = cellf[~cellf["q"].isin(keys)]
+            d_all, d_rest = delta_item(cellf), delta_item(rest)
+            draws = boot_cluster(d_rest[:, None], rest["concept"].to_numpy(), f"s4|normsame|{short}|{sc}")[:, 0]
+            lines.append(f"| {name(short)} | {sc} | {int((inside['item_mod'] == inside['item_id']).sum())} of {len(inside)} | "
+                         f"{fd(d_all.mean())} | {len(cellf):,} | {fd(d_rest.mean())} | {len(rest):,} | "
+                         f"{fci(ci(draws), True)} |")
     lines += sources_block(["single_texto"], inputs=(SINGLE_JSON, CORPUS_JSON))
     write(OUT / "token_distance.md", lines)
 
@@ -458,21 +515,30 @@ def write_ties(frames: dict, dup: set[str]) -> None:
         lines.append(f"| {name(short)} | " + " | ".join(cells) + " |")
         for sc in ("L1", "all"):
             s = scope(frame, sc)
-            tied = [(mod[k][2], g, h) for k, g, h in zip(s["q"], s["gold"], s["item_mod"]) if is_tie(mod[k])]
-            with_gold = [(t, h) for t, g, h in tied if g in t]
-            decisive.append((short, sc, len(s), len(tied), len(with_gold),
-                             sum(h for _, h in with_gold),
-                             float(np.mean([1 / len(t) for t, _ in with_gold])) if with_gold else float("nan")))
+            tied = [(mod[k][2], g, h, c) for k, g, h, c in zip(s["q"], s["gold"], s["item_mod"], s["concept"])
+                    if is_tie(mod[k])]
+            with_gold = [(t, h, c) for t, g, h, c in tied if g in t]
+            excess = (np.array([[h - 1 / len(t)] for t, h, _ in with_gold]) if with_gold else np.zeros((0, 1)))
+            excess_ci = (ci(boot_cluster(excess, np.array([c for _, _, c in with_gold]),
+                                         f"s4|ties|{short}|{sc}")[:, 0]) if with_gold else None)
+            decisive.append((short, sc, len(s), int(s["item_mod"].sum()), len(tied), len(with_gold),
+                             sum(h for _, h, _ in with_gold),
+                             float(np.mean([1 / len(t) for t, _, _ in with_gold])) if with_gold else float("nan"),
+                             float(excess.mean()) if with_gold else float("nan"), excess_ci))
     lines += ["", "Each cell: modified / identity.", "",
               "## Where a modified query's rank 1 is tied, did the gold win the tie?", "",
               "Among tied modified queries: how many have the gold inside the tied group (top-100 only), how many "
               "of those the gold wins, and the share a uniform draw from the tied group would win. A gold that wins "
-              "above that share wins by the retriever's sort order, not by anything in the query.", "",
-              "| arm | scope | n | tied | gold in tie | gold wins | wins, share | uniform draw |",
-              "|---|---|---:|---:|---:|---:|---:|---:|"]
-    for short, sc, n, t, wg, won, chance in decisive:
-        lines.append(f"| {name(short)} | {sc} | {n:,} | {t:,} | {wg:,} | {int(won):,} | "
-                     f"{f4(won / wg) if wg else '—'} | {f4(chance) if wg else '—'} |")
+              "above that share wins by the retriever's sort order, not by anything in the query. **Excess** is the "
+              "mean over those queries of (gold won − 1 / tie size), with its concept-clustered interval; an "
+              "interval containing 0 means the sort order's effect is not detected, not that it is shown absent. "
+              "**Hits** is the scope's modified item hits, of which the gold's tie wins are a part.", "",
+              "| arm | scope | n | hits | tied | gold in tie | gold wins | wins, share | uniform draw | excess | CI (concept) |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|"]
+    for short, sc, n, hits, t, wg, won, chance, exc, exc_ci in decisive:
+        lines.append(f"| {name(short)} | {sc} | {n:,} | {hits:,} | {t:,} | {wg:,} | {int(won):,} | "
+                     f"{f4(won / wg) if wg else '—'} | {f4(chance) if wg else '—'} | "
+                     f"{fd(exc) if wg else '—'} | {fci(exc_ci, True) if wg else '—'} |")
     lines += sources_block(["texto", "single_texto"])
     write(OUT / "ties.md", lines)
 
@@ -484,8 +550,10 @@ def write_ceilings(dup: set[str]) -> None:
         "duplicate-free golds (D-033), whose ceiling is 1.0, so headroom is the scored value itself (D-032).",
         "The cross-encoder blend is not comparable with the previous study's reranking rows (design A1, D-042).",
     ])
-    lines += ["| arm | item, all | item, scored | n scored | CI (query) | CI (concept) | parent | CI (query) | CI (concept) |",
-              "|---|---:|---:|---:|---|---|---:|---|---|"]
+    lines += ["\"item, all\" is every dev `texto` query, D-033 golds included; it is printed for reference only. "
+              "The ceiling is \"item, scored\". Parent level scores every query.", "",
+              "| arm | item, all | item, scored | n scored | n excluded | CI (query) | CI (concept) | parent | n | CI (query) | CI (concept) |",
+              "|---|---:|---:|---:|---:|---|---|---:|---:|---|---|"]
     for short in DERIVED:
         f = perquery("texto", DIR[short])
         scored = f[~f["gold_item_key"].isin(dup)]
@@ -493,9 +561,9 @@ def write_ceilings(dup: set[str]) -> None:
         iv = scored[["item_acc1"]].to_numpy(float)
         pv = f[["parent_acc1"]].to_numpy(float)
         lines.append(
-            f"| {name(short)} | {f4(f['item_acc1'].mean())} | **{f4(iv.mean())}** | {len(scored):,} | "
+            f"| {name(short)} | {f4(f['item_acc1'].mean())} | **{f4(iv.mean())}** | {len(scored):,} | {len(f) - len(scored):,} | "
             f"{fci(ci(boot_query(iv, 's4|ceil|' + short)[:, 0]))} | {fci(ci(boot_cluster(iv, cl_s, 's4|ceil|' + short)[:, 0]))} | "
-            f"{f4(pv.mean())} | {fci(ci(boot_query(pv, 's4|ceilp|' + short)[:, 0]))} | "
+            f"{f4(pv.mean())} | {len(f):,} | {fci(ci(boot_query(pv, 's4|ceilp|' + short)[:, 0]))} | "
             f"{fci(ci(boot_cluster(pv, cl, 's4|ceilp|' + short)[:, 0]))} |"
         )
     lines += sources_block(["texto"], only=DERIVED)
@@ -510,14 +578,19 @@ def write_predictions(results: list[dict], excluded: list[str]) -> None:
         "the margin); **not supported** otherwise. Layer contrasts (P2, P5) compare different leaves and are",
         "bootstrapped independently within each pool: they are between-population.",
     ])
-    lines += [f"α = {ALPHA}; P3 margin ±{MARGIN}.", ""]
+    lines += [f"α = {ALPHA}; P3 margin ±{MARGIN}.", "",
+              f"**Concepts** are the clusters behind each pool the test reads (item level). A pool on fewer than "
+              f"{FEW_CLUSTERS} concepts is marked ‡: a percentile interval under-covers at that cluster count, so a "
+              "reading resting on it is weaker than its interval suggests. The reading rule is unchanged.", ""]
     if excluded:
         lines += ["Tests dropped because the arm is a floor arm: " + ", ".join(excluded) + ".", ""]
-    lines += ["| prediction | hypothesis | test | arm | estimate | CI (concept) | p | Holm p | BH p | reading |",
-              "|---|---|---|---|---:|---|---:|---:|---:|---|"]
+    lines += ["| prediction | hypothesis | test | arm | concepts | estimate | CI (concept) | p | Holm p | BH p | reading |",
+              "|---|---|---|---|---|---:|---|---:|---:|---:|---|"]
     for r in results:
         lines.append(
-            f"| {r['id']} | {r['hyp']} | {r['what']} | {name(r['arm'])} | {fd(r['est'])} | {fci(r['c'], True)} | "
+            f"| {r['id']} | {r['hyp']} | {r['what']} | {name(r['arm'])} | "
+            + " / ".join(f"{p} {n}" + (" ‡" if n < FEW_CLUSTERS else "") for p, n in r["clusters"].items())
+            + f" | {fd(r['est'])} | {fci(r['c'], True)} | "
             f"{fp(r['p'])} | {fp(r['holm'])} | {fp(r['bh'])} | **{r['reading']}** |"
         )
     lines += sources_block(["texto", "single_texto"], only=sorted({r["arm"] for r in results}))
@@ -634,7 +707,7 @@ def main() -> None:
     write_profile("item", stats, floors, pops)
     write_profile("parent", stats, floors, pops)
     qtext, ctext = texts()
-    write_token_distance(stats, first, qtext, ctext)
+    write_token_distance(stats, frames, first, qtext, ctext)
     write_ties(frames, dup)
 
     results, excluded = [], []

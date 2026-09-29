@@ -26,40 +26,40 @@ Each cell: modified / identity.
 
 ## Where a modified query's rank 1 is tied, did the gold win the tie?
 
-Among tied modified queries: how many have the gold inside the tied group (top-100 only), how many of those the gold wins, and the share a uniform draw from the tied group would win. A gold that wins above that share wins by the retriever's sort order, not by anything in the query.
+Among tied modified queries: how many have the gold inside the tied group (top-100 only), how many of those the gold wins, and the share a uniform draw from the tied group would win. A gold that wins above that share wins by the retriever's sort order, not by anything in the query. **Excess** is the mean over those queries of (gold won − 1 / tie size), with its concept-clustered interval; an interval containing 0 means the sort order's effect is not detected, not that it is shown absent. **Hits** is the scope's modified item hits, of which the gold's tie wins are a part.
 
-| arm | scope | n | tied | gold in tie | gold wins | wins, share | uniform draw |
-|---|---|---:|---:|---:|---:|---:|---:|
-| `bm25_unigram_params` **oracle** | L1 | 1,037 | 419 | 303 | 100 | 0.3300 | 0.3230 |
-| `bm25_unigram_params` **oracle** | all | 2,176 | 469 | 303 | 100 | 0.3300 | 0.3230 |
-| `bm25_unigram` | L1 | 1,037 | 483 | 268 | 92 | 0.3433 | 0.3005 |
-| `bm25_unigram` | all | 2,176 | 613 | 273 | 95 | 0.3480 | 0.3042 |
-| `tfidf_phrases_replace` **oracle** | L1 | 1,037 | 381 | 354 | 99 | 0.2797 | 0.2618 |
-| `tfidf_phrases_replace` **oracle** | all | 2,176 | 382 | 354 | 99 | 0.2797 | 0.2618 |
-| `bge_m3_colbert` | L1 | 1,037 | 145 | 129 | 57 | 0.4419 | 0.4757 |
-| `bge_m3_colbert` | all | 2,176 | 283 | 251 | 104 | 0.4143 | 0.4761 |
-| `bge_m3_dense` | L1 | 1,037 | 0 | 0 | 0 | — | — |
-| `bge_m3_dense` | all | 2,176 | 0 | 0 | 0 | — | — |
-| `bge_m3_sparse` | L1 | 1,037 | 1 | 1 | 0 | 0.0000 | 0.1111 |
-| `bge_m3_sparse` | all | 2,176 | 3 | 3 | 0 | 0.0000 | 0.1111 |
-| `dense_e5` | L1 | 1,037 | 0 | 0 | 0 | — | — |
-| `dense_e5` | all | 2,176 | 0 | 0 | 0 | — | — |
-| `dense_es_hiiamsid` | L1 | 1,037 | 1 | 1 | 1 | 1.0000 | 0.5000 |
-| `dense_es_hiiamsid` | all | 2,176 | 1 | 1 | 1 | 1.0000 | 0.5000 |
-| `dense_gte` | L1 | 1,037 | 1 | 0 | 0 | — | — |
-| `dense_gte` | all | 2,176 | 1 | 0 | 0 | — | — |
-| `dense_gte_instrQ` | L1 | 1,037 | 1 | 0 | 0 | — | — |
-| `dense_gte_instrQ` | all | 2,176 | 1 | 0 | 0 | — | — |
-| `rrf` | L1 | 1,037 | 98 | 74 | 19 | 0.2568 | 0.5000 |
-| `rrf` | all | 2,176 | 306 | 221 | 78 | 0.3529 | 0.5000 |
-| `rrf_params` **oracle** | L1 | 1,037 | 77 | 62 | 21 | 0.3387 | 0.5000 |
-| `rrf_params` **oracle** | all | 2,176 | 108 | 86 | 34 | 0.3953 | 0.5000 |
-| `ce_bm25_unigram` | L1 | 1,037 | 21 | 14 | 8 | 0.5714 | 0.4762 |
-| `ce_bm25_unigram` | all | 2,176 | 52 | 14 | 8 | 0.5714 | 0.4762 |
-| `ce_bge_m3_colbert` | L1 | 1,037 | 10 | 6 | 4 | 0.6667 | 0.4352 |
-| `ce_bge_m3_colbert` | all | 2,176 | 13 | 8 | 5 | 0.6250 | 0.4028 |
-| `ce_rrf` | L1 | 1,037 | 7 | 5 | 3 | 0.6000 | 0.5000 |
-| `ce_rrf` | all | 2,176 | 7 | 5 | 3 | 0.6000 | 0.5000 |
+| arm | scope | n | hits | tied | gold in tie | gold wins | wins, share | uniform draw | excess | CI (concept) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `bm25_unigram_params` **oracle** | L1 | 1,037 | 369 | 419 | 303 | 100 | 0.3300 | 0.3230 | +0.0070 | [-0.0303, +0.0565] |
+| `bm25_unigram_params` **oracle** | all | 2,176 | 1,351 | 469 | 303 | 100 | 0.3300 | 0.3230 | +0.0070 | [-0.0296, +0.0562] |
+| `bm25_unigram` | L1 | 1,037 | 276 | 483 | 268 | 92 | 0.3433 | 0.3005 | +0.0428 | [-0.0071, +0.0832] |
+| `bm25_unigram` | all | 2,176 | 1,061 | 613 | 273 | 95 | 0.3480 | 0.3042 | +0.0438 | [-0.0150, +0.0893] |
+| `tfidf_phrases_replace` **oracle** | L1 | 1,037 | 271 | 381 | 354 | 99 | 0.2797 | 0.2618 | +0.0178 | [-0.0081, +0.0771] |
+| `tfidf_phrases_replace` **oracle** | all | 2,176 | 1,382 | 382 | 354 | 99 | 0.2797 | 0.2618 | +0.0178 | [-0.0101, +0.0728] |
+| `bge_m3_colbert` | L1 | 1,037 | 779 | 145 | 129 | 57 | 0.4419 | 0.4757 | -0.0338 | [-0.1046, +0.0556] |
+| `bge_m3_colbert` | all | 2,176 | 1,693 | 283 | 251 | 104 | 0.4143 | 0.4761 | -0.0618 | [-0.1062, +0.0071] |
+| `bge_m3_dense` | L1 | 1,037 | 729 | 0 | 0 | 0 | — | — | — | — |
+| `bge_m3_dense` | all | 2,176 | 1,378 | 0 | 0 | 0 | — | — | — | — |
+| `bge_m3_sparse` | L1 | 1,037 | 54 | 1 | 1 | 0 | 0.0000 | 0.1111 | -0.1111 | [-0.1111, -0.1111] |
+| `bge_m3_sparse` | all | 2,176 | 117 | 3 | 3 | 0 | 0.0000 | 0.1111 | -0.1111 | [-0.1111, -0.1111] |
+| `dense_e5` | L1 | 1,037 | 378 | 0 | 0 | 0 | — | — | — | — |
+| `dense_e5` | all | 2,176 | 865 | 0 | 0 | 0 | — | — | — | — |
+| `dense_es_hiiamsid` | L1 | 1,037 | 507 | 1 | 1 | 1 | 1.0000 | 0.5000 | +0.5000 | [+0.5000, +0.5000] |
+| `dense_es_hiiamsid` | all | 2,176 | 1,290 | 1 | 1 | 1 | 1.0000 | 0.5000 | +0.5000 | [+0.5000, +0.5000] |
+| `dense_gte` | L1 | 1,037 | 136 | 1 | 0 | 0 | — | — | — | — |
+| `dense_gte` | all | 2,176 | 237 | 1 | 0 | 0 | — | — | — | — |
+| `dense_gte_instrQ` | L1 | 1,037 | 105 | 1 | 0 | 0 | — | — | — | — |
+| `dense_gte_instrQ` | all | 2,176 | 214 | 1 | 0 | 0 | — | — | — | — |
+| `rrf` | L1 | 1,037 | 724 | 98 | 74 | 19 | 0.2568 | 0.5000 | -0.2432 | [-0.2952, -0.1667] |
+| `rrf` | all | 2,176 | 1,648 | 306 | 221 | 78 | 0.3529 | 0.5000 | -0.1471 | [-0.2153, -0.0875] |
+| `rrf_params` **oracle** | L1 | 1,037 | 796 | 77 | 62 | 21 | 0.3387 | 0.5000 | -0.1613 | [-0.3158, -0.0865] |
+| `rrf_params` **oracle** | all | 2,176 | 1,881 | 108 | 86 | 34 | 0.3953 | 0.5000 | -0.1047 | [-0.2627, -0.0106] |
+| `ce_bm25_unigram` | L1 | 1,037 | 258 | 21 | 14 | 8 | 0.5714 | 0.4762 | +0.0952 | [-0.1250, +0.2708] |
+| `ce_bm25_unigram` | all | 2,176 | 942 | 52 | 14 | 8 | 0.5714 | 0.4762 | +0.0952 | [-0.1250, +0.3077] |
+| `ce_bge_m3_colbert` | L1 | 1,037 | 519 | 10 | 6 | 4 | 0.6667 | 0.4352 | +0.2315 | [-0.1889, +0.5000] |
+| `ce_bge_m3_colbert` | all | 2,176 | 1,382 | 13 | 8 | 5 | 0.6250 | 0.4028 | +0.2222 | [-0.2037, +0.5000] |
+| `ce_rrf` | L1 | 1,037 | 519 | 7 | 5 | 3 | 0.6000 | 0.5000 | +0.1000 | [-0.1667, +0.5000] |
+| `ce_rrf` | all | 2,176 | 1,384 | 7 | 5 | 3 | 0.6000 | 0.5000 | +0.1000 | [-0.1667, +0.5000] |
 
 ## Sources
 
