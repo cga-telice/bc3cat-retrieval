@@ -352,8 +352,9 @@ def write_renderings(stats: dict[str, dict], ceilings: dict[str, float], pop: di
     )
     lines += [
         "`ceiling` is the text-only item ceiling of each rendering on P: one findable member per group "
-        "of identical query text (D-032). Decoding separates some siblings the codes merge and stripping "
-        "merges more, so it moves with the condition. An oracle arm's query carries the gold's parameter "
+        "of identical query text (D-032). It moves with the condition, in one direction only: the decoded "
+        "text is a function of the coded text, so decoding can merge groups but never split them, and "
+        "stripping merges every group whose members differ only in the suffix. An oracle arm's query carries the gold's parameter "
         "tokens (D-010), which separate every sibling, so its ceiling is 1.0 in every condition.",
         "",
         "## Acc@1 per condition",
