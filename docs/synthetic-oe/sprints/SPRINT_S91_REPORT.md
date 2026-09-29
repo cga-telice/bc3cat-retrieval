@@ -4,7 +4,7 @@
 |---|---|
 | **Design** | [`SPRINT_S91_DESIGN.md`](SPRINT_S91_DESIGN.md) · frozen at `09d11f7` · amendments A1–A3 |
 | **Closed** | 2026-09-29, inside the 3-day time-box. `done` withheld until `/audit S91` in a fresh session |
-| **Code commit** | All 20 new runs at `cf92bc8`, clean. Reused coded runs: `2e49566` (4), `922ae53` (5), `a5700a6` (1), as S3 stamped them. Tables generated at `3dc992f`, regenerated at `8af8cdf` (audit F2, Sources only) |
+| **Code commit** | All 20 new runs at `cf92bc8`, clean. Reused coded runs: `2e49566` (4), `922ae53` (5), `a5700a6` (1), as S3 stamped them. Tables generated at `3dc992f`, regenerated for audit F2 (Sources only) and F4 (one sentence of `renderings.md`); no figure moved |
 | **Query-set digests** | coded `resumen` `f041a8e8` (`bge_m3_colbert`/`bge_m3_dense`: `28d09f40`) · `resumen_stripped` `c136a743` · `resumen_decoded` `7d9679fd`. Sources: `OE_resumen_stripped.json` `4703d33f`, `OE_resumen_decoded.json` `ca7fc230`, decoder `7ee4557f` (`MANIFEST.md`) |
 | **Runs** | `runs/OE/{resumen,resumen_stripped,resumen_decoded}/`, ten arms each · split `dev` · `check_run_inputs.py`: 197 of 202 resolve; the 5 that do not are S3's declared five |
 | **Results** | [`results/S91/`](../results/S91) — 5 tables from `src/utils/build_results_s91.py`, regenerating byte-identically, under `tests/test_generated_prose.py` |
@@ -195,7 +195,7 @@ of the eight findings:
 | F1 — coverage compared across different samples; D-037 proposal built on it | **Fixed.** "Decoded OE reaches OEB's coverage" is withdrawn. Finding 7, known-wrong 1 and the D-037 row now read the all-dev population S3 measured OE on: 79.38 % coded → 89.83 % decoded [83.43, 92.99], whose interval excludes OEB's 94.10 %. The P figure is no longer set against OEB's. Part of the gap moves with the rendering; OE stays less verbatim than OEB. The remaining population difference (OE dev, all OEB pairs) is stated |
 | F2 — T4, T3, T1 sources unstamped | **Fixed.** `sources()` now stamps every file a table reads as well as every run, and a table that reads no run says so instead of printing an empty run table. T4 lists its thirty runs. T3 lists the run its dev population comes from and the digests of the three rendering files and of the gold `texto` table. T1 lists `OE_resumen.json` and `SPLITS.md`. T2 and T5 also gained the files they read. The population's run is now one named constant rather than an index into the arm list. Regenerated: only the Sources sections changed; no figure moved. Every data digest matches `MANIFEST.md` |
 | F3 — finding 1's heading overgeneralises | **Fixed.** Finding 1 now names `bm25_unigram` and states that neither `bm25_unigram_params` (Holm p 0.0700) nor `tfidf_phrases_replace` (Holm p 0.1824) meets P2's rule. Known-wrong 2 is worded as an association with T5, not a mechanism |
-| F4 — T2's printed rule differs from the code's | open |
+| F4 — T2's printed rule differs from the code's | **Fixed.** The generated sentence now states the rule `verdict()` applies: the clustered interval excludes 0 on the predicted side **and** Holm p < α, with α interpolated from the code. It adds that the interval is not Holm-adjusted, which is how the params arm excludes 0 and still reads not supported. Regenerated: that sentence is the only change; no reading moved |
 | F5 — T5 counts common code tokens | open |
 | F6 — ungenerated P2 claim | open |
 | F7 — report typed by hand | open |

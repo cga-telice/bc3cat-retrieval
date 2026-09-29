@@ -398,9 +398,11 @@ def write_renderings(stats: dict[str, dict], ceilings: dict[str, float], pop: di
                 )
 
     lines += ["", "## The registered predictions", "",
-              "Read on the concept-clustered interval, after Holm across the ten arms (design, D-030): "
-              "**supported** when the interval excludes 0 on the predicted side, **contradicted** when it "
-              "excludes 0 on the other, **not supported** otherwise.", "",
+              "Read on the concept-clustered interval and the Holm-adjusted p across the ten arms "
+              "(design, D-030; amendment A2(b)): **supported** when the interval excludes 0 on the "
+              f"predicted side **and** Holm p < {ALPHA}, **contradicted** when the interval excludes 0 on "
+              f"the other side and Holm p < {ALPHA}, **not supported** otherwise. The interval is not "
+              "Holm-adjusted, so an arm can exclude 0 and still read not supported.", "",
               "| prediction | contrast | level | method | Δ | CI (concept) | p Holm | reading |",
               "|---|---|---|---|---:|---|---:|---|"]
     for pid, name, level, arms in PREDICTIONS:
