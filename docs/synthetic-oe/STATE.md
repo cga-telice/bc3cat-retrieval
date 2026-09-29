@@ -64,7 +64,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S4` again in a fresh session.** The first audit's nine findings are resolved (report, Audit response). Rulings made: P8 kept and shown both ways (D-044). Upstream answered: 4 dev + 2 test queries; test list `OE_P8_test_exclusion.json` taken for S12. **Open for César:** frozen-menu fix now (A) or at the next build (B). After the re-audit, move S4's amendments to `SPRINT_S4_AMENDMENTS.md` (D-045). On PASS (WITH FINDINGS, resolved): S4 → `done`, then
+**`/audit S4` again in a fresh session.** The first audit's nine findings are resolved (report, Audit response). Rulings made: P8 kept and shown both ways (D-044). Upstream answered: 4 dev + 2 test queries; test list `OE_P8_test_exclusion.json` taken for S12. Frozen menu fixed at the next build (option B); upstream commit `0923284`. After the re-audit, move S4's amendments to `SPRINT_S4_AMENDMENTS.md` (D-045). On PASS (WITH FINDINGS, resolved): S4 → `done`, then
 `/sprint-open S5` (Track B, structured; H3), which inherits the 15-arm profile as its reference. S6 opens
 with the L2 intake (D-043).
 

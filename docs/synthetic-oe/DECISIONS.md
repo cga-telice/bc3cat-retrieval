@@ -1253,3 +1253,11 @@ over budget, which ignores the rule; raising the budget again, which the root co
 **When.** For S4, the move is made **after** the S4 re-audit, so that the auditor reads the same files
 the report cites. From S5 on, `/sprint-open` starts the amendments file with the design. The earlier
 sprints' designs are left as they are.
+
+### D-044 — note: the frozen menu is fixed at the next build (option B); upstream commit recorded
+**Status:** Note on D-044 · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** upstream's P8 answer (`DELIVERIES.md`)
+Upstream found four case-only candidates in the frozen `synonym_label` menu, reaching 4 dev and 2 test
+queries. They asked whether to remove them now (A) or at the next corpus build (B). **César chose B.**
+The frozen menu stays in step with the delivered `OE_single_texto.json`, so the file remains
+reproducible from it. The six queries are handled as ruled above. The generator fix, its test, the
+audit script and the test list are committed upstream at `bc3cat-dataset` `0923284` on `synthetic`.

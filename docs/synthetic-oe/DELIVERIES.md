@@ -15,7 +15,7 @@ Newest first.
 
 ---
 
-## 2026-09-29 (night) — the P8 answer and test list · **taken**; menu choice pending
+## 2026-09-29 (night) — the P8 answer and test list · **taken**; menu fixed at the next build (B)
 
 | File | Records | SHA-256 prefix | Taken |
 |---|---:|---|---|
@@ -29,8 +29,9 @@ Upstream's answer to [`requests/SYNONYM_CASE_ONLY.md`](requests/SYNONYM_CASE_ONL
   **2 test**. Every other file, `OE_single_l2_texto.json` included, has 0 on both splits: its queries
   always carry other changes too.
 - **Fix.** The menu generator now drops a candidate equal to its label after lower-casing and whitespace
-  clean-up, with a test. When this was taken, that change was **uncommitted** in `bc3cat-dataset`
-  (`src/synthetic/menu_proposer.py`, `tests/synthetic/test_menu_builder.py`), and so was the list file.
+  clean-up, with a test. It is committed at `bc3cat-dataset` `0923284aef6f` on `synthetic`, pushed. The
+  commit also holds the audit script (it prints counts only) and the list file. Verified here: the
+  commit is on `origin/synthetic` and touches those four files.
 - **No re-delivery.** Every delivered digest holds; `OE_single_texto.json` re-hashed here matches
   (`b6a43961…`).
 
@@ -39,8 +40,15 @@ reading any query text. Both keys resolve in `OE_single_texto.json`, both are `s
 concepts (`OED160$`, `OED180$`) are test under `SPLITS.md`. Despite its name it excludes nothing: under
 D-044, S12 keeps the two queries and also shows each `synonym_label` cell without them.
 
-**Pending with César:** whether upstream removes the four entries from the frozen menu now (A), or at
-the next corpus build (B, upstream's recommendation).
+**Line endings and digests.** Both digests are of the same content, with identical keys:
+- `6cda7fa05aa6e32f…` is the file with CRLF line endings. This is the copy in `data/processed/`, and
+  the digest `MANIFEST.md` checks.
+- `9b007b1c47bf7430…` is the LF blob git stores at `0923284`.
+
+Both were verified here.
+
+**Menu: option B** (César, D-044 note). The frozen menu is unchanged, and the four entries go at the
+next corpus build.
 
 ## 2026-09-29 (evening) — wider L2 slices, option A · **taken, not yet wired**
 

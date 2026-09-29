@@ -101,7 +101,8 @@ INTAKE_PREFIXES = {
     "OE_resumen.json": "0cd380e9e44ad8c5",
     # D-043, taken 2026-09-29 from `bc3cat-dataset` `data/synthetic/handoff_OE/`.
     "OE_P7_test_exclusion.json": "96fe3854f2b6d935",
-    # D-044, taken 2026-09-29 from `bc3cat-dataset` `data/synthetic/handoff_OE/`.
+    # D-044, taken 2026-09-29 from `bc3cat-dataset` `data/synthetic/handoff_OE/`, committed there at
+    # `0923284`. This is the CRLF checkout; the LF blob git stores hashes to `9b007b1c47bf7430`.
     "OE_P8_test_exclusion.json": "6cda7fa05aa6e32f",
     # D-043 amended, from upstream's provenance file and its delivery message.
     "OE_single_l2_texto.json": "fff7dd3be023125b",
