@@ -1068,3 +1068,35 @@ differ (OE dev, all of OEB). This is a description, not a mediation claim; media
 **What stands.** The chapter confound, and D-039's rule that any OE-against-OEB sentence names the
 rendering as well as the chapter.
 
+### D-039 — second amendment: `resumen` results are reported coded **and** decoded
+**Status:** Accepted · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S91 (the question the first amendment left open)
+**Ruling (César).** Every future `resumen→texto` result is reported on **both** renderings: the
+catalogue's coded `resumen` and the decoded one (`resumen_decoded`). Neither replaces the other. The
+coded rendering is the catalogue's own query surface (D-039); the decoded one shows how much of the
+failure is the codes rather than the parameters (S91 finding 5). `resumen_stripped` stays in the tree
+as S91's diagnostic and is not a reported rendering.
+**Consequence.** The two are paired on the same leaves and scored on the same population (D-040), so
+their difference is a paired contrast. Any OE-against-OEB sentence still names the rendering (D-039).
+
+### D-040 — `resumen`-identical siblings are excluded at scoring time, like duplicate `texto`
+**Status:** Accepted · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S91 (design constraints; T2 ceilings)
+**Requirement.** D-033's: every scored query must have one and only one valid answer.
+**The problem.** A query whose text is identical to another leaf's query text cannot tell the two
+golds apart: every member of the group gets the same ranking. On dev, **9,346** leaves share their
+coded `resumen` with another leaf; decoding can only merge groups (S91 A3) and adds 2, giving
+**9,348** under either rendering. 200 of them are also `texto` duplicates (D-033). No group spans two
+concepts, under either rendering.
+**Ruling (César).** These queries are not computed at item level. Item-level scoring **excludes a
+query whose text equals another leaf's under the coded or the decoded rendering**, so both renderings
+(D-039 second amendment) are scored on the same population, and reports the excluded n beside every
+figure. Together with D-033, the dev item-level population is **25,498** queries (35,422 − 9,924;
+34,646 under D-033 alone). Parent level excludes nothing, because no group spans two concepts. The
+corpus is not touched: all leaves stay indexed as distractors.
+**Scope.** `resumen` query sets. A synthetic query set with the same property would be treated the
+same way, by an amendment naming it.
+**Not retroactive.** S3 and S91 are done; their item-level figures stand as reported, beside the
+`resumen` text-only ceiling they print (0.8680 on the 34,646 scored). This is the scoring rule from
+the next sprint that reports `resumen`.
+**Debt.** Not yet in the harness. The scoring code must implement the exclusion, with its excluded n,
+before a run is reported under it.
+
