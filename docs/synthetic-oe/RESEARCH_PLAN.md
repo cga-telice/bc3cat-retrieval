@@ -208,6 +208,11 @@ gets priority over S10. If it fails, the method contribution must come from Trac
 - Thin types (`paraphrase` n=211, `expansion` n=206) reported with their wider intervals or
   pooled at layer level; a power note stating what those n can and cannot detect.
 
+*Added 2026-09-29 (D-043, from S4):*
+- **Intake of `OE_single_l2_texto.json`** if it has landed: the three L2 types over 9 / 9 / 8 dev
+  concepts instead of 5. State the grammar's ceiling (13 dev / 12 test concepts can carry an L2
+  rewrite at all) as a structural limitation.
+
 **Exit.** H1, H2, H5 resolved. Figures 1–3 of the paper drafted.
 
 ---
@@ -363,7 +368,7 @@ Off the critical path, and parallelisable given compute:
 | OE release digests confirmed | `bc3cat-dataset` | S0 | S0 |
 | Balanced dose set (counts 1–5, randomised mixes, `reorder` admitted) | `bc3cat-dataset` | S0 | S8 |
 | Per-item modification sidecar for artefact sensitivity analysis | `bc3cat-dataset` | S1 | S6 |
-| Wider `paraphrase` / `expansion` slices (n≈206–211 today) — issued 2026-09-29 as [`requests/WIDER_THIN_SLICES.md`](requests/WIDER_THIN_SLICES.md), widened to all three L2 types, which reach 5 dev concepts | `bc3cat-dataset` | S4 | S6 |
+| Wider `paraphrase` / `expansion` slices (n≈206–211 today) — issued 2026-09-29 as [`requests/WIDER_THIN_SLICES.md`](requests/WIDER_THIN_SLICES.md), widened to all three L2 types, which reach 5 dev concepts; answered the same day, build approved at 9 / 9 / 8 dev concepts (D-043) | `bc3cat-dataset` | S4 | S6 |
 
 ## 6. Risk register
 

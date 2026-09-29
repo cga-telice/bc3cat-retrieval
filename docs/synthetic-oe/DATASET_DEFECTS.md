@@ -172,6 +172,13 @@ wrong, and only the oracle arm (D-010) can hit it.
   [`requests/REORDER_LOOKUP_ARGUMENTS.md`](requests/REORDER_LOOKUP_ARGUMENTS.md), which also asks for the
   test split and the `$U` permutations to be checked on their side.
 
+**Upstream answer (2026-09-29, `DELIVERIES.md`, D-043).** The diagnosis was confirmed and the
+validator fixed; 28 approved rules were withdrawn for future builds. The class is wider than the
+permutation. On test, **2** `reorder` queries come from a rule that swaps a literal lookup row. They
+match no leaf, so the equality test cannot see them, but they are not referent-preserving either.
+They get the same treatment, applied in S12 from a key-only list, since test is not read before then.
+Dev has no other case.
+
 ## H1 — `normalize_text` reads a synthetic decimal as a thousands group · **open** (D-010 note)
 
 `\d\.\d{3}` is rewritten as a thousands separator, so `0.03x0.015 m` becomes `0.03x0015 m` in
