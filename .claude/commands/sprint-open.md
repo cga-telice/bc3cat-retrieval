@@ -22,8 +22,10 @@ it will establish and how, and freezing that before results exist.
    population each effect is estimated on, what must not be compared with what, which
    caveats are carried in from the data. Writing them after results is how hypotheses drift.
 5. **Present the design for approval.** Do not commit it unreviewed.
-6. **On approval:** commit the design, record the commit SHA and date in its freeze line,
+6. **On approval:** create `SPRINT_$1_AMENDMENTS.md` from `_TEMPLATE_AMENDMENTS.md` with its
+   table empty, commit it with the design, record the commit SHA and date in both files,
    set the registry row to `active`, append the transition to the registry log, and update
    `STATE.md`.
 
-From the freeze commit, the design is read-only. Changes go in its Amendments table, dated.
+From the freeze commit, the design is read-only. Changes go in `SPRINT_$1_AMENDMENTS.md`, dated
+(D-045). The amendments file is a record: rows are appended, never edited.

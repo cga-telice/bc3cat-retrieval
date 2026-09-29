@@ -32,7 +32,10 @@ a normalisation step, a filter), confirm from the code that it actually executes
 reported path. A feature that is described but never called has happened here before.
 
 **4. Design freeze.** `git diff <freeze-sha>..HEAD -- sprints/SPRINT_XX_DESIGN.md`. Any
-change after the freeze must correspond to a dated entry in the design's Amendments table.
+change after the freeze must correspond to a dated amendment. From S5 on, amendments live in
+`sprints/SPRINT_XX_AMENDMENTS.md` (D-045), and the design itself should not change after the
+freeze at all. Earlier sprints keep them in the design's Amendments table; S4's were moved out
+after its re-audit.
 An undeclared post-hoc change to a hypothesis or an exit criterion is a critical finding,
 not a nit.
 

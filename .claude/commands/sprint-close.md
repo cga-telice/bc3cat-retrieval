@@ -5,8 +5,8 @@ argument-hint: <sprint-id>
 
 Close sprint **$1** on `research/synthetic-oe`.
 
-1. **Read the frozen design** `docs/synthetic-oe/sprints/SPRINT_$1_DESIGN.md`, including
-   its Amendments table. The report is written against that design, not against what the
+1. **Read the frozen design** `docs/synthetic-oe/sprints/SPRINT_$1_DESIGN.md` and its
+   amendments, `SPRINT_$1_AMENDMENTS.md` (D-045; S4 and earlier keep theirs in the design). The report is written against that design, not against what the
    work turned into.
 2. **Write the report** at `SPRINT_$1_REPORT.md` from `_TEMPLATE_REPORT.md`.
 3. **Every number carries its provenance stamp** `{run_id, config SHA, code commit,

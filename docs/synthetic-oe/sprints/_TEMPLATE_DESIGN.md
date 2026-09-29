@@ -1,8 +1,9 @@
 # Sprint <ID> — <title> · design
 
 > **Frozen at:** `<commit SHA>` · `<date>`
-> This section is read-only from that commit. Changes go in **Amendments** below, dated and
-> justified — never as in-place edits. `git log -- <this file>` after the freeze date is an
+> This document is read-only from that commit. Changes go in
+> [`SPRINT_<ID>_AMENDMENTS.md`](SPRINT_<ID>_AMENDMENTS.md) (D-045), dated and justified — never as
+> in-place edits. `git log -- <this file>` after the freeze date is an
 > audit trail; keep it honest.
 
 | Field | Value |
@@ -57,5 +58,4 @@ What this sprint deliberately does not do, and which sprint does it instead.
 
 ## Amendments
 
-| Date | What changed | Why | Effect on claims |
-|---|---|---|---|
+In [`SPRINT_<ID>_AMENDMENTS.md`](SPRINT_<ID>_AMENDMENTS.md), append-only (D-045).

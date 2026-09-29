@@ -156,6 +156,8 @@ docs/synthetic-oe/
   archive/                                              # record — dated snapshots
   RESEARCH_PROPOSAL.md RESEARCH_PLAN.md SPRINTS.md      # plans
   sprints/SPRINT_XX_DESIGN.md                           # plan, frozen at sprint start
+  sprints/SPRINT_XX_AMENDMENTS.md                       # record — changes to the frozen design,
+                                                        #   append-only (D-045; from S5, and S4)
   sprints/SPRINT_XX_REPORT.md                           # record
   sprints/SPRINT_XX_AUDIT.md                            # record, written by the auditor
   results/                                              # derived — generated, never edited
@@ -195,4 +197,4 @@ reused**, and gaps are normal. Two types:
 
 Registry and status: [`SPRINTS.md`](SPRINTS.md). Design precedes execution; the design
 document is frozen when the sprint goes active, and changes afterwards are recorded as
-dated amendments, never as in-place edits.
+dated amendments in `SPRINT_XX_AMENDMENTS.md` (D-045), never as in-place edits.
