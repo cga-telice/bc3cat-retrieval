@@ -4,7 +4,7 @@
 |---|---|
 | **Design** | [`SPRINT_S91_DESIGN.md`](SPRINT_S91_DESIGN.md) · frozen at `09d11f7` · amendments A1–A3 |
 | **Closed** | 2026-09-29, inside the 3-day time-box. `done` withheld until `/audit S91` in a fresh session |
-| **Code commit** | All 20 new runs at `cf92bc8`, clean. Reused coded runs: `2e49566` (4), `922ae53` (5), `a5700a6` (1), as S3 stamped them. Tables generated at `3dc992f` |
+| **Code commit** | All 20 new runs at `cf92bc8`, clean. Reused coded runs: `2e49566` (4), `922ae53` (5), `a5700a6` (1), as S3 stamped them. Tables generated at `3dc992f`, regenerated at `8af8cdf` (audit F2, Sources only) |
 | **Query-set digests** | coded `resumen` `f041a8e8` (`bge_m3_colbert`/`bge_m3_dense`: `28d09f40`) · `resumen_stripped` `c136a743` · `resumen_decoded` `7d9679fd`. Sources: `OE_resumen_stripped.json` `4703d33f`, `OE_resumen_decoded.json` `ca7fc230`, decoder `7ee4557f` (`MANIFEST.md`) |
 | **Runs** | `runs/OE/{resumen,resumen_stripped,resumen_decoded}/`, ten arms each · split `dev` · `check_run_inputs.py`: 197 of 202 resolve; the 5 that do not are S3's declared five |
 | **Results** | [`results/S91/`](../results/S91) — 5 tables from `src/utils/build_results_s91.py`, regenerating byte-identically, under `tests/test_generated_prose.py` |
@@ -41,9 +41,11 @@ overlapped the window, `resumen_stripped/bge_m3_sparse__OE`, was stamped after t
 All figures are on **P**, the 27,574 dev queries whose `resumen` carries a suffix and whose gold
 `texto` is unique (26 concepts), unless stated otherwise ([`renderings.md`](../results/S91/renderings.md)).
 
-**1. The codes actively mislead the lexical arms, at concept level.** Removing the suffix lifts
+**1. The codes mislead `bm25_unigram` at concept level.** Removing the suffix lifts
 `bm25_unigram` from 0.2808 to 0.7572 at parent level. The clustered interval of that difference is
-[+0.2920, +0.5504]; 13,136 queries go up and none go down. [`rare_codes.md`](../results/S91/rare_codes.md)
+[+0.2920, +0.5504]; 13,136 queries go up and none go down. The other lexical arms do not meet P2's
+rule: `bm25_unigram_params` moves +0.3692 [+0.2177, +0.4091] but at Holm p 0.0700 (P2 **not
+supported**), and `tfidf_phrases_replace` moves +0.0365 at Holm p 0.1824. [`rare_codes.md`](../results/S91/rare_codes.md)
 shows the pattern: in 91.1 % of its coded parent misses (18,065 of 19,832), the rank-1 document
 holds a suffix code token that the gold lacks. Such tokens are near-absent from the corpus: `e` is
 in 72 of 70,242 documents, `nni` and `ne` in none. `tfidf_phrases_replace` shows it in 1.2 % of its
@@ -122,8 +124,9 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
    verbatim than OEB on these figures. The populations still differ (OE dev, all OEB pairs),
    and this is a description, not a mediation claim.
 2. **"Lexical arms fail on OE `resumen` because they cannot tell siblings apart."** At concept level,
-   `bm25_unigram` fails because rare code tokens pull it to other concepts: 0.2808 coded against
-   0.7572 stripped. That is a different failure from parametric collapse.
+   `bm25_unigram`'s coded failures go with code tokens the gold lacks: 0.2808 coded against 0.7572
+   stripped, and most of its coded misses rank first a document holding such a token (T5). That is
+   an association, not a tested mechanism, and a different failure from parametric collapse.
 3. **"S3's replication headroom reads each arm against its ceiling."** It reads `resumen` against the
    `texto` identity ceiling. `resumen` has its own text-only ceiling, 0.8342 on P coded, because
    siblings share their summary text. S3 did not measure it.
@@ -191,7 +194,7 @@ of the eight findings:
 |---|---|
 | F1 — coverage compared across different samples; D-037 proposal built on it | **Fixed.** "Decoded OE reaches OEB's coverage" is withdrawn. Finding 7, known-wrong 1 and the D-037 row now read the all-dev population S3 measured OE on: 79.38 % coded → 89.83 % decoded [83.43, 92.99], whose interval excludes OEB's 94.10 %. The P figure is no longer set against OEB's. Part of the gap moves with the rendering; OE stays less verbatim than OEB. The remaining population difference (OE dev, all OEB pairs) is stated |
 | F2 — T4, T3, T1 sources unstamped | **Fixed.** `sources()` now stamps every file a table reads as well as every run, and a table that reads no run says so instead of printing an empty run table. T4 lists its thirty runs. T3 lists the run its dev population comes from and the digests of the three rendering files and of the gold `texto` table. T1 lists `OE_resumen.json` and `SPLITS.md`. T2 and T5 also gained the files they read. The population's run is now one named constant rather than an index into the arm list. Regenerated: only the Sources sections changed; no figure moved. Every data digest matches `MANIFEST.md` |
-| F3 — finding 1's heading overgeneralises | open |
+| F3 — finding 1's heading overgeneralises | **Fixed.** Finding 1 now names `bm25_unigram` and states that neither `bm25_unigram_params` (Holm p 0.0700) nor `tfidf_phrases_replace` (Holm p 0.1824) meets P2's rule. Known-wrong 2 is worded as an association with T5, not a mechanism |
 | F4 — T2's printed rule differs from the code's | open |
 | F5 — T5 counts common code tokens | open |
 | F6 — ungenerated P2 claim | open |
