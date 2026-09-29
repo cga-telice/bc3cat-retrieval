@@ -251,6 +251,18 @@ intervention that directly targets L1 damage); parameter slot-filling from free-
 queries; HyDE-style expansion; LLM query rewriting. Each evaluated across the overlap range
 measured in S3.
 
+*Added 2026-09-29 (D-041, from S91):*
+- **The S91 decoder.** It maps the catalogue's `resumen` parameter codes to values using only the code
+  and its position (`build_resumen_renderings.py`). It is a normalisation step to evaluate beside the
+  rewrites above, on the coded and decoded `resumen` sets that stay in the tree. Its dev fit is
+  in-sample; its coverage on held-out concepts is unmeasured.
+- **Protection against rare tokens.** Near-absent query tokens can hijack IDF weighting; S91 measured
+  it on BM25 with the codes (`results/S91/rare_codes.md`). Candidate guards: an IDF cap or a minimum
+  token length, tested on the synthetic sets as well as `resumen`, since the risk is general.
+  First establish why TF-IDF, with the same tokenizer, barely shows the pattern (D-041).
+- **Whether real queries carry codes** is read from S90's anchor if it arrives. Its absence does not
+  block S9.
+
 **Exit.** The crossover curve: accuracy delta of expansion as a function of query-target
 overlap, and the threshold below which expansion pays. A prediction to be tested, not
 assumed: expansion *hurts* in the near-verbatim regime.

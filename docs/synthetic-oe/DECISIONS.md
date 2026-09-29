@@ -1105,3 +1105,42 @@ ad hoc on 2026-09-29, not from a run: groups of whitespace-normalised identical 
 unioned with `OE_duplicate_texto_groups.json` (`b3cfcad4`). The harness implementation regenerates
 them, and its figures replace these.
 
+
+### D-041 — No document-side expansion probe; its two useful questions go to S9
+**Status:** Declined · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S91 report ("Decisions raised")
+**The proposal.** Index each leaf's own `resumen` code suffix beside its `texto`, so that a coded query
+matches its codes in the document and needs no query-side decoder.
+**Why declined.**
+- **The values are already there.** On the 27,574 leaves of S91's population P, every work-regime
+  value the suffix encodes appears verbatim in the leaf's own `texto` (`Trabajo: Nocturno`, …):
+  83,743 of the 84,319 axis values on the 28,150 dev leaves with a suffix. The 576 leaves whose `texto`
+  lacks them are exactly the D-033 `texto` duplicates: their text omits those values, which is why it
+  is duplicated. Expanding documents with decoded values adds nothing, so the only expansion that
+  changes anything is the raw codes.
+- **Expanding with raw codes measures a self-match.** Codes occur only in text copied from the
+  catalogue's own `resumen`. Putting a leaf's own suffix into its target puts part of the query into
+  its answer, and a high score would measure "also index the summary field", not robustness. A system
+  that only ever sees catalogue-copied text is better served by a direct lookup on `resumen`.
+- **Off the critical path.** S4–S8 query with `texto` renderings, which carry no codes. The `resumen`
+  reference line is already settled: reported coded and decoded (D-039, second amendment).
+- **Whether codes reach real queries is unknown.** It is answered by the real-query anchor (D-014,
+  S90): counting code suffixes in those queries decides whether any of this is worth building.
+**Redirected to S9** (query-side normalisation), recorded in `RESEARCH_PLAN.md` §S9:
+1. **The S91 decoder**, as a candidate normalisation step to deploy, evaluated with the other Track C
+   rewrites.
+2. **Protection against rare tokens.** S91's general lesson is that near-absent query tokens can
+   hijack IDF weighting. `bm25_unigram`'s rank-1 document holds a rare code token its gold lacks in
+   85.6 % of its coded parent misses (`results/S91/rare_codes.md`). A guard applies to any noisy input,
+   not just this catalogue's codes; options include a cap on IDF weight or a minimum token length.
+**A correction this entry carries.** The S91 report's debt list says TF-IDF escaped the rare-code
+pattern because "its tokenizer drops single-letter tokens". It does not: `tfidf_unigram_phrases_replace__OE`
+and `bm25_unigram__k1-0.60__b-0.35__OE` both declare `token_pattern` `(?u)\b\w+\b`. Yet TF-IDF shows
+the rare pattern in 0.4 % of its parent misses, against `bm25_unigram`'s 85.6 % (`rare_codes.md`). The
+cause is untested; one candidate is that its L2-normalised document vectors dilute a single rare term.
+S9 should test it before building a guard.
+**Provenance of the counts.** 27,574, 84,319, 83,743, 28,150 and 576 were computed ad hoc on
+2026-09-29, not from a run, as in D-040: over dev leaves (`SPLITS.md` `8d520eb4`) of
+`OE_resumen.json` (`0cd380e9`) with a suffix, testing each axis value's normalised text
+(`normalize_text`) for containment in the leaf's normalised `OE_texto.json` (`02a2c270`) text,
+against `OE_duplicate_texto_groups.json` (`b3cfcad4`). The 85.6 % and 0.4 % are generated
+(`results/S91/rare_codes.md`).

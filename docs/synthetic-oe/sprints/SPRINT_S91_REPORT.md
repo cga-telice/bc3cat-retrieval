@@ -228,3 +228,13 @@ re-ran the full suite. Disposition:
 | F7 — decoder viability in-sample | **Fixed.** Finding 6, the D-039 row and "what the next sprint inherits" say the 80.9 % is in-sample, codes unseen on dev decode to nothing, and held-out coverage is unmeasured |
 | F8 — stale regeneration account in the header | **Fixed.** The header names `3336131` as the last generating commit and lists every regeneration, including F5's and F8's, which added figures |
 
+
+## Post-close notes
+
+Appended after the sprint closed; nothing above is edited.
+
+- **2026-09-29 — D-041 declined** (document-side expansion probe). Its two useful questions, the decoder as a
+  normalisation step and protection against rare tokens, are recorded in `RESEARCH_PLAN.md` §S9.
+- **2026-09-29 — correction to the debt list.** "The TF-IDF tokenizer hypothesis (it drops single-letter
+  tokens)" is false as stated: TF-IDF and BM25 declare the same `token_pattern`, `(?u)\b\w+\b`. Why TF-IDF
+  barely shows the rare-code pattern is open, and S9 inherits the question (D-041).
