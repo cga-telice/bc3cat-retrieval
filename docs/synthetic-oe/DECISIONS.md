@@ -1217,3 +1217,10 @@ inside the same five concepts, and the concept-clustered interval is driven by t
 **Fallback.** If it has not landed when S6 opens, S6 proceeds on today's slices and states **5 dev
 concepts** as the L2 limit (option C). The grammar's 13 / 12 ceiling is stated either way.
 
+### D-043 — note: option A delivered, and all four conditions met
+**Status:** Note on D-043 · **Date:** 2026-09-29 · **Raised in:** the L2 delivery (`DELIVERIES.md`, "wider L2 slices, option A")
+`OE_single_l2_texto.json` (`fff7dd3b…`, 1,092 queries) is taken. It covers 9 / 9 / 8 dev concepts at
+179 / 180 / 159 dev queries. Upstream's regression replay was re-run here: every delivered set is
+byte-identical under the new engine. The fallback to 5 concepts is not needed. It is wired and run
+in S6.
+

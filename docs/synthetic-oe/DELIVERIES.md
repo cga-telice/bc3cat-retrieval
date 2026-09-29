@@ -15,6 +15,43 @@ Newest first.
 
 ---
 
+## 2026-09-29 (evening) — wider L2 slices, option A · **taken, not yet wired**
+
+Delivered at `bc3cat-dataset` `synthetic` `b0e23f1`, generated at `90a318f` by
+`scripts/build_single_l2.py` from the frozen menus.
+
+| File | Records | SHA-256 prefix | Taken |
+|---|---:|---|---|
+| `OE_single_l2_texto.json` | 1,092 | `fff7dd3be023125b` | yes |
+| `OE_single_l2_modifications.jsonl` | 1,092 | `e1e5adbb8824bd34` | yes (sidecar) |
+| `OE_single_l2_provenance.json` | — | `6885a7b2de28ae9c` | yes |
+
+**D-043's four conditions, each checked here, not quoted:**
+1. **Fixes committed before the build.** On `synthetic` the order is `7bff777` (P7 validator), then
+   `4687059` (builder), then `90a318f` (list-form L2 engine, its tests and a replay script), then
+   `b0e23f1` (delivery). The generating commit is an ancestor of the delivery.
+2. **Regression.** `scripts/regress_render_replay.py`, run here read-only at `b0e23f1`, re-renders
+   every delivered query from its sidecar. SINGLE 4,439, STACKED 4,998, dose 3,000 and isolated 5,400
+   are all byte-identical, and no recorded modification stopped applying. No run on those sets can
+   move.
+3. **Frozen menus, at most 9 / 9 / 8 dev concepts.** Measured: `paraphrase` 179 dev queries over 9
+   concepts, `expansion` 180 over 9, `compression` 159 over 8. The five concepts `OE_single_texto.json`
+   covers per type are among them.
+4. **New file, own sidecar and digest.** Every digest above matches upstream's.
+
+**Also checked:**
+- **Schema and metadata, both splits (keys and parents only):** the schema is SINGLE's field for field.
+  Every gold resolves to a leaf of the stated concept. Each record has exactly one modification. Keys
+  are unique, and no key is shared with SINGLE.
+- **Text, dev only:** no query equals any leaf's `texto`, none duplicates another, none shares a text
+  with SINGLE, none carries `$` / `%` residue, and no gold is a D-033 duplicate.
+- **Test:** 574 queries over 11 / 11 / 9 concepts, counted from keys; test text not read (operating
+  rule 2).
+
+**Not wired.** No query-set name, no feature tables, no runs. That is S6's intake (`RESEARCH_PLAN.md`
+§S6), as S3 left E3 registered and unwired. The limitation S6 states: L2 breadth is 9 / 9 / 8 dev
+concepts under the frozen menus, against a grammar ceiling of 13.
+
 ## 2026-09-29 (later) — the P7 test exclusion list · **taken**; the L2 reach corrected
 
 | File | Records | SHA-256 prefix | Taken |

@@ -25,6 +25,9 @@ OE_OTHER = ["OE_concept_schema.json", "OE_duplicate_texto_groups.json"]
 # D-043: the item keys of the 2 test `single_texto` queries upstream built from a withdrawn rule
 # (DATASET_DEFECTS P7). Keys only, no text; applied at item level in S12 and nowhere before.
 OE_S12 = ["OE_P7_test_exclusion.json"]
+# D-043 amended: the wider L2 slices, delivered at `bc3cat-dataset` `b0e23f1` (generated at `90a318f`).
+# A new query set, registered here and wired in S6.
+OE_L2 = ["OE_single_l2_texto.json", "OE_single_l2_modifications.jsonl", "OE_single_l2_provenance.json"]
 # The E3 balanced dose set (D-009), delivered upstream 2026-09-17 and taken in S3 work item 2.
 # Registered, not yet run on: S8 is the sprint that uses them. They are not declared query sets,
 # so nothing resolves a run against them yet.
@@ -96,6 +99,9 @@ INTAKE_PREFIXES = {
     "OE_resumen.json": "0cd380e9e44ad8c5",
     # D-043, taken 2026-09-29 from `bc3cat-dataset` `data/synthetic/handoff_OE/`.
     "OE_P7_test_exclusion.json": "96fe3854f2b6d935",
+    # D-043 amended, from upstream's provenance file and its delivery message.
+    "OE_single_l2_texto.json": "fff7dd3be023125b",
+    "OE_single_l2_modifications.jsonl": "e1e5adbb8824bd34",
     # The superseded artefacts are checked against the digest their own filename claims. A copy
     # whose name lies about its contents is worse than no copy, because it would be trusted.
     "OE_stacked_texto__1bde2115.json": "1bde21157ef97421",
@@ -145,7 +151,7 @@ def main() -> None:
     ).strip()
 
     rows: list[tuple[str, int, int | str, str, str]] = []
-    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OEB:
+    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_L2 + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OEB:
         p = DATA / name
         digest = sha256(p)
         expected = INTAKE_PREFIXES.get(name)
