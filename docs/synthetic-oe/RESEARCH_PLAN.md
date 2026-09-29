@@ -363,7 +363,7 @@ Off the critical path, and parallelisable given compute:
 | OE release digests confirmed | `bc3cat-dataset` | S0 | S0 |
 | Balanced dose set (counts 1–5, randomised mixes, `reorder` admitted) | `bc3cat-dataset` | S0 | S8 |
 | Per-item modification sidecar for artefact sensitivity analysis | `bc3cat-dataset` | S1 | S6 |
-| Wider `paraphrase` / `expansion` slices (n≈206–211 today) | `bc3cat-dataset` | S4 | S6 |
+| Wider `paraphrase` / `expansion` slices (n≈206–211 today) — issued 2026-09-29 as [`requests/WIDER_THIN_SLICES.md`](requests/WIDER_THIN_SLICES.md), widened to all three L2 types, which reach 5 dev concepts | `bc3cat-dataset` | S4 | S6 |
 
 ## 6. Risk register
 
