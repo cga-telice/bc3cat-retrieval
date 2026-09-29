@@ -27,6 +27,7 @@ GENERATORS = [
     "src/utils/build_overlap.py",
     "src/utils/build_results_s3.py",
     "src/utils/build_results_s91.py",
+    "src/utils/build_results_s4.py",
 ]
 
 #: Tables of cited figures whose source is named beside them.

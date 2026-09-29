@@ -151,6 +151,27 @@ delivery that changes the identifiability fails loudly instead of being inherite
 
 ---
 
+## P7 — `reorder` permuted the arguments of a lookup, so one query renders a sibling's TEXTO · **excluded at item level** (S4, 2026-09-29)
+
+`OEC140$`'s TEXTO is not prose with substituted values but a lookup, `$T(%A,%B,%C)`, into a 2×2×2
+table of whole sentences. An approved `reorder` rule rewrote it to `$T(%C,%A,%B)`, so the renderer read
+another row: query `OEC140baa_syn_74d5dd2c9da3` (gold `OEC140baa`, "Recrecido de arqueta…") carries,
+verbatim, the TEXTO of `OEC140aba` ("Reparación de cámara…"), while its `parameters` stay the gold's.
+The query is not referent-preserving: a text-only arm that retrieves what the text says is scored
+wrong, and only the oracle arm (D-010) can hit it.
+- **Mechanism, upstream** (`bc3cat-dataset` `synthetic`): the modifications sidecar logs the rewrite;
+  `src/synthetic/variant_proposer.py:302`'s placeholder regex reads a single argument, so
+  `_require_placeholders_preserved` accepts any permutation; the reorder verdicts approved all three
+  permutations of `$T` and of the RESUMEN's `$U` as meaning-preserving.
+- **Scope, dev only** (test not read, operating rule 2): 1 of 2,206 `single_texto` queries (1 of 306
+  `reorder`); 0 in `stacked_texto`, `OE_dose_texto`, `OE_isolated_texto`. `OEC140$` is the only dev
+  concept with a multi-argument lookup. Found by S4 work item 4.
+- **Handling:** excluded from item-level scoring from S4 on (design A2), n excluded printed; kept at
+  parent level, since the text names the right concept. The file is **not** re-taken: a corrected one
+  changes the `single_texto` digest and invalidates every run on it. Reported upstream in
+  [`requests/REORDER_LOOKUP_ARGUMENTS.md`](requests/REORDER_LOOKUP_ARGUMENTS.md), which also asks for the
+  test split and the `$U` permutations to be checked on their side.
+
 ## H1 — `normalize_text` reads a synthetic decimal as a thousands group · **open** (D-010 note)
 
 `\d\.\d{3}` is rewritten as a thousands separator, so `0.03x0.015 m` becomes `0.03x0015 m` in
