@@ -17,10 +17,17 @@ Coverage describes the queries, not any method's accuracy. It is the covariate t
 
 | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 |
 |---|---:|---|---|---|---|
+| `OE/resumen/bm25_unigram_params__k1-0.60__b-0.35__OE` | 35,422 | `c695c126f20d5a9e` | `2e49566` | false | `f041a8e85d766c55` |
+
+The population (dev leaves, P) is read from the run above; the queries' text from the three rendering files and the gold `texto` from the corpus table below. No accuracy is read.
 
 | input | SHA-256 |
 |---|---|
 | `OE_duplicate_texto_groups.json` | `b3cfcad47c71c5eb` |
 | `OE_resumen_decoder.json` | `7ee4557fa59bf47e` |
+| `OE_resumen.json` | `0cd380e9e44ad8c5` |
+| `OE_resumen_stripped.json` | `4703d33fb5aef1a1` |
+| `OE_resumen_decoded.json` | `ca7fc230be4ce118` |
+| `OE_long_feats.parquet` | `643f1a72d5c5df17` |
 
 Bootstrap: B = 10,000, seed = 20260917, percentile 95 % intervals; p from the concept-clustered draws (D-030). Split `dev`.

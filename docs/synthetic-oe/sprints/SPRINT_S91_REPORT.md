@@ -190,7 +190,7 @@ of the eight findings:
 | Finding | Disposition |
 |---|---|
 | F1 — coverage compared across different samples; D-037 proposal built on it | **Fixed.** "Decoded OE reaches OEB's coverage" is withdrawn. Finding 7, known-wrong 1 and the D-037 row now read the all-dev population S3 measured OE on: 79.38 % coded → 89.83 % decoded [83.43, 92.99], whose interval excludes OEB's 94.10 %. The P figure is no longer set against OEB's. Part of the gap moves with the rendering; OE stays less verbatim than OEB. The remaining population difference (OE dev, all OEB pairs) is stated |
-| F2 — T4, T3, T1 sources unstamped | open |
+| F2 — T4, T3, T1 sources unstamped | **Fixed.** `sources()` now stamps every file a table reads as well as every run, and a table that reads no run says so instead of printing an empty run table. T4 lists its thirty runs. T3 lists the run its dev population comes from and the digests of the three rendering files and of the gold `texto` table. T1 lists `OE_resumen.json` and `SPLITS.md`. T2 and T5 also gained the files they read. The population's run is now one named constant rather than an index into the arm list. Regenerated: only the Sources sections changed; no figure moved. Every data digest matches `MANIFEST.md` |
 | F3 — finding 1's heading overgeneralises | open |
 | F4 — T2's printed rule differs from the code's | open |
 | F5 — T5 counts common code tokens | open |

@@ -191,5 +191,8 @@ On every scored dev query, decoded `bm25_unigram_params` reaches **0.9361** (n =
 |---|---|
 | `OE_duplicate_texto_groups.json` | `b3cfcad47c71c5eb` |
 | `OE_resumen_decoder.json` | `7ee4557fa59bf47e` |
+| `OE_resumen.json` | `0cd380e9e44ad8c5` |
+| `OE_resumen_stripped.json` | `4703d33fb5aef1a1` |
+| `OE_resumen_decoded.json` | `ca7fc230be4ce118` |
 
 Bootstrap: B = 10,000, seed = 20260917, percentile 95 % intervals; p from the concept-clustered draws (D-030). Split `dev`.
