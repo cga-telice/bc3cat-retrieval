@@ -111,7 +111,7 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 | Hypothesis | Movement | Evidence |
 |---|---|---|
 | **P1** decoded > coded, item, lexical arms | **supported** for `bm25_unigram_params` and `bm25_unigram`; **not supported** for `tfidf_phrases_replace` | Finding 3; interval [−0.0231, +0.0964], Holm p 0.1700 |
-| **P2** stripped > coded, parent, BM25 arms | **supported** for `bm25_unigram`; **not supported** for `bm25_unigram_params` under the A2(b) rule | Finding 1. For the params arm, Δ +0.3692 [+0.2177, +0.4091] but Holm p 0.0700: 6 of 26 concepts gain, holding 85.9 % of P, and the four large OEB families (`OEB020/030/230/290`) carry it; resamples without them return a zero delta ([`subchapter.md`](../results/S91/subchapter.md)) |
+| **P2** stripped > coded, parent, BM25 arms | **supported** for `bm25_unigram`; **not supported** for `bm25_unigram_params` under the A2(b) rule | Finding 1. For the params arm, Δ +0.3692 [+0.2177, +0.4091] but Holm p 0.0700: 6 of 26 concepts gain, holding 85.9 % of P, and the four large OEB families (`OEB020/030/230/290`) carry it; the other two gaining concepts hold 3 and 72 queries ([`subchapter.md`](../results/S91/subchapter.md)). With so few concepts moving, the concept-clustered p cannot fall far; this is read, not tested |
 | D-039's rare-code observation | **supported** for `bm25_unigram` | P2 and T5; not withdrawn |
 | **H5** (overlap mediation) | **not addressed** | The renderings are an intervention on overlap (finding 7); mediation remains S6's |
 | H1–H4, H6 | **not addressed** | Out of the probe's scope |
@@ -198,6 +198,6 @@ of the eight findings:
 | F3 — finding 1's heading overgeneralises | **Fixed.** Finding 1 now names `bm25_unigram` and states that neither `bm25_unigram_params` (Holm p 0.0700) nor `tfidf_phrases_replace` (Holm p 0.1824) meets P2's rule. Known-wrong 2 is worded as an association with T5, not a mechanism |
 | F4 — T2's printed rule differs from the code's | **Fixed.** The generated sentence now states the rule `verdict()` applies: the clustered interval excludes 0 on the predicted side **and** Holm p < α, with α interpolated from the code. It adds that the interval is not Holm-adjusted, which is how the params arm excludes 0 and still reads not supported. Regenerated: that sentence is the only change; no reading moved |
 | F5 — T5 counts common code tokens | **Fixed.** T5 now also counts rank-1 hits on *rare* code tokens only, those in fewer than `RARE_MAX_DOCS` = 1,200 documents (the auditor's cutoff), and prints the band of cutoffs that give the same set (above 1,152, up to 2,140). `bm25_unigram` parent: 16,980 of 19,832 = 85.6 %, the auditor's figure. Finding 1 quotes the rare share and gives the any-token 91.1 % beside it; `nni` and `ne`, which no document contains and so no rank-1 document can, are no longer cited. Regenerated: `rare_codes.md` only |
-| F6 — ungenerated P2 claim | open |
+| F6 — ungenerated P2 claim | **Fixed.** "Resamples without them return a zero delta" is withdrawn: no artefact computes it, and T4's per-concept table leaves `OEB100$` and `OEB160$` nonzero. The P2 row now cites only what T4 prints: which six concepts gain and their sizes |
 | F7 — report typed by hand | open |
 | F8 — T4 and secondary table without ceilings | open |
