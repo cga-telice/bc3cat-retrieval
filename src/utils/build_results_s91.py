@@ -219,13 +219,33 @@ def joined(method: str, keys: set[str]) -> pd.DataFrame:
     return out
 
 
-def text_ceiling(texts: dict[str, str], keys: set[str]) -> float:
-    """Text-only item ceiling on `keys`: one findable member per group of identical query text.
+def text_ceiling(texts: dict[str, str], keys, parent_of: dict[str, str] | None = None) -> float:
+    """Text-only ceiling on `keys`. Item level (`parent_of` None): one findable member per group of
+    identical query text. Parent level: per group, only the members of its most common concept, since
+    every member of a group gets the same ranking and so the same rank-1 concept.
 
     Identity is on the raw text with whitespace collapsed: two queries identical there are
     identical to every arm, whatever it tokenises, so this is an upper bound for all of them."""
-    norm = [re.sub(r"\s+", " ", texts[k]).strip() for k in keys]
-    return len(set(norm)) / len(norm)
+    keys = list(keys)
+    groups: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+    for k in keys:
+        groups[re.sub(r"\s+", " ", texts[k]).strip()][parent_of[k] if parent_of else k] += 1
+    if parent_of is None:
+        return len(groups) / len(keys)
+    return sum(max(c.values()) for c in groups.values()) / len(keys)
+
+
+def ceilings_on(texts: dict[str, dict[str, str]], item_keys, parent_keys, parent_of: dict[str, str]) -> dict:
+    """Per condition and level, the text-only ceiling (S91 audit F8)."""
+    return {(level, label): (text_ceiling(texts[label], item_keys) if level == "item"
+                             else text_ceiling(texts[label], parent_keys, parent_of))
+            for level in LEVELS for label, _, _ in CONDITIONS}
+
+
+def ceiling_rows(first: str, c: dict) -> list[str]:
+    """Ceiling rows for a table whose condition columns follow `first` leading cells."""
+    return [f"{first} | {level} | " + " | ".join(f4(c[(level, label)]) for label, _, _ in CONDITIONS) + " |"
+            for level in LEVELS]
 
 
 # --------------------------------------------------------------------------- T1 — decoder
@@ -353,7 +373,7 @@ def verdict(cell: dict) -> str:
     return "not supported"
 
 
-def write_renderings(stats: dict[str, dict], ceilings: dict[str, float], pop: dict,
+def write_renderings(stats: dict[str, dict], ceilings: dict, secondary_ceilings: dict, pop: dict,
                      secondary: dict[str, dict], reference: dict) -> None:
     n_p = len(pop["P"])
     lines = header(
@@ -386,8 +406,9 @@ def write_renderings(stats: dict[str, dict], ceilings: dict[str, float], pop: di
             )
             lines.append(f"| `{short}` | {'**oracle**' if oracle else ''} | {level} | {cells} | "
                          f"{s['n']:,} | {s['concepts']} |")
-    lines += ["", "| ceiling on P (text-only arms) | " + " | ".join(
-        f"{label} {f4(ceilings[label])}" for label, _, _ in CONDITIONS) + " |", "|---|---|"]
+    lines += ["", "| ceiling on P (text-only arms) | level | " + " | ".join(label for label, _, _ in CONDITIONS)
+              + " |", "|---|---|" + "---:|" * len(CONDITIONS)]
+    lines += ceiling_rows("| text-only", ceilings)
 
     for name, _, _ in CONTRASTS:
         lines += ["", f"## {name}", "",
@@ -426,6 +447,9 @@ def write_renderings(stats: dict[str, dict], ceilings: dict[str, float], pop: di
             s = secondary[short][level]
             lines.append(f"| `{short}` | {level} | {s['n']:,} | " + " | ".join(
                 f4(s[label]) for label, _, _ in CONDITIONS) + " |")
+    lines += [f"| ceiling, text-only arms | {level} | {secondary[TEN[0][1]][level]['n']:,} | " + " | ".join(
+        f4(secondary_ceilings[(level, label)]) for label, _, _ in CONDITIONS) + " |" for level in LEVELS]
+    lines += ["", "Each ceiling is computed on the row's own population, as on P; an oracle arm's is 1.0."]
 
     ref = reference["bm25_unigram_params"]
     lines += [
@@ -487,7 +511,7 @@ def write_coverage(texts: dict[str, dict[str, str]], gold: dict[str, str], pop: 
 # --------------------------------------------------------------------------- T4 — subchapter
 
 
-def write_subchapter(frames: dict[str, pd.DataFrame]) -> None:
+def write_subchapter(frames: dict[str, pd.DataFrame], texts: dict[str, dict[str, str]], pop: dict) -> None:
     lines = header(
         "T4: OEB against the rest of OE, on P (dev)",
         [
@@ -505,6 +529,19 @@ def write_subchapter(frames: dict[str, pd.DataFrame]) -> None:
             for level in LEVELS:
                 lines.append(f"| `{short}` | {stratum} | {len(g):,} | {g['gold_parent_key'].nunique()} | {level} | "
                              + " | ".join(f4(g[f'{level}_{label}'].mean()) for label, _, _ in CONDITIONS) + " |")
+
+    # Ceilings per stratum (S91 audit F8): the strata hold the same queries for every arm.
+    f = frames[TEN[0][1]]
+    lines += ["", "| ceiling, text-only arms | stratum | n | concepts | level | "
+              + " | ".join(label for label, _, _ in CONDITIONS) + " |",
+              "|---|---|---:|---:|---|" + "---:|" * len(CONDITIONS)]
+    for stratum, mask in (("OEB", f["gold_parent_key"].str.startswith("OEB")),
+                          ("rest", ~f["gold_parent_key"].str.startswith("OEB"))):
+        keys = list(f.loc[mask, "query_item_key"])
+        c = ceilings_on(texts, keys, keys, pop["parent_of"])
+        lines += ceiling_rows(f"| | {stratum} | {len(keys):,} | {f.loc[mask, 'gold_parent_key'].nunique()}", c)
+    lines += ["", "An oracle arm's ceiling is 1.0 in every stratum and condition: its query carries the gold's "
+              "parameter tokens (D-010)."]
 
     # Per concept, for the BM25 arms: where a pooled contrast actually lives. A concept-clustered
     # interval is only as wide as the concepts that move, and this shows which ones do.
@@ -569,7 +606,7 @@ def write_rare_codes(coded: dict[str, dict], corpus_tokens: dict[str, set[str]],
     below = max(df.get(t, 0) for t in rare)
     above = min(df.get(t, 0) for t in code_tokens if t not in rare)
     lines += ["", f"**Rare** code tokens are those in fewer than {RARE_MAX_DOCS:,} of {n_docs:,} documents: "
-              + english_list([f"`{t}`" for t in sorted(rare, key=lambda t: df.get(t, 0))])
+              + english_list([f"`{t}`" for t in sorted(rare, key=lambda t: (df.get(t, 0), t))])
               + f". Any cutoff above {below:,} and up to {above:,} gives the same set. A token no document "
               "contains cannot be in a rank-1 document, so it counts toward neither column; the rare column "
               "is carried by the rare tokens that do occur.",
@@ -615,7 +652,7 @@ def main() -> None:
     for toks in corpus_tokens.values():
         df.update(toks)
 
-    ceilings = {label: text_ceiling(texts[label], pop["P"]) for label, _, _ in CONDITIONS}
+    ceilings = ceilings_on(texts, pop["P"], pop["P"], pop["parent_of"])
 
     frames, stats, secondary = {}, {}, {}
     scored_all = {k for k in pop["dev"] if k not in dup}
@@ -635,9 +672,10 @@ def main() -> None:
                                          "n": secondary["bm25_unigram_params"]["item"]["n"]}}
 
     write_decoder(coded, table, dev)
-    write_renderings(stats, ceilings, pop, secondary, reference)
+    secondary_ceilings = ceilings_on(texts, scored_all, pop["dev"], pop["parent_of"])
+    write_renderings(stats, ceilings, secondary_ceilings, pop, secondary, reference)
     write_coverage(texts, gold, pop)
-    write_subchapter(frames)
+    write_subchapter(frames, texts, pop)
     write_rare_codes(coded, corpus_tokens, df, len(corpus_tokens), frames)
     print(f"written: {OUT.relative_to(REPO)}")
     for path in sorted(OUT.glob("*.md")):
