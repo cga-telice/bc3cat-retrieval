@@ -2,9 +2,9 @@
 
 | Field | Value |
 |---|---|
-| **Design** | [`SPRINT_S91_DESIGN.md`](SPRINT_S91_DESIGN.md) · frozen at `09d11f7` · amendments A1–A3 |
+| **Design** | [`SPRINT_S91_DESIGN.md`](SPRINT_S91_DESIGN.md) · frozen at `09d11f7` · amendments A1–A4 |
 | **Closed** | 2026-09-29, inside the 3-day time-box. `done` withheld until `/audit S91` in a fresh session |
-| **Code commit** | All 20 new runs at `cf92bc8`, clean. Reused coded runs: `2e49566` (4), `922ae53` (5), `a5700a6` (1), as S3 stamped them. Tables generated at `3dc992f`, regenerated for audit F2 (Sources only) and F4 (one sentence of `renderings.md`); no figure moved |
+| **Code commit** | All 20 new runs at `cf92bc8`, clean. Reused coded runs: `2e49566` (4), `922ae53` (5), `a5700a6` (1), as S3 stamped them. Tables last generated at `3336131`. History: generator `3dc992f` at close; regenerated for audit F2 (Sources only), F4 (one sentence of `renderings.md`), F5 (T5 gains the rare-token column) and F8 (ceiling rows in T2, T4 and the secondary table). No existing figure moved; F5 and F8 added figures |
 | **Query-set digests** | coded `resumen` `f041a8e8` (`bge_m3_colbert`/`bge_m3_dense`: `28d09f40`) · `resumen_stripped` `c136a743` · `resumen_decoded` `7d9679fd`. Sources: `OE_resumen_stripped.json` `4703d33f`, `OE_resumen_decoded.json` `ca7fc230`, decoder `7ee4557f` (`MANIFEST.md`) |
 | **Runs** | `runs/OE/{resumen,resumen_stripped,resumen_decoded}/`, ten arms each · split `dev` · `check_run_inputs.py`: 197 of 202 resolve; the 5 that do not are S3's declared five |
 | **Results** | [`results/S91/`](../results/S91) — 5 tables from `src/utils/build_results_s91.py`, regenerating byte-identically, under `tests/test_generated_prose.py` |
@@ -50,16 +50,20 @@ shows the pattern: in 85.6 % of `bm25_unigram`'s coded parent misses (16,980 of 
 rank-1 document holds a *rare* suffix code token that the gold lacks, one in fewer than 1,200 of
 70,242 documents (`e`, `n`, `r`; any cutoff above 1,152 and up to 2,140 gives the same set). Counting any
 code token, including `de`, which every document contains, gives 91.1 %. `tfidf_phrases_replace`
-shows the rare pattern in 0.4 % of its parent misses. The coded loss is an OEB phenomenon: `bm25_unigram` parent is 0.2170 on OEB and
-0.9587 on the rest ([`subchapter.md`](../results/S91/subchapter.md), descriptive).
+shows the rare pattern in 0.4 % of its parent misses. Descriptively, the coded loss is concentrated in four
+large OEB families (`OEB020/030/230/290`): `bm25_unigram` parent is 0.2170 on OEB and 0.9587 on the
+rest ([`subchapter.md`](../results/S91/subchapter.md)). The strata are not contrasted, and the rest is
+not loss-free (`OEC070$` gains when stripped).
 
 **2. The suffix carries nearly everything that tells a leaf from its siblings.** On P the
 text-only ceiling is **0.8342** coded, **0.0147** stripped and **0.8341** decoded. Most P leaves
 differ from their siblings only in the three work-regime axes. Stripping removes the misleading
 tokens and the information together, so it is a diagnostic, not a remedy.
 
-**3. Decoding restores item-level accuracy for every arm except TF-IDF, whose change is not
-detected.** Decoded − coded at item level, clustered intervals, Holm p ≤ 0.0048 each:
+**3. Decoding raises item-level accuracy for both BM25 arms (P1); the neural rows are exploratory.**
+Decoded − coded at item level, clustered intervals, Holm p ≤ 0.0048 each. Only the two BM25 rows are
+registered predictions. The design registered no direction for the neural arms ("reported, not
+claimed"), so their rows are exploratory and not registered:
 
 | arm | coded | decoded | Δ | CI (concept) |
 |---|---:|---:|---:|---|
@@ -70,20 +74,22 @@ detected.** Decoded − coded at item level, clustered intervals, Holm p ≤ 0.0
 | `bge_m3_sparse` | 0.0157 | 0.1470 | +0.1314 | [+0.0972, +0.2313] |
 | `bge_m3_dense` | 0.0170 | 0.1312 | +0.1141 | [+0.0854, +0.2173] |
 
-`tfidf_phrases_replace` moves +0.0434 [−0.0231, +0.0964]. The GTE arms and `dense_es_hiiamsid`
-gain less than +0.04, with intervals that exclude 0.
+`tfidf_phrases_replace` moves +0.0434 [−0.0231, +0.0964] (P1 not supported). The GTE arms and
+`dense_es_hiiamsid` move less than +0.04 from near-zero bases (e.g. `dense_gte` 0.0039 → 0.0130),
+with intervals that exclude 0; that is not a restoration.
 
-**4. Decoding costs one arm heavily at concept level.** `dense_es_hiiamsid` parent falls from
-0.6744 to 0.2881 (Δ −0.3863 [−0.5151, −0.1029], Holm p 0.0180; 11,377 queries down, 724 up).
-The two BM25 arms gain at parent level, by the mechanism of finding 1: `bm25_unigram` +0.4717
-[+0.2746, +0.5476], `bm25_unigram_params` +0.3714 [+0.2169, +0.4127]. For TF-IDF and the other
-neural arms the decoded − coded parent interval includes 0, except `bge_m3_sparse` (−0.0011, upper
-bound −0.0000). Why a short-text sentence model is pulled off the concept by a longer suffix was not
-tested.
+**4. Exploratory, not registered: decoding costs one neural arm heavily at concept level.**
+`dense_es_hiiamsid` parent falls from 0.6744 to 0.2881 (Δ −0.3863 [−0.5151, −0.1029], Holm p
+0.0180; 11,377 queries down, 724 up). At parent level `bm25_unigram` moves +0.4717 [+0.2746, +0.5476],
+Holm p 0.0414. `bm25_unigram_params` moves +0.3714 [+0.2169, +0.4127], but at Holm p 0.0896, so under
+the A2(b) rule this is not a detected gain. Both BM25 moves go in the direction of finding 1's
+association; no mechanism was tested. For TF-IDF and the other neural arms the decoded − coded parent
+interval includes 0, except `bge_m3_sparse` (−0.0011, upper bound −0.0000). Why a short-text sentence
+model is pulled off the concept by a longer suffix was not tested.
 
-**5. Parametric collapse on coded `resumen` is partly the codes.** ColBERT reads 0.9918 parent
-and 0.0284 item coded, against 0.9962 and 0.4826 decoded. Collapse is still present decoded,
-but the item level moves by an order of magnitude. S3's coded figures described the catalogue's
+**5. Exploratory, not registered: ColBERT's parametric collapse on coded `resumen` is partly the
+codes.** ColBERT reads 0.9918 parent and 0.0284 item coded, against 0.9962 and 0.4826 decoded.
+Collapse is still present decoded, but the item level moves by an order of magnitude. One arm only. S3's coded figures described the catalogue's
 own query surface correctly; they did not describe how far the parameters themselves, rather than
 their codes, are what the arms fail on.
 
@@ -91,16 +97,17 @@ their codes, are what the arms fail on.
 22,774 decode exactly on every axis they have ([`decoder.md`](../results/S91/decoder.md)).
 5,419 axis values get a strict subset of their words (above all TRABAJO `-`), 2 get foreign
 words, and on 59 occurrences a value is written for an axis the leaf lacks. It reads neither
-the concept nor the gold.
+the concept nor the gold. **The 80.9 % is in-sample:** it is measured on the dev leaves the table was
+fitted on. A code unseen on dev decodes to nothing, and no held-out coverage was measured.
 
 **7. Coverage, descriptively.** Lexical coverage on P is 80.92 % coded, 90.78 % stripped and
 94.41 % decoded ([`coverage.md`](../results/S91/coverage.md)). P is not the population S3
 measured OE on: S3's 79.38 % is every dev query (n = 35,422), and on that population decoding
 moves coverage from 79.38 % to 89.83 % [83.43, 92.99]. S3's OEB reference, 94.10 %, is measured
 on all 47,514 OEB pairs, test-side concepts included
-([`results/S3/overlap/overlap.md`](../results/S3/overlap/overlap.md)). The decoded all-dev
-interval excludes it. The two populations still differ (OE dev against all of OEB), so the
-figures are stated side by side, not contrasted; the P figure is not set against OEB's at all.
+([`results/S3/overlap/overlap.md`](../results/S3/overlap/overlap.md)), with no interval. The
+populations differ (OE dev against all of OEB), so the figures are stated side by side, not
+contrasted; the P figure is not set against OEB's at all.
 
 **Reference, not a contrast (D-039).** Decoded `bm25_unigram_params` reaches 0.9361 on every
 scored dev query (n = 34,646), beside the previous study's 0.974 on OEB test. Chapter, corpus size
@@ -121,9 +128,8 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 1. **"The gap between OE and OEB coverage is the chapter"** (D-037, as amended), in so far as
    D-037 reads the gap as a property of OE. On S3's own OE population (all dev), decoding
    alone moves coverage from 79.38 % to 89.83 % [83.43, 92.99]. Much of the gap moves with the
-   rendering. It does not close: the interval excludes OEB's 94.10 %, so decoded OE remains less
-   verbatim than OEB on these figures. The populations still differ (OE dev, all OEB pairs),
-   and this is a description, not a mediation claim.
+   rendering. OEB's figure, 94.10 %, is set beside it, not tested against it: the populations
+   differ (OE dev, all OEB pairs), and this is a description, not a mediation claim.
 2. **"Lexical arms fail on OE `resumen` because they cannot tell siblings apart."** At concept level,
    `bm25_unigram`'s coded failures go with code tokens the gold lacks: 0.2808 coded against 0.7572
    stripped, and most of its coded misses rank first a document holding such a token (T5). That is
@@ -149,7 +155,7 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 | 4 | yes | T1–T5 regenerate byte-identically (two consecutive runs compared after the audit fixes); every Acc@1 row carries n; each condition's ceiling is printed at both levels in T2, in the secondary table and per stratum in T4 (A2c; audit F8) |
 | 5 | yes | P1 and P2 each read, per arm, in `renderings.md` §"The registered predictions" |
 | 6 | yes | Finding 6; `decoder.md` |
-| 7 | **pending** | D-039 and D-037 amendments proposed below, for César |
+| 7 | **pending** | D-039 and D-037 amendments proposed below, for César. The re-audit (F3) confirms `done` waits on them |
 
 ## Deviations from design
 
@@ -158,10 +164,12 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 | A1 | 1 % floor in the shared-words rule; an absent axis contributes no value | `OEB160a/b` mis-order their suffix and would empty CONDICIONES `-`, a code with 9,382 dev values ([`decoder.md`](../results/S91/decoder.md); `OE_resumen_decoder.json`, `7ee4557f`); ruled by César before any run |
 | A2 | Tables derived by a new generator; verdict rule made explicit; T5 at both levels | The notebooks would rewrite the tables that stamp the coded runs; the rule was committed before results |
 | A3 | A false design sentence corrected | Decoding cannot split identical-text groups |
+| A4 | The design's "every figure … interpolated by the generator" read as the tables' prose, not this report | César's ruling on the first audit's F7, recorded as an amendment at the re-audit's F1; the traceability test's limits stated there |
 
 ## What the next sprint inherits
 
-- **A decoder that is viable and could be deployed**, and two query sets that stay in the tree
+- **A decoder that is viable in-sample** (80.9 % exact on the dev leaves it was fitted on; held-out
+  coverage unmeasured, and codes unseen on dev decode to nothing), and two query sets that stay in the tree
   (`resumen_decoded`, `resumen_stripped`).
 - **The rare-code failure** of the BM25 arms on the catalogue's own summaries, measured.
 - **Evidence that document-side expansion is worth a probe.** The design deferred it "only if the
@@ -178,8 +186,8 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 
 | ID | Proposed | What |
 |---|---|---|
-| D-039 | amendment | The open question answered: a catalogue-only decoder is viable (80.9 % exact) and changes item-level accuracy by up to +0.5764. Whether any future `resumen` result is reported coded, decoded or both is César's ruling |
-| D-037 | amendment | Part of the coverage gap S3 measured is rendering: on all dev, decoding moves OE coverage from 79.38 % to 89.83 % [83.43, 92.99], still short of OEB's 94.10 % (interval excludes it; populations differ). OE stays less verbatim than OEB, by less than S3's coded figure implies (finding 7) |
+| D-039 | amendment | The open question answered: a catalogue-only decoder is viable in-sample (80.9 % exact on its own dev fit) and changes item-level accuracy by up to +0.5764. Whether any future `resumen` result is reported coded, decoded or both is César's ruling |
+| D-037 | amendment | Part of the coverage gap S3 measured moves with the rendering: on all dev, decoding moves OE coverage from 79.38 % to 89.83 % [83.43, 92.99]. OEB's 94.10 % (all OEB pairs, no interval) is stated beside it, not contrasted with it, since the populations differ (finding 7) |
 | D-040 | new, for César | Whether `resumen`-identical siblings get a scoring rule like D-033's, or remain a printed ceiling |
 | D-041 | new, for César | Whether to open a document-side expansion probe |
 
@@ -201,3 +209,22 @@ of the eight findings:
 | F6 — ungenerated P2 claim | **Fixed.** "Resamples without them return a zero delta" is withdrawn: no artefact computes it, and T4's per-concept table leaves `OEB100$` and `OEB160$` nonzero. The P2 row now cites only what T4 prints: which six concepts gain and their sizes |
 | F7 — report typed by hand | **Fixed by test, as César chose.** The report stays the implementer's typed record, as S3's did; the design's "every figure in S91's prose is interpolated by the generator" is read as the generated tables' prose, which `test_generated_prose.py` enforces. The gap the audit named is closed from the other side: `tests/test_report_traceability.py` fails when a decimal or grouped count in the report appears in none of its cited generated artefacts (`results/S91/`, and S3's `overlap.md` for the coverage it cites). Run on the report as first closed it flags one figure, `9,380`, a per-value count T1 never printed; the A1 row now cites T1's 9,382 instead, and the cutoff band is quoted as T5 prints it. The test traces figures, not claims: an F6-style sentence without a number still passes, and says so |
 | F8 — T4 and secondary table without ceilings | **Fixed.** `text_ceiling` now computes the parent-level ceiling as well: per group of identical query text, only the members of its most common concept, since every member gets the same rank-1 document. T4 prints both ceilings per stratum and condition (OEB item 0.8334 / 0.0139 / 0.8333, rest 0.8427 / 0.0224 / 0.8427). The secondary table prints them on its own populations (item 0.8680 / 0.2158 / 0.8680 on the 34,646 scored). T2 gains the parent row. Every parent ceiling is 1.0000, which the design asserted ("parent level is unaffected") and now shows. No accuracy moved. While regenerating, the F5 change was found to list the rare tokens in hash order where two share a count; they are now sorted by count then name, and two consecutive runs are byte-identical |
+
+### Re-audit
+
+A second `/audit S91` in a fresh session on 2026-09-29, against report `07dd458`, returned
+**PASS WITH FINDINGS** ([`SPRINT_S91_AUDIT.md`](SPRINT_S91_AUDIT.md), verbatim, above the first).
+It reproduced every T2 cell at both levels, the headline intervals, the ceilings and T5, and
+re-ran the full suite. Disposition:
+
+| Finding | Disposition |
+|---|---|
+| F1 — the F7 waiver lives outside the Amendments table | **Fixed.** Design amendment A4 records it, dated, attributed to César, with the traceability test's limits: membership only, bare integers and claims without a number unchecked |
+| F2 — finding 4 credits the params arm with a parent gain, "by the mechanism" | **Fixed.** Finding 4 quotes Holm p for both BM25 arms (0.0414, 0.0896), says the params move is not a detected gain under A2(b), and words both as the direction of finding 1's association, no mechanism tested |
+| F3 — exit criterion 7 not met | **Open.** D-039 and D-037 wait on César's ruling. The sprint stays out of `done` until they land |
+| F4 — neural results stated as findings | **Fixed.** Findings 3–5 now separate the registered BM25 rows from the neural rows, which are labelled exploratory and not registered; "restores" is replaced, and the GTE rows are called what they are, moves from near-zero bases |
+| F5 — "an OEB phenomenon" | **Fixed.** Now "concentrated in four large OEB families", descriptive, with the strata not contrasted and `OEC070$` named as a loss outside OEB |
+| F6 — finding 7 contrasts the populations it says it does not | **Fixed.** The interval-exclusion statement is dropped from finding 7, known-wrong 1 and the D-037 row; 94.10 % is stated beside the OE figures, with no interval, not tested against them |
+| F7 — decoder viability in-sample | **Fixed.** Finding 6, the D-039 row and "what the next sprint inherits" say the 80.9 % is in-sample, codes unseen on dev decode to nothing, and held-out coverage is unmeasured |
+| F8 — stale regeneration account in the header | **Fixed.** The header names `3336131` as the last generating commit and lists every regeneration, including F5's and F8's, which added figures |
+
