@@ -91,8 +91,13 @@ words, and on 59 occurrences a value is written for an axis the leaf lacks. It r
 the concept nor the gold.
 
 **7. Coverage, descriptively.** Lexical coverage on P is 80.92 % coded, 90.78 % stripped and
-94.41 % decoded ([`coverage.md`](../results/S91/coverage.md)). S3 measured 94.10 % on OEB's own,
-expanded rendering ([`results/S3/overlap/overlap.md`](../results/S3/overlap/overlap.md)). Stated side by side, not contrasted.
+94.41 % decoded ([`coverage.md`](../results/S91/coverage.md)). P is not the population S3
+measured OE on: S3's 79.38 % is every dev query (n = 35,422), and on that population decoding
+moves coverage from 79.38 % to 89.83 % [83.43, 92.99]. S3's OEB reference, 94.10 %, is measured
+on all 47,514 OEB pairs, test-side concepts included
+([`results/S3/overlap/overlap.md`](../results/S3/overlap/overlap.md)). The decoded all-dev
+interval excludes it. The two populations still differ (OE dev against all of OEB), so the
+figures are stated side by side, not contrasted; the P figure is not set against OEB's at all.
 
 **Reference, not a contrast (D-039).** Decoded `bm25_unigram_params` reaches 0.9361 on every
 scored dev query (n = 34,646), beside the previous study's 0.974 on OEB test. Chapter, corpus size
@@ -110,9 +115,12 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 
 ## What is now known to be wrong
 
-1. **"OE is a less verbatim benchmark than OEB"** (D-037, as amended). Decoded OE `resumen` reaches
-   94.41 % coverage on P against OEB's 94.10 %. The gap S3 measured is substantially the rendering,
-   not the chapter. That is a description, not a mediation claim.
+1. **"The gap between OE and OEB coverage is the chapter"** (D-037, as amended), in so far as
+   D-037 reads the gap as a property of OE. On S3's own OE population (all dev), decoding
+   alone moves coverage from 79.38 % to 89.83 % [83.43, 92.99]. Much of the gap moves with the
+   rendering. It does not close: the interval excludes OEB's 94.10 %, so decoded OE remains less
+   verbatim than OEB on these figures. The populations still differ (OE dev, all OEB pairs),
+   and this is a description, not a mediation claim.
 2. **"Lexical arms fail on OE `resumen` because they cannot tell siblings apart."** At concept level,
    `bm25_unigram` fails because rare code tokens pull it to other concepts: 0.2808 coded against
    0.7572 stripped. That is a different failure from parametric collapse.
@@ -167,6 +175,25 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 | ID | Proposed | What |
 |---|---|---|
 | D-039 | amendment | The open question answered: a catalogue-only decoder is viable (80.9 % exact) and changes item-level accuracy by up to +0.5764. Whether any future `resumen` result is reported coded, decoded or both is César's ruling |
-| D-037 | amendment | The coverage gap is substantially rendering; decoded OE reaches OEB's coverage (finding 7) |
+| D-037 | amendment | Part of the coverage gap S3 measured is rendering: on all dev, decoding moves OE coverage from 79.38 % to 89.83 % [83.43, 92.99], still short of OEB's 94.10 % (interval excludes it; populations differ). OE stays less verbatim than OEB, by less than S3's coded figure implies (finding 7) |
 | D-040 | new, for César | Whether `resumen`-identical siblings get a scoring rule like D-033's, or remain a printed ceiling |
 | D-041 | new, for César | Whether to open a document-side expansion probe |
+
+## Audit response
+
+`/audit S91` ran in a fresh session on 2026-09-29 and returned **FAIL**
+([`SPRINT_S91_AUDIT.md`](SPRINT_S91_AUDIT.md), verbatim). It confirmed that every retrieval figure,
+interval and flip count it sampled reproduces from `runs/`, that the five tables regenerate
+identically, and that the design was not edited after freeze. The sprint was reopened. Disposition
+of the eight findings:
+
+| Finding | Disposition |
+|---|---|
+| F1 — coverage compared across different samples; D-037 proposal built on it | **Fixed.** "Decoded OE reaches OEB's coverage" is withdrawn. Finding 7, known-wrong 1 and the D-037 row now read the all-dev population S3 measured OE on: 79.38 % coded → 89.83 % decoded [83.43, 92.99], whose interval excludes OEB's 94.10 %. The P figure is no longer set against OEB's. Part of the gap moves with the rendering; OE stays less verbatim than OEB. The remaining population difference (OE dev, all OEB pairs) is stated |
+| F2 — T4, T3, T1 sources unstamped | open |
+| F3 — finding 1's heading overgeneralises | open |
+| F4 — T2's printed rule differs from the code's | open |
+| F5 — T5 counts common code tokens | open |
+| F6 — ungenerated P2 claim | open |
+| F7 — report typed by hand | open |
+| F8 — T4 and secondary table without ceilings | open |
