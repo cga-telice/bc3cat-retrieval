@@ -1164,3 +1164,14 @@ set against them.**
 **Consequence if accepted.** The defect is added to the review analysis's list. If César holds instead
 that the English model is what ran, S4's CE arms still stand as specified by the design, but "the
 previous study's reranker" would then name a different model from S4's in every sentence.
+
+### D-042 — accepted: the cross-encoder is the one the code ran
+**Status:** **Accepted** (closes D-042, Proposed the same day) · **Date:** 2026-09-29 · **Owner:** César
+**Ruling (César).** "The log is evidence." The notebook's saved execution log shows
+`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` loading, and the manuscript's
+`ms-marco-MiniLM-L-6-v2` is a description written afterwards. The previous study's CE rows describe the
+multilingual 12-layer model.
+**Consequence.** The manuscript's CE model name is recorded as a reporting defect, beside the GTE and
+E5 names in `docs/reviews/AUTCON_analisis_revision.md` §3.5. The same paper's claimed reranking depth
+is §3.7's defect. S4's CE arms stand as specified, and no OE CE figure is set against the previous
+study's, because the blend differs (S4 design A1).

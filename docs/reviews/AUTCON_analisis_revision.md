@@ -277,6 +277,7 @@ Esto es exactamente el tipo de fallo que un revisor de una revista de IR encontr
 | "E5-large" (Tabla 8, filas), "multilingual-e5-large" (Tabla 12) | **`intfloat/multilingual-e5-base`** | `configs/dense_e5.yaml` |
 | "GTE-large-en-v1.5" (Tablas 9, 12) | **`Alibaba-NLP/gte-multilingual-base`** | `configs/dense_gte.yaml` |
 | "GTE-Qwen2-instruct" (Tabla 9) | **`Alibaba-NLP/gte-multilingual-base`** + prefijo instruct | `configs/dense_gte_instrQ.yaml` |
+| "cross-encoder/ms-marco-MiniLM-L-6-v2" (§Cross-Encoder Reranking, L455) | **`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`** — multilingüe, 12 capas, no el inglés de 6 | `src/cross_encoder.ipynb` (`CFG["ce_model"]` y su log de ejecución) · *añadido 2026-09-29, D-042* |
 
 Ninguno de los modelos `gte-large-en-v1.5` ni `gte-Qwen2-instruct` se usó en ningún experimento. Además **§3.2.3 L407 dice `-base` correctamente mientras las tablas dicen `-large`**: el paper se contradice consigo mismo. Y `gte-large-en-v1.5` es un modelo **sólo inglés**: un lector concluiría razonablemente que el 1,3 % de Acc@1 se debe a haber aplicado un modelo inglés a texto español, lo cual no es lo que ocurrió.
 
