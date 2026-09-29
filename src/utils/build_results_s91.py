@@ -485,6 +485,27 @@ def write_subchapter(frames: dict[str, pd.DataFrame]) -> None:
             for level in LEVELS:
                 lines.append(f"| `{short}` | {stratum} | {len(g):,} | {g['gold_parent_key'].nunique()} | {level} | "
                              + " | ".join(f4(g[f'{level}_{label}'].mean()) for label, _, _ in CONDITIONS) + " |")
+
+    # Per concept, for the BM25 arms: where a pooled contrast actually lives. A concept-clustered
+    # interval is only as wide as the concepts that move, and this shows which ones do.
+    n_p = len(frames[TEN[0][1]])
+    lines += ["", "## Per concept, parent level, the two BM25 arms", "",
+              "| method | concept | n | share of P | coded | stripped | decoded | stripped − coded | decoded − coded |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for short in ("bm25_unigram_params", "bm25_unigram"):
+        f = frames[short]
+        g = f.groupby("gold_parent_key").agg(
+            n=("query_item_key", "size"),
+            **{label: (f"parent_{label}", "mean") for label, _, _ in CONDITIONS},
+        )
+        g["sc"] = g["stripped"] - g["coded"]
+        g = g.sort_values(["sc", "n"], ascending=[False, False])
+        for concept, r in g.iterrows():
+            lines.append(f"| `{short}` | `{concept}` | {int(r['n']):,} | {r['n'] / n_p:.1%} | {f4(r['coded'])} | "
+                         f"{f4(r['stripped'])} | {f4(r['decoded'])} | {fd(r['sc'])} | {fd(r['decoded'] - r['coded'])} |")
+        moved = g[g["sc"] > 0]
+        lines += ["", f"`{short}`: {len(moved)} of {len(g)} concepts gain from stripping, holding "
+                  f"{int(moved['n'].sum()):,} of {n_p:,} queries ({moved['n'].sum() / n_p:.1%}) of P.", ""]
     write(OUT / "subchapter.md", lines + sources([], ""))
 
 
