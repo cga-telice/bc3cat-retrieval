@@ -131,8 +131,8 @@ def duplicated() -> set[str]:
     return {m for g in json.loads(SIDECAR.read_text(encoding="utf-8"))["groups"].values() for m in g}
 
 
-def top2(queryset: str, method: str, keep: set[str] | None = None) -> dict[str, tuple[float, float | None]]:
-    """query key -> (rank-1 score, rank-2 score), for the tie table."""
+def top2(queryset: str, method: str, keep: set[str] | None = None) -> dict[str, tuple[float, float | None, frozenset]]:
+    """query key -> (rank-1 score, rank-2 score, the keys tied with rank 1), for the tie table."""
     out = {}
     with gzip.open(RUNS / queryset / method / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
         for line in fh:
@@ -141,7 +141,9 @@ def top2(queryset: str, method: str, keep: set[str] | None = None) -> dict[str, 
             if keep is not None and key not in keep:
                 continue
             c = r["candidates"]
-            out[key] = (float(c[0]["score"]), float(c[1]["score"]) if len(c) > 1 else None)
+            s1 = float(c[0]["score"])
+            tied = frozenset(str(x["index_item_key"]) for x in c if float(x["score"]) == s1)
+            out[key] = (s1, float(c[1]["score"]) if len(c) > 1 else None, tied)
     return out
 
 
@@ -438,18 +440,39 @@ def write_ties(frames: dict, dup: set[str]) -> None:
         "on the same golds (D-028). A tie is broken by the retriever's sort, not by anything the query controls;",
         "the derived arms break theirs by a fixed rule (design A1).",
     ])
+    lines += ["Item-scored queries only: a gold that shares its `texto` with a sibling (D-033) ties with it "
+              "by construction, whatever the query, and is excluded here as it is from item-level scoring.", ""]
     lines += ["| arm | " + " | ".join(SCOPES) + " |", "|---|" + "---|" * len(SCOPES)]
+    decisive = []
     for short, frame in frames.items():
-        mod = top2("single_texto", DIR[short])
+        frame = level_frame(frame, "item")
+        mod = top2("single_texto", DIR[short], keep=set(frame["q"]))
         ident = top2("texto", DIR[short], keep=set(frame["gold"]))
+        is_tie = lambda v: v[1] is not None and v[0] == v[1]  # noqa: E731
         cells = []
         for sc in SCOPES:
             s = scope(frame, sc)
-            tm = np.mean([mod[k][1] is not None and mod[k][0] == mod[k][1] for k in s["q"]])
-            ti = np.mean([ident[g][1] is not None and ident[g][0] == ident[g][1] for g in s["gold"]])
+            tm = np.mean([is_tie(mod[k]) for k in s["q"]])
+            ti = np.mean([is_tie(ident[g]) for g in s["gold"]])
             cells.append(f"{f4(tm)} / {f4(ti)}")
         lines.append(f"| {name(short)} | " + " | ".join(cells) + " |")
-    lines += ["", "Each cell: modified / identity."]
+        for sc in ("L1", "all"):
+            s = scope(frame, sc)
+            tied = [(mod[k][2], g, h) for k, g, h in zip(s["q"], s["gold"], s["item_mod"]) if is_tie(mod[k])]
+            with_gold = [(t, h) for t, g, h in tied if g in t]
+            decisive.append((short, sc, len(s), len(tied), len(with_gold),
+                             sum(h for _, h in with_gold),
+                             float(np.mean([1 / len(t) for t, _ in with_gold])) if with_gold else float("nan")))
+    lines += ["", "Each cell: modified / identity.", "",
+              "## Where a modified query's rank 1 is tied, did the gold win the tie?", "",
+              "Among tied modified queries: how many have the gold inside the tied group (top-100 only), how many "
+              "of those the gold wins, and the share a uniform draw from the tied group would win. A gold that wins "
+              "above that share wins by the retriever's sort order, not by anything in the query.", "",
+              "| arm | scope | n | tied | gold in tie | gold wins | wins, share | uniform draw |",
+              "|---|---|---:|---:|---:|---:|---:|---:|"]
+    for short, sc, n, t, wg, won, chance in decisive:
+        lines.append(f"| {name(short)} | {sc} | {n:,} | {t:,} | {wg:,} | {int(won):,} | "
+                     f"{f4(won / wg) if wg else '—'} | {f4(chance) if wg else '—'} |")
     lines += sources_block(["texto", "single_texto"])
     write(OUT / "ties.md", lines)
 

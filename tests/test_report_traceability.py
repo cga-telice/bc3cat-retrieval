@@ -31,6 +31,11 @@ REPORTS = {
         # Cited for S3's coverage figures (finding 7, known-wrong 1, D-037 row).
         "results/S3/overlap/overlap.md",
     ],
+    "sprints/SPRINT_S4_REPORT.md": [
+        "results/S4/*.md",
+        # ColBERT's identity ceiling, cited beside the derived arms' (finding 6).
+        "results/S3/e0/ceiling.md",
+    ],
 }
 
 #: Figures in a report: decimals and grouped counts, not inside identifiers, paths or code spans.
