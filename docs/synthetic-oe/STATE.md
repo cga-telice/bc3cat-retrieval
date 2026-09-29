@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-29 (**S91 report written**, audit pending) · **Updated by:** Claude, `/sprint-close S91`
+**Last updated:** 2026-09-29 (**S91 audit FAIL, reopened**) · **Updated by:** Claude, `/audit S91`
 
 ---
 
 ## Where we are
 
-**Active: S91** (probe, coded vs decoded `resumen`, frozen at `09d11f7`) — **report written 2026-09-29, inside the time-box; `/audit S91` pending in a fresh session** ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md)). The catalogue's parameter codes mislead the BM25 arms at concept level, and decoding them lifts item-level accuracy for every arm but TF-IDF (ColBERT 0.0284 → 0.4826 on P). It answers D-039: the catalogue's `resumen` codes its work-regime values, the previous study expanded them. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: `/audit S91` in a fresh session; César's ruling on D-039/D-037 (S91 exit criterion 7); then `/sprint-open S4`.** **S2 is done**
+**Active: S91** (probe, coded vs decoded `resumen`, frozen at `09d11f7`) — report written 2026-09-29; **first audit FAIL, reopened** (1 critical, 2 major, 5 minor; no re-run needed) ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead the BM25 arms at concept level, and decoding them lifts item-level accuracy for every arm but TF-IDF (ColBERT 0.0284 → 0.4826 on P). It answers D-039: the catalogue's `resumen` codes its work-regime values, the previous study expanded them. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: resolve the eight S91 audit findings (F1 first: the coverage comparison and the D-037 proposal), re-audit in a fresh session; César's ruling on D-039/D-037 (S91 exit criterion 7); then `/sprint-open S4`.** **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -64,7 +64,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S91` in a fresh session**, and César's ruling on the D-039/D-037 amendments the S91 report proposes. Then **`/sprint-open S4`** (E1 ablation, Track A), which does not depend on S91 since its query sets carry no codes. S4 inherits the per-arm ceilings (read every delta
+**Resolve the S91 audit findings** ([audit](sprints/SPRINT_S91_AUDIT.md), FAIL). F1 (critical): the report and the proposed D-037 amendment compare decoded-OE coverage on P (94.41 %) with OEB coverage on all pairs (94.10 %); on S3's population decoded all-dev coverage is 89.83 % [83.43, 92.99], which excludes 94.10 %. Restate on all dev or withdraw "reaches", and rewrite the D-037 proposal. F2–F8: stamp T4/T3 sources, fix finding 1's heading, T2's printed rule, T5's rare-token share, the ungenerated P2 claim, ceilings in T4 and the secondary table. Then `/audit S91` again in a fresh session, and César's ruling on the D-039/D-037 amendments. Then **`/sprint-open S4`** (E1 ablation, Track A), which does not depend on S91 since its query sets carry no codes. S4 inherits the per-arm ceilings (read every delta
 against them, D-032), 0.60/0.35 for both BM25 variants (D-036), the duplicate-free scoring
 population (D-033), and the debt in the S3 report's last section — above all H4 (index stamps omit
 the ML stack) and the dirty-tree refusal that still lives outside committed code.
