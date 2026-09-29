@@ -30,7 +30,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S12 | backbone | planned | Frozen test evaluation and artefact release | O5 | S8–S11 |
 | S13 | backbone | planned | Manuscript | — | S12 |
 | S90 | probe | planned | Real-query anchor (Telice estimator queries) | validity | external (D-014) |
-| S91 | probe | **active** | Coded vs decoded `resumen` | D-037, D-039, H5 | S3 |
+| S91 | probe | **done** | Coded vs decoded `resumen` | D-037, D-039, H5 | S3 |
 
 Emergent sprints take the next free ID: backbone work continues the S0–S13 sequence at
 S14+, probes take S91+.
@@ -88,3 +88,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-29 | S91 | audited fresh → **reopened** | **FAIL** (`SPRINT_S91_AUDIT.md`): 8 findings — 1 critical, 2 major, 5 minor. Retrieval numbers, CIs, flip counts and regeneration all reproduce; the freeze is clean. Critical: the coverage comparison behind "decoded OE reaches OEB's coverage" and the proposed D-037 amendment mixes samples (94.41 % on P vs 94.10 % on all OEB pairs); on all dev, decoded coverage is 89.83 % [83.43, 92.99] (F1). Exit criteria 4c and 7 not met. No re-run needed. S91 stays **active** until every finding is resolved and a fresh audit passes |
 | 2026-09-29 | S91 | findings resolved | All eight audit findings resolved (report, Audit response). F1: coverage compared on S3's own population; decoded OE does not reach OEB's coverage, D-037 proposal rewritten. F2: every table stamps the runs and files it reads. F3: finding 1 names `bm25_unigram`. F4–F6: T2's rule, T5's rare share (85.6 %), the zero-delta claim withdrawn. F8: ceilings at both levels everywhere; every parent ceiling 1.0. F7: `tests/test_report_traceability.py`. No accuracy moved; no run re-done. S91 stays **active** until a fresh re-audit passes |
 | 2026-09-29 | S91 | re-audited fresh → findings resolved | **PASS WITH FINDINGS** (`SPRINT_S91_AUDIT.md`, above the first): 3 major, 5 minor. Every T2 cell, headline interval, ceiling and T5 figure reproduces; full suite 1059 passed, 1 xfailed; tables byte-identical on regeneration. F1 (waiver recorded as design A4), F2 (params-arm parent move not a detected gain, Holm p 0.0896), F4–F8 (neural rows exploratory; stratum, population and in-sample wording; header) fixed in the report. **F3 open: exit criterion 7 waits on César's ruling on D-039/D-037.** S91 stays **active** until it lands |
+| 2026-09-29 | S91 | active → **done** | Re-audit F3 closed: César accepted the proposed D-039 and D-037 amendments, appended to `DECISIONS.md`. Exit criterion 7 met; all nine exit criteria met. Still open under D-039: whether future `resumen` results are reported coded, decoded or both. D-040 and D-041 raised, not decided |

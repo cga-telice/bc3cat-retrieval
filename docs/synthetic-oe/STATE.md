@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-29 (**S91 re-audit PASS WITH FINDINGS; F3 open**) · **Updated by:** Claude, `/audit S91`
+**Last updated:** 2026-09-29 (**S91 done**) · **Updated by:** Claude, `/audit S91`
 
 ---
 
 ## Where we are
 
-**Active: S91** (probe, coded vs decoded `resumen`, frozen at `09d11f7`) — report written 2026-09-29; first audit FAIL, reopened, all eight resolved; **re-audit PASS WITH FINDINGS** (3 major, 5 minor): seven fixed in the report and design A4, **F3 open — exit criterion 7 waits on César's D-039/D-037 ruling** ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039: the catalogue's `resumen` codes its work-regime values, the previous study expanded them. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: César's ruling on D-039/D-037 (S91 exit criterion 7, re-audit F3); once the amendments land, S91 → `done`; then `/sprint-open S4`.** **S2 is done**
+**Active: none.** **S91 is done** (2026-09-29; probe, coded vs decoded `resumen`, frozen at `09d11f7`) — first audit FAIL, reopened, all eight resolved; re-audit **PASS WITH FINDINGS**, all eight resolved (design A4); D-039 and D-037 amendments accepted by César ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039's open question: a catalogue-only decoder is viable in-sample (80.9 %). Still open under D-039: whether future `resumen` results are reported coded, decoded or both; D-040/D-041 raised, not decided. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **Next: `/sprint-open S4`.** **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -64,7 +64,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**Close S91** ([audit](sprints/SPRINT_S91_AUDIT.md): first FAIL, re-audit PASS WITH FINDINGS; dispositions in the report's Audit response and Re-audit). Seven re-audit findings are fixed; F3 is exit criterion 7: César rules on the D-039 and D-037 amendments proposed in the report, they are appended to `DECISIONS.md`, and S91 is marked `done`. Then **`/sprint-open S4`** (E1 ablation, Track A), which does not depend on S91 since its query sets carry no codes. S4 inherits the per-arm ceilings (read every delta
+**`/sprint-open S4`** (E1 ablation, Track A), which does not depend on S91 since its query sets carry no codes. S4 inherits the per-arm ceilings (read every delta
 against them, D-032), 0.60/0.35 for both BM25 variants (D-036), the duplicate-free scoring
 population (D-033), and the debt in the S3 report's last section — above all H4 (index stamps omit
 the ML stack) and the dirty-tree refusal that still lives outside committed code.

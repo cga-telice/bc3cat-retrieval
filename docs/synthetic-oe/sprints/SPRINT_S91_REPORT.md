@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Design** | [`SPRINT_S91_DESIGN.md`](SPRINT_S91_DESIGN.md) · frozen at `09d11f7` · amendments A1–A4 |
-| **Closed** | 2026-09-29, inside the 3-day time-box. `done` withheld until `/audit S91` in a fresh session |
+| **Closed** | 2026-09-29, inside the 3-day time-box. **`done`** 2026-09-29, after a fresh re-audit (PASS WITH FINDINGS) and César's ruling on D-039/D-037 |
 | **Code commit** | All 20 new runs at `cf92bc8`, clean. Reused coded runs: `2e49566` (4), `922ae53` (5), `a5700a6` (1), as S3 stamped them. Tables last generated at `3336131`. History: generator `3dc992f` at close; regenerated for audit F2 (Sources only), F4 (one sentence of `renderings.md`), F5 (T5 gains the rare-token column) and F8 (ceiling rows in T2, T4 and the secondary table). No existing figure moved; F5 and F8 added figures |
 | **Query-set digests** | coded `resumen` `f041a8e8` (`bge_m3_colbert`/`bge_m3_dense`: `28d09f40`) · `resumen_stripped` `c136a743` · `resumen_decoded` `7d9679fd`. Sources: `OE_resumen_stripped.json` `4703d33f`, `OE_resumen_decoded.json` `ca7fc230`, decoder `7ee4557f` (`MANIFEST.md`) |
 | **Runs** | `runs/OE/{resumen,resumen_stripped,resumen_decoded}/`, ten arms each · split `dev` · `check_run_inputs.py`: 197 of 202 resolve; the 5 that do not are S3's declared five |
@@ -155,7 +155,7 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 | 4 | yes | T1–T5 regenerate byte-identically (two consecutive runs compared after the audit fixes); every Acc@1 row carries n; each condition's ceiling is printed at both levels in T2, in the secondary table and per stratum in T4 (A2c; audit F8) |
 | 5 | yes | P1 and P2 each read, per arm, in `renderings.md` §"The registered predictions" |
 | 6 | yes | Finding 6; `decoder.md` |
-| 7 | **pending** | D-039 and D-037 amendments proposed below, for César. The re-audit (F3) confirms `done` waits on them |
+| 7 | yes | D-039 and D-037 amendments accepted by César on 2026-09-29 and appended to `DECISIONS.md` (re-audit F3) |
 
 ## Deviations from design
 
@@ -186,8 +186,8 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 
 | ID | Proposed | What |
 |---|---|---|
-| D-039 | amendment | The open question answered: a catalogue-only decoder is viable in-sample (80.9 % exact on its own dev fit) and changes item-level accuracy by up to +0.5764. Whether any future `resumen` result is reported coded, decoded or both is César's ruling |
-| D-037 | amendment | Part of the coverage gap S3 measured moves with the rendering: on all dev, decoding moves OE coverage from 79.38 % to 89.83 % [83.43, 92.99]. OEB's 94.10 % (all OEB pairs, no interval) is stated beside it, not contrasted with it, since the populations differ (finding 7) |
+| D-039 | amendment, **accepted** 2026-09-29 | The open question answered: a catalogue-only decoder is viable in-sample (80.9 % exact on its own dev fit) and changes item-level accuracy by up to +0.5764. Whether any future `resumen` result is reported coded, decoded or both is César's ruling |
+| D-037 | amendment, **accepted** 2026-09-29 | Part of the coverage gap S3 measured moves with the rendering: on all dev, decoding moves OE coverage from 79.38 % to 89.83 % [83.43, 92.99]. OEB's 94.10 % (all OEB pairs, no interval) is stated beside it, not contrasted with it, since the populations differ (finding 7) |
 | D-040 | new, for César | Whether `resumen`-identical siblings get a scoring rule like D-033's, or remain a printed ceiling |
 | D-041 | new, for César | Whether to open a document-side expansion probe |
 
@@ -221,7 +221,7 @@ re-ran the full suite. Disposition:
 |---|---|
 | F1 — the F7 waiver lives outside the Amendments table | **Fixed.** Design amendment A4 records it, dated, attributed to César, with the traceability test's limits: membership only, bare integers and claims without a number unchecked |
 | F2 — finding 4 credits the params arm with a parent gain, "by the mechanism" | **Fixed.** Finding 4 quotes Holm p for both BM25 arms (0.0414, 0.0896), says the params move is not a detected gain under A2(b), and words both as the direction of finding 1's association, no mechanism tested |
-| F3 — exit criterion 7 not met | **Open.** D-039 and D-037 wait on César's ruling. The sprint stays out of `done` until they land |
+| F3 — exit criterion 7 not met | **Fixed.** César accepted both proposed amendments; they are appended to `DECISIONS.md` as the D-039 amendment and D-037's second amendment. D-039's reporting question (coded, decoded or both) stays open there |
 | F4 — neural results stated as findings | **Fixed.** Findings 3–5 now separate the registered BM25 rows from the neural rows, which are labelled exploratory and not registered; "restores" is replaced, and the GTE rows are called what they are, moves from near-zero bases |
 | F5 — "an OEB phenomenon" | **Fixed.** Now "concentrated in four large OEB families", descriptive, with the strata not contrasted and `OEC070$` named as a loss outside OEB |
 | F6 — finding 7 contrasts the populations it says it does not | **Fixed.** The interval-exclusion statement is dropped from finding 7, known-wrong 1 and the D-037 row; 94.10 % is stated beside the OE figures, with no interval, not tested against them |

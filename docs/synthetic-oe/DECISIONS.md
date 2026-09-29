@@ -1033,3 +1033,38 @@ suffix codes are rare as corpus tokens (`e` appears in 72 of 70,242 documents, `
 1,152; `nni` and `ne` in none), so under IDF weighting they may pull lexical arms towards unrelated
 documents rather than merely adding nothing. This is untested and computed ad hoc from
 `OE_resumen.json` and `OE_long_feats.parquet`, not from a run.
+
+### D-039 — amendment: the decoder question answered — viable in-sample, and it matters
+**Status:** Amendment to D-039 · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S91 (exit criterion 7; re-audit F3)
+**The open question answered.** A query-side decoder built from the catalogue alone is viable. It is
+fitted on dev by *(position, code)* with the shared-words rule and a 1 % floor (S91 A1), and reads
+neither the concept nor the gold. It decodes 22,774 of the 28,150 dev leaves with a suffix exactly on
+every axis (**80.9 %**). That figure is **in-sample**: it is measured on the leaves the table was fitted
+on, a code unseen on dev decodes to nothing, and held-out coverage was not measured
+([`results/S91/decoder.md`](results/S91/decoder.md)).
+**It changes item-level accuracy.** On P (27,574 dev queries with a suffix and a unique gold), decoded −
+coded item Acc@1 is +0.3729 [+0.2255, +0.4140] for `bm25_unigram_params` and +0.5764 [+0.4787, +0.6752]
+for `bm25_unigram`, concept-clustered, Holm p ≤ 0.0048 (P1 supported). TF-IDF's change is not
+detected. Neural-arm moves are exploratory, not registered
+([`results/S91/renderings.md`](results/S91/renderings.md)).
+**The rare-code observation, now measured.** In 85.6 % of `bm25_unigram`'s coded parent misses (16,980
+of 19,832) the rank-1 document holds a suffix code token in fewer than 1,200 documents that the gold
+lacks (`e`, `n`, `r`). `nni` and `ne`, in no document, cannot be in a rank-1 document and are no longer
+cited. Stripping the suffix lifts `bm25_unigram` parent from 0.2808 to 0.7572 (P2 supported); for
+`bm25_unigram_params` P2 is not supported (Holm p 0.0700). An association, not a tested mechanism
+([`results/S91/rare_codes.md`](results/S91/rare_codes.md)).
+**Still open.** Whether future `resumen` results are reported coded, decoded or both. S91 leaves both
+query sets in the tree (`resumen_decoded`, `resumen_stripped`); nothing downstream is fixed to either.
+
+### D-037 — second amendment: part of the coverage gap moves with the rendering
+**Status:** Amendment to D-037 · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S91 (exit criterion 7; audit F1, re-audit F6)
+**The finding.** On the population S3 measured OE on (all 35,422 dev queries), decoding the
+catalogue's codes moves `resumen→texto` lexical coverage from **79.38 %** to **89.83 % [83.43, 92.99]**
+([`results/S91/coverage.md`](results/S91/coverage.md)). Much of the 79.38 % the first amendment kept
+as "what stands" moves with the rendering, which D-039 already said the OEB figure was measured on.
+**Not a contrast.** OEB's 94.10 % is measured on all 47,514 OEB pairs, test-side concepts included,
+with no interval. It is stated beside the OE figures, not tested against them: the populations still
+differ (OE dev, all of OEB). This is a description, not a mediation claim; mediation stays S6's.
+**What stands.** The chapter confound, and D-039's rule that any OE-against-OEB sentence names the
+rendering as well as the chapter.
+
