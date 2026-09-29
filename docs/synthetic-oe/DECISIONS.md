@@ -1175,3 +1175,25 @@ multilingual 12-layer model.
 E5 names in `docs/reviews/AUTCON_analisis_revision.md` §3.5. The same paper's claimed reranking depth
 is §3.7's defect. S4's CE arms stand as specified, and no OE CE figure is set against the previous
 study's, because the blend differs (S4 design A1).
+
+### D-043 — Upstream's answers to P7 and to the wider-L2 request: four rulings
+**Status:** Accepted · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S4 (the answers to `requests/REORDER_LOOKUP_ARGUMENTS.md` and `requests/WIDER_THIN_SLICES.md`; see `DELIVERIES.md`)
+**Rulings (César, "agree").**
+1. **The P7 rule covers both splits.** A query built from a withdrawn upstream rule is excluded from
+   item-level scoring and kept at parent level. On dev that is the one query of S4 design A2. On test
+   it is **2** `single_texto` queries, which upstream identifies and we have not seen. We ask upstream
+   for a **key-only list** (item keys, no text), store it with its digest in `MANIFEST.md`, and apply
+   it mechanically **in S12 only**. The rule is fixed now, before any test result exists, which is
+   what makes it legitimate under operating rule 3. The keys reveal nothing to tune on.
+2. **Go on the wider-L2 build from the frozen menus**: 9 / 9 / 8 dev concepts. It comes as a new
+   query set, `OE_single_l2_texto.json`, and `OE_single_texto.json` is not replaced. The build must
+   run **after** upstream commits the P7 fix, so the delivery is stamped by a committed tree.
+3. **No new menu pass** toward the 13-concept ceiling. Going from 9 to 13 clusters narrows the
+   intervals modestly, at the cost of new LLM rewrites and their review. S6 states the 13 / 12
+   ceiling as a structural limitation of the grammar. Reopened only if S6's L2 intervals remain
+   uninformative at 9 concepts.
+4. **`compression` keeps ≤ 20 leaves per concept** (about 160 dev queries over 8 concepts, not 306
+   over 5). Siblings are near-duplicates, the clustered interval is driven by the concept count, and
+   the three L2 types stay built alike.
+**Consequence.** S6 opens with an intake of `OE_single_l2_texto.json` if it has landed: digest,
+query-set registration, runs. S4 is unaffected; its tables stand.

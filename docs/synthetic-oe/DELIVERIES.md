@@ -15,6 +15,29 @@ Newest first.
 
 ---
 
+## 2026-09-29 — answers to the P7 and wider-L2 requests · **no files**
+
+Upstream answered both S4 requests in `bc3cat-dataset/docs/synthetic/REORDER_LOOKUP_RESPONSE.md` and
+`WIDER_THIN_SLICES_RESPONSE.md`, on `synthetic` over `f2457fa`. **No file was delivered**:
+`OE_single_texto.json` still hashes `b6a43961…`, re-checked here, so no S4 run moves.
+
+- **P7.** Upstream confirmed the diagnosis and fixed the placeholder validator: whole calls,
+  arguments in order, literal rows included. The pantry loader now re-checks approved rules and
+  drops 28: 9 `reorder`, 16 `template_paraphrase`, 3 `omission`. **The fix was uncommitted when
+  answered** ("pending owner review"). Scope:
+  - **Dev:** our own test finds only the one query. No other dev query in any delivered set was
+    built from a withdrawn rule.
+  - **Test** (counts only, from upstream): 0 by our test. **2** `single_texto` `reorder` queries come
+    from a different withdrawn rule, which swaps a literal lookup row and drops a field. They match
+    no leaf, so our test cannot see them, but they are not referent-preserving.
+  - The `$U` permutations reached no delivered file.
+- **Wider L2.** Not built yet. Reachable with the frozen menus: `paraphrase` 9, `expansion` 9,
+  `compression` 8 dev concepts (today 5), at about 180 / 180 / 160 dev queries with ≤ 20 leaves per
+  concept. **Hard ceiling: 13 dev / 12 test concepts.** Only those concepts render a text variable in
+  their TEXTO, so no menu can reach ≥ 15.
+
+César's rulings are recorded in D-043.
+
 ## 2026-09-27 — duplicate-`texto` sidecar and the corrected stacked set
 
 **Taken in:** S3 work item 1 · **Decisions:** D-031, D-033, D-025
