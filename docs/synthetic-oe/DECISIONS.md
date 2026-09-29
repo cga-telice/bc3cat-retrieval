@@ -1099,4 +1099,9 @@ same way, by an amendment naming it.
 the next sprint that reports `resumen`.
 **Debt.** Not yet in the harness. The scoring code must implement the exclusion, with its excluded n,
 before a run is reported under it.
+**Provenance of the counts.** 9,346 is the S91 design's figure. 9,348, 9,924 and 25,498 were computed
+ad hoc on 2026-09-29, not from a run: groups of whitespace-normalised identical text among dev leaves
+(`SPLITS.md` `8d520eb4`) in `OE_resumen.json` (`0cd380e9`) and `OE_resumen_decoded.json` (`ca7fc230`),
+unioned with `OE_duplicate_texto_groups.json` (`b3cfcad4`). The harness implementation regenerates
+them, and its figures replace these.
 

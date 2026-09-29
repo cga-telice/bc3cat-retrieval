@@ -188,7 +188,7 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 |---|---|---|
 | D-039 | amendment, **accepted** 2026-09-29 | The open question answered: a catalogue-only decoder is viable in-sample (80.9 % exact on its own dev fit) and changes item-level accuracy by up to +0.5764. Whether any future `resumen` result is reported coded, decoded or both is César's ruling: **both** (D-039 second amendment) |
 | D-037 | amendment, **accepted** 2026-09-29 | Part of the coverage gap S3 measured moves with the rendering: on all dev, decoding moves OE coverage from 79.38 % to 89.83 % [83.43, 92.99]. OEB's 94.10 % (all OEB pairs, no interval) is stated beside it, not contrasted with it, since the populations differ (finding 7) |
-| D-040 | new, **accepted** 2026-09-29: excluded at item level (9,348 dev leaves) | Whether `resumen`-identical siblings get a scoring rule like D-033's, or remain a printed ceiling |
+| D-040 | new, **accepted** 2026-09-29: excluded at item level (count in D-040) | Whether `resumen`-identical siblings get a scoring rule like D-033's, or remain a printed ceiling |
 | D-041 | new, for César | Whether to open a document-side expansion probe |
 
 ## Audit response
