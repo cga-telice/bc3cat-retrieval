@@ -1,0 +1,38 @@
+{
+  "collection": "OE",
+  "paths": {
+    "data_dir": "/work/data/processed",
+    "index_root": "/work/index"
+  },
+  "inputs": {
+    "short_feats": "{data_dir}/{collection}_short_feats.parquet",
+    "long_feats": "{data_dir}/{collection}_long_feats.parquet"
+  },
+  "method": {
+    "family": "ce_blend",
+    "name": "ce_blend__rrf__bm25_unigram+bge_m3_colbert__OE",
+    "impl": "ce_blend",
+    "save_as": "ce_blend__rrf__bm25_unigram+bge_m3_colbert__OE",
+    "params": {
+      "model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+      "revision": "1427fd652930e4ba29e8149678df786c240d8825",
+      "max_length": 320,
+      "depth": 100,
+      "lambda": 0.6,
+      "normalisation": "per-query min-max over the base's candidates",
+      "tie_break": "base rank",
+      "batch_size": 128,
+      "precision": "fp32"
+    }
+  },
+  "derived": {
+    "components": [
+      "rrf__bm25_unigram+bge_m3_colbert__OE"
+    ],
+    "note": "S4 design dd407c6, work item 1: CE blend over rrf__bm25_unigram+bge_m3_colbert"
+  },
+  "retriever": {
+    "module": "src.utils.rerank_ce",
+    "entrypoint": "run"
+  }
+}

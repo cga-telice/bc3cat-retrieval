@@ -80,3 +80,22 @@ def provenance_stamp(
         "code_dirty_paths": dirty_paths,
         "query_set_sha256": sha256_file(query_path),
     }
+
+
+def assert_clean_stamp(stamp: dict) -> None:
+    """Refuse to write a run whose stamp names uncommitted code.
+
+    Until S4 this refusal lived only in the git-ignored runner scripts under `logs/` (S3 audit
+    F11), so the guarantee rested on a file nobody could cite. A stamp with `code_dirty: true`
+    is recorded honestly by `provenance_stamp`, but a run carrying one cannot be reported, so
+    making it is wasted compute at best and a quotable uncitable number at worst.
+
+    Line endings are the known false positive (defect H5): run with `core.autocrlf true` in the
+    container, as the runners do, so that a CRLF checkout does not read as modified.
+    """
+    if stamp.get("code_dirty"):
+        paths = ", ".join(stamp.get("code_dirty_paths") or []) or "<unknown>"
+        raise RuntimeError(
+            f"refusing to write {stamp.get('run_id')!r}: src/ or configs/ is dirty ({paths}). "
+            "Every number from it would carry an uncitable stamp. Commit first."
+        )

@@ -1,0 +1,38 @@
+{
+  "collection": "OE",
+  "paths": {
+    "data_dir": "/work/data/processed",
+    "index_root": "/work/index"
+  },
+  "inputs": {
+    "short_feats": "{data_dir}/{collection}_short_feats.parquet",
+    "long_feats": "{data_dir}/{collection}_long_feats.parquet"
+  },
+  "method": {
+    "family": "rrf",
+    "name": "rrf__bm25_unigram_params+bge_m3_colbert__OE",
+    "impl": "rrf",
+    "save_as": "rrf__bm25_unigram_params+bge_m3_colbert__OE",
+    "params": {
+      "k_rrf": 60,
+      "weights": [
+        1.0,
+        1.0
+      ],
+      "depth": 100,
+      "k_final": 100,
+      "tie_break": "better rank in the first component, then the second, then item_key"
+    }
+  },
+  "derived": {
+    "components": [
+      "bm25_unigram_params__k1-0.60__b-0.35__OE",
+      "bge_m3_colbert__OE"
+    ],
+    "note": "S4 design dd407c6, work item 1: oracle twin of the deployable RRF (D-010)"
+  },
+  "retriever": {
+    "module": "src.utils.fuse_rrf",
+    "entrypoint": "run"
+  }
+}

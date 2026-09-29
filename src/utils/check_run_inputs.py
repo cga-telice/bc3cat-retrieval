@@ -94,6 +94,41 @@ def check_run(meta_path: Path, digests: dict[str, list[str]]) -> list[str]:
     if meta.get("code_dirty"):
         problems.append("run was made from a dirty tree (code_dirty: true)")
 
+    problems.extend(check_components(meta))
+    return problems
+
+
+#: What a derived run's copy of a component stamp must still agree with on disk.
+_COMPONENT_FIELDS = ("config_sha256", "code_commit", "query_set_sha256", "corpus_sha256", "split")
+
+
+def check_components(meta: dict, runs_root: Path = RUNS) -> list[str]:
+    """A derived run (S4: fusion, reranking) resolves only through its components.
+
+    Its own stamp names the fusion code and config; the retrieval it rests on is named by the
+    component stamps copied into it at run time. If a component has since been re-run, the
+    derived run no longer describes what is on disk, even though every digest of its own still
+    resolves.
+    """
+    if not meta.get("derived"):
+        return []
+    components = meta.get("components") or []
+    if not components:
+        return ["derived run lists no components"]
+    problems = []
+    for recorded in components:
+        run_id = recorded.get("run_id")
+        path = runs_root / str(run_id) / "run_meta.json"
+        if not run_id or not path.exists():
+            problems.append(f"component {run_id} not found under runs/")
+            continue
+        current = json.loads(path.read_text(encoding="utf-8"))
+        for field in _COMPONENT_FIELDS:
+            if current.get(field) != recorded.get(field):
+                problems.append(
+                    f"component {run_id}: {field} is {str(current.get(field))[:16]}… on disk, "
+                    f"{str(recorded.get(field))[:16]}… when this run was made"
+                )
     return problems
 
 

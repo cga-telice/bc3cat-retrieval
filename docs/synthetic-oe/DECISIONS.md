@@ -1144,3 +1144,23 @@ S9 should test it before building a guard.
 (`normalize_text`) for containment in the leaf's normalised `OE_texto.json` (`02a2c270`) text,
 against `OE_duplicate_texto_groups.json` (`b3cfcad4`). The 85.6 % and 0.4 % are generated
 (`results/S91/rare_codes.md`).
+
+### D-042 — The cross-encoder follows the code, and the manuscript's CE model is a reporting defect
+**Status:** Proposed · **Date:** 2026-09-29 · **Raised in:** S4 work item 2 (the design's Risks table asked for it at the port)
+**The problem.** Two sources disagree about which cross-encoder the previous study used:
+
+| Source | Model |
+|---|---|
+| `src/cross_encoder.ipynb` (`CFG["ce_model"]`, and its saved output log) | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`: multilingual, 12 layers |
+| `docs/reviews/paper_28.tex` §Cross-Encoder Reranking (L455) | `cross-encoder/ms-marco-MiniLM-L-6-v2` (22M): English, 6 layers |
+
+The notebook also blends raw, unnormalised scores and defaults to depth 50, where the manuscript
+reports depths of 20, 50 and 100.
+**Proposal.** Follow the code, as D-035 did for GTE. S4's CE arms use the mMiniLMv2 model, pinned at
+revision `1427fd652930e4ba29e8149678df786c240d8825`, with a per-query min–max blend (S4 design, work
+item 1). The manuscript's CE rows are recorded as the fourth reporting defect of that submission,
+after the unreported `hiiamsid` row, the README table and the GTE rows (D-035). **No OE CE figure is
+set against them.**
+**Consequence if accepted.** The defect is added to the review analysis's list. If César holds instead
+that the English model is what ran, S4's CE arms still stand as specified by the design, but "the
+previous study's reranker" would then name a different model from S4's in every sentence.
