@@ -172,7 +172,8 @@ Not an amendment, recorded for the auditor: the reorder upstream fix, the P7 tes
   - L2 on 9 / 9 / 8 concepts. On S4's 5 dev concepts the encoders keep the concept under L2 and BM25
     does not (finding 5). Whether "L2 affects concept-level more than item-level" fails for the
     encoders is S6's to read, not S4's.
-  - P8's four case-only `synonym_label` queries: keep or exclude (César's call).
+  - P8's four case-only `synonym_label` queries: kept, and every `synonym_label` cell shown with and
+    without them (D-044).
   - `OE_single_l2_texto.json` to wire: 9 / 9 / 8 dev concepts, grammar ceiling 13 (D-043).
   - `template_paraphrase` to be analysed apart from `reorder` inside L3 (finding 4).
   - The D-004 sensitivity analysis.
@@ -191,6 +192,8 @@ Not an amendment, recorded for the auditor: the reorder upstream fix, the P7 tes
 | D-043 | **Accepted**, amended, note | P7 on both splits (S12 list); L2 via upstream engine fix, delivered at 9 / 9 / 8 |
 | D-028 | note proposed | Ties measured for every family (T5). For BM25, no sort-order bias is detected: the excess over a uniform draw has an interval containing 0. A third of its L1 hits are tie-wins |
 | — | proposed for S6 | H2 is read per type inside L3: `reorder` and `template_paraphrase` are different operations |
+| D-044 | **Accepted** | P8's case-only queries kept, shown both ways, reported upstream |
+| D-045 | **Accepted** | Design amendments move to `SPRINT_XX_AMENDMENTS.md`; for S4, after the re-audit |
 
 ## Audit response
 
@@ -210,7 +213,7 @@ its item-level d_tok means and δ / d_tok ratios moved. Disposition:
 | F5 — arm-vs-arm claim in finding 6 | **Fixed.** Finding 6 sets the ceilings and retentions side by side, and says that no paired test compares them and that the design claims no such contrast |
 | F6 — finding 7 asserts a null without an interval | **Fixed.** T5 gains, per arm and scope, the modified hits and the mean excess of gold wins over a uniform draw with its concept-clustered interval. For `bm25_unigram` L1 it is +0.0428 [−0.0071, +0.0832]. Finding 7 says a sort-order effect is not detected, not that it is absent. It replaces "those hits are draws" with the count: 92 of 276 L1 hits are tie-wins. The out-of-vocabulary mechanism is marked untested |
 | F7 — decimal-artefact counts under two definitions | **Fixed.** T4 prints both. "In query" is H1's set and reproduces the design's 9 `unit_conversion` + 4 `unit_expansion`. "Absent from gold" is the 5 where a miss is attributable. Finding 9 states which set a miss is attributed to |
-| F8 — four case-only `synonym_label` queries | **Recorded and measured.** `DATASET_DEFECTS.md` P8 (candidate). T4 lists them and prints each arm's `synonym_label` item δ with and without them, with a clustered CI. No reading changes. They stay in: the design has no rule excluding them, and the figures had been read. Excluding them in S6 is César's call |
+| F8 — four case-only `synonym_label` queries | **Recorded and measured.** `DATASET_DEFECTS.md` P8 (candidate). T4 lists them and prints each arm's `synonym_label` item δ with and without them, with a clustered CI. No reading changes. They stay in: the design has no rule excluding them, and the figures had been read. César ruled to keep them, show both ways and tell upstream (D-044; `requests/SYNONYM_CASE_ONLY.md`) |
 | F9 — "L3 as a layer refuted" | **Fixed.** The H2 row reads "not supported descriptively … S6 to test" |
 
 The auditor's unverifiable items stand as it listed them. The full suite was re-run for this response

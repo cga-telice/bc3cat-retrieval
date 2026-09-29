@@ -1224,3 +1224,32 @@ concepts** as the L2 limit (option C). The grammar's 13 / 12 ceiling is stated e
 byte-identical under the new engine. The fallback to 5 concepts is not needed. It is wired and run
 in S6.
 
+### D-044 — P8's case-only `synonym_label` queries are kept, shown both ways, and reported upstream
+**Status:** Accepted · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S4 audit F8 (`DATASET_DEFECTS.md` P8)
+**Question.** Four dev `synonym_label` queries differ from their gold only in letter case, so they are
+untreated for any arm that lower-cases. Should they be excluded, and should upstream be told?
+**Ruling (César).**
+1. **Kept.** They are not excluded at either level, in S4 or later. The effect is small: the largest
+   cell move is 0.0103. The design had no rule for them, and S4's figures had been read before they
+   were found.
+2. **Shown both ways.** Any table with a `synonym_label` cell prints the effect with and without them,
+   as S4's T4 does. This continues in S6 and S12.
+3. **Upstream told, for information.** [`requests/SYNONYM_CASE_ONLY.md`](requests/SYNONYM_CASE_ONLY.md)
+   asks for a menu fix in future builds and for a count of test-split cases. The file is **not**
+   re-taken, since that would change its digest and invalidate every run on it.
+**Consequence.** No run and no figure changes. S12 applies rule 2 to any test cases upstream reports.
+Rejected alternative: excluding them, which would add a scoring rule after the figures were read, and
+would need a test-side list before S12.
+
+### D-045 — Sprint design amendments move to their own record file
+**Status:** Accepted · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** S4 audit response
+**Problem.** The Plan budget is ≤ 20 KB, and "past budget, split it" is the rule. The S4 design was
+20.5 KB at the report and is about 22 KB after amendment A4. All the growth is in the Amendments table.
+The frozen part cannot be edited.
+**Ruling (César).** Amendments leave the design and go to a record file,
+`sprints/SPRINT_XX_AMENDMENTS.md`. It is append-only and has no size limit. The design keeps a one-line
+pointer where the table was. The frozen text above it is not touched. Rejected alternatives: leaving S4
+over budget, which ignores the rule; raising the budget again, which the root contract calls noise.
+**When.** For S4, the move is made **after** the S4 re-audit, so that the auditor reads the same files
+the report cites. From S5 on, `/sprint-open` starts the amendments file with the design. The earlier
+sprints' designs are left as they are.

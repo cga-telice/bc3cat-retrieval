@@ -64,7 +64,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S4` again in a fresh session.** The first audit's nine findings are resolved (report, Audit response). One ruling is open for César: whether P8's four case-only `synonym_label` queries are raised upstream or excluded from S6. On PASS (WITH FINDINGS, resolved): S4 → `done`, then
+**`/audit S4` again in a fresh session.** The first audit's nine findings are resolved (report, Audit response). Rulings made: P8 kept and shown both ways, upstream told (D-044; César sends `requests/SYNONYM_CASE_ONLY.md`). After the re-audit, move S4's amendments to `SPRINT_S4_AMENDMENTS.md` (D-045). On PASS (WITH FINDINGS, resolved): S4 → `done`, then
 `/sprint-open S5` (Track B, structured; H3), which inherits the 15-arm profile as its reference. S6 opens
 with the L2 intake (D-043).
 
