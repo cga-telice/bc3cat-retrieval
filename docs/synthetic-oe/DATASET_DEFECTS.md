@@ -196,6 +196,11 @@ untreated and its δ is 0 by construction. That dilutes the treatment-on-the-tre
   −0.6525. No reading changes. Kept in from S4 on, with every
   `synonym_label` cell shown both ways (D-044). Reported upstream for information in
   [`requests/SYNONYM_CASE_ONLY.md`](requests/SYNONYM_CASE_ONLY.md); the file is not re-taken.
+- **Upstream answer (2026-09-29, `DELIVERIES.md`).** The cause is four case-only candidates in the
+  frozen menu (`semi-rocoso` ×2, `rocoso`, `elevada`), approved in review. The reach is 4 dev and
+  **2 test** queries, all `single_texto`; every other file has none. The test keys are in
+  `OE_P8_test_exclusion.json` (`6cda7fa0`), used in S12 for the "without" view. Future builds drop
+  such candidates.
 
 ## H1 — `normalize_text` reads a synthetic decimal as a thousands group · **open** (D-010 note)
 

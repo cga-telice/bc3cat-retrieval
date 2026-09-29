@@ -15,6 +15,33 @@ Newest first.
 
 ---
 
+## 2026-09-29 (night) — the P8 answer and test list · **taken**; menu choice pending
+
+| File | Records | SHA-256 prefix | Taken |
+|---|---:|---|---|
+| `OE_P8_test_exclusion.json` | 2 keys | `6cda7fa05aa6e32f` | yes, D-044 |
+
+Upstream's answer to [`requests/SYNONYM_CASE_ONLY.md`](requests/SYNONYM_CASE_ONLY.md):
+- **Cause.** The frozen `synonym_label` menu holds **four** approved case-only candidates, not one:
+  `semi-rocoso` under two entries, `rocoso` and `elevada`. The review never compared a candidate with
+  its own label after lower-casing.
+- **Reach, counted upstream on every delivered file.** `OE_single_texto.json` 4 dev (our count) and
+  **2 test**. Every other file, `OE_single_l2_texto.json` included, has 0 on both splits: its queries
+  always carry other changes too.
+- **Fix.** The menu generator now drops a candidate equal to its label after lower-casing and whitespace
+  clean-up, with a test. When this was taken, that change was **uncommitted** in `bc3cat-dataset`
+  (`src/synthetic/menu_proposer.py`, `tests/synthetic/test_menu_builder.py`), and so was the list file.
+- **No re-delivery.** Every delivered digest holds; `OE_single_texto.json` re-hashed here matches
+  (`b6a43961…`).
+
+The list holds keys only: `reason`, `file`, `split` (`test`), `item_keys`. It was checked without
+reading any query text. Both keys resolve in `OE_single_texto.json`, both are `synonym_label`, and both
+concepts (`OED160$`, `OED180$`) are test under `SPLITS.md`. Despite its name it excludes nothing: under
+D-044, S12 keeps the two queries and also shows each `synonym_label` cell without them.
+
+**Pending with César:** whether upstream removes the four entries from the frozen menu now (A), or at
+the next corpus build (B, upstream's recommendation).
+
 ## 2026-09-29 (evening) — wider L2 slices, option A · **taken, not yet wired**
 
 Delivered at `bc3cat-dataset` `synthetic` `b0e23f1`, generated at `90a318f` by

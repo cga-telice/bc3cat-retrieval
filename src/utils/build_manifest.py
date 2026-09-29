@@ -24,7 +24,9 @@ OE_QUERIES = ["OE_single_texto.json", "OE_stacked_texto.json"]
 OE_OTHER = ["OE_concept_schema.json", "OE_duplicate_texto_groups.json"]
 # D-043: the item keys of the 2 test `single_texto` queries upstream built from a withdrawn rule
 # (DATASET_DEFECTS P7). Keys only, no text; applied at item level in S12 and nowhere before.
-OE_S12 = ["OE_P7_test_exclusion.json"]
+# D-044: the item keys of the 2 test `single_texto` queries equal to their gold after lower-casing
+# (DATASET_DEFECTS P8). Keys only; kept in S12, with every `synonym_label` cell also shown without them.
+OE_S12 = ["OE_P7_test_exclusion.json", "OE_P8_test_exclusion.json"]
 # D-043 amended: the wider L2 slices, delivered at `bc3cat-dataset` `b0e23f1` (generated at `90a318f`).
 # A new query set, registered here and wired in S6.
 OE_L2 = ["OE_single_l2_texto.json", "OE_single_l2_modifications.jsonl", "OE_single_l2_provenance.json"]
@@ -99,6 +101,8 @@ INTAKE_PREFIXES = {
     "OE_resumen.json": "0cd380e9e44ad8c5",
     # D-043, taken 2026-09-29 from `bc3cat-dataset` `data/synthetic/handoff_OE/`.
     "OE_P7_test_exclusion.json": "96fe3854f2b6d935",
+    # D-044, taken 2026-09-29 from `bc3cat-dataset` `data/synthetic/handoff_OE/`.
+    "OE_P8_test_exclusion.json": "6cda7fa05aa6e32f",
     # D-043 amended, from upstream's provenance file and its delivery message.
     "OE_single_l2_texto.json": "fff7dd3be023125b",
     "OE_single_l2_modifications.jsonl": "e1e5adbb8824bd34",
