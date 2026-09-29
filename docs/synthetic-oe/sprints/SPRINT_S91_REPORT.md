@@ -111,7 +111,7 @@ and split still differ, and the decoded text reproduces the kind of edit, not it
 | Hypothesis | Movement | Evidence |
 |---|---|---|
 | **P1** decoded > coded, item, lexical arms | **supported** for `bm25_unigram_params` and `bm25_unigram`; **not supported** for `tfidf_phrases_replace` | Finding 3; interval [−0.0231, +0.0964], Holm p 0.1700 |
-| **P2** stripped > coded, parent, BM25 arms | **supported** for `bm25_unigram`; **not supported** for `bm25_unigram_params` under the A2(b) rule | Finding 1. For the params arm, Δ +0.3692 [+0.2177, +0.4091] but Holm p 0.0700: 6 of 26 concepts gain, holding 85.9 % of P, and the four large OEB families (`OEB020/030/230/290`) carry it; the other two gaining concepts hold 3 and 72 queries ([`subchapter.md`](../results/S91/subchapter.md)). With so few concepts moving, the concept-clustered p cannot fall far; this is read, not tested |
+| **P2** stripped > coded, parent, BM25 arms | **supported** for `bm25_unigram`; **not supported** for `bm25_unigram_params` under the A2(b) rule | Finding 1. For the params arm, Δ +0.3692 [+0.2177, +0.4091] but Holm p 0.0700: 6 of 26 concepts gain, holding 85.9 % of P, and the four large OEB families (`OEB020/030/230/290`) carry it; the other two gaining concepts hold 3 and 72 queries ([`subchapter.md`](../results/S91/subchapter.md)). |
 | D-039's rare-code observation | **supported** for `bm25_unigram` | P2 and T5; not withdrawn |
 | **H5** (overlap mediation) | **not addressed** | The renderings are an intervention on overlap (finding 7); mediation remains S6's |
 | H1–H4, H6 | **not addressed** | Out of the probe's scope |
