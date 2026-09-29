@@ -107,6 +107,11 @@ PREDICTIONS = [
 #: The lexical arms the rare-code diagnostic (T5) covers.
 LEXICAL = ("bm25_unigram_params", "bm25_unigram", "tfidf_phrases_replace")
 
+#: A code token is *rare* when fewer corpus documents than this contain it (S91 audit F5). The
+#: auditor's cutoff, about 1.7 % of the corpus. T5 prints the band of cutoffs that give the same rare
+#: set, so the choice can be read against the data rather than taken on trust.
+RARE_MAX_DOCS = 1_200
+
 #: The previous study's item Acc@1 for tuned BM25 — `docs/reviews/paper_28.tex`, authoritative.
 #: Printed beside the decoded figure as reference only (D-039); never differenced.
 PREVIOUS = {"bm25_unigram_params": 0.974}
@@ -560,21 +565,33 @@ def write_rare_codes(coded: dict[str, dict], corpus_tokens: dict[str, set[str]],
     lines += ["| code token | queries on P carrying it | corpus documents containing it |", "|---|---:|---:|"]
     for tok, n in code_tokens.most_common():
         lines.append(f"| `{tok}` | {n:,} | {df.get(tok, 0):,} of {n_docs:,} |")
-    lines += ["", "| method | level | misses | rank-1 holds a query code token the gold lacks | share |",
-              "|---|---|---:|---:|---:|"]
+    rare = {t for t in code_tokens if df.get(t, 0) < RARE_MAX_DOCS}
+    below = max(df.get(t, 0) for t in rare)
+    above = min(df.get(t, 0) for t in code_tokens if t not in rare)
+    lines += ["", f"**Rare** code tokens are those in fewer than {RARE_MAX_DOCS:,} of {n_docs:,} documents: "
+              + english_list([f"`{t}`" for t in sorted(rare, key=lambda t: df.get(t, 0))])
+              + f". Any cutoff above {below:,} and up to {above:,} gives the same set. A token no document "
+              "contains cannot be in a rank-1 document, so it counts toward neither column; the rare column "
+              "is carried by the rare tokens that do occur.",
+              "", "| method | level | misses | rank-1 holds a query code token the gold lacks | share "
+              "| … a *rare* one | share |",
+              "|---|---|---:|---:|---:|---:|---:|"]
     for short in LEXICAL:
         f = frames[short]
         method = next(m for m, s, _ in TEN if s == short)
         for level in LEVELS:
             misses = set(f.loc[f[f"{level}_coded"] == 0, "query_item_key"])
             top = rank1("resumen", method, misses)
-            hit = 0
+            hit = hit_rare = 0
             for k in misses:
                 codes = set().union(*(set(tokenize_words(normalize_text(c))) for c in split_suffix(coded[k]["text"])[2]))
                 gold_t = corpus_tokens[coded[k]["item_key"]]
-                hit += bool((codes - gold_t) & corpus_tokens.get(top.get(k, ""), set()))
-            lines.append(f"| `{short}` | {level} | {len(misses):,} | {hit:,} | "
-                         f"{(hit / len(misses) if misses else float('nan')):.1%} |")
+                shared = (codes - gold_t) & corpus_tokens.get(top.get(k, ""), set())
+                hit += bool(shared)
+                hit_rare += bool(shared & rare)
+            share = (lambda x: f"{(x / len(misses) if misses else float('nan')):.1%}")
+            lines.append(f"| `{short}` | {level} | {len(misses):,} | {hit:,} | {share(hit)} | "
+                         f"{hit_rare:,} | {share(hit_rare)} |")
     keys = [("resumen", next(m for m, s, _ in TEN if s == short)) for short in LEXICAL]
     write(OUT / "rare_codes.md", lines + sources(keys, "", (DATA / CONDITIONS[0][2], LONG_FEATS)))
 

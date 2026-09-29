@@ -46,10 +46,11 @@ All figures are on **P**, the 27,574 dev queries whose `resumen` carries a suffi
 [+0.2920, +0.5504]; 13,136 queries go up and none go down. The other lexical arms do not meet P2's
 rule: `bm25_unigram_params` moves +0.3692 [+0.2177, +0.4091] but at Holm p 0.0700 (P2 **not
 supported**), and `tfidf_phrases_replace` moves +0.0365 at Holm p 0.1824. [`rare_codes.md`](../results/S91/rare_codes.md)
-shows the pattern: in 91.1 % of its coded parent misses (18,065 of 19,832), the rank-1 document
-holds a suffix code token that the gold lacks. Such tokens are near-absent from the corpus: `e` is
-in 72 of 70,242 documents, `nni` and `ne` in none. `tfidf_phrases_replace` shows it in 1.2 % of its
-parent misses. The coded loss is an OEB phenomenon: `bm25_unigram` parent is 0.2170 on OEB and
+shows the pattern: in 85.6 % of `bm25_unigram`'s coded parent misses (16,980 of 19,832), the
+rank-1 document holds a *rare* suffix code token that the gold lacks, one in fewer than 1,200 of
+70,242 documents (`e`, `n`, `r`; any cutoff from 1,153 to 2,140 gives the same set). Counting any
+code token, including `de`, which every document contains, gives 91.1 %. `tfidf_phrases_replace`
+shows the rare pattern in 0.4 % of its parent misses. The coded loss is an OEB phenomenon: `bm25_unigram` parent is 0.2170 on OEB and
 0.9587 on the rest ([`subchapter.md`](../results/S91/subchapter.md), descriptive).
 
 **2. The suffix carries nearly everything that tells a leaf from its siblings.** On P the
@@ -196,7 +197,7 @@ of the eight findings:
 | F2 — T4, T3, T1 sources unstamped | **Fixed.** `sources()` now stamps every file a table reads as well as every run, and a table that reads no run says so instead of printing an empty run table. T4 lists its thirty runs. T3 lists the run its dev population comes from and the digests of the three rendering files and of the gold `texto` table. T1 lists `OE_resumen.json` and `SPLITS.md`. T2 and T5 also gained the files they read. The population's run is now one named constant rather than an index into the arm list. Regenerated: only the Sources sections changed; no figure moved. Every data digest matches `MANIFEST.md` |
 | F3 — finding 1's heading overgeneralises | **Fixed.** Finding 1 now names `bm25_unigram` and states that neither `bm25_unigram_params` (Holm p 0.0700) nor `tfidf_phrases_replace` (Holm p 0.1824) meets P2's rule. Known-wrong 2 is worded as an association with T5, not a mechanism |
 | F4 — T2's printed rule differs from the code's | **Fixed.** The generated sentence now states the rule `verdict()` applies: the clustered interval excludes 0 on the predicted side **and** Holm p < α, with α interpolated from the code. It adds that the interval is not Holm-adjusted, which is how the params arm excludes 0 and still reads not supported. Regenerated: that sentence is the only change; no reading moved |
-| F5 — T5 counts common code tokens | open |
+| F5 — T5 counts common code tokens | **Fixed.** T5 now also counts rank-1 hits on *rare* code tokens only, those in fewer than `RARE_MAX_DOCS` = 1,200 documents (the auditor's cutoff), and prints the band of cutoffs that give the same set (above 1,152, up to 2,140). `bm25_unigram` parent: 16,980 of 19,832 = 85.6 %, the auditor's figure. Finding 1 quotes the rare share and gives the any-token 91.1 % beside it; `nni` and `ne`, which no document contains and so no rank-1 document can, are no longer cited. Regenerated: `rare_codes.md` only |
 | F6 — ungenerated P2 claim | open |
 | F7 — report typed by hand | open |
 | F8 — T4 and secondary table without ceilings | open |
