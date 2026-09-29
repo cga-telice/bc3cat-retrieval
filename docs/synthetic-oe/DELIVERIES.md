@@ -15,6 +15,24 @@ Newest first.
 
 ---
 
+## 2026-09-29 (later) — the P7 test exclusion list · **taken**; the L2 reach corrected
+
+| File | Records | SHA-256 prefix | Taken |
+|---|---:|---|---|
+| `OE_P7_test_exclusion.json` | 2 keys | `96fe3854f2b6d935` | yes, D-043 ruling 1 |
+
+It holds keys only: `reason`, `file` (`OE_single_texto.json`), `split` (`test`) and `item_keys`. The
+file was checked without reading any query text. Both keys resolve in `OE_single_texto.json`, which
+is unchanged (`b6a43961…`), and both belong to test concepts under `SPLITS.md`. It is applied at item
+level in S12 and nowhere before.
+
+**The wider-L2 reach was wrong.** Upstream built `OE_single_l2_texto.json` from the frozen menus and
+found it adds **no concepts**: 478 queries on the same 5 dev / 3 test concepts per type. The
+reachability check tested visibility in the TEXTO, not whether the render engine can apply the
+rewrite. 17 of the 25 concepts with a text variable store it as an axis-indexed list (`$T(%A)`), which
+the engine cannot yet rewrite. The file is **not taken**; the choice upstream offered is pending with
+César.
+
 ## 2026-09-29 — answers to the P7 and wider-L2 requests · **no files**
 
 Upstream answered both S4 requests in `bc3cat-dataset/docs/synthetic/REORDER_LOOKUP_RESPONSE.md` and
