@@ -1197,3 +1197,23 @@ study's, because the blend differs (S4 design A1).
    the three L2 types stay built alike.
 **Consequence.** S6 opens with an intake of `OE_single_l2_texto.json` if it has landed: digest,
 query-set registration, runs. S4 is unaffected; its tables stand.
+
+### D-043 — amendment: ruling 2 replaced — the L2 build waits for an engine fix (option A), with a fallback
+**Status:** Accepted · **Date:** 2026-09-29 · **Owner:** César · **Raised in:** upstream's correction (`DELIVERIES.md`, "the L2 reach corrected")
+**Why ruling 2 cannot stand.** The frozen-menu build added no concepts: 478 queries on the same 5 dev /
+3 test concepts. 17 of the 25 concepts with a text variable store it as an axis-indexed list, and the
+render engine cannot rewrite that form yet.
+**Ruling (César).** **Option A only.** Upstream extends the engine to rewrite list-form variables, then
+rebuilds `OE_single_l2_texto.json`. The depth-only file (option B) is **not taken**: it adds leaves
+inside the same five concepts, and the concept-clustered interval is driven by the concept count.
+**Conditions on the delivery:**
+1. The engine change and the P7 fix are committed upstream, with tests, before the build.
+2. **Regression check:** SINGLE, STACKED, dose and isolated re-rendered with the new engine are
+   byte-identical in text to the delivered files, so the change cannot move any run made on them.
+3. Frozen menus only (ruling 3 stands). The expected reach is therefore **at most 9 / 9 / 8 dev
+   concepts**, not the 13-concept ceiling that a new menu pass would need. Upstream is asked to
+   confirm the number.
+4. A new file with its own sidecar and digest.
+**Fallback.** If it has not landed when S6 opens, S6 proceeds on today's slices and states **5 dev
+concepts** as the L2 limit (option C). The grammar's 13 / 12 ceiling is stated either way.
+
