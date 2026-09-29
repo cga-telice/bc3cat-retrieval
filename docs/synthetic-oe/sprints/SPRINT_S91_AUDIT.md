@@ -1,3 +1,108 @@
+# Sprint S91 — audit (re-audit after FAIL)
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-09-29 · report `07dd458` (HEAD, tree clean) · runs `runs/OE/resumen/`, `runs/OE/resumen_stripped/`, `runs/OE/resumen_decoded/`
+
+Every retrieval figure I sampled reproduces from `runs/`. No comparison mixes samples, and the design was not edited after freeze. The sprint still cannot be marked `done`: exit criterion 7 is not met, and two major findings need fixing.
+
+## Verified
+- **Stamps.** All 30 `run_meta.json` match the Sources table in `renderings.md`: config SHA, commit, `code_dirty: false`, split `dev`, query-set SHA, 35,422 queries. The 20 new runs are at `cf92bc8`.
+- **One sample.** All 30 runs score the identical 35,422 dev query keys (asserted per arm × condition).
+  - I rebuilt P myself from `OE_resumen.json`, `OE_resumen_stripped.json` and `OE_duplicate_texto_groups.json`: 27,574 queries over 26 concepts.
+  - A suffix regex and the "stripped ≠ coded" test agree on all 70,242 records.
+- **All of T2.** Every coded, stripped and decoded Acc@1 at both levels, for all 10 arms, matches on P. So does every Δ and every up/down flip count in all three contrast families. So does the secondary table (n = 34,646 item, 35,422 parent).
+- **Headline, finding 3.** `bm25_unigram_params` item 0.5492 → 0.9221, +10,328 / −47. My clustered bootstrap (different seed) gives [+0.2245, +0.4128] against the reported [+0.2255, +0.4140]. `bm25_unigram` item +0.5764 matches.
+- **Finding 1 / P2.**
+  - `bm25_unigram` parent 0.2808 → 0.7572, +13,136 / −0. My CI is [+0.288, +0.550] against the reported [+0.2920, +0.5504].
+  - Params arm +0.3692: my raw p ≈ 0.010. Holm, 4th of 10 × 7 = 0.0700, checked by hand.
+  - OEB / rest 0.2170 / 0.9587 match.
+- **P1, TF-IDF.** +0.0434, my CI [−0.021, +0.095], p ≈ 0.16, against the reported 0.1700. The Holm arithmetic for the params arm (0.0024 × 2 = 0.0048) checks.
+- **Finding 4.** `dense_es_hiiamsid` parent 0.6744 → 0.2881, +724 / −11,377. My CI is [−0.516, −0.105].
+- **Finding 5.** ColBERT 0.9918 / 0.0284 coded and 0.9962 / 0.4826 decoded match.
+- **Finding 2 ceilings.** I recomputed 0.8342 / 0.0147 / 0.8341 on P and 0.8680 / 0.2158 / 0.8680 on the 34,646 scored queries from the rendering texts; all match.
+- **T5, independently recomputed** from `results_top100.jsonl.gz` and `OE_long_feats`: 19,832 parent misses, 18,065 with any code token (91.1 %), 16,980 with a rare one (85.6 %). All match.
+- **Regeneration.** I regenerated all five tables into the scratchpad with `OUT` redirected. All five are byte-identical to the committed files.
+- **Tests.** The full suite gives **1059 passed, 1 xfailed** (234 s), as the report states.
+- **`check_run_inputs.py`.** 197 of 202 resolve. The 5 failures are 4 `_archive/S1` runs and 1 OEB run. All 31 runs under `OE/resumen*` resolve.
+- **MANIFEST.** All 7 S91 input and derived-table digests are present.
+- **Reuse diff.** From `2e49566`, the changed retrievers are not imported by `bm25_unigram`, `bm25_unigram_params`, `bge_m3_colbert` or `dense_e5`. From `922ae53` only `index_builders/bge_m3_dense` changed; from `a5700a6` only `run_context.py` (the `QUERY_SETS` lines).
+- **Mechanisms credited in the report do execute.**
+  - `MIN_SHARE` runs through `decode_entry → kept`.
+  - `fit()` skips non-dev concepts.
+  - `verdict()` requires the interval and Holm p < α, as A2(b) says.
+  - `RARE_MAX_DOCS` drives the T5 rare column.
+- **Freeze.** `git diff 09d11f7..HEAD` on the design shows only the freeze-stamp fill-in and the A1–A3 rows.
+- **Split.** All 30 runs are `dev`. The decoder is fitted on dev concepts only. No test run exists.
+
+## Findings
+
+### F1 — major — A frozen design constraint was waived outside the Amendments table
+- **What the report says.** The F7 disposition reads "every figure in S91's prose is interpolated by the generator" as covering only the generated tables' prose, "as César chose".
+- **Where that is recorded.** Only in the report and `STATE.md`. The design's Amendments table has no row for it, although A1 set the precedent that interpretations are recorded there.
+- **The report is still typed.** This conflicts with the root rule "Reports are generated, not typed".
+- **The mitigating test is weak.** `tests/test_report_traceability.py` checks set membership only: a figure passes if it appears anywhere in `results/S91/*.md`. It skips bare integers ("6 of 26", "3 and 72").
+- **What must change.** Add an A4 row recording the waiver, dated and attributed, before `done`.
+
+### F2 — major — Finding 4 claims a parent-level gain its own rule does not support, and calls it a mechanism
+- **What the report says.** "The two BM25 arms gain at parent level, by the mechanism of finding 1: … `bm25_unigram_params` +0.3714 [+0.2169, +0.4127]."
+- **What the artefacts say.** That contrast has Holm p **0.0896** (`renderings.md`, decoded − coded, parent), so it fails the A2(b) reading. The report omits the p-value.
+- **It contradicts the report itself.** Known-wrong 2 says the finding-1 pattern is "an association, not a tested mechanism".
+- **This repeats a fixed defect.** It is the same class as the first audit's F3.
+- **What must change.** Quote the Holm p, drop "gain" for the params arm, and replace "by the mechanism" with association wording.
+
+### F3 — major — Exit criterion 7 is not met
+- `DECISIONS.md` has no commit since the freeze. The D-039 and D-037 amendments exist only as proposals in the report.
+- The report marks this "pending" honestly, but the sprint cannot be marked `done` until César rules and the amendments land.
+
+### F4 — minor — Neural-arm results are stated as findings, though the design says "reported, not claimed"
+- **The design.** "Neural arms: no directional prediction. Reported, not claimed."
+- **What the report does.** Findings 3 ("restores … for every arm except TF-IDF"), 4 ("costs one arm heavily") and 5 ("collapse … is partly the codes", ColBERT only) are headline claims about unregistered arms.
+- **"Restores" overstates the small arms.** It covers `dense_gte` 0.0039 → 0.0130 and `dense_gte_instrQ` 0.0018 → 0.0085.
+- **What must change.** Label these as exploratory and not registered.
+
+### F5 — minor — "The coded loss is an OEB phenomenon" is a stratum claim T4 declines to make
+- **What T4 says.** "No stratum is contrasted with another."
+- **What T4 shows.** Outside OEB, `OEC070$` goes 0.3333 → 1.0000 when stripped, and the rest stratum is 0.9587, not 1.0.
+- **What must change.** Reword descriptively ("concentrated in four OEB families").
+
+### F6 — minor — Finding 7 says it does not contrast the populations, then contrasts them
+- **What the report says.** "Stated side by side, not contrasted", followed by "the decoded all-dev interval excludes it" and "OE stays less verbatim than OEB". The D-037 row says the same.
+- **Why that is a contrast across samples.** 94.10 % carries no interval. It is measured on all 47,514 OEB pairs, 22,305 of them on test-side concepts (`results/S3/overlap/overlap.md` l.20).
+- **The populations are named, so the mixing is not silent.** But an interval-exclusion statement between different samples is an inferential contrast.
+- **What must change.** Keep the wording descriptive, or drop the exclusion statement.
+
+### F7 — minor — The decoder's viability is in-sample
+- **What the report says.** "80.9 % exact" and "viable and could be deployed" (finding 6; next sprint inherits).
+- **Why it is in-sample.** The 80.9 % is measured on the same dev leaves the table was fitted on.
+- **What is left unsaid.** Codes unseen on dev decode to nothing (`render()`), and no held-out coverage is stated. The design allows fitting on dev, but the viability claim needs that qualifier.
+
+### F8 — minor — The report header's regeneration account is stale
+- **What the header says.** Tables were "generated at `3dc992f`, regenerated for audit F2 … and F4 …; no figure moved".
+- **What the history shows.** The tables were also regenerated at `63230f3` (F5, which added the rare column) and `3336131` (F8, which added the ceiling rows). Both added figures.
+- **What must change.** Name the last generating commit, `3336131`.
+
+## Unverifiable
+- **"A2(b) was committed before any S91 accuracy was read."** Runs completed (2026-09-28 22:27 UTC for the params decoded run) before `50d2c08`. Whether anyone read them cannot be established; carried over from the first audit.
+- **The 17 s untracked-file incident.** No artefact records the window. The overlapping run is stamped `code_dirty: false`, and that is all that can be checked.
+- **The oracle arms' ceiling of 1.0.** It is asserted by the generator, not computed.
+
+## Exit criteria
+| Criterion | Met | Evidence |
+|---|---|---|
+| 1 renderings + decoder digests in MANIFEST | yes | 7 digests found in `docs/synthetic-oe/MANIFEST.md` |
+| 2 renderings test + full suite pass | yes | 1059 passed, 1 xfailed (re-run by me) |
+| 3 20 runs clean, dev, resolving; reuse justified | yes | 20 × `cf92bc8`, clean, dev; all resolve; import-path diff checked |
+| 4a T1–T5 generated, regenerate identically | yes | byte-identical regeneration |
+| 4b every item figure carries n | yes | T2, T4 and the secondary table |
+| 4c every accuracy carries its ceiling | yes | T2, secondary and T4 at both levels (parent 1.0) |
+| 5 P1/P2 read on clustered CI after Holm | yes | `renderings.md` "The registered predictions"; Holm arithmetic checked |
+| 6 decoder viability stated | yes | `decoder.md`, finding 6 (in-sample; F7) |
+| 7 D-039 amended; D-037 if needed | no | `DECISIONS.md` untouched since `09d11f7` (F3) |
+
+---
+
+*The first audit of this sprint (FAIL, report `8845490`) follows unchanged.*
+
 # Sprint S91 — audit
 
 **Verdict:** FAIL
