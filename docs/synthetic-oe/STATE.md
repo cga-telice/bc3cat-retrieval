@@ -3,7 +3,7 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-30 (**S6 active**, work items 1–3 done) · **Updated by:** Claude
+**Last updated:** 2026-09-30 (**S6 active**, work items 1–4 done) · **Updated by:** Claude
 
 ---
 
@@ -71,7 +71,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S6 work item 4**: `build_results_s6.py` (T1–T8, Figs. 1–3), run in `bc3cat-s3` (the analysis stack is pinned there, A1). Work item 3 done 2026-09-30: 15 runs on `single_l2_texto`, all clean at `a1bbc81`, split dev, query set `9612ad99`, 518 queries each (`logs/S6/run_s6.sh`, `.out`). 235 of 241 runs resolve; the 6 that do not are the same dirty-tree stamps as before (archived S1 ×4, archived S4 ×1, the OEB fixture). The S2, S3, E0, overlap, S91, S4 and S5 generators re-run on the host: every table has the same content as committed. Eleven S3/S4 files differ only in CRLF line endings (defect H5), and were restored.
+**S6 work items 5–6**: figures are drafted (in `results/S6/figures/`); next is `SPRINT_S6_REPORT.md` resolving H1, H2, H5, then `/audit S6` in a fresh session. Work item 4 done 2026-09-30: `results/S6/` T1–T8 and Figs. 1–3, generated at `8c1ce32` in `bc3cat-s3`, byte-identical across two generations. Amendments A2 (specification, before any figure) and A3 (presentation, after the first generation).
 
 **Docker Desktop, 2026-09-30:** it failed at start on a stale socket (`%LOCALAPPDATA%\Docker\run\userAnalyticsOtlpHttp.sock`, an undeletable reparse point). The directory was renamed to `run.stale-20260930`, not deleted and not factory-reset; Docker recreated `run` and started. The renamed directory can be removed by hand.
 
