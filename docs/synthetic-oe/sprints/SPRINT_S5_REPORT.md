@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| **Design** | [`SPRINT_S5_DESIGN.md`](SPRINT_S5_DESIGN.md) · frozen at `432b39e` · amendments A1–A2 in [`SPRINT_S5_AMENDMENTS.md`](SPRINT_S5_AMENDMENTS.md) |
-| **Closed** | 2026-09-30 (report written). `done` withheld until `/audit S5` returns in a fresh session |
+| **Design** | [`SPRINT_S5_DESIGN.md`](SPRINT_S5_DESIGN.md) · frozen at `432b39e` · amendments A1–A3 in [`SPRINT_S5_AMENDMENTS.md`](SPRINT_S5_AMENDMENTS.md) |
+| **Closed** | 2026-09-30 (report written). Audit 2026-09-30 **PASS WITH FINDINGS** ([`SPRINT_S5_AUDIT.md`](SPRINT_S5_AUDIT.md)); all four resolved. **done** 2026-09-30. See [Audit response](#audit-response) |
 | **Code commit** | 6 structured runs at `26ed9ff`, all `code_dirty: false`. 6 reference runs read, not re-run, at `31bf1a1`. Generator `src/utils/build_results_s5.py` |
 | **Query-set digests** | `single_texto` `e5b79ae4` · `texto` `643f1a72` (ColBERT's `texto` reads `OE_long_norm` `75477221`) |
 | **Runs** | `runs/OE/{texto,single_texto}/structured_pipeline_{rules,rules_valuenorm,oracleparams_valuenorm}__OE` · split `dev`. S2's four rules runs archived at `runs/_archive/S2` (A1) |
@@ -27,7 +27,7 @@ its gold, and set query by query against three S4 reference arms. Every stamp is
 | Block | What | Where |
 |---|---|---|
 | Harness | Oracle Stage 2 (`param_extractor_oracle.py`), `bind_queries` in the pipeline and `retrieve.ipynb` (A1b), config, tests; `utils/archived_runs.py` | `26ed9ff` |
-| Check | Oracle over all 2,206 dev queries: never misreads; on L1 abstains on exactly one axis except P8's four; on identity selects the gold alone for all 35,422 | `tests/test_structured_pipeline.py` |
+| Check | Oracle on 20 dev `texto` leaves selects the gold alone; on 20 dev L1 queries abstains on exactly one axis. Over all L1 dev queries, the per-query axis recovery is T4's (generated). An earlier all-2,206 statement had no committed check and is withdrawn (audit) | `tests/test_structured_pipeline.py` · T4 |
 | Runs | Oracle new; both rules arms **re-run** (A1a), S2's copies archived and routed | T7 |
 | Analysis | T1 ceilings · T2/T3 profile · T4 stages · T5 contrasts · T6 predictions and G2 | [`results/S5/`](../results/S5) |
 
@@ -44,10 +44,12 @@ query); parent level scores all. Layers reach different leaves, so any compariso
 −0.0177 [−0.0322, +0.0125], **not supported**, on 9 concepts (‡). Against ColBERT the pooled-L1 difference is
 −0.5528 [−0.6008, −0.4721] (T5; not a registered test).
 
-**2. Even perfect literal extraction does not overtake BM25 on L1 (Q2, blind).** The oracle bound against
-`bm25_unigram`, pooled L1: −0.0393 [−0.1523, +0.0278], **not supported**. `unit_conversion` −0.1201
+**2. Even perfect literal extraction is not detected overtaking BM25 on pooled L1 (Q2, blind).** The oracle bound
+against `bm25_unigram`, pooled L1: −0.0393 [−0.1523, +0.0278], **not supported**. `unit_conversion` −0.1201
 [−0.1873, −0.0409], **contradicted**; `num_to_text` +0.0166 [+0.0045, +0.0437], **supported** on 9 concepts (‡).
-Where every value stays readable it wins widely: +0.2592 on L2 (5 concepts) and +0.3403 on L3 (T5).
+Where every value stays readable the bound is above BM25 on L2, +0.2592 [+0.2094, +0.2918] on 5 concepts (‡), and
+on L3, +0.3403 [+0.2707, +0.3794]; its twin `rules_valuenorm` is below it, −0.1308 [−0.1781, −0.0981] on L2 and
+−0.0677 [−0.1438, +0.1091] on L3 (T5). Between-population across layers.
 
 **3. Why: under L1 the rewritten axis is blank, and nothing orders what remains (T4).** The oracle recovers every
 gold axis on 0.0039 of L1 queries (P8's case-only ones) and abstains on exactly one. Its tie set then has a median
@@ -57,8 +59,8 @@ those siblings. BM25 can still use the rest of the text.
 
 **4. The gap to BM25 narrows, but not where H3 puts it (Q3).** DiD `rules_valuenorm` vs `bm25_unigram`:
 L1 +0.0656 [−0.1919, +0.2119], **not supported**; L2 +0.0817 [+0.0119, +0.1193], **not supported** (Holm p
-0.1624, 5 concepts ‡); L3 +0.0903 [+0.0465, +0.1264], **supported**. At identity on the L1 golds, the pipeline
-already trails by −0.1181 [−0.2349, +0.0966]. Between-population across layers.
+0.1624, 5 concepts ‡); L3 +0.0903 [+0.0465, +0.1264], **supported**. At identity on the L1 golds, the
+difference is −0.1181 [−0.2349, +0.0966], a concept-clustered interval containing 0. Between-population across layers.
 
 **5. The previous study's comparison does not close either.** Against the oracle `bm25_unigram_params`, pooled
 L1: Δ mod −0.1512 [−0.2829, −0.0639]; DiD +0.0975 [−0.1327, +0.2360] (T5). This is deployable against oracle
@@ -70,7 +72,7 @@ tie-free; its unique-gold rate is 0.7085 (T1). As run, the pooled-L1 difference 
 tie-free and unique-gold figures are all 0.9975, equal to its parent level (T1).
 
 **7. Profile (T2), side by side.** `rules_valuenorm` retains 0.2988 under pooled L1 and 0.1614 on
-`num_to_text`; `reorder` δ is +0.0000. The oracle's L2 δ is +0.0000 and its L3 δ −0.0118.
+`num_to_text`; `reorder` δ is +0.0000. On L2 its δ is −0.1673 and the oracle's +0.0000; on L3, −0.1899 and −0.0118.
 
 **8. Carried caveats, counted.** P8: without the four case-only queries, `synonym_label` Δ mod vs BM25 moves from
 −0.0291 to −0.0295; no reading changes. The decimal artefact: 9 `unit_conversion` queries carry a `d.ddd`
@@ -83,17 +85,19 @@ The plan's consequence, method-contribution priority moving from S11 to S10, is 
 
 | Hypothesis | Movement | Evidence |
 |---|---|---|
-| **H3** (rank inversion) | **refuted on dev for the published method**: the ranking does not invert under L1; it is contradicted pooled and on `unit_conversion`. `num_to_text` **unresolved** (9 concepts). The **bound** does not invert on pooled L1 either. S6 does not revisit it; S7 reads the stacked set | Findings 1–3; Q1 ×2 contradicted, Q2 L1 not supported |
+| **H3** (rank inversion) | **refuted on dev for the published method**: the ranking does not invert under L1; it is contradicted pooled and on `unit_conversion`. `num_to_text` **unresolved** (9 concepts). The **bound** is not detected inverting on pooled L1 either (interval includes 0); it does on `num_to_text` (9 concepts ‡). S6 does not revisit it; S7 reads the stacked set | Findings 1–3; Q1 ×2 contradicted, Q2 L1 not supported |
 | H3, "the previous study's BM25 / structured gap closes or reverses" | **not supported**: the DiD against `bm25_unigram_params` has an interval containing 0 | Finding 5 |
 | H1, H2, H4, H5, H6 | **not addressed** | S6–S9 |
 
 ## What is now known to be wrong
 
 1. **"Structured extraction pipelines normalise parameter surfaces"** (H3's wording, `RESEARCH_PROPOSAL.md`).
-   The published pipeline reads schema literals. So does its oracle bound, which cannot beat BM25 on pooled L1.
-   What the structured approach needs under L1 is a step that *reads* a rewritten value, and neither arm has one.
-2. **"Perfect extraction would win."** Perfect on every readable axis, the bound still leaves the one
-   rewritten axis blank. The pipeline then has no way to rank a median of 4 siblings (finding 3).
+   The published pipeline reads schema literals. So does its oracle bound, which did not detectably beat BM25 on
+   pooled L1 (interval includes 0). What the structured approach needs under L1 is a step that *reads* a rewritten
+   value, and neither arm has one.
+2. **"Perfect extraction would win"**, on pooled L1 and on `unit_conversion`. Perfect on every readable axis, the
+   bound still leaves the one rewritten axis blank. The pipeline then has no way to rank a median of 4 siblings
+   (finding 3). The exception is `num_to_text`, where the bound wins, +0.0166 [+0.0045, +0.0437] on 9 concepts (‡).
 3. **"Structured identity is what it scores as run."** 0.8136 as run, 0.7532 tie-free: key order was worth the difference.
    Read as run, Q1's pooled-L1 test would have been "not supported" rather than "contradicted" (finding 6).
 4. **"S2's rules runs are reusable."** Their Stage 1 read an E5 index that S3 rebuilt (D-034), so they could not
@@ -117,6 +121,7 @@ The plan's consequence, method-contribution priority moving from S11 to S10, is 
 |---|---|---|
 | A1 | The four S2 rules runs re-run, not reused; S2's copies archived, readers routed; `retrieve.ipynb` gains `bind_queries` | Stage 1 reads the E5 index S3 rebuilt; the oracle needs the query record |
 | A2 | Tie set is the Stage-1 family when Stage 3 matches nothing | The design left the empty match open; it reaches `rules_faithful` only |
+| A3 | A2's "written before any T5 or T6 figure was read" withdrawn; the rule and the tables are recorded as committed together (`93e5a41`) | Audit F4: the order could not be checked |
 
 ## What the next sprint inherits
 
@@ -137,3 +142,18 @@ The plan's consequence, method-contribution priority moving from S11 to S10, is 
 | D-046 | **Accepted** (César, 2026-09-30) | G2 reads *no* on dev. Priority moves from S11 to S10 per the plan. Record with it that the literal-reading ceiling is the L1 bottleneck (findings 2–3), so any structured route needs S9's value reading first |
 | D-047 | **Accepted** (César, 2026-09-30) | A run superseded by a later sprint is copied, checksum-verified, to `runs/_archive/<sprint>/`, and every reader of the earlier sprint is routed through `utils/archived_runs.py` (A1, César's choice) |
 | D-028 | note proposed | Tie-free reading changes a structured reading (finding 6); primary for every structured contrast from S5 on |
+
+## Audit response
+
+The audit ([`SPRINT_S5_AUDIT.md`](SPRINT_S5_AUDIT.md), fresh session, 2026-09-30) regenerated T1–T7
+byte-identically and traced every quoted figure. It raised 1 major and 3 minor findings. No run was re-made and
+no table changed; every fix is to prose or to the amendments record.
+
+| Finding | Resolution |
+|---|---|
+| F1 — known-wrong 1–2 overstate Q2 | **Fixed.** Known-wrong 1 says the bound "did not detectably beat BM25 on pooled L1 (interval includes 0)". Known-wrong 2 is scoped to pooled L1 and `unit_conversion` and states the `num_to_text` exception, +0.0166 [+0.0045, +0.0437] on 9 concepts (‡). Finding 2's heading and the H3 row are aligned with it |
+| F2 — oracle figures without twin or interval | **Fixed.** Finding 2 gives the bound's L2 and L3 figures with their clustered intervals, ‡ on L2, the `rules_valuenorm` twin beside them, and the between-population label. Finding 7 sets `rules_valuenorm`'s L2 / L3 δ beside the oracle's |
+| F3 — "trails" on an interval spanning 0 | **Fixed.** Finding 4 drops "trails" and says the concept-clustered interval contains 0 |
+| F4 — A2's timing claim uncheckable | **Fixed** by amendment A3 (A2 left unedited, append-only): the rule and the tables are recorded as committed together in `93e5a41` |
+| Unverifiable — the all-2,206 oracle check | **Withdrawn.** The committed tests cover 20 `texto` leaves and 20 L1 queries; the all-query L1 recovery is T4's. The Check row now says so |
+| Unverifiable — A1's timing; OEB fixture not isolated | **Accepted.** A1 is committed before the runs' timestamps, which is as far as artefacts can show; the OEB fixture runs inside the suite, which passes whole |
