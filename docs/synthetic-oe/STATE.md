@@ -9,7 +9,7 @@ belong in `archive/`. Updated at every sprint transition and whenever something 
 
 ## Where we are
 
-**S5 is active** (2026-09-30; E1 ablation, Track B, H3 and G2; [design](sprints/SPRINT_S5_DESIGN.md) frozen at `432b39e`, [amendments](sprints/SPRINT_S5_AMENDMENTS.md) empty). The published rules pipeline (valuenorm primary; faithful port for comparability with 0.903) and a new oracle-extraction bound × nine single types on dev, against S4's reference arms. Tie-free Acc@1 primary (D-028). Q1/Q3 are confirmatory (S2 already showed part of the rules results); Q2, on the bound, is the only blind test. LLM extraction was never published and moved to S9 (César). D-028/D-029 now recorded in `DECISIONS.md`.
+**S5 is active, report written** (2026-09-30; E1 ablation, Track B, H3 and G2; [design](sprints/SPRINT_S5_DESIGN.md) frozen at `432b39e`, [amendments](sprints/SPRINT_S5_AMENDMENTS.md) empty). The published rules pipeline (valuenorm primary; faithful port for comparability with 0.903) and a new oracle-extraction bound × nine single types on dev, against S4's reference arms. Tie-free Acc@1 primary (D-028). Q1/Q3 are confirmatory (S2 already showed part of the rules results); Q2, on the bound, is the only blind test. LLM extraction was never published and moved to S9 (César). D-028/D-029 now recorded in `DECISIONS.md`.
 
 **S4 is done** (2026-09-30; E1 ablation, Track A). First audit FAIL, reopened, all nine resolved (A4). Re-audit **PASS WITH FINDINGS**, 1 major and 5 minor, all resolved (A5: columns only). No run changed ([design](sprints/SPRINT_S4_DESIGN.md), frozen `dd407c6`; [amendments](sprints/SPRINT_S4_AMENDMENTS.md) A1–A5, moved out under D-045; [report](sprints/SPRINT_S4_REPORT.md), [audit](sprints/SPRINT_S4_AUDIT.md)). 15 arms × 9 single types on dev, paired against identity: H1 supported on dev (the gap widens for both BM25 arms and ColBERT); H2 split, L1 and `reorder` as predicted, L3 not a coherent layer. Found P7 (one dev query renders a sibling's `texto`; 2 more on test), excluded at item level. Took in `OE_P7_test_exclusion.json` (S12) and `OE_single_l2_texto.json` (S6, 9 / 9 / 8 dev concepts), both unwired (D-043). **S91 is done** (2026-09-29; probe, coded vs decoded `resumen`, frozen at `09d11f7`) — first audit FAIL, reopened, all eight resolved; re-audit **PASS WITH FINDINGS**, all eight resolved (design A4); D-039 and D-037 amendments accepted by César ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039's open question: a catalogue-only decoder is viable in-sample (80.9 %). Ruled 2026-09-29: `resumen` results are reported coded **and** decoded (D-039, second amendment); `resumen`-identical siblings are excluded at item level (D-040, 9,348 dev leaves; not yet in the harness). D-041 (document-side expansion probe) declined; its two questions go to S9. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
@@ -69,10 +69,9 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S5 work item 6**: write `SPRINT_S5_REPORT.md` (`/sprint-close S5`), then `/audit S5` in a fresh
-session. Item 5 done: `results/S5/` T1–T7 by `build_results_s5.py`, byte-identical on regeneration, under
-the prose guard. Q1 contradicted on pooled L1 and `unit_conversion`, not supported on `num_to_text`; Q2 (the
-oracle bound) not supported on pooled L1; **G2 reads no** under the frozen rule, pending César.
+**`/audit S5` in a fresh session.** The report is written ([report](sprints/SPRINT_S5_REPORT.md)); all 6 exit
+criteria met; amendments A1–A2. H3 refuted on dev for the published method; **G2 reads no**. César to
+confirm G2 (D-046) and the archive procedure (D-047).
 S6 opens after S5 with the L2 intake (D-043)
 and the P8 queries shown both ways (D-044).
 

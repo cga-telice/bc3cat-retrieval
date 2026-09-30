@@ -274,7 +274,7 @@ def contrast(a: pd.DataFrame, b: pd.DataFrame, label: str) -> dict:
     if list(fa.index) != list(fb.index):
         raise ValueError(f"{label}: the two arms scored different queries")
     clusters = fa["concept"].to_numpy()
-    out = {"n": len(fa), "concepts": int(fa["concept"].nunique())}
+    out = {"n": len(fa), "excluded": len(a) - len(fa), "concepts": int(fa["concept"].nunique())}
     for tag, sfx in (("tf", "_tf"), ("run", "")):
         d_id = (fa[f"item_id{sfx}"] - fb[f"item_id{sfx}"]).to_numpy(float)
         d_mod = (fa[f"item_mod{sfx}"] - fb[f"item_mod{sfx}"]).to_numpy(float)
@@ -406,18 +406,19 @@ def write_stages(frames: dict, extras: dict, qtext: dict, ctext: dict) -> None:
     ])
     lines += ["**Match size** is the tie set's size (Stage 3's match, or the family when nothing matched): the "
               "number of leaves the arm cannot order. Item-scored queries.", "",
-              "| arm | scope | n scored | concepts | Stage 1 | all axes | axis recovery | abstained axes (q) | misread axes (q) | gold in match | unique gold | no match | match size median | IQR |",
-              "|---|---|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|"]
+              "| arm | scope | n scored | n excluded | concepts | Stage 1 | all axes | axis recovery | abstained axes (q) | misread axes (q) | gold in match | unique gold | no match | match size median | IQR |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|"]
     for short in STRUCTURED:
         st = extras[short]["stages_mod"]
         for sc in SCOPES:
-            f = item(scope(frames[short], sc))
+            whole = scope(frames[short], sc)
+            f = item(whole)
             s = st.loc[f["q"]]
             ok = s[s["stage1_correct"]]
             axes = ok["axes"].sum()
             q25, q50, q75 = np.percentile(s["tie_size"], [25, 50, 75])
             lines.append(
-                f"| {name(short)} | {sc} | {len(s):,} | {f['concept'].nunique()} | {f4(s['stage1_correct'].mean())} | "
+                f"| {name(short)} | {sc} | {len(s):,} | {len(whole) - len(s):,} | {f['concept'].nunique()} | {f4(s['stage1_correct'].mean())} | "
                 f"{f4((ok['recovered'] == ok['axes']).mean()) if len(ok) else '—'} | "
                 f"{f4(ok['recovered'].sum() / axes) if axes else '—'} | "
                 f"{int(ok['abstained'].sum()):,} ({int((ok['abstained'] > 0).sum()):,}) | "
@@ -428,14 +429,16 @@ def write_stages(frames: dict, extras: dict, qtext: dict, ctext: dict) -> None:
               "`in query`: item-scored queries whose text carries a `d.ddd` decimal, which `normalize_text` mangles "
               "(the rules extractor reads normalised text). `absent from gold`: of those, the ones whose decimal "
               "the gold `texto` lacks, the only ones where a miss is attributable to the artefact (S4 A4).", "",
-              "| type | n scored | in query | absent from gold |", "|---|---:|---:|---:|"]
-    f0 = item(frames[STRUCTURED[0]])
+              "| type | n scored | n excluded | in query | absent from gold |", "|---|---:|---:|---:|---:|"]
+    all0 = frames[STRUCTURED[0]]
+    f0 = item(all0)
     for t in TYPES:
         f = f0[f0["type"] == t]
+        n_excl = int((all0["type"] == t).sum()) - len(f)
         inq = [k for k in f["q"] if _DECIMAL.search(qtext[k])]
         absent = [k for k, g in zip(f["q"], f["gold"])
                   if _DECIMAL.search(qtext[k]) and not set(_DECIMAL.findall(qtext[k])) <= set(_DECIMAL.findall(ctext[g]))]
-        lines.append(f"| {t} | {len(f):,} | {len(inq):,} | {len(absent):,} |")
+        lines.append(f"| {t} | {len(f):,} | {n_excl:,} | {len(inq):,} | {len(absent):,} |")
     lines += sources_block(["single_texto"], only=STRUCTURED, inputs=(SCHEMA, LONG_NORM, QUERY_TABLES["single_texto"]))
     write(OUT / "stages.md", lines)
 
@@ -456,12 +459,12 @@ def write_contrasts(cons: dict, extras: dict) -> None:
     for short in STRUCTURED:
         for ref in REFERENCE:
             lines += [f"## {name(short)} − {name(ref)}", "",
-                      "| scope | n scored | concepts | Δ id | CI (query) | CI (concept) | Δ mod | CI (query) | CI (concept) | DiD | CI (query) | CI (concept) | Δ mod, as run | CI (query) | CI (concept) | DiD, as run | CI (query) | CI (concept) |",
-                      "|---|---:|---:|---:|---|---|---:|---|---|---:|---|---|---:|---|---|---:|---|---|"]
+                      "| scope | n scored | n excluded | concepts | Δ id | CI (query) | CI (concept) | Δ mod | CI (query) | CI (concept) | DiD | CI (query) | CI (concept) | Δ mod, as run | CI (query) | CI (concept) | DiD, as run | CI (query) | CI (concept) |",
+                      "|---|---:|---:|---:|---:|---|---|---:|---|---|---:|---|---|---:|---|---|---:|---|---|"]
             for sc in SCOPES:
                 k = cons[(short, ref, sc)]
                 lines.append(
-                    f"| {sc} | {k['n']:,} | {k['concepts']} | "
+                    f"| {sc} | {k['n']:,} | {k['excluded']:,} | {k['concepts']} | "
                     + " | ".join(
                         (f"**{fd(k[key])}**" if key == "tf_mod" else fd(k[key]))
                         + f" | {fci(k[key + '_q'], True)} | {fci(k[key + '_c'], True)}"
@@ -482,11 +485,11 @@ def write_predictions(results: list[dict], g2: dict) -> None:
               "before this design. Q2 is **blind**: the oracle bound had never run. Q3's L2 and L3 cells compare "
               "different leaves from L1: between-population. A pool on fewer than "
               f"{FEW_CLUSTERS} concepts is marked ‡.", "",
-              "| prediction | hypothesis | test | cell | concepts | estimate | CI (concept) | p | Holm p | BH p | reading |",
-              "|---|---|---|---|---:|---:|---|---:|---:|---:|---|"]
+              "| prediction | hypothesis | test | cell | n scored | n excluded | concepts | estimate | CI (concept) | p | Holm p | BH p | reading |",
+              "|---|---|---|---|---:|---:|---:|---:|---|---:|---:|---:|---|"]
     for r in results:
         lines.append(
-            f"| {r['id']} | {r['hyp']} | {r['what']} | {r['cell']} | "
+            f"| {r['id']} | {r['hyp']} | {r['what']} | {r['cell']} | {r['n']:,} | {r['excluded']:,} | "
             f"{r['concepts']}{' ‡' if r['concepts'] < FEW_CLUSTERS else ''} | {fd(r['est'])} | {fci(r['c'], True)} | "
             f"{fp(r['p'])} | {fp(r['holm'])} | {fp(r['bh'])} | **{r['reading']}** |")
     lines += ["", "## G2, read under the frozen rule", "",
@@ -603,6 +606,7 @@ def main() -> None:
             what = (f"{name(arm)} − `{ref}` > 0 under modification" if kind == "mod"
                     else f"DiD {name(arm)} vs `{ref}` > 0")
             results.append({"id": pid, "hyp": hyp, "what": what, "cell": sc, "concepts": k["concepts"],
+                            "n": k["n"], "excluded": k["excluded"],
                             "est": k[key], "c": k[f"{key}_c"], "p": k[f"{key}_p"], "side": "positive"})
     p = [r["p"] for r in results]
     for r, h, q in zip(results, holm(p), bh(p)):

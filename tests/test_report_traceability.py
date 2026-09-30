@@ -36,6 +36,9 @@ REPORTS = {
         # ColBERT's identity ceiling, cited beside the derived arms' (finding 6).
         "results/S3/e0/ceiling.md",
     ],
+    "sprints/SPRINT_S5_REPORT.md": [
+        "results/S5/*.md",
+    ],
 }
 
 #: Figures in a report: decimals and grouped counts, not inside identifiers, paths or code spans.
