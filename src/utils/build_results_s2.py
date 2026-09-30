@@ -40,9 +40,15 @@ import pandas as pd
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
+from utils.archived_runs import run_dir_as_of  # noqa: E402
 from utils.provenance import sha256_file  # noqa: E402
 
-RUNS = REPO / "runs" / "OE"
+
+
+def run_dir(queryset: str, method: str) -> Path:
+    """S2's own run, from the archive where S5 superseded it (S5 A1)."""
+    return run_dir_as_of("S2", "OE", queryset, method, repo=REPO)
+
 STAGES = REPO / "logs" / "S2" / "stages"
 FAILURES = REPO / "docs" / "synthetic-oe" / "sprints" / "SPRINT_S2_FAILURES.csv"
 OUT = REPO / "docs" / "synthetic-oe" / "results" / "S2"
@@ -100,18 +106,18 @@ def load_runs() -> dict[tuple[str, str], dict]:
     runs = {}
     for queryset in QUERYSETS:
         for method in METHODS:
-            run_dir = RUNS / queryset / method
-            meta_path = run_dir / "run_meta.json"
+            rdir = run_dir(queryset, method)
+            meta_path = rdir / "run_meta.json"
             if not meta_path.is_file():
-                raise SystemExit(f"missing run: {run_dir}")
+                raise SystemExit(f"missing run: {rdir}")
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             for field in ("run_id", "config_sha256", "code_commit", "query_set_sha256"):
                 if not meta.get(field):
                     raise SystemExit(f"{meta_path}: stamp field {field!r} missing or empty")
-            meta["_perquery"] = pd.read_parquet(run_dir / "results_perquery.parquet")
-            meta["_metrics"] = json.loads((run_dir / "metrics_dual.json").read_text(encoding="utf-8"))
+            meta["_perquery"] = pd.read_parquet(rdir / "results_perquery.parquet")
+            meta["_metrics"] = json.loads((rdir / "metrics_dual.json").read_text(encoding="utf-8"))
             if not meta["_perquery"]["query_item_key"].is_unique:
-                raise SystemExit(f"{run_dir}: duplicate query_item_key in results_perquery")
+                raise SystemExit(f"{rdir}: duplicate query_item_key in results_perquery")
             runs[(queryset, method)] = meta
     # Cross-method pairing needs identical query ids within a query set.
     for queryset in QUERYSETS:
@@ -723,7 +729,7 @@ def write_identity_misses(runs: dict) -> None:
         counts = collections.Counter()
         label_counts = collections.Counter()
         n = rank2 = outside = 0
-        for record in _iter_top100(RUNS / "texto" / method):
+        for record in _iter_top100(run_dir("texto", method)):
             n += 1
             gold, top = record["gold_item_key"], record["candidates"][0]["index_item_key"]
             if gold == top:
@@ -808,7 +814,7 @@ def write_identity_misses(runs: dict) -> None:
     for method in METHODS:
         missed = [
             r["gold_item_key"]
-            for r in _iter_top100(RUNS / "texto" / method)
+            for r in _iter_top100(run_dir("texto", method))
             if r["candidates"][0]["index_item_key"] != r["gold_item_key"]
         ]
         duplicated = sum(1 for k in missed if group_size[k] > 1)
@@ -859,7 +865,7 @@ def write_tiebreak(runs: dict) -> None:
                 tied = tie_sizes = gold_in = 0
                 expected = 0.0
                 n = 0
-                for record in _iter_top100(RUNS / queryset / method):
+                for record in _iter_top100(run_dir(queryset, method)):
                     n += 1
                     best = record["candidates"][0]["score"]
                     tie = [c for c in record["candidates"] if c["score"] == best]

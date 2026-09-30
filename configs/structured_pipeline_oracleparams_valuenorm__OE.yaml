@@ -1,0 +1,37 @@
+# Structured pipeline, oracle-extraction bound, Stage-3 value matching normalised, on OE (S5).
+# ORACLE (D-010): Stage 2 is the query record's own parameters_norm, kept only where the value is
+# one of the concept's schema values; anything else abstains on that axis. On texto and L2/L3 it
+# is the gold's fingerprint; on L1 the rewritten axis abstains. It bounds any Stage 2 that reads
+# schema literals, and is always quoted beside structured_pipeline_rules_valuenorm__OE.
+# Stage 1: E5 item index (dense_e5__OE) -> parent_key of the top-1 leaf (realistic, as the rules arm)
+# Stage 3: deterministic catalogue lookup, three-tier ranking (as the rules arm)
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_oracleparams_valuenorm__OE
+  impl: structured_pipeline_oracleparams
+  save_as: structured_pipeline_oracleparams_valuenorm__OE
+  params:
+    stage2_method: oracle_params
+    oracle: false
+    stage1_index: dense_e5__OE
+    stage3_value_match: normalized
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.structured_pipeline_oracleparams
+  entrypoint: load

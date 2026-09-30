@@ -18,8 +18,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from index_builders import structured_pipeline_oracleparams as oracle_builder
 from index_builders import structured_pipeline_rules as builder
 from pipeline.catalog_lookup import CatalogLookup
+from pipeline.param_extractor_oracle import OracleParamsExtractor
 from pipeline.param_extractor_rules import RuleBasedParamExtractor
 from retrievers import structured_pipeline as sp
 
@@ -321,3 +323,131 @@ def test_extractor_on_20_dev_texto_leaves_abstains_but_never_misreads(oe):
                 misread.append((row.item_key, axis, gold[axis], value))
     assert not misread, f"misread axes: {misread}"
     assert abstained > 0  # the finding the amendment rests on; if this flips, re-read it
+
+
+# ── S5: the oracle-extraction bound ──────────────────────────────────────────
+
+
+def _record(**axes):
+    """A `parameters_norm` row: letter → axis, as on the corpus and query tables."""
+    letters = iter("ABCDF")
+    rec = {k: None for k in "ABCDF"}
+    for label, value in axes.items():
+        rec[next(letters)] = _axis(label, value)
+    return rec
+
+
+def _oracle_searcher(catalogue, scores):
+    schema_path, long_norm = catalogue
+    return sp.StructuredPipelineSearcher(
+        e5_searcher=FakeE5(scores),
+        param_extractor=OracleParamsExtractor(schema_path),
+        catalog_lookup=CatalogLookup(schema_path, long_norm, value_match="normalized"),
+        item_to_parent={k: ("AAA010$" if k.startswith("AAA010") else "AAA020$") for k in DOCS},
+        schema=SCHEMA,
+    )
+
+
+def _bound(texts, records):
+    return pd.DataFrame({"text_norm": texts, "parameters_norm": records})
+
+
+def test_oracle_reads_the_record_not_the_text(catalogue):
+    s = _oracle_searcher(catalogue, QUERIES)
+    qs = list(QUERIES)
+    # The first query's text says 40 mm / nocturno; its record says 20 mm / diurno. The record wins.
+    recs = [_record(DIAMETRO="20 mm", TRABAJO="Diurno"),
+            _record(DIAMETRO="2 cm", TRABAJO="Diurno"),        # a rewritten value: abstains
+            _record(TIPO="Paso")]
+    s.bind_queries(_bound(qs, recs))
+    idx, sc = s.search_batch(qs, k=6)
+    assert DOCS[idx[0][0]] == "AAA010aa" and sc[0][0] == pytest.approx(1.0)
+    assert {DOCS[i] for i in idx[1][:2]} == {"AAA010aa", "AAA010ba"}   # DIAMETRO abstained
+    assert all(sc[1][:2] > 0.9)
+    assert DOCS[idx[2][0]] == "AAA020b"
+
+
+def test_oracle_extractor_keeps_schema_spelling_and_abstains_off_schema(catalogue):
+    schema_path, _ = catalogue
+    o = OracleParamsExtractor(schema_path)
+    assert o.extract("AAA010$", _record(DIAMETRO="20 MM", TRABAJO="nocturno")) == {
+        "DIAMETRO": "20 mm", "TRABAJO": "Nocturno"}
+    assert o.extract("AAA010$", _record(DIAMETRO="veinte mm")) == {"DIAMETRO": None, "TRABAJO": None}
+    # Stage 1 chose another concept: labels it lacks contribute nothing.
+    assert o.extract("AAA020$", _record(DIAMETRO="20 mm")) == {"TIPO": None}
+
+
+def test_oracle_refuses_unbound_or_misaligned_queries(catalogue):
+    s = _oracle_searcher(catalogue, QUERIES)
+    qs = list(QUERIES)
+    with pytest.raises(RuntimeError, match="bind_queries"):
+        s.search_batch(qs, k=5)
+    s.bind_queries(_bound(qs, [_record(TIPO="Paso")] * 3))
+    with pytest.raises(ValueError, match="in order"):
+        s.search_batch(list(reversed(qs)), k=5)
+    with pytest.raises(RuntimeError, match="record"):
+        s.search(qs[0], k=5)
+
+
+def test_bind_queries_is_a_no_op_for_the_rules_arm(catalogue):
+    s = _searcher(catalogue, QUERIES)
+    s.bind_queries(pd.DataFrame({"unrelated": [1]}))
+    s.search_batch(list(QUERIES), k=5)
+
+
+def test_load_and_builder_accept_oracle_params(tmp_path):
+    params = {**RULES, "stage2_method": "oracle_params", "stage3_value_match": "normalized"}
+    s = sp.load(_index_tree(tmp_path, params=params))
+    assert isinstance(s._extractor, OracleParamsExtractor)
+    oracle_builder.build({"method": {"params": params}}, pd.DataFrame({"item_key": DOCS}), "text_norm")
+
+
+# Four `synonym_label` dev queries differ from their gold only in letter case (DATASET_DEFECTS
+# P8, D-044): normalised, their "rewritten" value is the schema value, so nothing abstains.
+P8_DEV = {"OED010bkabc_syn_85a4f552cd1b", "OED030babca_syn_609ea3a72274",
+          "OED050bcbdc_syn_c59e212d9862", "OED080bhbda_syn_7575e67f784b"}
+L1 = {"synonym_label", "num_to_text", "unit_expansion", "unit_conversion"}
+
+
+@needs_oe
+def test_oracle_on_20_dev_texto_leaves_selects_the_gold_alone():
+    """S5 work item 3: on identity the record is the gold's fingerprint."""
+    from utils.splits import load_split
+
+    feats = pd.read_parquet(PROCESSED / "OE_long_feats.parquet",
+                            columns=["item_key", "parent_key", "parameters_norm"])
+    dev = feats[feats["parent_key"].isin(load_split("dev"))]
+    rows = dev.iloc[sorted(random.Random(20260930).sample(range(len(dev)), 20))]
+    schema = PROCESSED / "OE_concept_schema.json"
+    o = OracleParamsExtractor(schema)
+    catalog = CatalogLookup(schema, PROCESSED / "OE_long_norm.parquet", value_match="normalized")
+    for row in rows.itertuples(index=False):
+        got = o.extract(row.parent_key, row.parameters_norm)
+        assert None not in got.values(), f"{row.item_key}: {got}"
+        assert catalog.lookup(row.parent_key, got) == [row.item_key]
+
+
+@needs_oe
+def test_oracle_on_20_dev_l1_queries_abstains_on_exactly_one_axis():
+    """S5 work item 3: on L1 the rewritten axis, and only it, abstains; nothing is misread."""
+    from utils.splits import load_split
+
+    q = pd.read_parquet(PROCESSED / "OE_single_texto_feats.parquet",
+                        columns=["item_key", "gold_item_key", "parent_key", "parameters_norm",
+                                 "modification_types"])
+    q = q[q["parent_key"].isin(load_split("dev"))
+          & q["modification_types"].map(lambda t: set(t) <= L1)
+          & ~q["item_key"].isin(P8_DEV)]
+    rows = q.iloc[sorted(random.Random(20260930).sample(range(len(q)), 20))]
+    gold_rec = pd.read_parquet(PROCESSED / "OE_long_feats.parquet",
+                               columns=["item_key", "parameters_norm"]).set_index("item_key")
+    schema = PROCESSED / "OE_concept_schema.json"
+    o = OracleParamsExtractor(schema)
+    catalog = CatalogLookup(schema, PROCESSED / "OE_long_norm.parquet", value_match="normalized")
+    for row in rows.itertuples(index=False):
+        got = o.extract(row.parent_key, row.parameters_norm)
+        gold = o.extract(row.parent_key, gold_rec.loc[row.gold_item_key, "parameters_norm"])
+        abstained = [a for a, v in got.items() if v is None and gold[a] is not None]
+        misread = [a for a, v in got.items() if v is not None and v != gold[a]]
+        assert len(abstained) == 1 and not misread, f"{row.item_key}: {abstained} {misread}"
+        assert row.gold_item_key in catalog.lookup(row.parent_key, got)

@@ -23,9 +23,11 @@ from pathlib import Path
 
 import pytest
 
+from utils.archived_runs import run_dir_as_of
+
 REPO = Path(__file__).resolve().parents[1]
 PROCESSED = REPO / "data" / "processed"
-RUNS = REPO / "runs" / "OE"
+RUNS = REPO / "runs" / "OE"  # S2's runs; the two rules arms from the archive (S5 A1)
 SIDECAR = PROCESSED / "OE_duplicate_texto_groups.json"
 
 #: The exclusion D-033 states, per query set: (queries, excluded, concepts before, after).
@@ -60,7 +62,7 @@ def perquery():
     pd = pytest.importorskip("pandas")
     return {
         (queryset, method): pd.read_parquet(
-            RUNS / queryset / method / "results_perquery.parquet"
+            run_dir_as_of("S2", "OE", queryset, method, repo=REPO) / "results_perquery.parquet"
         )
         for queryset in D033
         for method in METHODS
@@ -79,7 +81,7 @@ def test_per_query_mean_reproduces_the_reported_metric(perquery, queryset, targe
     """
     for method in METHODS:
         reported = json.loads(
-            (RUNS / queryset / method / "metrics_dual.json").read_text(encoding="utf-8")
+            (run_dir_as_of("S2", "OE", queryset, method, repo=REPO) / "metrics_dual.json").read_text(encoding="utf-8")
         )
         overall = next(
             row["Acc@1"]

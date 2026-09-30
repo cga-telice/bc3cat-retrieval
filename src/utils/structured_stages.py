@@ -31,6 +31,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from pipeline.catalog_lookup import CatalogLookup  # noqa: E402
 from pipeline.param_extractor_rules import RuleBasedParamExtractor  # noqa: E402
+from utils.archived_runs import run_dir_as_of  # noqa: E402
 
 PROCESSED = REPO / "data" / "processed"
 SCHEMA = PROCESSED / "OE_concept_schema.json"
@@ -88,7 +89,13 @@ def main():
     catalogs = {m: CatalogLookup(SCHEMA, LONG_NORM, value_match=m) for m in ("literal", "normalized")}
     out = REPO / "logs" / "S2" / "stages"  # derived, git-ignored; summarised into results/S2
     out.mkdir(parents=True, exist_ok=True)
-    for run_dir in sorted((REPO / "runs" / "OE").glob("*/structured_pipeline_rules*__OE")):
+    # S2's six runs, from the archive where S5 superseded them (S5 A1).
+    runs = [
+        run_dir_as_of("S2", "OE", queryset, method, repo=REPO)
+        for queryset in ("texto", "single_texto", "stacked_texto")
+        for method in ("structured_pipeline_rules__OE", "structured_pipeline_rules_valuenorm__OE")
+    ]
+    for run_dir in runs:
         df = decompose(run_dir, corpus, schema, extractor, catalogs)
         name = f"{run_dir.parent.name}__{run_dir.name}"
         df.to_parquet(out / f"{name}.parquet")

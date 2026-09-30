@@ -30,6 +30,12 @@ Ported from `research/structured-retrieval@85c3359` (D-026). Changes against the
 - The `__main__` sanity test, which enumerated OEB variant directories, is not ported.
 - **`stage3_value_match`** (S2 amendment 2026-09-17) is passed to `CatalogLookup`; absent means
   `"literal"`, the source's behaviour. See `pipeline.catalog_lookup`.
+- **`stage2_method: oracle_params`** (S5 work item 1) — the oracle-extraction bound: Stage 2 is
+  the query record's own `parameters_norm`, restricted to schema values
+  (`pipeline.param_extractor_oracle`). It needs the record, which the text-only Searcher
+  contract does not carry, so `retrieve.ipynb` calls `bind_queries(queries_df)` on any searcher
+  that has it, and `search_batch` refuses texts that are not the bound ones, in order. `search()`
+  is refused in this mode: a lone text has no record. Stage 1 and Stage 3 are the rules arm's.
 """
 
 from __future__ import annotations
@@ -42,6 +48,7 @@ import pandas as pd
 
 from .dense_e5 import DenseE5Searcher
 from pipeline.catalog_lookup import CatalogLookup
+from pipeline.param_extractor_oracle import OracleParamsExtractor
 from pipeline.param_extractor_rules import RuleBasedParamExtractor
 from utils.run_context import data_paths
 
@@ -88,6 +95,26 @@ class StructuredPipelineSearcher:
             for i in range(len(self.external_ids))
         }
 
+        # Oracle extraction reads the query record, bound before the batch (S5).
+        self._needs_record = isinstance(param_extractor, OracleParamsExtractor)
+        self._bound_texts: list[str] | None = None
+        self._bound_records: list[dict] | None = None
+
+    # ── Query records (oracle extraction only) ───────────────────────────────
+
+    #: The query field the pipeline reads; `index_builders.structured_pipeline_rules.TEXT_FIELD`.
+    TEXT_FIELD = "text_norm"
+
+    def bind_queries(self, queries_df: pd.DataFrame) -> None:
+        """Receive the scored query rows, in scoring order. A no-op unless Stage 2 is oracle."""
+        if not self._needs_record:
+            return
+        for col in (self.TEXT_FIELD, "parameters_norm"):
+            if col not in queries_df.columns:
+                raise KeyError(f"oracle extraction needs column {col!r} in the query table")
+        self._bound_texts = queries_df[self.TEXT_FIELD].astype(str).tolist()
+        self._bound_records = list(queries_df["parameters_norm"])
+
     # ── Search API ───────────────────────────────────────────────────────────
 
     def search(self, query: str, k: int = 100):
@@ -100,6 +127,8 @@ class StructuredPipelineSearcher:
         Returns:
             (top_indices, scores) — np arrays, shape (K,), matching Searcher contract.
         """
+        if self._needs_record:
+            raise RuntimeError("oracle extraction needs the query record: use bind_queries + search_batch")
         # Always do E5 search — needed for Stage 1 parent_key + Tier 3 fill
         e5_idx, e5_scores = self._e5.search(query, k=k)
         return self._rank_from_stage1(query, e5_idx, e5_scores, k)
@@ -117,15 +146,25 @@ class StructuredPipelineSearcher:
         if B == 0:
             return all_idx, all_scores
 
+        records = [None] * B
+        if self._needs_record:
+            if self._bound_texts is None:
+                raise RuntimeError("oracle extraction: bind_queries was not called before search_batch")
+            if list(queries) != self._bound_texts:
+                raise ValueError(
+                    "oracle extraction: the texts searched are not the bound query rows, in order"
+                )
+            records = self._bound_records
+
         e5_idx, e5_scores = self._e5.search_batch(list(queries), k=k, **e5_kwargs)
         for i, q in enumerate(queries):
-            idx, scores = self._rank_from_stage1(q, e5_idx[i], e5_scores[i], k)
+            idx, scores = self._rank_from_stage1(q, e5_idx[i], e5_scores[i], k, record=records[i])
             all_idx[i] = idx
             all_scores[i] = scores
 
         return all_idx, all_scores
 
-    def _rank_from_stage1(self, query: str, e5_idx, e5_scores, k: int):
+    def _rank_from_stage1(self, query: str, e5_idx, e5_scores, k: int, record=None):
         # --- Stage 1: Derive parent_key ---
         top1_key = str(self._e5.external_ids[e5_idx[0]])
         parent_key = self._item_to_parent.get(top1_key)
@@ -134,8 +173,11 @@ class StructuredPipelineSearcher:
         if parent_key is None or parent_key not in self._schema:
             return e5_idx[:k], e5_scores[:k]
 
-        # --- Stage 2: Extract parameters ---
-        params = self._extractor.extract(parent_key, query)
+        # --- Stage 2: Extract parameters (oracle: from the record, not the text) ---
+        if self._needs_record:
+            params = self._extractor.extract(parent_key, record)
+        else:
+            params = self._extractor.extract(parent_key, query)
 
         # --- Stage 3: Catalog lookup ---
         matched_keys = self._catalog.lookup(parent_key, params)
@@ -208,6 +250,8 @@ class StructuredPipelineSearcher:
 
 # ── Factory ──────────────────────────────────────────────────────────────────
 
+STAGE2_METHODS = ("rules", "oracle_params")
+
 def _read_mapping_ids(path: Path) -> list[str]:
     with open(path, encoding="utf-8") as f:
         return [str(json.loads(ln)["external_id"]) for ln in f if ln.strip()]
@@ -217,7 +261,7 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     """Factory following the retriever contract. Reads pipeline config from meta.json.
 
     meta.json must carry `collection` and, under `params`:
-      - stage2_method: "rules" (the only variant ported)
+      - stage2_method: "rules", or "oracle_params" (the S5 oracle-extraction bound)
       - stage1_index:  the E5 index's directory name under index/{collection}/
       - oracle:        false, or absent
       - stage3_value_match: "literal" (default, as the source) or "normalized"
@@ -232,10 +276,11 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     params = meta.get("params", {})
     variant = meta.get("variant", "structured_pipeline")
 
-    if params.get("stage2_method") != "rules":
+    stage2 = params.get("stage2_method")
+    if stage2 not in STAGE2_METHODS:
         raise NotImplementedError(
-            f"{variant}: stage2_method={params.get('stage2_method')!r}. Only 'rules' is ported "
-            "to this branch (D-026); the LLM variants belong to S5."
+            f"{variant}: stage2_method={stage2!r}. Only {STAGE2_METHODS} exist on this branch "
+            "(D-026, S5); LLM extraction is S9's."
         )
     if params.get("oracle"):
         raise NotImplementedError(f"{variant}: oracle-parent mode is not ported (S5).")
@@ -281,9 +326,12 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     item_to_parent = dict(zip(long_df["item_key"], long_df["parent_key"]))
     print(f"  item_to_parent: {len(item_to_parent)} entries")
 
-    # Stage 2: rule-based extractor
-    extractor = RuleBasedParamExtractor(paths.concept_schema)
-    print("  Stage 2: rule-based extractor")
+    # Stage 2: rule-based extractor, or the oracle bound
+    if stage2 == "rules":
+        extractor = RuleBasedParamExtractor(paths.concept_schema)
+    else:
+        extractor = OracleParamsExtractor(paths.concept_schema)
+    print(f"  Stage 2: {stage2}")
 
     # Stage 3: Catalog lookup
     value_match = params.get("stage3_value_match", "literal")
