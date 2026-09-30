@@ -1343,3 +1343,16 @@ decomposition, not a causal estimate. The original wording is kept in `RESEARCH_
 **Consequence.** S12 re-reads R3–R5 on test under this wording, with the test split untouched until then. S9 inherits the
 residual: normalising surfaces addresses the share overlap explains, not the discriminating token of a `synonym_label`
 rewrite.
+
+### D-049 — amendment: the comparative clause names the two arms R4 tested
+**Status:** Amendment to D-049 · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S6 audit (F2)
+**What was wrong.** D-049's wording says overlap explains more of "the lexical arms'" degradation "than of the dense
+encoders'". R4 compared `bm25_unigram` with `bge_m3_colbert` and `bge_m3_dense` only. Across the seven arms of T3
+(`results/S6/mediation.md`, OLS, tie-free) the proportion mediated does not split lexical from dense: `dense_e5` is
++0.4944 [−0.0435, +0.8507], above `bm25_unigram`'s +0.4410; `dense_es_hiiamsid` is +0.3210; and the lexical
+`tfidf_phrases_replace` oracle is +0.2171, below both. Those five figures are descriptive, not registered tests.
+**Decision.** For the manuscript, H5's comparative clause reads: *lost lexical and numeric overlap explains more of
+BM25's item-level degradation than of BGE-M3's (ColBERT and dense).* The other two clauses of D-049 stand unchanged.
+The seven-arm PM is reported beside it as descriptive, `dense_e5` included.
+**Consequence.** S12 re-reads R4 on test for the same two arms and under this wording; no claim about "dense
+encoders" as a family is made from S6.

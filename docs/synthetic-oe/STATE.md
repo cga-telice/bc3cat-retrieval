@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-01 (**S6 active**, report written; audit pending) · **Updated by:** Claude
+**Last updated:** 2026-10-01 (**S6 done**; S7 next) · **Updated by:** Claude
 
 ---
 
 ## Where we are
 
-**S6 is active** (2026-09-30; statistical analysis and mediation, H1 / H2 / H5; [design](sprints/SPRINT_S6_DESIGN.md) frozen at `8abf24f`, [amendments](sprints/SPRINT_S6_AMENDMENTS.md) empty). Intake of `OE_single_l2_texto.json` (9 / 9 / 8 dev concepts) and of the SINGLE modifications sidecar (upstream `a89eca4`, never handed off); 15 new runs on `single_l2_texto`; mixed models M0–M2 and overlap mediation; 21 registered tests R1–R6; tie-free primary for every family (D-028 note).
+**S6 is done** (2026-10-01; statistical analysis and mediation, H1 / H2 / H5; [design](sprints/SPRINT_S6_DESIGN.md) frozen at `8abf24f`, [amendments](sprints/SPRINT_S6_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S6_REPORT.md), [audit](sprints/SPRINT_S6_AUDIT.md)). Audit **PASS WITH FINDINGS**, 2 major and 4 minor, all resolved: A7 adds n excluded to T2–T7 and the tie-free query-level CI to T1 (columns only, no earlier cell moved; generated at `c2ecdde`, byte-identical twice); the rest in prose. 15 runs on `single_l2_texto`; 21 tests, 16 supported, 5 not, 0 contradicted, tie-free. H1 supported for all seven non-floor arms; H2's L1 clause replicated blind on 9 L2 concepts, its L2 clause holds for BM25 (not robust to D-004) and not for ColBERT; H5 restated (D-049, amended after audit F2): overlap explains more of BM25's damage than of BGE-M3's, is not shown to explain most of it, and the L1 : L3 ratio is not shown to reach 10. M0's additive concept intercept does not hold for bag-of-words (D-048).
 
 **S5 is done** (2026-09-30; E1 ablation, Track B, H3 and G2; [design](sprints/SPRINT_S5_DESIGN.md) frozen at `432b39e`, [amendments](sprints/SPRINT_S5_AMENDMENTS.md) A1–A3, [report](sprints/SPRINT_S5_REPORT.md), [audit](sprints/SPRINT_S5_AUDIT.md)). Audit **PASS WITH FINDINGS**, 1 major and 3 minor, all resolved in prose and A3; no run or table changed. The published rules pipeline ranks below deployable BM25 under L1, tie-free (Q1 contradicted pooled and on `unit_conversion`): **H3 refuted on dev for the published method**. The oracle bound is not detected beating BM25 on pooled L1 (Q2 not supported) but does on `num_to_text` (9 concepts ‡). **G2 reads no**: S10 before S11 (D-046). Superseded runs archived via `utils/archived_runs.py` (D-047).
 
@@ -36,6 +36,10 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 - **S4 2026-09-30** — 15 arms × 9 single types, paired against identity. H1 supported on dev; H2
   split: L1 and `reorder` as predicted, L3 not a coherent layer. First audit **failed** (T4 mixed
   samples); passed on re-audit.
+- **S5 2026-09-30** — Track B: the published rules pipeline under the nine single types. H3 refuted on
+  dev for the published method; G2 reads no (D-046).
+- **S6 2026-10-01** — L2w taken in and run; mixed models, overlap mediation, 21 registered tests. H1
+  holds for seven arms; H5 restated (D-049 amended).
 
 ## In flight
 
@@ -71,7 +75,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S6` in a fresh session** (not this one). The [report](sprints/SPRINT_S6_REPORT.md) is written (2026-10-01): all six exit criteria met, T1–T8 and Figs. 1–3 in `results/S6/`, generated at `041c3e5` with one BLAS thread (A6), byte-identical across two generations; suite 1192 passed, 1 xfailed. D-048 and D-049 accepted by César (2026-10-01). S6 stays **active** until the audit passes and its findings are resolved.
+**`/sprint-open S7`** — E2 stacked headline and stratifications (H1, H4), which inherits S6's tie-free reading and T1's frames as the single-edit reference. S9–S11 can open in parallel now that S6 has landed (`SPRINTS.md`). Suite at close: 1192 passed, 2 skipped, 1 xfailed.
 
 **Docker Desktop, 2026-09-30:** it failed at start on a stale socket (`%LOCALAPPDATA%\Docker\run\userAnalyticsOtlpHttp.sock`, an undeletable reparse point). The directory was renamed to `run.stale-20260930`, not deleted and not factory-reset; Docker recreated `run` and started. The renamed directory can be removed by hand.
 
