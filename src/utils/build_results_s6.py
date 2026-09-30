@@ -450,22 +450,24 @@ def run_test(kind: str, short: str, S: dict, W: dict, variant: str, unit: str = 
         a, da = mean_draws(item(scope(s, "L1")), delta(item(scope(s, "L1"))), lab + "|L1")
         b, db = mean_draws(item(w), delta(item(w)), lab + "|L2w")
         return {"est": a - b, "draws": da - db, "side": "negative",
-                "clusters": {"L1": nconc(item(scope(s, "L1"))), "L2w": nconc(item(w))}}
+                "clusters": {"L1": nconc(item(scope(s, "L1"))), "L2w": nconc(item(w))},
+                "counts": {"L1": scope(s, "L1"), "L2w": w}}
     if kind == "r2":
         a, da = loss_share(item(w), lab + "|L2w")
         b, db = loss_share(item(scope(s, "L1")), lab + "|L1")
         return {"est": a - b, "draws": da - db, "side": "positive",
-                "clusters": {"L2w": nconc(item(w)), "L1": nconc(item(scope(s, "L1")))}}
+                "clusters": {"L2w": nconc(item(w)), "L1": nconc(item(scope(s, "L1")))},
+                "counts": {"L2w": w, "L1": scope(s, "L1")}}
     if kind in ("r3", "r4"):
         own = pm_fit(s, short, variant, unit=unit)
         if kind == "r3":
             forced = interval_contains_zero(own["draws"]["mean_d"])
             return {"est": own["point"]["pm"], "draws": own["draws"]["pm"], "side": "positive", "null": PM_NULL,
-                    "forced": forced, "clusters": {"all": own["concepts"]}}
+                    "forced": forced, "clusters": {"all": own["concepts"]}, "counts": {"all": s}}
         ref = pm_fit(unitize(columns(S["bm25_unigram"], variant), unit), "bm25_unigram", variant, unit=unit)
         forced = interval_contains_zero(own["draws"]["mean_d"]) or interval_contains_zero(ref["draws"]["mean_d"])
         return {"est": ref["point"]["pm"] - own["point"]["pm"], "draws": ref["draws"]["pm"] - own["draws"]["pm"],
-                "side": "positive", "forced": forced, "clusters": {"all": own["concepts"]}}
+                "side": "positive", "forced": forced, "clusters": {"all": own["concepts"]}, "counts": {"all": s}}
     if kind == "r5":
         a, da, _, _ = sensitivity_draws(item(scope(s, "L1")), lab + "|L1")
         b, db, l3_ci, _ = sensitivity_draws(item(scope(s, "L3")), lab + "|L3")
@@ -473,15 +475,17 @@ def run_test(kind: str, short: str, S: dict, W: dict, variant: str, unit: str = 
             draws = da / db
         forced = l3_ci[0] <= 0.0 <= l3_ci[1]
         return {"est": a / b, "draws": draws, "side": "positive", "null": RATIO_NULL, "forced": forced,
-                "clusters": {"L1": nconc(item(scope(s, "L1"))), "L3": nconc(item(scope(s, "L3")))}}
+                "clusters": {"L1": nconc(item(scope(s, "L1"))), "L3": nconc(item(scope(s, "L3")))},
+                "counts": {"L1": scope(s, "L1"), "L3": scope(s, "L3")}}
     if kind == "r6a":
         f = item(s)
         v = ((f["parent_mod"] - f["item_mod"]) - (f["parent_id"] - f["item_id"])).to_numpy(float)
         est, draws = mean_draws(f, v, lab)
-        return {"est": est, "draws": draws, "side": "positive", "clusters": {"all": nconc(f)}}
+        return {"est": est, "draws": draws, "side": "positive", "clusters": {"all": nconc(f)}, "counts": {"all": s}}
     if kind == "r6b":
         est, draws = discrimination(item(s), lab)
-        return {"est": est, "draws": draws, "side": "positive", "clusters": {"all": nconc(item(s))}}
+        return {"est": est, "draws": draws, "side": "positive", "clusters": {"all": nconc(item(s))},
+                "counts": {"all": s}}
     raise ValueError(kind)
 
 
@@ -491,6 +495,11 @@ def delta(f: pd.DataFrame) -> np.ndarray:
 
 def nconc(f: pd.DataFrame) -> int:
     return int(f["concept"].nunique())
+
+
+def nexcl(f: pd.DataFrame) -> int:
+    """Queries of a pool not scored at item level: D-033 golds and the P7 query (criterion 3, audit F1)."""
+    return int((~f["item_scored"]).sum())
 
 
 def interval_contains_zero(draws: np.ndarray) -> bool:
@@ -520,6 +529,7 @@ def evaluate(S: dict, W: dict) -> tuple[list[dict], dict]:
                 d = r["draws"][np.isfinite(r["draws"])]
                 row[v] = {"est": r["est"], "c": ci(d), "side": r["side"], "null": r.get("null", 0.0),
                           "forced": r.get("forced", False), "clusters": r["clusters"], "dropped": len(r["draws"]) - len(d),
+                          "counts": {p: (len(item(f)), nexcl(f)) for p, f in r["counts"].items()},
                           "p": 1.0 if r.get("forced") else test_p(r["draws"], r.get("null", 0.0))}
                 rq = run_test(kind, short, S, W, v, unit="query")["draws"]
                 row[v]["q"] = ci(rq[np.isfinite(rq)])
@@ -577,6 +587,11 @@ def ccount(clusters: dict) -> str:
     return " / ".join(f"{p} {n}" + (" ‡" if n < FEW_CLUSTERS else "") for p, n in clusters.items())
 
 
+def ncount(counts: dict) -> str:
+    """Per pool: item-scored queries and those excluded (D-033 golds, the P7 query)."""
+    return " / ".join(f"{p} {n:,} ({x:,})" for p, (n, x) in counts.items())
+
+
 def population_lines(S: dict, W: dict, dup: set[str]) -> list[str]:
     s, w = next(iter(S.values())), next(iter(W.values()))
     return [
@@ -607,8 +622,8 @@ def write_l2_profile(stats: dict, trunc: dict, S: dict, W: dict, dup: set[str]) 
             lines += [f"### {name(short)}", "",
                       "| scope | n | n scored | n excluded | concepts | identity | modified | δ | CI (query) | CI (concept) | "
                       "retention | CI (concept) | lost | gained | identity, tie-free | modified, tie-free | δ, tie-free | "
-                      "CI (concept), tie-free |",
-                      "|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---|---:|---:|---:|---:|---:|---|"]
+                      "CI (query), tie-free | CI (concept), tie-free |",
+                      "|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---|---:|---:|---:|---:|---:|---|---|"]
             for sc in W_SCOPES + ["L2s", "L2∪"]:
                 c, t = stats[short][(sc, level, "run")], stats[short][(sc, level, "tf")]
                 mark = "" if sc in W_SCOPES else " (reference)"
@@ -617,7 +632,7 @@ def write_l2_profile(stats: dict, trunc: dict, S: dict, W: dict, dup: set[str]) 
                     + (" ‡" if c["concepts"] < FEW_CLUSTERS else "")
                     + f" | {f4(c['id'])} | {f4(c['mod'])} | {fd(c['delta'])} | {fci(c['q'], True)} | "
                     f"{fci(c['c'], True)} | {f4(c['retention'])} | {fci(c['ret_c'])} | {c['down']:,} | {c['up']:,} | "
-                    f"{f4(t['id'])} | {f4(t['mod'])} | {fd(t['delta'])} | {fci(t['c'], True)} |")
+                    f"{f4(t['id'])} | {f4(t['mod'])} | {fd(t['delta'])} | {fci(t['q'], True)} | {fci(t['c'], True)} |")
             lines.append("")
     lines += ["## Rank-1 tied sets that fill the whole top-100 (A2 a)", "",
               "The tied set is read from the top-100, so a set this large is truncated and its tie-free value is an "
@@ -656,15 +671,15 @@ def write_adjusted(models: dict, raw: dict, S: dict) -> None:
                       f"converged: {'yes' if m['converged'] else '**no**'}. Variance: concept {m['vc']['concept']:.6f}"
                       + (f", leaf {m['vc']['leaf']:.6f}" if 'leaf' in m['vc'] else "")
                       + f", residual {m['vc']['residual']:.6f}.", "",
-                      "| type | n | concepts | raw δ, as run | raw δ, tie-free | CI (query) | CI (concept) | M0 β | "
-                      "CI (model) | û | β + û |",
-                      "|---|---:|---:|---:|---:|---|---|---:|---|---:|---:|"]
+                      "| type | n scored | n excluded | concepts | raw δ, as run | raw δ, tie-free | CI (query) | "
+                      "CI (concept) | M0 β | CI (model) | û | β + û |",
+                      "|---|---:|---:|---:|---:|---:|---|---|---:|---|---:|---:|"]
             for t in TYPES:
                 if t not in m["fe"]:
                     continue
                 r = raw[(short, tag, t)]
                 u = m["u_by_type"].get(t, float("nan"))
-                lines.append(f"| {t} | {r['n']:,} | {r['concepts']} | {fd(r['run'])} | {fd(r['tf'])} | "
+                lines.append(f"| {t} | {r['n']:,} | {r['excluded']:,} | {r['concepts']} | {fd(r['run'])} | {fd(r['tf'])} | "
                              f"{fci(r['q'], True)} | {fci(r['c'], True)} | {fd(m['fe'][t])} | "
                              f"{fci(m['ci'][t], True)} | {fd(u)} | {fd(m['fe'][t] + u)} |")
             lines.append("")
@@ -695,9 +710,9 @@ def write_mediation(models: dict, pms: dict, S: dict, corr: pd.DataFrame, feats_
         lines.append(f"| {DEFICIT_LABEL[r]} | " + " | ".join(fd(corr.loc[r, c]) for c in corr.columns) + " |")
     lines.append("")
     lines += ["## Proportion mediated", "",
-              "| arm | pool | n | concepts | mean δ, tie-free | CI (query) | CI (concept) | PM (OLS) | CI (query) | "
-              "CI (concept) | PM (mixed) | PM (OLS), without P8 | PM (OLS), as run |",
-              "|---|---|---:|---:|---:|---|---|---:|---|---|---:|---:|---:|"]
+              "| arm | pool | n scored | n excluded | concepts | mean δ, tie-free | CI (query) | CI (concept) | PM (OLS) | "
+              "CI (query) | CI (concept) | PM (mixed) | PM (OLS), without P8 | PM (OLS), as run |",
+              "|---|---|---:|---:|---:|---:|---|---|---:|---|---|---:|---:|---:|"]
     for short in BASE7:
         p = pms[(short, "tf", "all")]
         und = interval_contains_zero(p["draws"]["mean_d"])
@@ -708,7 +723,7 @@ def write_mediation(models: dict, pms: dict, S: dict, corr: pd.DataFrame, feats_
         mixed = mixed_pm(models[short][("M0", "all")], models[short][("M1", "all")], item(columns(S[short], "tf")))
         nop8 = pms[(short, "tf", "no_p8")]["point"]["pm"]
         run = pms[(short, "run", "all")]["point"]["pm"]
-        lines.append(f"| {name(short)} | all | {p['n']:,} | {p['concepts']} | {fd(p['point']['mean_d'])} | "
+        lines.append(f"| {name(short)} | all | {p['n']:,} | {nexcl(S[short]):,} | {p['concepts']} | {fd(p['point']['mean_d'])} | "
                      f"{fci(ci(pq['draws']['mean_d']), True)} | {fci(ci(p['draws']['mean_d']), True)} | {pm} | {pmq} | "
                      f"{pmci} | {fd(mixed) if np.isfinite(mixed) else '—'} | "
                      f"{fd(nop8)} | {fd(run)} |")
@@ -798,18 +813,18 @@ def write_sensitivity(S: dict, W: dict) -> dict:
         "gold `texto`). Each pool is bootstrapped by concept on its own; pools reach different leaves, so the",
         f"L1 : L3 ratio is between-population. R5 reads it against {RATIO_NULL:g} (\"an order of magnitude\").",
     ])
-    lines += ["| arm | pool | n scored | concepts | mean δ | CI (query) | CI (concept) | mean d_tok | δ / d_tok | "
-              "CI (query) | CI (concept) |",
-              "|---|---|---:|---:|---:|---|---|---:|---:|---|---|"]
+    lines += ["| arm | pool | n scored | n excluded | concepts | mean δ | CI (query) | CI (concept) | mean d_tok | "
+              "δ / d_tok | CI (query) | CI (concept) |",
+              "|---|---|---:|---:|---:|---:|---|---|---:|---:|---|---|"]
     ratios = {}
     for short in BASE7:
         s, w = columns(S[short], "tf"), columns(W[short], "tf")
-        pools = [("L1", item(scope(s, "L1"))), ("L2s", item(scope(s, "L2"))), ("L2w", item(w)),
-                 ("L3", item(scope(s, "L3"))), ("all", item(s))]
-        for label, f in pools:
+        pools = [("L1", scope(s, "L1")), ("L2s", scope(s, "L2")), ("L2w", w), ("L3", scope(s, "L3")), ("all", s)]
+        for label, whole in pools:
+            f = item(whole)
             est, draws, dci, tbar = sensitivity_draws(f, f"s6|sens|{short}|{label}")
             _, qdraws, qdci, _ = sensitivity_draws(unitize(f, "query"), f"s6|sens|{short}|{label}|q")
-            lines.append(f"| {name(short)} | {label} | {len(f):,} | {nconc(f)}"
+            lines.append(f"| {name(short)} | {label} | {len(f):,} | {nexcl(whole):,} | {nconc(f)}"
                          + (" ‡" if nconc(f) < FEW_CLUSTERS else "")
                          + f" | {fd(delta(f).mean())} | {fci(qdci, True)} | {fci(dci, True)} | {f4(tbar)} | {fd(est)} | "
                          f"{fci(ci(qdraws[np.isfinite(qdraws)]), True)} | {fci(ci(draws[np.isfinite(draws)]), True)} |")
@@ -840,12 +855,13 @@ def write_d004(feats: dict, results: list[dict]) -> None:
     lines += ["", "## Registered tests on the clean subset", "",
               "A reading that changes category between the full population and the clean subset is **not robust**; "
               "the full-population reading stands (D-004 keeps the artefacts in).", "",
-              "| test | arm | reading, full | estimate, clean | CI (query), clean | CI (concept), clean | Holm p, clean | "
-              "reading, clean | robust |",
-              "|---|---|---|---:|---|---|---:|---|---|"]
+              "| test | arm | reading, full | n scored (excluded), clean | estimate, clean | CI (query), clean | "
+              "CI (concept), clean | Holm p, clean | reading, clean | robust |",
+              "|---|---|---|---|---:|---|---|---:|---|---|"]
     for r in results:
         a, c = r["tf"], r["clean"]
-        lines.append(f"| {r['id']} | {name(r['arm'])} | {a['reading']} | {fd(c['est'])} | {fci(c['q'], True)} | "
+        lines.append(f"| {r['id']} | {name(r['arm'])} | {a['reading']} | {ncount(c['counts'])} | {fd(c['est'])} | "
+                     f"{fci(c['q'], True)} | "
                      f"{fci(c['c'], True)} | "
                      f"{fp(c['holm'])} | {c['reading']} | {'yes' if a['reading'] == c['reading'] else '**not robust**'} |")
     lines += sources_block([SINGLE, L2W], only=BASE7, inputs=(SINGLE_JSON, L2_JSON, SINGLE_SIDECAR, L2_SIDECAR))
@@ -859,8 +875,9 @@ def write_power(S: dict, W: dict) -> None:
         f"standard error: MDE = (z(1 − α/2) + z(power)) × SE = {z:.4f} × SE. **No per-type claim is made on a cell",
         "whose MDE exceeds its observed |δ|** (design).",
     ])
-    lines += ["| arm | scope | n scored | concepts | δ | CI (query) | CI (concept) | SE (concept) | MDE | claim allowed |",
-              "|---|---|---:|---:|---:|---|---|---:|---:|---|"]
+    lines += ["| arm | scope | n scored | n excluded | concepts | δ | CI (query) | CI (concept) | SE (concept) | MDE | "
+              "claim allowed |",
+              "|---|---|---:|---:|---:|---:|---|---|---:|---:|---|"]
     for short in BASE7:
         s, w = columns(S[short], "tf"), columns(W[short], "tf")
         cells = [(sc, scope(s, sc)) for sc in TYPES[:1] + [NO_P8] + TYPES[1:] + list(LAYERS)] + [(f"{t} (L2w)", scope(w, t)) for t in L2_TYPES] \
@@ -868,7 +885,7 @@ def write_power(S: dict, W: dict) -> None:
         for sc, f in cells:
             c = cell(f, "item", f"power|{short}|{sc}")
             mde = z * c["se_c"]
-            lines.append(f"| {name(short)} | {sc} | {c['n']:,} | {c['concepts']}" + (" ‡" if c["concepts"] < FEW_CLUSTERS else "")
+            lines.append(f"| {name(short)} | {sc} | {c['n']:,} | {c['excluded']:,} | {c['concepts']}" + (" ‡" if c["concepts"] < FEW_CLUSTERS else "")
                          + f" | {fd(c['delta'])} | {fci(c['q'], True)} | {fci(c['c'], True)} | {f4(c['se_c'])} | {f4(mde)} | "
                          + ("— (no variance: every draw equal)" if c["se_c"] == 0 else ("yes" if abs(c["delta"]) >= mde else "no"))
                          + " |")
@@ -886,7 +903,8 @@ def write_predictions(results: list[dict], extra: dict, rereads: list[dict], flo
     ])
     lines += [f"α = {ALPHA}; R3 threshold {PM_NULL}; R5 threshold {RATIO_NULL:g}. A test is **forced** *not "
               "supported* when its PM is undefined (R3, R4) or R5's L3 denominator has an interval containing 0 "
-              "(A2 d). **CI (query)** resamples queries instead of concepts (A4); it is printed, never read. Concepts are "
+              "(A2 d). **CI (query)** resamples queries instead of concepts (A4); it is printed, never read. **n scored "
+              "(excluded)** is, per pool, the item-scored queries and those left out (D-033 golds, the P7 query). Concepts are "
               "the clusters behind each pool; ‡ marks a pool under "
               f"{FEW_CLUSTERS} concepts, whose percentile interval under-covers.", ""]
     floor_named = [s for s in BASE7 if floors[s] < FLOOR]
@@ -894,14 +912,14 @@ def write_predictions(results: list[dict], extra: dict, rereads: list[dict], flo
               + ", ".join(f"{name(s)} {f4(floors[s])}" for s in BASE7) + ". "
               + ("Below the floor: " + ", ".join(name(s) for s in floor_named) + "; their tests stay registered."
                  if floor_named else "None of the seven named arms is below the floor."), ""]
-    lines += ["| test | hypothesis | blind | arm | concepts | estimate | CI (query) | CI (concept) | p | Holm p | BH p | "
-              "reading | as run | CI (query), as run | CI (concept), as run | reading, as run | differs |",
-              "|---|---|---|---|---|---:|---|---|---:|---:|---:|---|---:|---|---|---|---|"]
+    lines += ["| test | hypothesis | blind | arm | concepts | n scored (excluded) | estimate | CI (query) | CI (concept) | "
+              "p | Holm p | BH p | reading | as run | CI (query), as run | CI (concept), as run | reading, as run | differs |",
+              "|---|---|---|---|---|---|---:|---|---|---:|---:|---:|---|---:|---|---|---|---|"]
     for r in results:
         t, a = r["tf"], r["run"]
         lines.append(
             f"| {r['id']} | {r['hyp']}: {r['what']} | {'blind' if r['blind'] else 'confirmatory'} | {name(r['arm'])} | "
-            f"{ccount(t['clusters'])} | {fd(t['est'])} | {fci(t['q'], True)} | {fci(t['c'], True)} | {fp(t['p'])} | "
+            f"{ccount(t['clusters'])} | {ncount(t['counts'])} | {fd(t['est'])} | {fci(t['q'], True)} | {fci(t['c'], True)} | {fp(t['p'])} | "
             f"{fp(t['holm'])} | {fp(t['bh'])} | **{t['reading']}**" + (" (forced)" if t["forced"] else "")
             + f" | {fd(a['est'])} | {fci(a['q'], True)} | {fci(a['c'], True)} | {a['reading']} | {'**yes**' if a['reading'] != t['reading'] else 'no'} |")
     reopen = extra["reopen"]
@@ -1137,7 +1155,10 @@ def main() -> None:
                 sub_run = run[run["q"].isin(sub_tf["q"])]
                 d_tf = delta(sub_tf)[:, None]
                 lab = f"s6|raw|{short}|{tag}|{t}"
-                raw[(short, tag, t)] = {"n": len(sub_tf), "tf": float(d_tf.mean()), "run": float(delta(sub_run).mean()),
+                whole = S[short][S[short]["type"] == t]
+                if tag == "no_p8":
+                    whole = whole[~whole["q"].isin(P8_DEV)]
+                raw[(short, tag, t)] = {"n": len(sub_tf), "excluded": nexcl(whole), "tf": float(d_tf.mean()), "run": float(delta(sub_run).mean()),
                                         "concepts": nconc(sub_tf), "q": ci(boot_query(d_tf, lab)[:, 0]),
                                         "c": ci(boot_cluster(d_tf, sub_tf["concept"].to_numpy(), lab)[:, 0])}
         pms[(short, "tf", "all")] = pm_fit(columns(S[short], "tf"), short, "tf")
