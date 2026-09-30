@@ -735,6 +735,32 @@ def write_mediation(models: dict, pms: dict, S: dict, corr: pd.DataFrame, feats_
             else:
                 lines.append(f"{tag} mixed: fit failed ({m.get('why')}).")
         lines.append("")
+    lines += ["## `synonym_label` with and without the P8 queries, and the fits without them (D-044, A2 g)", "",
+              "Every model is fitted twice, with and without the four case-only `synonym_label` queries. The "
+              "`synonym_label` term both ways; every other term moves only through the shared covariate "
+              "coefficients.", "",
+              "| arm | fit | M0 β (OLS) | M1 β (OLS) | CI (concept) | M1 β (mixed) | M2 β (OLS) | CI (concept) | M2 β (mixed) | PM (OLS) |",
+              "|---|---|---:|---:|---|---:|---:|---|---:|---:|"]
+    for short in BASE7:
+        for tag, k1, k2 in (("all", "all", "m2"), ("no_p8", "no_p8", "m2_no_p8")):
+            p1, p2 = pms[(short, "tf", k1)], pms[(short, "tf", k2)]
+            j1, j2 = p1["types"].index("synonym_label"), p2["types"].index("synonym_label")
+            b1, b2 = p1["draws"]["beta1"][:, j1], p2["draws"]["beta1"][:, j2]
+            m1, m2 = models[short][("M1", tag)], models[short][("M2", tag)]
+            lines.append(
+                f"| {name(short)} | {'with P8' if tag == 'all' else 'without P8'} | {fd(p1['point']['beta0'][j1])} | "
+                f"{fd(p1['point']['beta1'][j1])} | {fci(ci(b1[np.isfinite(b1)]), True)} | {mixed_cell(m1, 'synonym_label')} | "
+                f"{fd(p2['point']['beta1'][j2])} | {fci(ci(b2[np.isfinite(b2)]), True)} | {mixed_cell(m2, 'synonym_label')} | "
+                f"{fd(p1['point']['pm'])} |")
+    lines += ["", "Status of every mixed fit without the P8 queries (M0's is also in T2):", ""]
+    for short in BASE7:
+        parts = []
+        for mname in ("M0", "M1", "M2"):
+            m = models[short][(mname, "no_p8")]
+            parts.append(f"{mname} " + (f"leaf {'yes' if m['leaf'] else '**no**'}, converged "
+                                        f"{'yes' if m['converged'] else '**no**'}" if m.get("ok") else f"failed ({m.get('why')})"))
+        lines.append(f"- {name(short)}: " + "; ".join(parts) + ".")
+    lines.append("")
     lines += ["## `template_paraphrase` inside L3 (descriptive)", "",
               "H2's L3 clause is read per type (S4 finding 4). If `template_paraphrase`'s M1 residual has an interval "
               "containing 0 for a lexical arm, its cost to that arm is overlap, not order (design; descriptive).", "",
@@ -829,7 +855,7 @@ def write_power(S: dict, W: dict) -> None:
               "|---|---|---:|---:|---:|---|---|---:|---:|---|"]
     for short in BASE7:
         s, w = columns(S[short], "tf"), columns(W[short], "tf")
-        cells = [(sc, scope(s, sc)) for sc in TYPES + list(LAYERS)] + [(f"{t} (L2w)", scope(w, t)) for t in L2_TYPES] \
+        cells = [(sc, scope(s, sc)) for sc in TYPES[:1] + [NO_P8] + TYPES[1:] + list(LAYERS)] + [(f"{t} (L2w)", scope(w, t)) for t in L2_TYPES] \
             + [("L2w", w)]
         for sc, f in cells:
             c = cell(f, "item", f"power|{short}|{sc}")
@@ -949,9 +975,11 @@ def write_figures(S: dict, W: dict, stats: dict, models: dict, pms: dict) -> Non
     fig.savefig(FIGS / "fig2_profile.png", dpi=150, metadata={"Software": None})
     plt.close(fig)
     lines += ["", "## Fig. 2 — the profile (`fig2_profile.png`)", "",
-              "2a: tie-free retention, item level (`single_texto` types; L2w pooled). 2b: M0 β as in T2.", "",
-              "| arm | " + " | ".join(cols) + " |", "|---|" + "---:|" * len(cols)]
-    lines += [f"| {name(s)} | " + " | ".join(f4(v) for v in row) + " |" for s, row in zip(arms, grid)]
+              "2a: tie-free retention, item level (`single_texto` types; L2w pooled). 2b: M0 β as in T2. The last "
+              "column, `synonym_label` without the P8 queries (D-044), is printed and not plotted.", "",
+              "| arm | " + " | ".join(cols) + f" | {NO_P8} |", "|---|" + "---:|" * (len(cols) + 1)]
+    lines += [f"| {name(s)} | " + " | ".join(f4(v) for v in row) + f" | {f4(stats[s][(NO_P8, 'item', 'tf_ret')])} |"
+              for s, row in zip(arms, grid)]
 
     # Fig. 3 — δ against the lexical deficit, and PM per arm.
     edges = np.quantile(item(columns(S["bm25_unigram"], "tf"))["lex_def"], np.linspace(0, 1, 6))
@@ -1079,6 +1107,7 @@ def main() -> None:
         for sc in TYPES:
             stats[short][(sc, "item", "tf_ret")] = cell(scope(s, sc), "item", f"{short}|{sc}|tf")["retention"]
         stats[short][("L2w", "item", "tf_ret")] = stats[short][("L2w", "item", "tf")]["retention"]
+        stats[short][(NO_P8, "item", "tf_ret")] = cell(scope(s, NO_P8), "item", f"{short}|{NO_P8}|tf")["retention"]
     floors = {short: float(item(columns(S[short], "tf"))["item_id"].mean()) for short in S}
 
     models: dict = {}
@@ -1105,6 +1134,7 @@ def main() -> None:
         s_tf = columns(S[short], "tf")
         pms[(short, "tf", "no_p8")] = pm_fit(s_tf[~s_tf["q"].isin(P8_DEV)], short, "tf", "no_p8")
         pms[(short, "tf", "m2")] = {**ols_within(item(s_tf), ["d_tok"], "s6|m2|tf")}
+        pms[(short, "tf", "m2_no_p8")] = ols_within(item(s_tf[~s_tf["q"].isin(P8_DEV)]), ["d_tok"], "s6|m2|tf|no_p8")
 
     base = item(columns(S["bm25_unigram"], "tf"))
     corr = base[DEFICITS + ["d_tok"]].corr()
