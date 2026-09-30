@@ -1281,3 +1281,27 @@ names ColBERT as the L1 reference for S3 — resting on the three contrasts whos
 the `unit_conversion` contrast against tuned BM25 (S2 finding 7).
 **Application in S5.** ColBERT is printed in every H3 contrast and predicted in none. G2 is read in S5
 on the rules pipeline, with the oracle-extraction bound beside it.
+
+### D-046 — G2 reads *no*: the method contribution's priority moves from S11 to S10
+**Status:** **Accepted** · **Date:** 2026-09-30 · **Owner:** César · **Raised in:** S5 report
+**Context.** G2 asks whether the structured/lexical ranking inverts under L1. S5's design fixed the rule before
+any result: *yes* if Q1's pooled-L1 test is supported, *no* if it is contradicted. Tie-free, on dev,
+`rules_valuenorm` − `bm25_unigram` under pooled L1 is contradicted (`results/S5/predictions.md`).
+**Decision.** G2 reads **no**. Per `RESEARCH_PLAN.md` §3, S10 (learned representations) gets the method
+contribution's budget ahead of S11 (two-stage).
+**Recorded with it.** The oracle-extraction bound does not overtake BM25 on pooled L1 either: a pipeline that
+reads schema literals leaves the rewritten axis blank and cannot rank what remains (median tie set of 4 leaves).
+The limit is reading the value, not extracting it. Any structured or two-stage route therefore needs S9's
+value-reading step first, and S11, if it runs, is designed on top of that.
+**Consequence.** No sprint is reordered in the registry; S10 and S11 still depend on S6. S12 remains one-shot.
+
+### D-047 — A superseded run is archived, and its sprint's readers are routed to the archive
+**Status:** **Accepted** · **Date:** 2026-09-30 · **Owner:** César · **Raised in:** S5 A1
+**Context.** A run lives at `runs/{collection}/{queryset}/{method}` (D-008), so re-running a method overwrites
+the run an earlier sprint's tables were generated from.
+**Decision.** Before a later sprint re-runs a method, the earlier run is copied to
+`runs/_archive/<sprint>/…`, checksum-verified (a `SHA256SUMS` beside it), and every reader of the earlier
+sprint's numbers resolves it through `utils/archived_runs.py`. The earlier sprint's `results/` must regenerate
+byte-identically afterwards. A second config under a new name is not used for this: configs are the experiment
+record, one per method.
+**Consequence.** First applied in S5 to S2's four rules runs. S7's stacked re-runs follow it.

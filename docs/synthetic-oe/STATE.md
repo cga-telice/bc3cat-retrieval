@@ -70,8 +70,8 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 ## Next action
 
 **`/audit S5` in a fresh session.** The report is written ([report](sprints/SPRINT_S5_REPORT.md)); all 6 exit
-criteria met; amendments A1–A2. H3 refuted on dev for the published method; **G2 reads no**. César to
-confirm G2 (D-046) and the archive procedure (D-047).
+criteria met; amendments A1–A2. H3 refuted on dev for the published method; **G2 reads no**, accepted
+(D-046: S10 before S11); archive procedure accepted (D-047).
 S6 opens after S5 with the L2 intake (D-043)
 and the P8 queries shown both ways (D-044).
 

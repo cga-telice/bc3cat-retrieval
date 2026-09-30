@@ -77,7 +77,7 @@ tie-free and unique-gold figures are all 0.9975, equal to its parent level (T1).
 decimal, 5 of them one their gold lacks (T4).
 
 **G2 reads no** under the frozen rule: Q1's pooled-L1 test is contradicted (T6). Q2 beside it is not supported.
-The plan's consequence, method-contribution priority moving from S11 to S10, **waits on César**.
+The plan's consequence, method-contribution priority moving from S11 to S10, is **accepted** by César (D-046).
 
 ## Hypotheses
 
@@ -124,7 +124,7 @@ The plan's consequence, method-contribution priority moving from S11 to S10, **w
 - **S7** — the structured arms, oracle included, on the corrected stacked file `c34a222a`.
 - **S9** — the value-reading step findings 2–3 name as missing. The bound measures its value: the rewritten
   axis is the whole L1 gap for a literal reader. The LLM extractor is listed there (`RESEARCH_PLAN.md`).
-- **S10 / S11** — G2's consequence, pending César (D-046).
+- **S10 / S11** — S10 has priority (D-046); S11, if it runs, builds on S9's value reading.
 - **Debt.**
   - Stage 3 still orders by key (tie-free measures it).
   - `index/*/meta.json` still omits the ML stack (H4).
@@ -134,6 +134,6 @@ The plan's consequence, method-contribution priority moving from S11 to S10, **w
 
 | ID | Status | What |
 |---|---|---|
-| D-046 | **proposed** | G2 reads *no* on dev. Priority moves from S11 to S10 per the plan. Record with it that the literal-reading ceiling is the L1 bottleneck (findings 2–3), so any structured route needs S9's value reading first |
-| D-047 | **proposed** | A run superseded by a later sprint is copied, checksum-verified, to `runs/_archive/<sprint>/`, and every reader of the earlier sprint is routed through `utils/archived_runs.py` (A1, César's choice) |
+| D-046 | **Accepted** (César, 2026-09-30) | G2 reads *no* on dev. Priority moves from S11 to S10 per the plan. Record with it that the literal-reading ceiling is the L1 bottleneck (findings 2–3), so any structured route needs S9's value reading first |
+| D-047 | **Accepted** (César, 2026-09-30) | A run superseded by a later sprint is copied, checksum-verified, to `runs/_archive/<sprint>/`, and every reader of the earlier sprint is routed through `utils/archived_runs.py` (A1, César's choice) |
 | D-028 | note proposed | Tie-free reading changes a structured reading (finding 6); primary for every structured contrast from S5 on |
