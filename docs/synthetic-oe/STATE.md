@@ -3,7 +3,7 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-30 (**S6 active**, design frozen at `8abf24f`) · **Updated by:** Claude
+**Last updated:** 2026-09-30 (**S6 active**, work item 1 done) · **Updated by:** Claude
 
 ---
 
@@ -71,7 +71,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S6 work item 1**: register `single_l2_texto`, build its feature tables, take in the SINGLE sidecar. Then work item 2 (pinned `statsmodels` / `matplotlib` in the sprint container; Docker must be started).
+**S6 work item 2**: pinned `statsmodels` / `matplotlib` in the sprint container (start Docker first). Work item 1 is done (2026-09-30): `single_l2_texto` registered, its tables derived along `single_texto`'s proven path, the SINGLE sidecar taken in (`DELIVERIES.md`). On L1/L2 the sidecar agrees with S3's detector on every dev query; on L3 it cannot decide.
 
 ## Latest results
 

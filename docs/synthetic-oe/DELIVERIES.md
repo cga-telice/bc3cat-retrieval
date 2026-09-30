@@ -15,6 +15,66 @@ Newest first.
 
 ---
 
+## 2026-09-30 — the SINGLE modifications sidecar, taken from the release · **taken** (S6 work item 1)
+
+Not a new delivery. It is the release's own sidecar, which `RESEARCH_PLAN.md` §5 lists as requested in S1
+and consumed in S6, and which was never handed off. S3 therefore flagged the D-004 pantry artefacts from
+the text alone (D-038 amendment). The file was taken from upstream, not requested again.
+
+| File | Records | SHA-256 prefix | Taken |
+|---|---:|---|---|
+| `OE_single_modifications.jsonl` | 4,439 | `f492d9a0b7e133bf` | yes, as the D-004 cross-check (S6 design) |
+
+**Where it comes from.**
+- **Path:** `bc3cat-dataset` `data/synthetic/processed_OE_ablation_single/BC3CAT_Syn_modifications.jsonl`.
+- **Blob:** `d5f2f86b` at the corpus release `8998875`, at `a89eca4` (the last commit to touch it; an
+  ancestor of the release) and at `synthetic` HEAD `0923284`. The file has not changed since the
+  release.
+- **Line endings:** the digest above is of the CRLF checkout that was copied. The LF blob git stores
+  hashes to `e2bcc95f77caa4ca`. This is the same situation as P8.
+
+**Checked here** (`tests/test_intake_s6.py`):
+- **Keys:** its 4,439 keys are exactly `OE_single_texto.json`'s.
+- **Types:** each row's applied modification names the type its query carries.
+
+**Against S3's text detector, dev only (2,206 queries):**
+- **L1 and L2 rewrites (1,598 queries):** the sidecar can locate every rewrite in its query, and it
+  agrees with the detector on every one. 185 are flagged doubled by both.
+- **L3 rewrites (608 queries):** each is a template with `$`/`%` placeholders. Its literal words meet
+  the placeholder values only when the template is rendered, so the sidecar cannot decide doubling
+  there. Those queries are returned as undecidable, not clean, and L3 doubling rests on the detector
+  alone. 35 of them are detector-flagged.
+- **The *topografía* drift:** 19 queries, the same 19 both ways.
+- **`OE_single_l2_texto.json`'s own sidecar, dev (518 queries):** no doubling either way. The drift is
+  on 17 queries, the same 17 both ways.
+- **Code:** the cross-check is `src/utils/pantry_flags.py`. It locates the rewrite without consulting
+  the detector.
+
+## 2026-09-30 — `single_l2_texto` wired · **registered, tables derived** (S6 work item 1)
+
+The L2 delivery below (2026-09-29, evening), now registered as the query set `single_l2_texto`
+(`run_context.QUERY_SETS`).
+
+**Tables.** `build_s6_query_tables.py` derives them along `single_texto`'s own path in `data.ipynb` /
+`features.ipynb`. Before writing, it re-derives `single_texto` and requires the stored
+`OE_single_texto_norm` / `_feats` back column for column and row for row. They came back exactly, on the
+host interpreter.
+
+| File | Rows | SHA-256 prefix |
+|---|---:|---|
+| `OE_single_l2_texto_norm.parquet` | 1,092 | `c9ab1aa263b8b909` |
+| `OE_single_l2_texto_feats.parquet` | 1,092 | `9612ad99bbba0a8d` |
+
+**Checked** (`tests/test_intake_s6.py`, text on dev only):
+- every gold resolves to a leaf of its concept;
+- `modification_count` is 1 everywhere, and the types are exactly the three L2 types;
+- dev breadth is 179 / 180 / 159 queries over 9 / 9 / 8 concepts;
+- no dev gold is a D-033 duplicate;
+- no key is on a P7 or P8 list;
+- no key is shared with `single_texto`.
+
+No run yet: that is work item 3.
+
 ## 2026-09-29 (night) — the P8 answer and test list · **taken**; menu fixed at the next build (B)
 
 | File | Records | SHA-256 prefix | Taken |
