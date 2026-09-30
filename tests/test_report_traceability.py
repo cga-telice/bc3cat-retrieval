@@ -39,6 +39,9 @@ REPORTS = {
     "sprints/SPRINT_S5_REPORT.md": [
         "results/S5/*.md",
     ],
+    "sprints/SPRINT_S6_REPORT.md": [
+        "results/S6/*.md",
+    ],
 }
 
 #: Figures in a report: decimals and grouped counts, not inside identifiers, paths or code spans.

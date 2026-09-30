@@ -417,4 +417,4 @@ The tied set is read from the top-100, so a set this large is truncated and its 
 | `OE_duplicate_texto_groups.json` | `b3cfcad47c71c5eb` |
 
 Bootstrap: B = 10,000, seed = 20260917, percentile 95 % intervals; p from the concept-clustered draws (D-030). Split `dev`.
-Analysis stack: `statsmodels` 0.14.1, `patsy` 0.5.6, `scipy` 1.13.0, `numpy` 1.26.4, `pandas` 2.2.2, `matplotlib` 3.8.4.
+Analysis stack: `statsmodels` 0.14.1, `patsy` 0.5.6, `scipy` 1.13.0, `numpy` 1.26.4, `pandas` 2.2.2, `matplotlib` 3.8.4. BLAS threads: 1 (A6).
