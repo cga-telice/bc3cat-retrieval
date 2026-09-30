@@ -3,7 +3,7 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-30 (**S6 active**, work item 1 done) · **Updated by:** Claude
+**Last updated:** 2026-09-30 (**S6 active**, work items 1–2 done) · **Updated by:** Claude
 
 ---
 
@@ -71,7 +71,9 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S6 work item 2**: pinned `statsmodels` / `matplotlib` in the sprint container (start Docker first). Work item 1 is done (2026-09-30): `single_l2_texto` registered, its tables derived along `single_texto`'s proven path, the SINGLE sidecar taken in (`DELIVERIES.md`). On L1/L2 the sidecar agrees with S3's detector on every dev query; on L3 it cannot decide.
+**S6 work item 3**: 15 runs on `single_l2_texto`, dev, clean tree, in `bc3cat-s3`. Work items 1–2 done (2026-09-30): L2 set wired and SINGLE sidecar taken in (`DELIVERIES.md`); analysis stack pinned in `utils/analysis_stack.py` (amendment A1, nothing installed).
+
+**Docker Desktop, 2026-09-30:** it failed at start on a stale socket (`%LOCALAPPDATA%\Docker\run\userAnalyticsOtlpHttp.sock`, an undeletable reparse point). The directory was renamed to `run.stale-20260930`, not deleted and not factory-reset; Docker recreated `run` and started. The renamed directory can be removed by hand.
 
 ## Latest results
 
