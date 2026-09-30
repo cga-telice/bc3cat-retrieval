@@ -269,6 +269,13 @@ measured in S3.
 - **Whether real queries carry codes** is read from S90's anchor if it arrives. Its absence does not
   block S9.
 
+*Added 2026-09-30 (from the S5 opening):*
+- **LLM parameter extraction.** The structured branch's LLM extractor (`param_extractor.py`, Phi-4 /
+  Llama prompts, `research/structured-retrieval@85c3359`) was explored there on ≤ 50 queries and never
+  published. It is a slot-filling candidate here, compared with normalisation and rewriting, not a
+  Track B baseline. Its prompts were chosen on OEB `resumen` queries, whose concepts sit on both sides
+  of OE's split: state that exposure.
+
 **Exit.** The crossover curve: accuracy delta of expansion as a function of query-target
 overlap, and the threshold below which expansion pays. A prediction to be tested, not
 assumed: expansion *hurts* in the near-verbatim regime.

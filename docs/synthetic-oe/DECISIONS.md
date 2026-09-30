@@ -1261,3 +1261,23 @@ queries. They asked whether to remove them now (A) or at the next corpus build (
 The frozen menu stays in step with the delivered `OE_single_texto.json`, so the file remains
 reproducible from it. The six queries are handled as ruled above. The generator fix, its test, the
 audit script and the test list are committed upstream at `bc3cat-dataset` `0923284` on `synthetic`.
+
+### D-028 — Tie-free reading for every family (recorded from the S2 report)
+**Status:** Proposed, amended · **Date:** 2026-09-17 · **Raised in:** S2 report · **Recorded here:** 2026-09-30, at the S5 freeze
+**Why recorded now.** Raised and amended in the S2 report's decisions table and never appended here. S5
+applies it, so it is recorded before S5 freezes. Substance unchanged.
+**Decision (as proposed).** Structured Stage 3 reports `unique_gold` beside item Acc@1, and S5 tests a
+randomised tie-break. Amended after S2 audit F6: the tie-free reading is produced for **every** family,
+not only structured, because singling one out understates the others' ties (`results/S2/tiebreak.md`).
+**Application in S5.** The randomised tie-break is computed as its exact expectation (1/|rank-1 tied
+set| when the gold is in it), so no seed is involved. It is the primary reading of every H3 contrast.
+
+### D-029 — G1 recorded as ambiguous; ColBERT is the L1 reference (recorded from the S2 report)
+**Status:** Proposed, amended · **Date:** 2026-09-17 · **Raised in:** S2 report · **Recorded here:** 2026-09-30, at the S5 freeze
+**Why recorded now.** As D-028. Substance unchanged.
+**Decision (as proposed).** G1 recorded as *ambiguous*, not *proceed*. The structured-overtake
+prediction is refuted for rules, which moves G2's prior toward S10 (learned representations), and
+names ColBERT as the L1 reference for S3 — resting on the three contrasts whose CIs exclude 0, not on
+the `unit_conversion` contrast against tuned BM25 (S2 finding 7).
+**Application in S5.** ColBERT is printed in every H3 contrast and predicted in none. G2 is read in S5
+on the rules pipeline, with the oracle-extraction bound beside it.
