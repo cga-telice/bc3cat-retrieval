@@ -22,6 +22,14 @@ The analysis stack is pinned (`analysis_stack.py`, A1): the script refuses to ru
 from __future__ import annotations
 
 import json
+import os
+
+#: The mixed fits are sensitive to floating-point summation order: the leaf variance component sits near zero,
+#: and whether the optimiser converges with it changed with the BLAS thread count (A6). One thread makes every
+#: fit deterministic wherever this runs. Set before numpy is imported, because BLAS reads it at load time.
+BLAS_THREADS = 1
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ[_var] = str(BLAS_THREADS)
 import subprocess
 import sys
 import warnings
@@ -1021,11 +1029,15 @@ def write_figures(S: dict, W: dict, stats: dict, models: dict, pms: dict) -> Non
             lines.append(f"| {name(short)} | {b} | {nb:,} | {f4(cx)} | {fd(m)} |")
     lines += ["", "3b: PM as in T3 (not plotted when undefined).", "", "| arm | PM | CI (concept) | plotted |", "|---|---:|---|---|"]
     lines += [f"| {name(s)} | {fd(p)} | {fci((lo, hi), True)} | {'no' if und else 'yes'} |" for s, p, lo, hi, und in pm_rows]
-    lines += ["", analysis_stack.stamp()]
+    lines += ["", stack_stamp()]
     write(OUT / "figures.md", lines)
 
 
 # --------------------------------------------------------------------------- provenance
+
+
+def stack_stamp() -> str:
+    return analysis_stack.stamp() + f" BLAS threads: {BLAS_THREADS} (A6)."
 
 
 def sources_block(querysets: list[str], only: list[str] | None = None, inputs: tuple[Path, ...] = ()) -> list[str]:
@@ -1042,7 +1054,7 @@ def sources_block(querysets: list[str], only: list[str] | None = None, inputs: t
     lines += ["", "| input | SHA-256 |", "|---|---|",
               *(f"| `{p.name}` | `{sha256_file(p)[:16]}` |" for p in (SIDECAR, *inputs)),
               "", f"Bootstrap: B = {B:,}, seed = {SEED}, percentile 95 % intervals; p from the concept-clustered "
-              "draws (D-030). Split `dev`.", analysis_stack.stamp()]
+              "draws (D-030). Split `dev`.", stack_stamp()]
     return lines
 
 
@@ -1067,7 +1079,7 @@ def write_provenance() -> None:
     lines += ["", "| input | SHA-256 |", "|---|---|",
               *(f"| `{p.name}` | `{sha256_file(p)[:16]}` |"
                 for p in (SIDECAR, SINGLE_JSON, L2_JSON, CORPUS_JSON, SINGLE_SIDECAR, L2_SIDECAR)),
-              "", analysis_stack.stamp()]
+              "", stack_stamp()]
     write(OUT / "run_provenance.md", lines)
 
 
