@@ -71,9 +71,11 @@ def assert_work_root_is_the_main_checkout(work_root: Path) -> None:
 #: `resumen_decoded` / `resumen_stripped` are S91's renderings of the catalogue's `resumen`, its
 #: parameter-code suffix decoded or removed (`build_resumen_renderings.py`, D-039). They resolve
 #: like any synthetic set, from their own JSON and the tables derived from it.
+#: `single_l2_texto` is the wider L2 build (D-043, 9 / 9 / 8 dev concepts), registered by S6 work
+#: item 1; its tables come from `build_s6_query_tables.py`, along `single_texto`'s own path.
 QUERY_SETS = (
     "texto", "resumen", "single_texto", "stacked_texto", "balanced_texto",
-    "resumen_decoded", "resumen_stripped",
+    "resumen_decoded", "resumen_stripped", "single_l2_texto",
 )
 
 #: The three shapes `inputs` takes across the 77 configs, in the order they are looked for.

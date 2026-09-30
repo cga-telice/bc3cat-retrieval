@@ -30,6 +30,10 @@ OE_S12 = ["OE_P7_test_exclusion.json", "OE_P8_test_exclusion.json"]
 # D-043 amended: the wider L2 slices, delivered at `bc3cat-dataset` `b0e23f1` (generated at `90a318f`).
 # A new query set, registered here and wired in S6.
 OE_L2 = ["OE_single_l2_texto.json", "OE_single_l2_modifications.jsonl", "OE_single_l2_provenance.json"]
+# S6 work item 1: the SINGLE modifications sidecar (RESEARCH_PLAN §5, D-004), never handed off with the
+# release although it is the release's own (`bc3cat-dataset` blob `d5f2f86b` at `8998875`, last changed
+# at `a89eca4`). Taken 2026-09-30 from `data/synthetic/processed_OE_ablation_single/`.
+OE_SIDECARS = ["OE_single_modifications.jsonl"]
 # The E3 balanced dose set (D-009), delivered upstream 2026-09-17 and taken in S3 work item 2.
 # Registered, not yet run on: S8 is the sprint that uses them. They are not declared query sets,
 # so nothing resolves a run against them yet.
@@ -53,6 +57,9 @@ OE_DERIVED = [
     "OE_single_texto_feats.parquet",
     "OE_stacked_texto_norm.parquet",
     "OE_stacked_texto_feats.parquet",
+    # S6 work item 1, by `build_s6_query_tables.py` along `single_texto`'s path.
+    "OE_single_l2_texto_norm.parquet",
+    "OE_single_l2_texto_feats.parquet",
 ]
 # Superseded by the 2026-09-27 delivery and kept under digest-stamped names, so that S2's three
 # stacked runs remain resolvable against the tree (D-033). Not a query set: `run_context` resolves
@@ -107,6 +114,8 @@ INTAKE_PREFIXES = {
     # D-043 amended, from upstream's provenance file and its delivery message.
     "OE_single_l2_texto.json": "fff7dd3be023125b",
     "OE_single_l2_modifications.jsonl": "e1e5adbb8824bd34",
+    # S6 work item 1. The CRLF checkout upstream; the LF blob git stores hashes to `e2bcc95f77caa4ca`.
+    "OE_single_modifications.jsonl": "f492d9a0b7e133bf",
     # The superseded artefacts are checked against the digest their own filename claims. A copy
     # whose name lies about its contents is worse than no copy, because it would be trusted.
     "OE_stacked_texto__1bde2115.json": "1bde21157ef97421",
@@ -156,7 +165,7 @@ def main() -> None:
     ).strip()
 
     rows: list[tuple[str, int, int | str, str, str]] = []
-    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_L2 + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OEB:
+    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_L2 + OE_SIDECARS + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OEB:
         p = DATA / name
         digest = sha256(p)
         expected = INTAKE_PREFIXES.get(name)
