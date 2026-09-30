@@ -1312,3 +1312,34 @@ Tie-free Acc@1 is the primary reading of every registered S6 test, for every fam
 contrasts. The reason is S4 T5: a third of `bm25_unigram`'s L1 hits are tie-wins, so an as-run δ partly
 measures key order. As-run values are printed beside every tie-free one. Where an S6 test re-reads an S4
 prediction and the category changes, the S4 reading stands as S4's and the difference is stated.
+
+### D-048 — The random-intercept model does not separate a modification's effect from family difficulty
+**Status:** **Accepted** · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S6 report (finding 8)
+**Context.** `RESEARCH_PROPOSAL.md` §6 specifies a mixed model with random intercepts for concept and leaf "separating
+the effect of the modification from the intrinsic difficulty of the item family". S6 fitted it as M0
+(`results/S6/adjusted.md`). For `bm25_unigram`, `reorder` δ is exactly 0 on every query, yet M0's average-concept
+effect is +0.2015, offset by the concepts' fitted intercepts (û −0.2011). A concept's difficulty is not shared across
+modification types for a bag-of-words arm, which is what an additive intercept assumes. The fits are also fragile at
+the leaf-variance boundary: convergence depended on the BLAS thread count (S6 A6).
+**Decision.** The claim is withdrawn for the random-intercept model. Its type coefficients are average-concept
+quantities and are not reported as type effects. If a later sprint needs adjusted type effects, it specifies a
+type × concept structure in its design; any mixed-model figure is reported with its thread pin.
+**Consequence.** No S6 reading changes: no registered test rests on the mixed model. The manuscript's methods section
+describes the paired, concept-clustered bootstrap as the inference and does not present M0 as a difficulty
+adjustment. `RESEARCH_PROPOSAL.md` §6 is superseded on this point by this entry.
+
+### D-049 — H5 is restated on what S6 measured
+**Status:** **Accepted** · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S6 report
+**Context.** H5 predicted that overlap mediates *most* of the lexical methods' degradation, with small residual type
+effects for lexical scorers and large ones for dense encoders, and damage per unit of surface change an order of
+magnitude higher for L1 than L3. S6 (dev, tie-free, `results/S6/predictions.md`): the proportion mediated is 0.4410
+for `bm25_unigram` and 0.5789 for its oracle twin, both intervals containing 0.5 (R3 not supported); it is higher for
+`bm25_unigram` than for ColBERT and `bge_m3_dense` (R4 supported); the L1 : L3 ratio is 5.6751 and 8.0244, both
+intervals containing 10 (R5 not supported). The type overlap explains least is `synonym_label`, which changes one token.
+**Decision.** For the manuscript, H5 reads: *lost lexical and numeric overlap explains more of the lexical arms'
+item-level degradation than of the dense encoders'; it is not shown to explain most of it, and the damage per unit of
+surface change is not shown to be an order of magnitude higher for L1 than for L3.* The mediation is stated as a
+decomposition, not a causal estimate. The original wording is kept in `RESEARCH_PROPOSAL.md` as what was registered.
+**Consequence.** S12 re-reads R3–R5 on test under this wording, with the test split untouched until then. S9 inherits the
+residual: normalising surfaces addresses the share overlap explains, not the discriminating token of a `synonym_label`
+rewrite.

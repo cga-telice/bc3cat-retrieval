@@ -164,6 +164,6 @@ process alive; their output was discarded and regenerated. Docker Desktop was re
 
 | ID | Status | What |
 |---|---|---|
-| D-048 | proposed | M0's additive concept intercept is recorded as not holding for bag-of-words; the proposal's §6 "separating the modification's effect from the family's difficulty" is withdrawn for the random-intercept model, and adjusted type effects, if needed, require a type × concept term (finding 8) |
-| D-049 | proposed | H5 is restated for the manuscript on what S6 measured: overlap explains more of the lexical arms' damage than of the encoders' (R4); it is not shown to explain most of it (R3), and the L1 : L3 ratio is not shown to reach 10 (R5) |
+| D-048 | **Accepted** (César, 2026-10-01) | M0's additive concept intercept is recorded as not holding for bag-of-words; the proposal's §6 "separating the modification's effect from the family's difficulty" is withdrawn for the random-intercept model, and adjusted type effects, if needed, require a type × concept term (finding 8) |
+| D-049 | **Accepted** (César, 2026-10-01) | H5 is restated for the manuscript on what S6 measured: overlap explains more of the lexical arms' damage than of the encoders' (R4); it is not shown to explain most of it (R3), and the L1 : L3 ratio is not shown to reach 10 (R5) |
 | D-028 | note | Tie-free changed no S6 reading and no S4 category (T7) |

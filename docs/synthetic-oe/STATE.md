@@ -71,7 +71,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S6` in a fresh session** (not this one). The [report](sprints/SPRINT_S6_REPORT.md) is written (2026-10-01): all six exit criteria met, T1–T8 and Figs. 1–3 in `results/S6/`, generated at `041c3e5` with one BLAS thread (A6), byte-identical across two generations; suite 1192 passed, 1 xfailed. D-048 and D-049 proposed, for César. S6 stays **active** until the audit passes and its findings are resolved.
+**`/audit S6` in a fresh session** (not this one). The [report](sprints/SPRINT_S6_REPORT.md) is written (2026-10-01): all six exit criteria met, T1–T8 and Figs. 1–3 in `results/S6/`, generated at `041c3e5` with one BLAS thread (A6), byte-identical across two generations; suite 1192 passed, 1 xfailed. D-048 and D-049 accepted by César (2026-10-01). S6 stays **active** until the audit passes and its findings are resolved.
 
 **Docker Desktop, 2026-09-30:** it failed at start on a stale socket (`%LOCALAPPDATA%\Docker\run\userAnalyticsOtlpHttp.sock`, an undeletable reparse point). The directory was renamed to `run.stale-20260930`, not deleted and not factory-reset; Docker recreated `run` and started. The renamed directory can be removed by hand.
 
