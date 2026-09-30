@@ -69,9 +69,10 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S5 work items 2–4**: port the oracle-params mode into `structured_pipeline.load`, test it on 20
-identity and 20 L1 dev queries, then run it on `texto` and `single_texto` (2 runs) and record the
-retrieval-path diff for the four reused S2 rules runs. S6 opens after S5 with the L2 intake (D-043)
+**S5 work item 5**: `build_results_s5.py` → T1–T7 under `results/S5/`. Items 2–4 done: oracle bound
+at `26ed9ff` (suite 1135 passed, 1 xfailed); 6 runs clean at `26ed9ff`, the two rules arms re-run and
+S2's four archived to `runs/_archive/S2` (A1); 216 of 216 runs resolve; `results/S2`, `results/S3`
+regenerate byte-identically from the archive. S6 opens after S5 with the L2 intake (D-043)
 and the P8 queries shown both ways (D-044).
 
 ## Latest results
