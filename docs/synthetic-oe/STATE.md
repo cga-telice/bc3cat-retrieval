@@ -69,10 +69,11 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S5 work item 5**: `build_results_s5.py` → T1–T7 under `results/S5/`. Items 2–4 done: oracle bound
-at `26ed9ff` (suite 1135 passed, 1 xfailed); 6 runs clean at `26ed9ff`, the two rules arms re-run and
-S2's four archived to `runs/_archive/S2` (A1); 216 of 216 runs resolve; `results/S2`, `results/S3`
-regenerate byte-identically from the archive. S6 opens after S5 with the L2 intake (D-043)
+**S5 work item 6**: write `SPRINT_S5_REPORT.md` (`/sprint-close S5`), then `/audit S5` in a fresh
+session. Item 5 done: `results/S5/` T1–T7 by `build_results_s5.py`, byte-identical on regeneration, under
+the prose guard. Q1 contradicted on pooled L1 and `unit_conversion`, not supported on `num_to_text`; Q2 (the
+oracle bound) not supported on pooled L1; **G2 reads no** under the frozen rule, pending César.
+S6 opens after S5 with the L2 intake (D-043)
 and the P8 queries shown both ways (D-044).
 
 ## Latest results
