@@ -1,6 +1,6 @@
 # Sprint S5 — E1 ablation, Track B (structured) · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `432b39e` · `2026-09-30`
 > This document is read-only from that commit. Changes go in
 > [`SPRINT_S5_AMENDMENTS.md`](SPRINT_S5_AMENDMENTS.md) (D-045), dated and justified — never as
 > in-place edits. `git log -- <this file>` after the freeze date is an

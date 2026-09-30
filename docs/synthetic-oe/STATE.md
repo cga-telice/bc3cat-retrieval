@@ -3,13 +3,15 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-30 (**S4 done**: re-audit PASS WITH FINDINGS, all six resolved) · **Updated by:** Claude
+**Last updated:** 2026-09-30 (**S5 active**, design frozen at `432b39e`) · **Updated by:** Claude
 
 ---
 
 ## Where we are
 
-**No sprint active. S4 is done** (2026-09-30; E1 ablation, Track A). First audit FAIL, reopened, all nine resolved (A4). Re-audit **PASS WITH FINDINGS**, 1 major and 5 minor, all resolved (A5: columns only). No run changed ([design](sprints/SPRINT_S4_DESIGN.md), frozen `dd407c6`; [amendments](sprints/SPRINT_S4_AMENDMENTS.md) A1–A5, moved out under D-045; [report](sprints/SPRINT_S4_REPORT.md), [audit](sprints/SPRINT_S4_AUDIT.md)). 15 arms × 9 single types on dev, paired against identity: H1 supported on dev (the gap widens for both BM25 arms and ColBERT); H2 split, L1 and `reorder` as predicted, L3 not a coherent layer. Found P7 (one dev query renders a sibling's `texto`; 2 more on test), excluded at item level. Took in `OE_P7_test_exclusion.json` (S12) and `OE_single_l2_texto.json` (S6, 9 / 9 / 8 dev concepts), both unwired (D-043). **S91 is done** (2026-09-29; probe, coded vs decoded `resumen`, frozen at `09d11f7`) — first audit FAIL, reopened, all eight resolved; re-audit **PASS WITH FINDINGS**, all eight resolved (design A4); D-039 and D-037 amendments accepted by César ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039's open question: a catalogue-only decoder is viable in-sample (80.9 %). Ruled 2026-09-29: `resumen` results are reported coded **and** decoded (D-039, second amendment); `resumen`-identical siblings are excluded at item level (D-040, 9,348 dev leaves; not yet in the harness). D-041 (document-side expansion probe) declined; its two questions go to S9. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **S2 is done**
+**S5 is active** (2026-09-30; E1 ablation, Track B, H3 and G2; [design](sprints/SPRINT_S5_DESIGN.md) frozen at `432b39e`, [amendments](sprints/SPRINT_S5_AMENDMENTS.md) empty). The published rules pipeline (valuenorm primary; faithful port for comparability with 0.903) and a new oracle-extraction bound × nine single types on dev, against S4's reference arms. Tie-free Acc@1 primary (D-028). Q1/Q3 are confirmatory (S2 already showed part of the rules results); Q2, on the bound, is the only blind test. LLM extraction was never published and moved to S9 (César). D-028/D-029 now recorded in `DECISIONS.md`.
+
+**S4 is done** (2026-09-30; E1 ablation, Track A). First audit FAIL, reopened, all nine resolved (A4). Re-audit **PASS WITH FINDINGS**, 1 major and 5 minor, all resolved (A5: columns only). No run changed ([design](sprints/SPRINT_S4_DESIGN.md), frozen `dd407c6`; [amendments](sprints/SPRINT_S4_AMENDMENTS.md) A1–A5, moved out under D-045; [report](sprints/SPRINT_S4_REPORT.md), [audit](sprints/SPRINT_S4_AUDIT.md)). 15 arms × 9 single types on dev, paired against identity: H1 supported on dev (the gap widens for both BM25 arms and ColBERT); H2 split, L1 and `reorder` as predicted, L3 not a coherent layer. Found P7 (one dev query renders a sibling's `texto`; 2 more on test), excluded at item level. Took in `OE_P7_test_exclusion.json` (S12) and `OE_single_l2_texto.json` (S6, 9 / 9 / 8 dev concepts), both unwired (D-043). **S91 is done** (2026-09-29; probe, coded vs decoded `resumen`, frozen at `09d11f7`) — first audit FAIL, reopened, all eight resolved; re-audit **PASS WITH FINDINGS**, all eight resolved (design A4); D-039 and D-037 amendments accepted by César ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039's open question: a catalogue-only decoder is viable in-sample (80.9 %). Ruled 2026-09-29: `resumen` results are reported coded **and** decoded (D-039, second amendment); `resumen`-identical siblings are excluded at item level (D-040, 9,348 dev leaves; not yet in the harness). D-041 (document-side expansion probe) declined; its two questions go to S9. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **S2 is done**
 (2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
 the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
 0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
@@ -67,9 +69,10 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/sprint-open S5`** (Track B, structured; H3), which inherits the 15-arm profile as its reference. From
-S5 on, `/sprint-open` starts `SPRINT_XX_AMENDMENTS.md` with the design (D-045). S6 opens with the L2
-intake (D-043) and the P8 queries shown both ways (D-044).
+**S5 work items 2–4**: port the oracle-params mode into `structured_pipeline.load`, test it on 20
+identity and 20 L1 dev queries, then run it on `texto` and `single_texto` (2 runs) and record the
+retrieval-path diff for the four reused S2 rules runs. S6 opens after S5 with the L2 intake (D-043)
+and the P8 queries shown both ways (D-044).
 
 ## Latest results
 
