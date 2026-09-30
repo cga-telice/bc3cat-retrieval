@@ -21,7 +21,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S3 | backbone | **done** | E0 controls, replication, overlap characterisation | H1, H5 | S2 |
 | S4 | backbone | **done** | E1 ablation — Track A | H1, H2 | S3 |
 | S5 | backbone | **done** | E1 ablation — Track B (structured) | H3 | S4 |
-| S6 | backbone | planned | Statistical analysis and mediation | H1, H2, H5 | S4, S5 |
+| S6 | backbone | **active** | Statistical analysis and mediation | H1, H2, H5 | S4, S5 |
 | S7 | backbone | planned | E2 stacked headline and stratifications | H1, H4 | S6 |
 | S8 | backbone | planned | E3 balanced dose design | H4 | S7 |
 | S9 | backbone | planned | Track C — query-side normalisation and rewriting | H6 | S6 |
@@ -99,3 +99,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-09-30 | S5 | report written | All 6 exit criteria met; 6 structured runs clean at `26ed9ff` (A1: rules arms re-run, S2's archived and routed); T1–T7 byte-identical. Tie-free: Q1 contradicted on pooled L1 and `unit_conversion`; Q2 (oracle bound) not supported on pooled L1; Q3 supported on L3 only. **H3 refuted on dev for the published method; G2 reads no**, pending César (D-046). Amendments A1–A2. `done` withheld until `/audit S5` in a fresh session |
 | 2026-09-30 | S5 | audited fresh | **PASS WITH FINDINGS** (`SPRINT_S5_AUDIT.md`): 4 findings — 1 major, 3 minor, none critical. T1–T7 regenerate byte-identically; every quoted figure traces to its runs; provenance, freeze, archive checksums (40/40) and 216/216 run inputs verified; all 6 exit criteria met. Major: known-wrong 1–2 overstate Q2 (pooled L1 interval includes 0; `num_to_text` supported) (F1) |
 | 2026-09-30 | S5 | active → **done** | All four findings resolved (report, Audit response). F1: known-wrong 1–2, finding 2 and the H3 row scoped to what T6 shows, `num_to_text` exception stated. F2: oracle figures carry intervals, ‡ and the `rules_valuenorm` twin. F3: "trails" dropped. F4: amendment A3 (A2's timing claim withdrawn). The uncheckable all-2,206 oracle check withdrawn from the Check row. No run or table changed; prose guard passes |
+| 2026-09-30 | S6 | planned → **active** | Design frozen at `8abf24f`; entry state verified in the tree. L2 delivery (`fff7dd3b`, 9 / 9 / 8 dev concepts) and the SINGLE modifications sidecar (upstream `a89eca4`, never handed off) taken in as work item 1; 15 new runs on `single_l2_texto`; mixed models M0–M2 and overlap mediation per non-floor base arm; 21 tests R1–R6, blind / confirmatory labelled; tie-free primary for every family (D-028 note). Amendments file started empty (D-045) |

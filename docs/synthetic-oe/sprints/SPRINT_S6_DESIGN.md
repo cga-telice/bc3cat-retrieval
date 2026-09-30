@@ -1,6 +1,6 @@
 # Sprint S6 — Statistical analysis and mediation · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `8abf24f` · `2026-09-30`
 > This document is read-only from that commit. Changes go in
 > [`SPRINT_S6_AMENDMENTS.md`](SPRINT_S6_AMENDMENTS.md) (D-045), dated and justified — never as
 > in-place edits. `git log -- <this file>` after the freeze date is an

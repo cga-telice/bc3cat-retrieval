@@ -3,11 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-09-30 (**S5 done**, audit PASS WITH FINDINGS, all resolved) · **Updated by:** Claude
+**Last updated:** 2026-09-30 (**S6 active**, design frozen at `8abf24f`) · **Updated by:** Claude
 
 ---
 
 ## Where we are
+
+**S6 is active** (2026-09-30; statistical analysis and mediation, H1 / H2 / H5; [design](sprints/SPRINT_S6_DESIGN.md) frozen at `8abf24f`, [amendments](sprints/SPRINT_S6_AMENDMENTS.md) empty). Intake of `OE_single_l2_texto.json` (9 / 9 / 8 dev concepts) and of the SINGLE modifications sidecar (upstream `a89eca4`, never handed off); 15 new runs on `single_l2_texto`; mixed models M0–M2 and overlap mediation; 21 registered tests R1–R6; tie-free primary for every family (D-028 note).
 
 **S5 is done** (2026-09-30; E1 ablation, Track B, H3 and G2; [design](sprints/SPRINT_S5_DESIGN.md) frozen at `432b39e`, [amendments](sprints/SPRINT_S5_AMENDMENTS.md) A1–A3, [report](sprints/SPRINT_S5_REPORT.md), [audit](sprints/SPRINT_S5_AUDIT.md)). Audit **PASS WITH FINDINGS**, 1 major and 3 minor, all resolved in prose and A3; no run or table changed. The published rules pipeline ranks below deployable BM25 under L1, tie-free (Q1 contradicted pooled and on `unit_conversion`): **H3 refuted on dev for the published method**. The oracle bound is not detected beating BM25 on pooled L1 (Q2 not supported) but does on `num_to_text` (9 concepts ‡). **G2 reads no**: S10 before S11 (D-046). Superseded runs archived via `utils/archived_runs.py` (D-047).
 
@@ -69,8 +71,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/sprint-open S6`.** S6 opens with the L2 intake (D-043) and the P8 queries shown both ways (D-044);
-it does no H3 work (S5 report, "What the next sprint inherits").
+**S6 work item 1**: register `single_l2_texto`, build its feature tables, take in the SINGLE sidecar. Then work item 2 (pinned `statsmodels` / `matplotlib` in the sprint container; Docker must be started).
 
 ## Latest results
 
