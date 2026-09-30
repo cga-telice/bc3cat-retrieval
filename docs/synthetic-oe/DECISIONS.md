@@ -1305,3 +1305,10 @@ sprint's numbers resolves it through `utils/archived_runs.py`. The earlier sprin
 byte-identically afterwards. A second config under a new name is not used for this: configs are the experiment
 record, one per method.
 **Consequence.** First applied in S5 to S2's four rules runs. S7's stacked re-runs follow it.
+
+### D-028 — note: applied to every family from S6
+**Status:** Note on D-028 · **Date:** 2026-09-30 · **Owner:** César · **Raised in:** S6 design (approved at the freeze)
+Tie-free Acc@1 is the primary reading of every registered S6 test, for every family, not only structured
+contrasts. The reason is S4 T5: a third of `bm25_unigram`'s L1 hits are tie-wins, so an as-run δ partly
+measures key order. As-run values are printed beside every tie-free one. Where an S6 test re-reads an S4
+prediction and the category changes, the S4 reading stands as S4's and the difference is stated.
