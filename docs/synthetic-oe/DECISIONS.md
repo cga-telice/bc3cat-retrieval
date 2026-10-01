@@ -1435,3 +1435,20 @@ printed beside every reading and labelled as resting on 4 clusters. Every claim 
 no generalisation across concepts is made, and S12's 3 test-side ladder concepts are the replication.
 **Consequence.** D-030 stands everywhere else. This is a deviation for one data set with too few clusters, decided before
 any run on it, not a relaxation chosen after a result.
+
+### D-054 — H4 is restated on what S8 measured: super-additivity is not established
+**Status:** Proposed · **Date:** 2026-10-02 · **Owner:** César · **Raised in:** S8 report
+**Context.** S8's design resolves H4 by a three-way rule (supported / contradicted / partly supported). On the dev
+E3 ladder (328 leaves, `OEB020$ 030$ 230$ 290$`) no tested arm has both X1 and X2 supported, and the rule then reads
+*partly supported* (A3). In `results/S8/predictions.md`: X1 (cumulative) supported for `dense_e5` only, not robust
+to D-004; X2 (marginal) supported for six arms, of which one exceeds the design's draw-noise bar; X3 (dose-response)
+supported for all seven, every curve decelerating (`dose_response.md`). Fig. 6 shows observed accuracy close to the
+clipped-additive prediction for six of seven arms.
+**Proposal.** For the manuscript, H4 reads: *on four OEB canalization concepts, stacked rendering edits degrade
+item-level accuracy roughly as the clipped sum of their isolated effects predicts; super-additivity is not
+established. An added edit breaks a surviving leaf more often in company than alone for six of seven arms, but only
+one of those excesses exceeds the draw noise between the isolated and ladder rewrites.* The design's label
+*partly supported* is recorded in the S8 report and not used in the manuscript. S12 re-reads X1–X3 on the test-side
+ladder unchanged.
+**Open with it.** Whether S12 keeps A2 (d)'s noise bar, which counts rank-1 tie-breaks as disagreement and so
+overstates the bar for BM25 and TF-IDF (S8 report, known-wrong 2), must be decided before S12 opens.

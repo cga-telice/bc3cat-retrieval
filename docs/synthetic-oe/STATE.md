@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-01 (**S8 active**) · **Updated by:** Claude
+**Last updated:** 2026-10-02 (**S8 report written**) · **Updated by:** Claude
 
 ---
 
 ## Where we are
 
-**S8 is active** (2026-10-01; E3 balanced dose design, H4; [design](sprints/SPRINT_S8_DESIGN.md) frozen at `4f62d5a`, [amendments](sprints/SPRINT_S8_AMENDMENTS.md) empty). H4 tested within leaf on the nested ladder: 328 dev leaves in 4 OEB concepts (all large families), 1,640 dose and 2,952 isolated queries; 36 runs to make; 21 blind tests X1–X3, Holm across 21. The isolated edits are a different rewrite draw from the ladder's (89 of 328 rung-1 queries match), so T3 measures that noise. D-052 (`dose_texto`, `isolated_texto`; `balanced_texto` retired) and D-053 (stratified leaf bootstrap + 3-of-4 sign rule, scoped to the 4 concepts) accepted by César.
+**S8 report written** (2026-10-02; E3 balanced dose design, H4; [design](sprints/SPRINT_S8_DESIGN.md) frozen at `4f62d5a`, [amendments](sprints/SPRINT_S8_AMENDMENTS.md) A1–A4, [report](sprints/SPRINT_S8_REPORT.md), [results](results/S8)). 36 runs clean on 328 dev ladder leaves in 4 OEB concepts. Accuracy falls with every added edit for all seven arms, decelerating (X3); cumulative loss is close to the clipped sum of isolated effects (X1 supported for `dense_e5` only, not robust); X2 supported for six arms, one above the draw-noise bar. H4 reads *partly supported* by the design's rule though no arm holds both tests: super-additivity is not established. D-054 proposed (César). `done` withheld until `/audit S8`.
 
 **S7 is done** (2026-10-01; E2 stacked headline and stratifications; [design](sprints/SPRINT_S7_DESIGN.md) frozen at `5e89809`, [amendments](sprints/SPRINT_S7_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S7_REPORT.md), [audit](sprints/SPRINT_S7_AUDIT.md), [results](results/S7)). 18 runs on the corrected stacked set, all clean. No arm keeps half its item accuracy stacked (ColBERT highest, 0.4128 tie-free). W1 (gap widens) holds for all 7 arms; W2 holds for the encoders but not for BM25, whose **parent** level collapses (0.9980 → 0.2931). H1 is partly supported on stacked. The sibling-density law is not established: 1 of 7 supported; descriptively it holds within OEB for 5 of 7, not separated from the dose. Audit **PASS WITH FINDINGS**, 2 major and 5 minor, all resolved: A5–A6 add n excluded, concept counts and query-level CIs to T2–T7 (generated at `47cbbbd`, byte-identical twice), A7 corrects A1/A3, the rest is prose. D-050 accepted; D-051 amended after the audit (rationale restated), accepted by César.
 
@@ -81,7 +81,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S8 work items 2–3 done.** 36 runs at `f330ee3`, all clean and resolving (A1: `host.docker.internal` mapped to the bridge gateway for the pass, restored). A2 fixed the analysis specification before the generator first ran; `results/S8/` (T1–T11, Fig. 6) generated at `da654e2`, byte-identical twice; A3 records the H4-label correction. Next: `SPRINT_S8_REPORT.md`, then `/audit S8` in a fresh session. S9–S11 remain unblocked. Suite: 1260 passed, 2 skipped, 1 xfailed.
+**`/audit S8`** in a fresh session; D-054 awaits César. S9–S11 remain unblocked. Suite: 1260 passed, 2 skipped, 1 xfailed.
 
 **BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
 
