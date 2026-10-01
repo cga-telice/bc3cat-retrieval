@@ -13,7 +13,8 @@ values, cells, discrimination and the clustered bootstrap are S6's, imported, no
 - **W3** is an OLS slope of the item loss on log₂ family size, solved from per-concept sums so that each
   bootstrap draw is a weighted sum (A1 a–c).
 - The dose field is `texto_modification_count` (D-025 note); `modification_count` is printed beside it.
-- T3–T6 print n excluded and the query-level interval beside every item-level δ and slope (A5, audit F2).
+- T3–T6 print n excluded, the concept count and the query-level interval beside every item-level δ and slope
+  (A5, audit F2).
 
 The analysis stack is pinned (`analysis_stack.py`): the script refuses to run on another.
 """
@@ -547,10 +548,10 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
               f"{f4(f0[['log2fam', 'dose']].corr().iloc[0, 1])} (query level). L1 present in "
               f"{int(f0['l1'].sum()):,} of {len(f0):,} item-scored queries, so it cannot enter the refit (A2).", ""]
     lines += ["## W3 slopes", "",
-              "| arm | n scored | n excluded | slope, unadjusted | CI (query) | CI (concept) | reading | slope, adjusted | "
+              "| arm | n scored | n excluded | concepts | slope, unadjusted | CI (query) | CI (concept) | reading | slope, adjusted | "
               "CI (query) | CI (concept) | dose coef. | reading, adjusted | within OEB slope | n scored | n excluded | "
               "CI (query) | CI (concept) | OEB concepts |",
-              "|---|---:|---:|---:|---|---|---|---:|---|---|---:|---|---:|---:|---:|---|---|---:|"]
+              "|---|---:|---:|---:|---:|---|---|---|---:|---|---|---:|---|---:|---:|---:|---|---|---:|"]
     for r in [r for r in results if r["id"] == "W3"]:
         short = r["arm"]
         g = item(columns(F[short], "tf"))
@@ -560,7 +561,8 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
         foq = ols_draws(oeb, ["log2fam"], f"s7|T4|{short}|OEB|q", unit="query")
         oeb_all = F[short][F[short]["subchapter"] == "OEB"]
         lines.append(
-            f"| {name(short)} | {r['tf']['n']:,} | {r['tf']['excluded']:,} | {fd(r['tf']['est'])} | "
+            f"| {name(short)} | {r['tf']['n']:,} | {r['tf']['excluded']:,} | {conc(r['tf']['concepts'])} | "
+            f"{fd(r['tf']['est'])} | "
             f"{fci(r['tf']['q'], True)} | {fci(r['tf']['c'], True)} | "
             f"{r['tf']['reading']} | {fd(r['adj']['est'])} | {fci(r['adj']['q'], True)} | {fci(r['adj']['c'], True)} | "
             f"{fd(adj['point'][2])} | {r['adj']['reading']} | {fd(fo['point'][1])} | {len(oeb):,} | "
@@ -621,9 +623,11 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
                          f"{fd((sub['item_mod'] - sub['item_id']).mean())} | {fci(c['q'], True)} | {fci(c['c'], True)} |")
         fit = ols_draws(g, ["l2h"], f"s7|T4|{short}|h1")
         fitq = ols_draws(g, ["l2h"], f"s7|T4|{short}|h1|q", unit="query")
-        slopes.append((short, fit["point"][1], slope_ci(fitq), slope_ci(fit)))
-    lines += ["", "| arm | ℓ slope on log₂(1 + one-axis siblings) | CI (query) | CI (concept) |", "|---|---:|---|---|"]
-    lines += [f"| {name(s)} | {fd(b)} | {fci(q, True)} | {fci(c, True)} |" for s, b, q, c in slopes]
+        slopes.append((short, len(g), nexcl(fa), fit["clusters"], fit["point"][1], slope_ci(fitq), slope_ci(fit)))
+    lines += ["", "| arm | n scored | n excluded | concepts | ℓ slope on log₂(1 + one-axis siblings) | CI (query) | "
+              "CI (concept) |", "|---|---:|---:|---:|---:|---|---|"]
+    lines += [f"| {name(s)} | {n:,} | {x:,} | {conc(k)} | {fd(b)} | {fci(q, True)} | {fci(c, True)} |"
+              for s, n, x, k, b, q, c in slopes]
     lines += sources_block([STACKED, IDENT], arms=BASE7, inputs=(SCHEMA_JSON, CORPUS_JSON))
     write(OUT / "density.md", lines)
 
@@ -664,8 +668,8 @@ def write_presence(F: dict, dup: set[str]) -> None:
     lines += population_lines(F, dup)
     order = LAYERS["L1"] + LAYERS["L2"] + LAYERS["L3"]
     lines += ["| arm | type | n with | n excluded | concepts | δ with | CI (query) | CI (concept) | n without | n excluded | "
-              "δ without | CI (query) | CI (concept) |",
-              "|---|---|---:|---:|---:|---:|---|---|---:|---:|---:|---|---|"]
+              "concepts | δ without | CI (query) | CI (concept) |",
+              "|---|---|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|---|"]
     for _, short, _, _ in ARMS:
         f = columns(F[short], "tf")
         for t in order:
@@ -679,8 +683,8 @@ def write_presence(F: dict, dup: set[str]) -> None:
             n_without = int((~has).sum())
             lines.append(f"| {name(short)} | `{t}` | {w['n']:,} | {w['excluded']:,} | {conc(w['concepts'])} | "
                          f"{fd(w['delta'])} | {fci(w['q'], True)} | {fci(w['c'], True)} | "
-                         + (f"{o['n']:,} | {o['excluded']:,} | {fd(o['delta'])} | {fci(o['q'], True)} | "
-                            f"{fci(o['c'], True)} |" if o else f"0 | {n_without:,} | — | — | — |"))
+                         + (f"{o['n']:,} | {o['excluded']:,} | {conc(o['concepts'])} | {fd(o['delta'])} | "
+                            f"{fci(o['q'], True)} | {fci(o['c'], True)} |" if o else f"0 | {n_without:,} | 0 | — | — | — |"))
     absent = [t for t in order if not next(iter(F.values()))["types"].map(lambda ts, t=t: t in ts).any()]
     lines += ["", "Types in no dev stacked query: " + (", ".join(f"`{t}`" for t in absent) or "none") + "."]
     lines += sources_block([STACKED, IDENT])
