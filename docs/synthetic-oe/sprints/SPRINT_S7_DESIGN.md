@@ -1,6 +1,6 @@
 # Sprint S7 — E2 stacked headline and stratifications · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `5e89809` · `2026-10-01`
 > This document is read-only from that commit. Changes go in
 > [`SPRINT_S7_AMENDMENTS.md`](SPRINT_S7_AMENDMENTS.md) (D-045), dated and justified — never as
 > in-place edits. `git log -- <this file>` after the freeze date is an

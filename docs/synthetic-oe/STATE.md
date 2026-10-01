@@ -3,11 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-01 (**S6 done**; S7 next) · **Updated by:** Claude
+**Last updated:** 2026-10-01 (**S7 active**) · **Updated by:** Claude
 
 ---
 
 ## Where we are
+
+**S7 is active** (2026-10-01; E2 stacked headline and stratifications, H1 and the sibling-density law; [design](sprints/SPRINT_S7_DESIGN.md) frozen at `5e89809`, [amendments](sprints/SPRINT_S7_AMENDMENTS.md) empty). 18 runs on the corrected stacked set (`c34a222a`, dev 2,521 queries over 41 concepts) after S2's five stacked runs are archived (D-047); 21 tests W1–W3, tie-free, concept-clustered. H4 is not tested in S7 — it stays S8's.
 
 **S6 is done** (2026-10-01; statistical analysis and mediation, H1 / H2 / H5; [design](sprints/SPRINT_S6_DESIGN.md) frozen at `8abf24f`, [amendments](sprints/SPRINT_S6_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S6_REPORT.md), [audit](sprints/SPRINT_S6_AUDIT.md)). Audit **PASS WITH FINDINGS**, 2 major and 4 minor, all resolved: A7 adds n excluded to T2–T7 and the tie-free query-level CI to T1 (columns only, no earlier cell moved; generated at `c2ecdde`, byte-identical twice); the rest in prose. 15 runs on `single_l2_texto`; 21 tests, 16 supported, 5 not, 0 contradicted, tie-free. H1 supported for all seven non-floor arms; H2's L1 clause replicated blind on 9 L2 concepts, its L2 clause holds for BM25 (not robust to D-004) and not for ColBERT; H5 restated (D-049, amended after audit F2): overlap explains more of BM25's damage than of BGE-M3's, is not shown to explain most of it, and the L1 : L3 ratio is not shown to reach 10. M0's additive concept intercept does not hold for bag-of-words (D-048).
 
@@ -75,7 +77,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/sprint-open S7`** — E2 stacked headline and stratifications (H1, H4), which inherits S6's tie-free reading and T1's frames as the single-edit reference. S9–S11 can open in parallel now that S6 has landed (`SPRINTS.md`). Suite at close: 1192 passed, 2 skipped, 1 xfailed.
+**S7 work item 1** — intake checks on the stacked set (`parameters` agreement with the superseded file, undecidable-query count, D-033 / P7 / P8 counts), then work item 2 (archive S2's stacked runs, D-047). S9–S11 can open in parallel (`SPRINTS.md`). Suite at S6 close: 1192 passed, 2 skipped, 1 xfailed.
 
 **Docker Desktop, 2026-09-30:** it failed at start on a stale socket (`%LOCALAPPDATA%\Docker\run\userAnalyticsOtlpHttp.sock`, an undeletable reparse point). The directory was renamed to `run.stale-20260930`, not deleted and not factory-reset; Docker recreated `run` and started. The renamed directory can be removed by hand.
 
