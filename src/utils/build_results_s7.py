@@ -554,6 +554,36 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
             f"{fci(ci(fo['draws'][:, 1][np.isfinite(fo['draws'][:, 1])]), True)} | {conc(fo['clusters'])} |")
     lines += ["", "The within-OEB slope is descriptive (design): OEB holds the largest families, so family size and "
               "subchapter are confounded across the full population.", ""]
+    lines += ["## Leverage (descriptive, A4)", "",
+              "Why a concept interval can exclude 0 while the bootstrap p fails Holm: p counts the draws at or below 0, "
+              "the interval cuts at its percentiles. Beside it, the slope outside OEB (the complement of the within-OEB "
+              "slope) and the range of the slope with one concept left out.", "",
+              "| arm | draws ≤ 0 (of B) | largest family in those draws, max | slope outside OEB | CI (concept) | "
+              "concepts | leave-one-out min | left out | leave-one-out max | left out |",
+              "|---|---:|---:|---:|---|---:|---:|---|---:|---|"]
+    for short in BASE7:
+        g = item(columns(F[short], "tf"))
+        fit = ols_draws(g, ["log2fam"], f"s7|w3|{short}|tf")
+        d = fit["draws"][:, 1]
+        labels, weights = cluster_weights(g["concept"].to_numpy(), f"s7|w3|{short}|tf")
+        fam = np.array([int(g.loc[g["concept"] == c, "fam"].iloc[0]) for c in labels])
+        neg = np.where(d <= 0)[0]
+        drawn_max = max((int(fam[weights[i] > 0].max()) for i in neg), default=0)
+        out = g[g["subchapter"] != "OEB"]
+        fo = ols_draws(out, ["log2fam"], f"s7|T4|{short}|notOEB")
+        loo = []
+        for c in labels:
+            sub_g = g[g["concept"] != c]
+            X = np.column_stack([np.ones(len(sub_g)), sub_g["log2fam"].to_numpy(float)])
+            y = (sub_g["item_id"] - sub_g["item_mod"]).to_numpy(float)
+            loo.append((float(np.linalg.lstsq(X, y, rcond=None)[0][1]), c))
+        lo, hi = min(loo), max(loo)
+        lines.append(f"| {name(short)} | {len(neg):,} | " + (f"{drawn_max:,}" if len(neg) else "—")
+                     + f" | {fd(fo['point'][1])} | {fci(ci(fo['draws'][:, 1][np.isfinite(fo['draws'][:, 1])]), True)} | "
+                     f"{conc(fo['clusters'])} | {fd(lo[0])} | `{lo[1]}` | {fd(hi[0])} | `{hi[1]}` |")
+    sizes_desc = sorted({int(v) for v in sizes}, reverse=True)
+    lines += ["", "Family sizes behind the item-scored queries, largest first: "
+              + ", ".join(f"{v:,}" for v in sizes_desc) + ".", ""]
     edges = np.unique(np.quantile(f0["one_apart"], np.linspace(0, 1, 5)))
     lines += ["## One-axis siblings of the gold (descriptive, A1 g)", "",
               "Bins at the quartiles of the item-scored queries' one-axis sibling count: "
