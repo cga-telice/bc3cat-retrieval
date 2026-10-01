@@ -60,6 +60,11 @@ OE_DERIVED = [
     # S6 work item 1, by `build_s6_query_tables.py` along `single_texto`'s path.
     "OE_single_l2_texto_norm.parquet",
     "OE_single_l2_texto_feats.parquet",
+    # S8 work item 1 (D-052), by `build_s8_query_tables.py` along the same path.
+    "OE_dose_texto_norm.parquet",
+    "OE_dose_texto_feats.parquet",
+    "OE_isolated_texto_norm.parquet",
+    "OE_isolated_texto_feats.parquet",
 ]
 # Superseded by the 2026-09-27 delivery and kept under digest-stamped names, so that S2's three
 # stacked runs remain resolvable against the tree (D-033). Not a query set: `run_context` resolves

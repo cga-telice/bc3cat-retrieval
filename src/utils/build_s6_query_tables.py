@@ -46,9 +46,11 @@ REFERENCE = "single_texto"
 NEW = "single_l2_texto"
 
 
-def derive(path: Path, corpus_keys: set[str], axis_labels: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
+def derive(
+    path: Path, corpus_keys: set[str], axis_labels: dict, extra_fields: tuple[str, ...] = QUERY_FIELDS
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """(norm, feats) for one synthetic query set, along `data.ipynb`'s `prepare_query_set`."""
-    frame = clean_df(load_records(path, extra_fields=QUERY_FIELDS))
+    frame = clean_df(load_records(path, extra_fields=extra_fields))
     assert_gold_present(frame, corpus_keys)
     frame = add_processed_columns(frame, "text")
     normalised = [

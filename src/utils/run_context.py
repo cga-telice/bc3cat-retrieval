@@ -67,15 +67,20 @@ def assert_work_root_is_the_main_checkout(work_root: Path) -> None:
         f"{WORKTREE_OVERRIDE_ENV}=1 and record it in STATE.md while it lives."
     )
 
-#: The query sets a run may be asked for. `balanced_texto` arrives only if E3 lands (D-009).
+#: The query sets a run may be asked for.
 #: `resumen_decoded` / `resumen_stripped` are S91's renderings of the catalogue's `resumen`, its
 #: parameter-code suffix decoded or removed (`build_resumen_renderings.py`, D-039). They resolve
 #: like any synthetic set, from their own JSON and the tables derived from it.
 #: `single_l2_texto` is the wider L2 build (D-043, 9 / 9 / 8 dev concepts), registered by S6 work
 #: item 1; its tables come from `build_s6_query_tables.py`, along `single_texto`'s own path.
+#: `dose_texto` / `isolated_texto` are the E3 delivery (D-009), registered by S8 work item 1 under
+#: D-052: the nested dose ladder and each of the nine types alone, over the same 600 leaves. They
+#: replace the single name `balanced_texto` that D-008 reserved, which is retired. Their tables come
+#: from `build_s8_query_tables.py`, along the same path.
 QUERY_SETS = (
-    "texto", "resumen", "single_texto", "stacked_texto", "balanced_texto",
+    "texto", "resumen", "single_texto", "stacked_texto",
     "resumen_decoded", "resumen_stripped", "single_l2_texto",
+    "dose_texto", "isolated_texto",
 )
 
 #: The three shapes `inputs` takes across the 77 configs, in the order they are looked for.
