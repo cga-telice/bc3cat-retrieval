@@ -13,8 +13,8 @@ values, cells, discrimination and the clustered bootstrap are S6's, imported, no
 - **W3** is an OLS slope of the item loss on log₂ family size, solved from per-concept sums so that each
   bootstrap draw is a weighted sum (A1 a–c).
 - The dose field is `texto_modification_count` (D-025 note); `modification_count` is printed beside it.
-- T3–T6 print n excluded, the concept count and the query-level interval beside every item-level δ and slope
-  (A5, audit F2).
+- T2–T7 print n excluded, the concept count and the query-level interval beside every item-level δ and slope
+  (A5, A6, audit F2); T2's stacked cell shares T1's draws (A6, audit F7).
 
 The analysis stack is pinned (`analysis_stack.py`): the script refuses to run on another.
 """
@@ -493,16 +493,22 @@ def write_single_reference(F: dict, S: dict, W: dict, dup: set[str]) -> None:
         "excluded at item level) and its L2w δ (`single_l2_texto`, S6's). The three sets reach different leaves:",
         "this is **between-population**, printed and never read as a contrast (design).",
     ])
-    lines += ["| arm | stacked n | stacked δ | CI (concept) | stacked retention | `single_texto` n | δ | CI (concept) | "
-              "retention | L2w n | δ | CI (concept) | retention |", "|---|---:|---:|---|---:|---:|---:|---|---:|---:|---:|---|---:|"]
+    lines += ["The stacked cell is T1's: the same bootstrap draws, so the same interval (A6).", "",
+              "| arm | stacked n | n excluded | stacked δ | CI (query) | CI (concept) | stacked retention | `single_texto` n | "
+              "n excluded | δ | CI (query) | CI (concept) | retention | L2w n | n excluded | δ | CI (query) | CI (concept) | "
+              "retention |",
+              "|---|---:|---:|---:|---|---|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|---|---:|"]
     for _, short, _, _ in ARMS:
         parts = []
         for frame in (F[short], S[short], W.get(short)):
             if frame is None:
-                parts.append("— | — | — | —")
+                parts.append("— | — | — | — | — | —")
                 continue
-            c = cell(columns(frame, "tf"), "item", f"s7|T2|{short}|{frame['queryset'].iloc[0]}")
-            parts.append(f"{c['n']:,} | {fd(c['delta'])} | {fci(c['c'], True)} ({conc(c['concepts'])}) | {f4(c['retention'])}")
+            qs = frame["queryset"].iloc[0]
+            label = f"s7|T1|{short}|tf" if qs == STACKED else f"s7|T2|{short}|{qs}"
+            c = cell(columns(frame, "tf"), "item", label)
+            parts.append(f"{c['n']:,} | {c['excluded']:,} | {fd(c['delta'])} | {fci(c['q'], True)} | "
+                         f"{fci(c['c'], True)} ({conc(c['concepts'])}) | {f4(c['retention'])}")
         lines.append(f"| {name(short)} | " + " | ".join(parts) + " |")
     lines += sources_block([STACKED, SINGLE, L2W, IDENT])
     write(OUT / "single_reference.md", lines)
@@ -570,9 +576,11 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
     lines += ["", "The within-OEB slope is descriptive (design): OEB holds the largest families, so family size and "
               "subchapter are confounded across the full population.", ""]
     lines += ["## Leverage (descriptive, A4)", "",
-              "Why a concept interval can exclude 0 while the bootstrap p fails Holm: p counts the draws at or below 0, "
-              "the interval cuts at its percentiles. Beside it, the slope outside OEB (the complement of the within-OEB "
-              "slope) and the range of the slope with one concept left out.", "",
+              "A concept interval can exclude 0 while the reading is *not supported*: the raw two-sided p agrees with "
+              "the interval, and Holm's correction across the registered tests is what separates them (T8, A6). The "
+              "draws at or below 0 are printed as description, not as the reason. Beside them, the slope outside OEB "
+              "(post hoc; read it beside the within-OEB slope above, which the design fixed) and the range of the slope "
+              "with one concept left out.", "",
               "| arm | draws ≤ 0 (of B) | largest family in those draws, max | slope outside OEB | n scored | n excluded | "
               "CI (query) | CI (concept) | concepts | leave-one-out min | left out | leave-one-out max | left out |",
               "|---|---:|---:|---:|---:|---:|---|---|---:|---:|---|---:|---|"]
@@ -701,12 +709,15 @@ def write_d004(F: dict, results: list[dict]) -> None:
     lines += ["| queries | doubled | topo | flagged | flagged, item-scored | concepts with a flag |", "|---:|---:|---:|---:|---:|---:|",
               f"| {len(f):,} | {int(f['doubled'].sum()):,} | {int(f['topo'].sum()):,} | {int(f['flagged'].sum()):,} | "
               f"{int(item(f)['flagged'].sum()):,} | {int(f[f['flagged']]['concept'].nunique())} |", "",
-              "| test | arm | estimate, full | CI (concept) | reading, full | estimate, clean | CI (concept) | n scored, clean | "
-              "reading, clean | changes |", "|---|---|---:|---|---|---:|---|---:|---|---|"]
+              "| test | arm | n scored, full | n excluded, full | estimate, full | CI (query) | CI (concept) | reading, full | "
+              "estimate, clean | CI (query) | CI (concept) | n scored, clean | n excluded, clean | reading, clean | changes |",
+              "|---|---|---:|---:|---:|---|---|---|---:|---|---|---:|---:|---|---|"]
     for r in results:
         t, c = r["tf"], r["clean"]
-        lines.append(f"| {r['id']} | {name(r['arm'])} | {fd(t['est'])} | {fci(t['c'], True)} | {t['reading']} | "
-                     f"{fd(c['est'])} | {fci(c['c'], True)} | {c['n']:,} | {c['reading']} | "
+        lines.append(f"| {r['id']} | {name(r['arm'])} | {t['n']:,} | {t['excluded']:,} | {fd(t['est'])} | "
+                     f"{fci(t['q'], True)} | {fci(t['c'], True)} | {t['reading']} | "
+                     f"{fd(c['est'])} | {fci(c['q'], True)} | {fci(c['c'], True)} | {c['n']:,} | {c['excluded']:,} | "
+                     f"{c['reading']} | "
                      f"{'**yes**' if c['reading'] != t['reading'] else 'no'} |")
     lines += sources_block([STACKED, IDENT], arms=BASE7)
     write(OUT / "d004.md", lines)
