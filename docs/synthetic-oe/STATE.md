@@ -9,7 +9,7 @@ belong in `archive/`. Updated at every sprint transition and whenever something 
 
 ## Where we are
 
-**S7 report written, audit pending** (2026-10-01; E2 stacked headline and stratifications; [design](sprints/SPRINT_S7_DESIGN.md) frozen at `5e89809`, [amendments](sprints/SPRINT_S7_AMENDMENTS.md) A1–A4, [report](sprints/SPRINT_S7_REPORT.md), [results](results/S7)). 18 runs on the corrected stacked set, all clean. No arm keeps half its item accuracy stacked (ColBERT best, 0.4128 tie-free). W1 (gap widens) holds for all 7 arms; W2 holds for the encoders but not for BM25, whose **parent** level collapses (0.9980 → 0.2931). H1 is partly supported on stacked. The sibling-density law is not established: 1 of 7, and absent outside OEB. D-050 and D-051 proposed, awaiting César. `done` withheld until `/audit S7` in a fresh session.
+**S7 report written, audit pending** (2026-10-01; E2 stacked headline and stratifications; [design](sprints/SPRINT_S7_DESIGN.md) frozen at `5e89809`, [amendments](sprints/SPRINT_S7_AMENDMENTS.md) A1–A4, [report](sprints/SPRINT_S7_REPORT.md), [results](results/S7)). 18 runs on the corrected stacked set, all clean. No arm keeps half its item accuracy stacked (ColBERT best, 0.4128 tie-free). W1 (gap widens) holds for all 7 arms; W2 holds for the encoders but not for BM25, whose **parent** level collapses (0.9980 → 0.2931). H1 is partly supported on stacked. The sibling-density law is not established: 1 of 7, and absent outside OEB. D-050 (H1's parent clause restated) and D-051 (sibling-density law not established) accepted by César. `done` withheld until `/audit S7` in a fresh session.
 
 **S6 is done** (2026-10-01; statistical analysis and mediation, H1 / H2 / H5; [design](sprints/SPRINT_S6_DESIGN.md) frozen at `8abf24f`, [amendments](sprints/SPRINT_S6_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S6_REPORT.md), [audit](sprints/SPRINT_S6_AUDIT.md)). Audit **PASS WITH FINDINGS**, 2 major and 4 minor, all resolved: A7 adds n excluded to T2–T7 and the tie-free query-level CI to T1 (columns only, no earlier cell moved; generated at `c2ecdde`, byte-identical twice); the rest in prose. 15 runs on `single_l2_texto`; 21 tests, 16 supported, 5 not, 0 contradicted, tie-free. H1 supported for all seven non-floor arms; H2's L1 clause replicated blind on 9 L2 concepts, its L2 clause holds for BM25 (not robust to D-004) and not for ColBERT; H5 restated (D-049, amended after audit F2): overlap explains more of BM25's damage than of BGE-M3's, is not shown to explain most of it, and the L1 : L3 ratio is not shown to reach 10. M0's additive concept intercept does not hold for bag-of-words (D-048).
 
@@ -77,7 +77,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S7` in a fresh session**, then César's ruling on D-050 (H1's parent clause for BM25 under stacking) and D-051 (sibling-density law not established). S8 and S9–S11 can open after. Suite: 1246 passed, 2 skipped, 1 xfailed.
+**`/audit S7` in a fresh session.** D-050 and D-051 are accepted. S8 and S9–S11 can open after the audit. Suite: 1246 passed, 2 skipped, 1 xfailed.
 
 **BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
 

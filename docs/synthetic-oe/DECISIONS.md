@@ -1356,3 +1356,32 @@ BM25's item-level degradation than of BGE-M3's (ColBERT and dense).* The other t
 The seven-arm PM is reported beside it as descriptive, `dense_e5` included.
 **Consequence.** S12 re-reads R4 on test for the same two arms and under this wording; no claim about "dense
 encoders" as a family is made from S6.
+
+### D-050 — H1's parent-level clause is restated: it holds for the encoders, not for BM25 under stacking
+**Status:** **Accepted** · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S7 report (finding 4)
+**Context.** H1 predicts parent-level accuracy staying near its ceiling across all conditions while item level falls
+(parametric collapse), and that rendering variation extends this collapse to the lexical family. On dev stacked, tie-free
+(`results/S7/headline.md`), the encoders do this: ColBERT keeps parent level at 0.9837, `dense_e5` at 0.9845. BM25 does not:
+`bm25_unigram` falls from 0.9980 to 0.2931, its oracle twin from 1.0000 to 0.3967, and on OEB to 0.1594. W2 is not
+supported for either BM25 arm, with an estimate of the wrong sign (`bm25_unigram` −0.1925 [−0.2786, −0.0255], Holm p 0.1470;
+`results/S7/predictions.md`). W1 holds for every arm, but for BM25 because item level falls further, not because parent
+level holds.
+**Decision.** For the manuscript, H1's first clause reads: *parent-level accuracy stays near its ceiling for the dense and
+late-interaction encoders under every condition measured; for BM25 it holds under single edits and fails under stacked edits,
+where the lexical family loses the concept, not only the sibling.* The widening-gap clause (W1) stands as tested. The
+original wording stays in `RESEARCH_PROPOSAL.md` as what was registered.
+**Consequence.** The manuscript does not describe BM25's stacked failure as parametric collapse. S12 re-reads W1–W2 on test
+under this wording. S10/S11 inherit that a BM25 first stage on stacked queries has already lost the family for most queries.
+
+### D-051 — The sibling-density law is reported as not established on dev
+**Status:** **Accepted** · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S7 report (finding 5)
+**Context.** Proposal §6 (E5) predicts that the collapse scales with sibling density. S7's W3 tested it as the slope of the
+paired item loss on log₂ family size, for seven arms (`results/S7/predictions.md`). It is supported for 1 of 7
+(`dense_es_hiiamsid`). For the other six, point estimates are positive and concept intervals mostly exclude 0, but Holm p
+fails. The A4 leverage block (`results/S7/density.md`, descriptive, post hoc) shows why. The draws at or below 0 are the ones
+that omit OEB's largest families. Outside OEB, the slope is near 0 or negative for six of seven arms, and negative with an
+interval excluding 0 for the oracle BM25. Family size correlates with dose (0.5984) and is confounded with subchapter.
+**Decision.** The manuscript reports the sibling-density law as **not established** on dev. Family size is not separated
+from OEB on the stacked set. The tercile and subchapter strata are reported as descriptive.
+**Consequence.** S12 re-reads W3 on test exactly as registered (A1–A2), with no change of covariate or threshold, and prints
+the outside-OEB slope beside it as descriptive. No sprint is reordered.

@@ -137,8 +137,8 @@ changed in S5: on stacked, that change moves no rank 1.
 
 | ID | Status | What |
 |---|---|---|
-| D-050 | **Proposed** | H1's first clause ("parent level stays near its ceiling") is restated for the manuscript. It holds for the encoders under every condition measured. It fails for BM25 under stacking (finding 4), where the damage is concept-level, not parametric collapse |
-| D-051 | **Proposed** | The sibling-density law is reported as not established on dev. Family size is confounded with OEB, and the slope is absent outside it (finding 5). S12 re-reads W3 without changing it |
+| D-050 | **Accepted** (César, 2026-10-01) | H1's first clause ("parent level stays near its ceiling") is restated for the manuscript. It holds for the encoders under every condition measured. It fails for BM25 under stacking (finding 4), where the damage is concept-level, not parametric collapse |
+| D-051 | **Accepted** (César, 2026-10-01) | The sibling-density law is reported as not established on dev. Family size is confounded with OEB, and the slope is absent outside it (finding 5). S12 re-reads W3 without changing it |
 
 ## Audit response
 
