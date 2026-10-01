@@ -33,6 +33,7 @@ import yaml
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
+from utils.archived_runs import run_dir_as_of  # noqa: E402
 from utils.build_overlap import replication_coverage  # noqa: E402
 from utils.build_results_s2 import (  # noqa: E402
     B,
@@ -52,6 +53,11 @@ from utils.provenance import sha256_file  # noqa: E402
 from utils.splits import load_split  # noqa: E402
 
 RUNS = REPO / "runs" / "OE"
+
+
+def run_dir(queryset: str, method: str) -> Path:
+    """The run S3 read: its archive copy if a later sprint superseded it (D-047, S7 work item 2)."""
+    return run_dir_as_of("S3", "OE", queryset, method, repo=REPO)
 INDEX = REPO / "index" / "OE"
 DATA = REPO / "data" / "processed"
 SIDECAR = DATA / "OE_duplicate_texto_groups.json"
@@ -127,11 +133,11 @@ def flagged() -> set[str]:
 
 
 def perquery(queryset: str, method: str) -> pd.DataFrame:
-    return pd.read_parquet(RUNS / queryset / method / "results_perquery.parquet")
+    return pd.read_parquet(run_dir(queryset, method) / "results_perquery.parquet")
 
 
 def meta(queryset: str, method: str) -> dict:
-    return json.loads((RUNS / queryset / method / "run_meta.json").read_text(encoding="utf-8"))
+    return json.loads((run_dir(queryset, method) / "run_meta.json").read_text(encoding="utf-8"))
 
 
 def scored(frame: pd.DataFrame, dup: set[str], target: str) -> pd.DataFrame:
@@ -190,7 +196,7 @@ _QKEY = re.compile(r'"query_item_key":\s*"([^"]+)"')
 def top_lists(queryset: str, method: str, keys: set[str]) -> dict[str, dict]:
     """The ranked candidates of the queries in `keys`, streamed from the run's own top-100 file."""
     out = {}
-    with gzip.open(RUNS / queryset / method / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
+    with gzip.open(run_dir(queryset, method) / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
         for line in fh:
             hit = _QKEY.search(line)
             if hit and hit.group(1) in keys:
@@ -332,7 +338,7 @@ def query_lengths() -> dict[str, float]:
 
 
 def sweep_acc(variant: str, k1: float, b: float, queryset: str, dup: set[str]) -> float | None:
-    path = RUNS / queryset / point(variant, k1, b)
+    path = run_dir(queryset, point(variant, k1, b))
     if not (path / "results_perquery.parquet").is_file():
         return None
     frame = pd.read_parquet(path / "results_perquery.parquet")
@@ -839,7 +845,7 @@ def write_provenance() -> None:
     for queryset, methods in groups:
         for method in methods:
             key = (queryset, method)
-            if key in seen or not (RUNS / queryset / method / "run_meta.json").is_file():
+            if key in seen or not (run_dir(queryset, method) / "run_meta.json").is_file():
                 continue
             seen.add(key)
             m = meta(queryset, method)
