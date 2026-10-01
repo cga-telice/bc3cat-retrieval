@@ -81,7 +81,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**S8 work item 2**: the 36 runs (18 arms × `dose_texto`, `isolated_texto`), components first; check the BGE-M3 server is reachable from `bc3cat-s3` before starting. Work item 1 done at `f2b330e`: both sets registered, `balanced_texto` retired, tables derived on the proven path (`dose_texto_feats` `ef8c6295`, `isolated_texto_feats` `701dd1da`, in `MANIFEST.md`), zero undecidable dev queries. S9–S11 remain unblocked. Suite: 1260 passed, 2 skipped, 1 xfailed.
+**S8 work items 2–3 done.** 36 runs at `f330ee3`, all clean and resolving (A1: `host.docker.internal` mapped to the bridge gateway for the pass, restored). A2 fixed the analysis specification before the generator first ran; `results/S8/` (T1–T11, Fig. 6) generated at `da654e2`, byte-identical twice; A3 records the H4-label correction. Next: `SPRINT_S8_REPORT.md`, then `/audit S8` in a fresh session. S9–S11 remain unblocked. Suite: 1260 passed, 2 skipped, 1 xfailed.
 
 **BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
 
