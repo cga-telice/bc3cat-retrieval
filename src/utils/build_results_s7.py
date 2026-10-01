@@ -13,6 +13,7 @@ values, cells, discrimination and the clustered bootstrap are S6's, imported, no
 - **W3** is an OLS slope of the item loss on log₂ family size, solved from per-concept sums so that each
   bootstrap draw is a weighted sum (A1 a–c).
 - The dose field is `texto_modification_count` (D-025 note); `modification_count` is printed beside it.
+- T3–T6 print n excluded and the query-level interval beside every item-level δ and slope (A5, audit F2).
 
 The analysis stack is pinned (`analysis_stack.py`): the script refuses to run on another.
 """
@@ -294,6 +295,12 @@ def ols_draws(f: pd.DataFrame, xcols: list[str], label: str, unit: str = "concep
             "clusters": len(labels)}
 
 
+def slope_ci(fit: dict) -> tuple[float, float]:
+    """Percentile interval of the first regressor's coefficient, over the defined draws."""
+    d = fit["draws"][:, 1]
+    return ci(d[np.isfinite(d)])
+
+
 def unitize(f: pd.DataFrame, unit: str) -> pd.DataFrame:
     return f if unit == "concept" else f.assign(concept=f["q"])
 
@@ -505,8 +512,9 @@ def strata_table(F: dict, key: str, values: list, title: str, file: str, how: li
     lines += population_lines(F, dup)
     for level in ("item", "parent"):
         lines += [f"## {level.capitalize()} level", "",
-                  "| arm | stratum | n | n scored | concepts | identity | stacked | δ | CI (concept) | δ, as run |",
-                  "|---|---|---:|---:|---:|---:|---:|---:|---|---:|"]
+                  "| arm | stratum | n | n scored | n excluded | concepts | identity | stacked | δ | CI (query) | "
+                  "CI (concept) | δ, as run |",
+                  "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|"]
         for _, short, _, _ in ARMS:
             for val in values:
                 sub = F[short][F[short][key] == val]
@@ -516,8 +524,9 @@ def strata_table(F: dict, key: str, values: list, title: str, file: str, how: li
                 a = scored_cell(columns(sub, "run"), level, f"s7|{file}|{short}|{val}")
                 if t is None:
                     continue
-                lines.append(f"| {name(short)} | {val} | {len(sub):,} | {t['n']:,} | {conc(t['concepts'])} | "
-                             f"{f4(t['id'])} | {f4(t['mod'])} | {fd(t['delta'])} | {fci(t['c'], True)} | {fd(a['delta'])} |")
+                lines.append(f"| {name(short)} | {val} | {len(sub):,} | {t['n']:,} | {t['excluded']:,} | "
+                             f"{conc(t['concepts'])} | {f4(t['id'])} | {f4(t['mod'])} | {fd(t['delta'])} | "
+                             f"{fci(t['q'], True)} | {fci(t['c'], True)} | {fd(a['delta'])} |")
         lines.append("")
     lines += sources_block([STACKED, IDENT])
     write(OUT / file, lines)
@@ -538,29 +547,33 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
               f"{f4(f0[['log2fam', 'dose']].corr().iloc[0, 1])} (query level). L1 present in "
               f"{int(f0['l1'].sum()):,} of {len(f0):,} item-scored queries, so it cannot enter the refit (A2).", ""]
     lines += ["## W3 slopes", "",
-              "| arm | slope, unadjusted | CI (query) | CI (concept) | reading | slope, adjusted | CI (concept) | dose coef. | "
-              "reading, adjusted | within OEB slope | CI (concept) | OEB concepts |",
-              "|---|---:|---|---|---|---:|---|---:|---|---:|---|---:|"]
+              "| arm | n scored | n excluded | slope, unadjusted | CI (query) | CI (concept) | reading | slope, adjusted | "
+              "CI (query) | CI (concept) | dose coef. | reading, adjusted | within OEB slope | n scored | n excluded | "
+              "CI (query) | CI (concept) | OEB concepts |",
+              "|---|---:|---:|---:|---|---|---|---:|---|---|---:|---|---:|---:|---:|---|---|---:|"]
     for r in [r for r in results if r["id"] == "W3"]:
         short = r["arm"]
         g = item(columns(F[short], "tf"))
         adj = ols_draws(adjusted_x(g), W3_ADJ, f"s7|T4|{short}|adj")
         oeb = g[g["subchapter"] == "OEB"]
         fo = ols_draws(oeb, ["log2fam"], f"s7|T4|{short}|OEB")
+        foq = ols_draws(oeb, ["log2fam"], f"s7|T4|{short}|OEB|q", unit="query")
+        oeb_all = F[short][F[short]["subchapter"] == "OEB"]
         lines.append(
-            f"| {name(short)} | {fd(r['tf']['est'])} | {fci(r['tf']['q'], True)} | {fci(r['tf']['c'], True)} | "
-            f"{r['tf']['reading']} | {fd(r['adj']['est'])} | {fci(r['adj']['c'], True)} | {fd(adj['point'][2])} | "
-            f"{r['adj']['reading']} | {fd(fo['point'][1])} | "
-            f"{fci(ci(fo['draws'][:, 1][np.isfinite(fo['draws'][:, 1])]), True)} | {conc(fo['clusters'])} |")
+            f"| {name(short)} | {r['tf']['n']:,} | {r['tf']['excluded']:,} | {fd(r['tf']['est'])} | "
+            f"{fci(r['tf']['q'], True)} | {fci(r['tf']['c'], True)} | "
+            f"{r['tf']['reading']} | {fd(r['adj']['est'])} | {fci(r['adj']['q'], True)} | {fci(r['adj']['c'], True)} | "
+            f"{fd(adj['point'][2])} | {r['adj']['reading']} | {fd(fo['point'][1])} | {len(oeb):,} | "
+            f"{nexcl(oeb_all):,} | {fci(slope_ci(foq), True)} | {fci(slope_ci(fo), True)} | {conc(fo['clusters'])} |")
     lines += ["", "The within-OEB slope is descriptive (design): OEB holds the largest families, so family size and "
               "subchapter are confounded across the full population.", ""]
     lines += ["## Leverage (descriptive, A4)", "",
               "Why a concept interval can exclude 0 while the bootstrap p fails Holm: p counts the draws at or below 0, "
               "the interval cuts at its percentiles. Beside it, the slope outside OEB (the complement of the within-OEB "
               "slope) and the range of the slope with one concept left out.", "",
-              "| arm | draws ≤ 0 (of B) | largest family in those draws, max | slope outside OEB | CI (concept) | "
-              "concepts | leave-one-out min | left out | leave-one-out max | left out |",
-              "|---|---:|---:|---:|---|---:|---:|---|---:|---|"]
+              "| arm | draws ≤ 0 (of B) | largest family in those draws, max | slope outside OEB | n scored | n excluded | "
+              "CI (query) | CI (concept) | concepts | leave-one-out min | left out | leave-one-out max | left out |",
+              "|---|---:|---:|---:|---:|---:|---|---|---:|---:|---|---:|---|"]
     for short in BASE7:
         g = item(columns(F[short], "tf"))
         fit = ols_draws(g, ["log2fam"], f"s7|w3|{short}|tf")
@@ -571,6 +584,8 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
         drawn_max = max((int(fam[weights[i] > 0].max()) for i in neg), default=0)
         out = g[g["subchapter"] != "OEB"]
         fo = ols_draws(out, ["log2fam"], f"s7|T4|{short}|notOEB")
+        foq = ols_draws(out, ["log2fam"], f"s7|T4|{short}|notOEB|q", unit="query")
+        out_all = F[short][F[short]["subchapter"] != "OEB"]
         loo = []
         for c in labels:
             sub_g = g[g["concept"] != c]
@@ -579,8 +594,8 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
             loo.append((float(np.linalg.lstsq(X, y, rcond=None)[0][1]), c))
         lo, hi = min(loo), max(loo)
         lines.append(f"| {name(short)} | {len(neg):,} | " + (f"{drawn_max:,}" if len(neg) else "—")
-                     + f" | {fd(fo['point'][1])} | {fci(ci(fo['draws'][:, 1][np.isfinite(fo['draws'][:, 1])]), True)} | "
-                     f"{conc(fo['clusters'])} | {fd(lo[0])} | `{lo[1]}` | {fd(hi[0])} | `{hi[1]}` |")
+                     + f" | {fd(fo['point'][1])} | {len(out):,} | {nexcl(out_all):,} | {fci(slope_ci(foq), True)} | "
+                     f"{fci(slope_ci(fo), True)} | {conc(fo['clusters'])} | {fd(lo[0])} | `{lo[1]}` | {fd(hi[0])} | `{hi[1]}` |")
     sizes_desc = sorted({int(v) for v in sizes}, reverse=True)
     lines += ["", "Family sizes behind the item-scored queries, largest first: "
               + ", ".join(f"{v:,}" for v in sizes_desc) + ".", ""]
@@ -588,22 +603,27 @@ def write_density(F: dict, results: list[dict], dup: set[str]) -> None:
     lines += ["## One-axis siblings of the gold (descriptive, A1 g)", "",
               "Bins at the quartiles of the item-scored queries' one-axis sibling count: "
               + ", ".join(f"{int(e):,}" for e in edges) + ". ℓ slope on log₂(1 + count), concept-clustered.", "",
-              "| arm | bin | n | concepts | mean count | identity | stacked | δ |", "|---|---|---:|---:|---:|---:|---:|---:|"]
+              "| arm | bin | n scored | n excluded | concepts | mean count | identity | stacked | δ | CI (query) | "
+              "CI (concept) |", "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|"]
     slopes = []
     for short in BASE7:
-        g = item(columns(F[short], "tf")).assign(l2h=lambda x: np.log2(1 + x["one_apart"]))
-        idx = np.clip(np.searchsorted(edges, g["one_apart"], side="right") - 1, 0, max(len(edges) - 2, 0))
+        fa = columns(F[short], "tf")
+        g = item(fa).assign(l2h=lambda x: np.log2(1 + x["one_apart"]))
+        idx_all = np.clip(np.searchsorted(edges, fa["one_apart"], side="right") - 1, 0, max(len(edges) - 2, 0))
         for b in range(max(len(edges) - 1, 1)):
-            sub = g[idx == b]
+            sub_all = fa[idx_all == b]
+            sub = item(sub_all)
             if sub.empty:
                 continue
-            lines.append(f"| {name(short)} | {b + 1} | {len(sub):,} | {conc(nconc(sub))} | {f4(sub['one_apart'].mean())} | "
-                         f"{f4(sub['item_id'].mean())} | {f4(sub['item_mod'].mean())} | "
-                         f"{fd((sub['item_mod'] - sub['item_id']).mean())} |")
+            c = cell(sub_all, "item", f"s7|T4|{short}|onebin{b + 1}")
+            lines.append(f"| {name(short)} | {b + 1} | {len(sub):,} | {c['excluded']:,} | {conc(nconc(sub))} | "
+                         f"{f4(sub['one_apart'].mean())} | {f4(sub['item_id'].mean())} | {f4(sub['item_mod'].mean())} | "
+                         f"{fd((sub['item_mod'] - sub['item_id']).mean())} | {fci(c['q'], True)} | {fci(c['c'], True)} |")
         fit = ols_draws(g, ["l2h"], f"s7|T4|{short}|h1")
-        slopes.append((short, fit["point"][1], ci(fit["draws"][:, 1][np.isfinite(fit["draws"][:, 1])])))
-    lines += ["", "| arm | ℓ slope on log₂(1 + one-axis siblings) | CI (concept) |", "|---|---:|---|"]
-    lines += [f"| {name(s)} | {fd(b)} | {fci(c, True)} |" for s, b, c in slopes]
+        fitq = ols_draws(g, ["l2h"], f"s7|T4|{short}|h1|q", unit="query")
+        slopes.append((short, fit["point"][1], slope_ci(fitq), slope_ci(fit)))
+    lines += ["", "| arm | ℓ slope on log₂(1 + one-axis siblings) | CI (query) | CI (concept) |", "|---|---:|---|---|"]
+    lines += [f"| {name(s)} | {fd(b)} | {fci(q, True)} | {fci(c, True)} |" for s, b, q, c in slopes]
     lines += sources_block([STACKED, IDENT], arms=BASE7, inputs=(SCHEMA_JSON, CORPUS_JSON))
     write(OUT / "density.md", lines)
 
@@ -618,8 +638,9 @@ def write_dose(F: dict, dup: set[str]) -> None:
     ])
     lines += population_lines(F, dup)
     for field, label in (("dose", "`texto_modification_count`"), ("dose_field", "`modification_count`")):
-        lines += [f"## By {label}", "", "| arm | dose | n | n scored | concepts | identity | stacked | δ | CI (concept) |",
-                  "|---|---:|---:|---:|---:|---:|---:|---:|---|"]
+        lines += [f"## By {label}", "",
+                  "| arm | dose | n | n scored | n excluded | concepts | identity | stacked | δ | CI (query) | CI (concept) |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|"]
         values = sorted(next(iter(F.values()))[field].unique())
         for _, short, _, _ in ARMS:
             for val in values:
@@ -627,8 +648,9 @@ def write_dose(F: dict, dup: set[str]) -> None:
                 t = scored_cell(columns(sub, "tf"), "item", f"s7|T5|{field}|{short}|{val}")
                 if t is None:
                     continue
-                lines.append(f"| {name(short)} | {val} | {len(sub):,} | {t['n']:,} | {conc(t['concepts'])} | {f4(t['id'])} | "
-                             f"{f4(t['mod'])} | {fd(t['delta'])} | {fci(t['c'], True)} |")
+                lines.append(f"| {name(short)} | {val} | {len(sub):,} | {t['n']:,} | {t['excluded']:,} | "
+                             f"{conc(t['concepts'])} | {f4(t['id'])} | {f4(t['mod'])} | {fd(t['delta'])} | "
+                             f"{fci(t['q'], True)} | {fci(t['c'], True)} |")
         lines.append("")
     lines += sources_block([STACKED, IDENT])
     write(OUT / "dose.md", lines)
@@ -641,8 +663,9 @@ def write_presence(F: dict, dup: set[str]) -> None:
     ])
     lines += population_lines(F, dup)
     order = LAYERS["L1"] + LAYERS["L2"] + LAYERS["L3"]
-    lines += ["| arm | type | n with | concepts | δ with | CI (concept) | n without | δ without | CI (concept) |",
-              "|---|---|---:|---:|---:|---|---:|---:|---|"]
+    lines += ["| arm | type | n with | n excluded | concepts | δ with | CI (query) | CI (concept) | n without | n excluded | "
+              "δ without | CI (query) | CI (concept) |",
+              "|---|---|---:|---:|---:|---:|---|---|---:|---:|---:|---|---|"]
     for _, short, _, _ in ARMS:
         f = columns(F[short], "tf")
         for t in order:
@@ -653,9 +676,11 @@ def write_presence(F: dict, dup: set[str]) -> None:
             o = scored_cell(f[~has], "item", f"s7|T6|{short}|{t}|without")
             if w is None:
                 continue
-            lines.append(f"| {name(short)} | `{t}` | {w['n']:,} | {conc(w['concepts'])} | {fd(w['delta'])} | "
-                         f"{fci(w['c'], True)} | " + (f"{o['n']:,} | {fd(o['delta'])} | {fci(o['c'], True)} |"
-                                                       if o else "0 | — | — |"))
+            n_without = int((~has).sum())
+            lines.append(f"| {name(short)} | `{t}` | {w['n']:,} | {w['excluded']:,} | {conc(w['concepts'])} | "
+                         f"{fd(w['delta'])} | {fci(w['q'], True)} | {fci(w['c'], True)} | "
+                         + (f"{o['n']:,} | {o['excluded']:,} | {fd(o['delta'])} | {fci(o['q'], True)} | "
+                            f"{fci(o['c'], True)} |" if o else f"0 | {n_without:,} | — | — | — |"))
     absent = [t for t in order if not next(iter(F.values()))["types"].map(lambda ts, t=t: t in ts).any()]
     lines += ["", "Types in no dev stacked query: " + (", ".join(f"`{t}`" for t in absent) or "none") + "."]
     lines += sources_block([STACKED, IDENT])
