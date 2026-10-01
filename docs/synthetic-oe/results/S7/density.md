@@ -22,7 +22,7 @@ The within-OEB slope is descriptive (design): OEB holds the largest families, so
 
 ## Leverage (descriptive, A4)
 
-Why a concept interval can exclude 0 while the bootstrap p fails Holm: p counts the draws at or below 0, the interval cuts at its percentiles. Beside it, the slope outside OEB (the complement of the within-OEB slope) and the range of the slope with one concept left out.
+A concept interval can exclude 0 while the reading is *not supported*: the raw two-sided p agrees with the interval, and Holm's correction across the registered tests is what separates them (T8, A6). The draws at or below 0 are printed as description, not as the reason. Beside them, the slope outside OEB (post hoc; read it beside the within-OEB slope above, which the design fixed) and the range of the slope with one concept left out.
 
 | arm | draws ≤ 0 (of B) | largest family in those draws, max | slope outside OEB | n scored | n excluded | CI (query) | CI (concept) | concepts | leave-one-out min | left out | leave-one-out max | left out |
 |---|---:|---:|---:|---:|---:|---|---|---:|---:|---|---:|---|
