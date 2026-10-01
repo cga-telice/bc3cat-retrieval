@@ -360,6 +360,19 @@ def sources_block(querysets: list[str], arms: list[str] | None = None, inputs: t
     return lines
 
 
+def step_terms(L: Ladder, D: dict, select) -> tuple[np.ndarray, np.ndarray]:
+    """Per-leaf X2 numerator and at-risk mass over the steps `select(k)` marks (A4: T5 by type, T7)."""
+    h, iso = L.hits("tf")
+    n = len(h)
+    num, den = np.zeros(n), np.zeros(n)
+    for k in STACK_RUNGS:
+        sel = select(k).astype(float)
+        hi = iso[np.arange(n), D["added"][:, k]]
+        num += sel * h[:, k - 1] * (hi * (1 - h[:, k]) - (1 - hi) * h[:, k])
+        den += sel * h[:, k - 1]
+    return num, den
+
+
 def concept_cells(per: dict) -> str:
     return " · ".join(f"{fd(v)}" if np.isfinite(v) else "—" for v in per.values())
 
@@ -379,7 +392,7 @@ def write_ladder(LL: dict, D: dict, floors: dict) -> None:
     for level in ("item", "parent"):
         lines += [f"## {level.capitalize()} level", "",
                   "| arm | kind | rung | n | n excluded | Acc@1 | δ | CI (stratified) | CI (concept) | retention | Δ | "
-                  "Acc@1, as run | δ, as run |", "|---|---|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|"]
+                  "Acc@1, as run | δ, as run | per concept (A4) |", "|---|---|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|"]
         for _, short, _, kind in ARMS:
             h, _ = LL[short].hits("tf", level)
             hr, _ = LL[short].hits("run", level)
@@ -387,7 +400,7 @@ def write_ladder(LL: dict, D: dict, floors: dict) -> None:
             hi, _ = LL[short].hits("tf", "item")
             fl = " (floor)" if floors[short] < FLOOR else ""
             lines.append(f"| {name(short)}{fl} | {kind} | identity | {len(h):,} | 0 | {f4(h[:, 0].mean())} | — | — | — | — | "
-                         f"{f4((hp[:, 0] - hi[:, 0]).mean())} | {f4(hr[:, 0].mean())} | — |")
+                         f"{f4((hp[:, 0] - hi[:, 0]).mean())} | {f4(hr[:, 0].mean())} | — | — |")
             for k in RUNGS:
                 d = h[:, k] - h[:, 0]
                 r = summarise(d, np.ones(len(d)), D["concept"], f"s8|T1|{short}|{level}|{k}")
@@ -396,7 +409,7 @@ def write_ladder(LL: dict, D: dict, floors: dict) -> None:
                 lines.append(f"| {name(short)}{fl} | {kind} | {k} | {len(h):,} | 0 | {f4(h[:, k].mean())} | {fd(r['est'])} | "
                              f"{fci(r['s'], True)} | {fci(r['c'], True)} | {f4(ret)} | "
                              f"{f4((hp[:, k] - hi[:, k]).mean())} | {f4(hr[:, k].mean())} | "
-                             f"{fd((hr[:, k] - hr[:, 0]).mean())} |")
+                             f"{fd((hr[:, k] - hr[:, 0]).mean())} | {concept_cells(r['per'])} |")
         lines.append("")
     lines += sources_block([DOSE, IDENT])
     write(OUT / "ladder.md", lines)
@@ -427,8 +440,8 @@ def write_isolated(LL: dict, D: dict, ref: dict) -> None:
     ])
     lines += population_lines(D)
     lines += ["| arm | type | leaves | n excluded | identity | isolated | δ_iso | CI (stratified) | CI (concept) | "
-              "S4 `single_texto` n | S4 δ | S4 CI (concept) |",
-              "|---|---|---:|---:|---:|---:|---:|---|---|---:|---:|---|"]
+              "S4 `single_texto` n | S4 δ | S4 CI (concept) | per concept (A4) |",
+              "|---|---|---:|---:|---:|---:|---:|---|---|---:|---:|---|---|"]
     for _, short, _, _ in ARMS:
         h, iso = LL[short].hits("tf")
         for t in TYPES:
@@ -437,7 +450,8 @@ def write_isolated(LL: dict, D: dict, ref: dict) -> None:
             s4 = ref.get((short, t))
             lines.append(f"| {name(short)} | `{t}` | {len(d):,} | 0 | {f4(h[:, 0].mean())} | {f4(iso[:, TI[t]].mean())} | "
                          f"{fd(r['est'])} | {fci(r['s'], True)} | {fci(r['c'], True)} | "
-                         + (f"{s4['n']:,} | {fd(s4['delta'])} | {fci(s4['c'], True)} |" if s4 else "— | — | — |"))
+                         + (f"{s4['n']:,} | {fd(s4['delta'])} | {fci(s4['c'], True)} |" if s4 else "— | — | — |")
+                         + f" {concept_cells(r['per'])} |")
     lines += sources_block([ISO, IDENT, SINGLE], inputs=(SINGLE_JSON,))
     write(OUT / "isolated.md", lines)
 
@@ -471,11 +485,11 @@ def write_noise(noise: dict, D: dict) -> None:
         "text-different rate is the bar an X-excess must clear before it is read as interaction (design, A2).",
     ])
     lines += population_lines(D)
-    lines += ["| arm | text-equal leaves | disagreement | text-different leaves | disagreement |",
-              "|---|---:|---:|---:|---:|"]
+    lines += ["| arm | text-equal leaves | disagreement | text-different leaves | disagreement | n excluded (A4) |",
+              "|---|---:|---:|---:|---:|---:|"]
     for _, short, _, _ in ARMS:
         s, d = noise[short]["same"], noise[short]["diff"]
-        lines.append(f"| {name(short)} | {s[0]:,} | {f4(s[1])} | {d[0]:,} | {f4(d[1])} |")
+        lines.append(f"| {name(short)} | {s[0]:,} | {f4(s[1])} | {d[0]:,} | {f4(d[1])} | 0 |")
     lines += ["", "## Text-different rung-1 leaves, by type", "",
               "| arm | " + " | ".join(f"`{t}`" for t in TYPES) + " |", "|---|" + "---:|" * len(TYPES)]
     for short in BASE7:
@@ -499,8 +513,8 @@ def write_additivity(LL: dict, D: dict, results: list[dict]) -> None:
     ])
     lines += population_lines(D)
     lines += ["| arm | rung | leaves | observed | predicted | unclipped | observed − predicted | CI (stratified) | "
-              "CI (concept) | per concept | super | sub | floor-bound |",
-              "|---|---|---:|---:|---:|---:|---:|---|---|---|---:|---:|---:|"]
+              "CI (concept) | per concept | super | sub | floor-bound | n excluded (A4) |",
+              "|---|---|---:|---:|---:|---:|---:|---|---|---|---:|---:|---:|---:|"]
     for short in BASE7:
         h, iso = LL[short].hits("tf")
         hr, isor = LL[short].hits("run")
@@ -514,10 +528,10 @@ def write_additivity(LL: dict, D: dict, results: list[dict]) -> None:
             lines.append(f"| {name(short)} | {k} | {len(h):,} | {f4(h[:, k].mean())} | {f4(pred.mean())} | "
                          f"{fd(predicted(h, iso, D['member'], k, clip=False).mean())} | {fd(r['est'])} | "
                          f"{fci(r['s'], True)} | {fci(r['c'], True)} | {concept_cells(r['per'])} | {sup:,} | {sub:,} | "
-                         f"{f4((pred == 0).mean())} |")
+                         f"{f4((pred == 0).mean())} | 0 |")
         x = next(r for r in results if r["id"] == "X1" and r["arm"] == short)["tf"]
         lines.append(f"| {name(short)} | pooled | {x['leaves']:,} | — | — | — | {fd(x['est'])} | {fci(x['s'], True)} | "
-                     f"{fci(x['c'], True)} | {concept_cells(x['per'])} | — | — | — |")
+                     f"{fci(x['c'], True)} | {concept_cells(x['per'])} | — | — | — | 0 |")
     lines += ["", "Per-concept estimates in the order " + ", ".join(f"`{c}`" for c in sorted(set(D["concept"]))) + "."]
     lines += sources_block([DOSE, ISO, IDENT], arms=BASE7)
     write(OUT / "additivity.md", lines)
@@ -535,8 +549,8 @@ def write_marginal(LL: dict, D: dict) -> None:
         f"{THIN_LEAVES} leaves.",
     ])
     lines += population_lines(D)
-    lines += ["## By rung", "", "| arm | step | at risk | in company | alone | X2 | CI (stratified) | CI (concept) |",
-              "|---|---|---:|---:|---:|---:|---|---|"]
+    lines += ["## By rung", "", "| arm | step | at risk | in company | alone | X2 | CI (stratified) | CI (concept) | "
+              "per concept (A4) | n excluded (A4) |", "|---|---|---:|---:|---:|---:|---|---|---|---:|"]
     n = len(D["golds"])
     for short in BASE7:
         h, iso = LL[short].hits("tf")
@@ -547,9 +561,10 @@ def write_marginal(LL: dict, D: dict) -> None:
             comp = float((h[:, k - 1] * hi * (1 - h[:, k])).sum())
             alone = float((h[:, k - 1] * (1 - hi) * h[:, k]).sum())
             lines.append(f"| {name(short)} | {k - 1}→{k} | {f4(den.sum())} | {f4(comp)} | {f4(alone)} | {fd(r['est'])} | "
-                         f"{fci(r['s'], True)} | {fci(r['c'], True)} |")
+                         f"{fci(r['s'], True)} | {fci(r['c'], True)} | {concept_cells(r['per'])} | 0 |")
     lines += ["", "## By added type (steps pooled)", "",
-              "| arm | type | steps | leaves | at risk | X2 |", "|---|---|---:|---:|---:|---:|"]
+              "| arm | type | steps | leaves | at risk | X2 | CI (stratified, A4) | CI (concept, A4) | per concept (A4) | "
+              "n excluded (A4) |", "|---|---|---:|---:|---:|---:|---|---|---|---:|"]
     for short in BASE7:
         h, iso = LL[short].hits("tf")
         for t in TYPES:
@@ -562,8 +577,11 @@ def write_marginal(LL: dict, D: dict) -> None:
                 den += float(h[sel, k - 1].sum())
                 steps += int(sel.sum())
                 leaves |= set(np.flatnonzero(sel))
+            tn, td = step_terms(LL[short], D, lambda k, t=t: D["added"][:, k] == TI[t])
+            r = summarise(tn, td, D["concept"], f"s8|T5|{short}|type|{t}")
             lines.append(f"| {name(short)} | `{t}` | {steps:,} | {thin(len(leaves))} | {f4(den)} | "
-                         + (f"{fd(num / den)} |" if den else "— |"))
+                         + (f"{fd(num / den)} |" if den else "— |")
+                         + f" {fci(r['s'], True)} | {fci(r['c'], True)} | {concept_cells(r['per'])} | 0 |")
     lines += sources_block([DOSE, ISO], arms=BASE7)
     write(OUT / "marginal.md", lines)
 
@@ -579,14 +597,16 @@ def write_dose_response(LL: dict, D: dict, results: list[dict]) -> None:
         "bends the curve upward, so a negative quadratic is against the floor, not because of it.",
     ])
     lines += population_lines(D)
-    lines += ["| arm | slope | CI (stratified) | CI (concept) | per concept | slope, as run | quadratic | CI (stratified) |",
-              "|---|---:|---|---|---|---:|---:|---|"]
+    lines += ["| arm | slope | CI (stratified) | CI (concept) | per concept | slope, as run | quadratic | CI (stratified) | "
+              "quadratic CI (concept, A4) | quadratic per concept (A4) | n excluded (A4) |",
+              "|---|---:|---|---|---|---:|---:|---|---|---|---:|"]
     for short in BASE7:
         x = next(r for r in results if r["id"] == "X3" and r["arm"] == short)
         num, den = terms("x3q", LL[short], D, "tf")
         q = summarise(num, den, D["concept"], f"s8|T6|{short}|quad")
         lines.append(f"| {name(short)} | {fd(x['tf']['est'])} | {fci(x['tf']['s'], True)} | {fci(x['tf']['c'], True)} | "
-                     f"{concept_cells(x['tf']['per'])} | {fd(x['run']['est'])} | {fd(q['est'])} | {fci(q['s'], True)} |")
+                     f"{concept_cells(x['tf']['per'])} | {fd(x['run']['est'])} | {fd(q['est'])} | {fci(q['s'], True)} | "
+                     f"{fci(q['c'], True)} | {concept_cells(q['per'])} | 0 |")
     lines += sources_block([DOSE, IDENT], arms=BASE7)
     write(OUT / "dose_response.md", lines)
 
@@ -621,6 +641,26 @@ def write_pairs(LL: dict, D: dict) -> None:
                 leaves |= set(np.flatnonzero(sel))
             cells.append(fd(num / den) if den else "—")
         lines.append(f"| `{a}` × `{b}` | " + " | ".join(cells) + f" | {thin(len(leaves))} |")
+    lines += ["", "## With intervals (A4)", "",
+              "The cells above, each with its stratified and concept intervals and per-concept estimates. Descriptive.", "",
+              "| pair | arm | leaves | n excluded | X2 excess | CI (stratified) | CI (concept) | per concept |",
+              "|---|---|---:|---:|---:|---|---|---|"]
+    for a, b in combinations(TYPES, 2):
+        if frozenset({a, b}) in NOT_IDENTIFIABLE:
+            continue
+
+        def completes(k, a=a, b=b):
+            t, prev = D["added"][:, k], D["member"][:, k - 1]
+            return ((t == TI[a]) & prev[:, TI[b]]) | ((t == TI[b]) & prev[:, TI[a]])
+
+        leaves = int(np.any([completes(k) for k in STACK_RUNGS], axis=0).sum())
+        for short in BASE7:
+            pn, pd_ = step_terms(LL[short], D, completes)
+            if not pd_.sum():
+                continue
+            r = summarise(pn, pd_, D["concept"], f"s8|T7|{short}|{a}|{b}")
+            lines.append(f"| `{a}` × `{b}` | {name(short)} | {thin(leaves)} | 0 | {fd(r['est'])} | {fci(r['s'], True)} | "
+                         f"{fci(r['c'], True)} | {concept_cells(r['per'])} |")
     lines += sources_block([DOSE, ISO], arms=BASE7)
     write(OUT / "pairs.md", lines)
 
@@ -638,7 +678,8 @@ def write_s7_reference(LL: dict, D: dict, dup: set[str], parents: dict[str, str]
     keys = set(perquery(STACKED, "bm25_unigram")["query_item_key"].astype(str))
     feats = stacked_features(keys, size, one_apart)
     lines += ["| arm | dose | S7 n scored | S7 n excluded | S7 concepts | S7 δ | S7 CI (concept) | ladder leaves | "
-              "ladder δ | ladder CI (stratified) |", "|---|---:|---:|---:|---:|---:|---|---:|---:|---|"]
+              "ladder δ | ladder CI (stratified) | ladder CI (concept, A4) | ladder per concept (A4) | S7 CI (query, A4) | ladder n excluded (A4) |",
+              "|---|---:|---:|---:|---:|---:|---|---:|---:|---|---|---|---|---:|"]
     for short in BASE7:
         frame = columns(paired(short, STACKED, dup, parents).join(feats, on="q"), "tf")
         h, _ = LL[short].hits("tf")
@@ -650,7 +691,9 @@ def write_s7_reference(LL: dict, D: dict, dup: set[str], parents: dict[str, str]
             lines.append(f"| {name(short)} | {k} | "
                          + (f"{s7['n']:,} | {s7['excluded']:,} | {s7['concepts']} | {fd(s7['delta'])} | {fci(s7['c'], True)} | "
                             if s7 else "— | — | — | — | — | ")
-                         + (f"{len(h):,} | {fd(lad['est'])} | {fci(lad['s'], True)} |" if lad else "— | — | — |"))
+                         + (f"{len(h):,} | {fd(lad['est'])} | {fci(lad['s'], True)} |" if lad else "— | — | — |")
+                         + (f" {fci(lad['c'], True)} | {concept_cells(lad['per'])} |" if lad else " — | — |")
+                         + (f" {fci(s7['q'], True)} |" if s7 else " — |") + (" 0 |" if lad else " — |"))
     lines += sources_block([STACKED, DOSE, IDENT], arms=BASE7)
     write(OUT / "s7_reference.md", lines)
 
