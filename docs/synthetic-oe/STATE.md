@@ -3,11 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-01 (**S7 done**) · **Updated by:** Claude
+**Last updated:** 2026-10-01 (**S8 active**) · **Updated by:** Claude
 
 ---
 
 ## Where we are
+
+**S8 is active** (2026-10-01; E3 balanced dose design, H4; [design](sprints/SPRINT_S8_DESIGN.md) frozen at `4f62d5a`, [amendments](sprints/SPRINT_S8_AMENDMENTS.md) empty). H4 tested within leaf on the nested ladder: 328 dev leaves in 4 OEB concepts (all large families), 1,640 dose and 2,952 isolated queries; 36 runs to make; 21 blind tests X1–X3, Holm across 21. The isolated edits are a different rewrite draw from the ladder's (89 of 328 rung-1 queries match), so T3 measures that noise. D-052 (`dose_texto`, `isolated_texto`; `balanced_texto` retired) and D-053 (stratified leaf bootstrap + 3-of-4 sign rule, scoped to the 4 concepts) accepted by César.
 
 **S7 is done** (2026-10-01; E2 stacked headline and stratifications; [design](sprints/SPRINT_S7_DESIGN.md) frozen at `5e89809`, [amendments](sprints/SPRINT_S7_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S7_REPORT.md), [audit](sprints/SPRINT_S7_AUDIT.md), [results](results/S7)). 18 runs on the corrected stacked set, all clean. No arm keeps half its item accuracy stacked (ColBERT highest, 0.4128 tie-free). W1 (gap widens) holds for all 7 arms; W2 holds for the encoders but not for BM25, whose **parent** level collapses (0.9980 → 0.2931). H1 is partly supported on stacked. The sibling-density law is not established: 1 of 7 supported; descriptively it holds within OEB for 5 of 7, not separated from the dose. Audit **PASS WITH FINDINGS**, 2 major and 5 minor, all resolved: A5–A6 add n excluded, concept counts and query-level CIs to T2–T7 (generated at `47cbbbd`, byte-identical twice), A7 corrects A1/A3, the rest is prose. D-050 accepted; D-051 amended after the audit (rationale restated), accepted by César.
 
@@ -79,7 +81,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/sprint-open S8`** (or S9–S11; both now unblocked by S7). Suite: 1247 passed, 2 skipped, 1 xfailed.
+**S8 work item 1**: wire `dose_texto` / `isolated_texto` (D-052), then the 36 runs. S9–S11 remain unblocked. Suite: 1247 passed, 2 skipped, 1 xfailed.
 
 **BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
 

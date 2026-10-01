@@ -1,6 +1,6 @@
 # Sprint S8 — E3 balanced dose design · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `4f62d5a` · `2026-10-01`
 > This document is read-only from that commit. Changes go in
 > [`SPRINT_S8_AMENDMENTS.md`](SPRINT_S8_AMENDMENTS.md) (D-045), dated and justified — never as
 > in-place edits. `git log -- <this file>` after the freeze date is an
