@@ -81,7 +81,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-**`/audit S8`** in a fresh session; D-054 awaits César. S9–S11 remain unblocked. Suite: 1260 passed, 2 skipped, 1 xfailed.
+**`/audit S8`** in a fresh session; D-054 awaits César. S9–S11 remain unblocked. Suite: 1334 passed, 2 skipped, 1 xfailed.
 
 **BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
 
