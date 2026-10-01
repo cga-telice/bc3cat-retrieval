@@ -310,7 +310,7 @@ def h4_resolution(results: list[dict]) -> tuple[str, list[str], list[str]]:
         return "contradicted", held, contra
     if arms and held == arms:
         return "supported", held, contra
-    return "partly supported" if held else "not supported", held, contra
+    return "partly supported", held, contra
 
 
 # --------------------------------------------------------------------------- formatting
@@ -703,9 +703,13 @@ def write_predictions(results: list[dict], floors: dict, noise: dict, D: dict) -
     verdict, held, contra = h4_resolution(results)
     lines += ["", "⚑ the as-run reading differs from the tie-free one.", "",
               "## H4 under the design's rule", "",
-              f"**{verdict}** on these leaves (tie-free). X1 and X2 both supported for: "
-              + (", ".join(name(a) for a in held) or "no arm") + ". X1 contradicted for: "
-              + (", ".join(name(a) for a in contra) or "no arm") + ". Scope: the "
+              f"**{verdict}** on these leaves (tie-free), by the design's three-way rule: supported if X1 and X2 "
+              "hold for every tested arm, contradicted if X1 reads contradicted for any, partly supported otherwise. "
+              "X1 and X2 both supported for: " + (", ".join(name(a) for a in held) or "no arm") + ". "
+              + " ".join(f"{tid} supported for: " + (", ".join(name(r['arm']) for r in results
+                         if r["id"] == tid and r["tf"]["reading"] == "supported") or "no arm") + "."
+                         for tid in ("X1", "X2"))
+              + " X1 contradicted for: " + (", ".join(name(a) for a in contra) or "no arm") + ". Scope: the "
               f"{len(set(D['concept']))} dev ladder concepts ("
               + ", ".join(f"`{c}`" for c in sorted(set(D["concept"])))
               + "), all large families; isolated and ladder edits are different draws (T3).", "",
