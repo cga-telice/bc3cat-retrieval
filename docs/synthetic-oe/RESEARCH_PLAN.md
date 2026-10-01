@@ -242,6 +242,14 @@ interaction claim in the manuscript.
 randomised type mixes, `reorder` admitted. Fit degradation as a function of count, with
 per-type indicators, and compare against the additive prediction from S4's isolated effects.
 
+*Added 2026-10-01 (S8 opening; D-052, D-053):*
+- **The additive reference is the E3 isolated set on the same 328 dev leaves**, not S4's isolated effects, which
+  are a different population and are printed only. The isolated edits are a different rewrite draw from the
+  ladder's (89 of 328 rung-1 queries match), so H4 compares edit types on the same leaves, not identical edits.
+- H4 is tested against the sum of isolated effects clipped to [0, 1], since item hit is binary.
+- The dev ladder has 4 concepts; readings use a concept-stratified leaf bootstrap and a 3-of-4 sign rule
+  (D-053), scoped to those concepts. G3 has been answered: the set arrived; H4 is identifiable within leaf for 34 of 36 type pairs.
+
 **Gate G3.** If the upstream set is not delivered in time, H4 drops to an exploratory
 regression on the existing stacked set, with its confounding stated in the limitations, and
 the sprint closes at half size. It does not block S12.

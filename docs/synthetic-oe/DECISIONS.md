@@ -1412,3 +1412,26 @@ labelled descriptive.
 wording. S12 re-reads W3 on test exactly as registered and prints the within-OEB and outside-OEB slopes beside it as
 descriptive. No sprint is reordered. S8, which removes the dose/family confound on the nested ladder, is where family size
 and dose can be separated.
+
+### D-052 — The E3 delivery is wired as two query sets, `dose_texto` and `isolated_texto`; `balanced_texto` is retired
+**Status:** **Accepted** (César, 2026-10-01) · **Date:** 2026-10-01 · **Raised in:** S8 opening · **Implemented in:** S8 work item 1
+**Context.** D-008 (amended) reserved the single name `balanced_texto` for E3; the delivery is two sets over the same 600
+leaves — a nested dose ladder (3,000) and each of the nine types alone (5,400). D-009's Delivered note left open whether
+the isolated set is a query set or only the reference the ladder is measured against.
+**Decision.** Both are query sets, registered in `run_context.QUERY_SETS` as `dose_texto` and `isolated_texto`, run like
+any other and stamped against their own feature-table digests. The isolated set is also the additive reference for H4,
+on the same leaves. `balanced_texto` is removed, so nothing can resolve against a name with no file behind it.
+**Consequence.** The plan's additive reference ("S4's isolated effects") is replaced by the isolated set on the same leaves;
+S4's figures are a different population and are printed, never contrasted (S8 design; note in `RESEARCH_PLAN.md`).
+
+### D-053 — On the E3 ladder, readings use a concept-stratified leaf bootstrap plus a per-concept sign rule, not D-030's clustered interval
+**Status:** **Accepted** (César, 2026-10-01) · **Date:** 2026-10-01 · **Raised in:** S8 opening · **Scope:** the E3 sets (S8, and S12's re-read on test)
+**Context.** D-030 reads a threshold against the concept-clustered interval. The dev ladder has 4 concepts (`OEB020$ 030$
+230$ 290$`, 328 leaves); a cluster bootstrap over 4 clusters has 35 distinct resamples and gives an interval that cannot
+support any reading. D-009's Delivered note required S8 to say, in advance, which interval it reads.
+**Decision.** The read interval is the leaf bootstrap stratified by concept, B = 10,000. A reading is *supported* only if,
+in addition, the point estimate has the predicted sign in at least 3 of the 4 concepts. The concept-clustered interval is
+printed beside every reading and labelled as resting on 4 clusters. Every claim is scoped to these leaves and concepts:
+no generalisation across concepts is made, and S12's 3 test-side ladder concepts are the replication.
+**Consequence.** D-030 stands everywhere else. This is a deviation for one data set with too few clusters, decided before
+any run on it, not a relaxation chosen after a result.
