@@ -1385,3 +1385,30 @@ interval excluding 0 for the oracle BM25. Family size correlates with dose (0.59
 from OEB on the stacked set. The tercile and subchapter strata are reported as descriptive.
 **Consequence.** S12 re-reads W3 on test exactly as registered (A1–A2), with no change of covariate or threshold, and prints
 the outside-OEB slope beside it as descriptive. No sprint is reordered.
+
+### D-051 — amendment: the rationale is restated on the within-OEB slope the design fixed in advance
+**Status:** Proposed (amendment to D-051) · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S7 audit (F1, F4)
+**What was wrong.** D-051's verdict (not established) follows from Holm alone. Its rationale does not hold. It rests on the
+slope outside OEB, which A4 added after T8 was generated. It leaves out the within-OEB slope, which the design fixed before
+any run as the subchapter-confound check. In `results/S7/density.md` (dev, tie-free, descriptive) the within-OEB slope
+(13 concepts, 1,794 queries scored) is positive with a concept interval excluding 0 for 5 of 7 arms. `bm25_unigram` is
++0.1179 [+0.0401, +0.1752], `bge_m3_colbert` +0.0496 [+0.0280, +0.0700] and `dense_es_hiiamsid` +0.0273 [+0.0030, +0.0539].
+The two exceptions are `tfidf_phrases_replace` and `dense_e5`. Inside a single subchapter, larger families lose more. So
+"family size is not separated from OEB" is contradicted by the design's own check.
+The outside-OEB set (26 concepts, 672 queries scored, no family above 2,160 leaves) gives intervals that contain 0 for six of
+seven arms, for example `bm25_unigram` +0.0393 [−0.0459, +0.0771]. That is absence of evidence, not a slope that vanishes.
+The one exception is the oracle `bm25_unigram_params`, at −0.0597 [−0.1412, −0.0206]. For `dense_es_hiiamsid`, the arm W3
+supports, the outside-OEB point estimate (+0.0475) exceeds the full-population slope (+0.0360). Two further claims are
+withdrawn:
+- That the draws at or below 0 "omit OEB's largest families". This holds for `bm25_unigram` only.
+- That the slope is "near 0 or negative for six of seven arms" outside OEB. It is positive for two.
+**Decision.** For the manuscript, the verdict stands: the sibling-density law is **not established** on dev. 1 of 7 arms is
+supported, and six concept intervals exclude 0 but fail Holm across the 21 tests. The rationale reads: *descriptively,
+larger families lose more, and this holds within OEB for five of seven arms. It is not separated from the dose, which
+correlates with family size (0.5984) and is not controlled within OEB. Outside OEB the families are too small, and the
+intervals too wide, to say anything.* The outside-OEB slope is reported only beside the within-OEB slope, and both are
+labelled descriptive.
+**Consequence.** The S7 report's finding 5, its "what is now known to be wrong" #2, and its D-051 row are corrected to this
+wording. S12 re-reads W3 on test exactly as registered and prints the within-OEB and outside-OEB slopes beside it as
+descriptive. No sprint is reordered. S8, which removes the dose/family confound on the nested ladder, is where family size
+and dose can be separated.
