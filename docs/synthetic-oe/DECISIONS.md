@@ -1387,7 +1387,7 @@ from OEB on the stacked set. The tercile and subchapter strata are reported as d
 the outside-OEB slope beside it as descriptive. No sprint is reordered.
 
 ### D-051 — amendment: the rationale is restated on the within-OEB slope the design fixed in advance
-**Status:** Proposed (amendment to D-051) · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S7 audit (F1, F4)
+**Status:** **Accepted** (amendment to D-051; César, 2026-10-01) · **Date:** 2026-10-01 · **Owner:** César · **Raised in:** S7 audit (F1, F4)
 **What was wrong.** D-051's verdict (not established) follows from Holm alone. Its rationale does not hold. It rests on the
 slope outside OEB, which A4 added after T8 was generated. It leaves out the within-OEB slope, which the design fixed before
 any run as the subchapter-confound check. In `results/S7/density.md` (dev, tie-free, descriptive) the within-OEB slope

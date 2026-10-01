@@ -152,7 +152,7 @@ changed in S5: on stacked, that change moves no rank 1.
 | ID | Status | What |
 |---|---|---|
 | D-050 | **Accepted** (César, 2026-10-01) | H1's first clause ("parent level stays near its ceiling") is restated for the manuscript. It holds for the encoders under every condition measured. It fails for BM25 under stacking (finding 4), where the damage is concept-level, not parametric collapse |
-| D-051 | **Accepted** (César, 2026-10-01); **amendment Proposed** after the audit | The sibling-density law is reported as not established on dev; S12 re-reads W3 without changing it. The amendment restates the rationale: the association holds within OEB for five of seven arms and is not separated from the dose; the outside-OEB set is uninformative (finding 5). The original rationale ("confounded with OEB, absent outside it") is withdrawn |
+| D-051 | **Accepted** (César, 2026-10-01); **amendment accepted** after the audit (César, 2026-10-01) | The sibling-density law is reported as not established on dev; S12 re-reads W3 without changing it. The amendment restates the rationale: the association holds within OEB for five of seven arms and is not separated from the dose; the outside-OEB set is uninformative (finding 5). The original rationale ("confounded with OEB, absent outside it") is withdrawn |
 
 ## Audit response
 
@@ -164,7 +164,7 @@ that fails to reproduce. It raised 2 major and 5 minor findings. No run was re-m
 
 | Finding | Resolution |
 |---|---|
-| F1 — the density verdict rests on the post-hoc outside-OEB slope and omits the within-OEB slope the design fixed, which points the other way | **Fixed.** Finding 5 gives the within-OEB slopes beside the outside-OEB ones, drops "vanishes" and "between OEB's large families and the rest", and names the dose as the unseparated confound. Known-wrong 2 and the E5 row follow. D-051's rationale is restated in an amendment, **Proposed** for César; its verdict (not established) is unchanged |
+| F1 — the density verdict rests on the post-hoc outside-OEB slope and omits the within-OEB slope the design fixed, which points the other way | **Fixed.** Finding 5 gives the within-OEB slopes beside the outside-OEB ones, drops "vanishes" and "between OEB's large families and the rest", and names the dose as the unseparated confound. Known-wrong 2 and the E5 row follow. D-051's rationale is restated in an amendment, **accepted** by César (2026-10-01); its verdict (not established) is unchanged |
 | F2 — criterion 4 reported met without n excluded and the query-level CI in T3–T6 | **Fixed** by A5 (`231cd2e`) and, for T2 and T7, A6 (`47cbbbd`). Every earlier cell of T3–T6 is unchanged (checked cell by cell, A5); criterion 4 reads "yes, after A5–A6" and says it was first reported without them |
 | F3 — the interval/p disagreement explained by "p counts the draws at or below 0" | **Fixed.** Finding 5 and T4's generated text (A6 c) say the raw p agrees with the interval and Holm separates them |
 | F4 — "four of the remaining five", "six of seven", and "omit OEB's largest families" do not match the tables | **Fixed.** Finding 5 says six of seven outside-OEB intervals contain 0; known-wrong 2 no longer counts slopes; the D-051 amendment withdraws the draws claim, which holds for `bm25_unigram` only |
