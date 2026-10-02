@@ -590,6 +590,46 @@ def write_x1_split(LL: dict, D: dict) -> None:
     write(OUT / "x1_split.md", lines)
 
 
+# --------------------------------------------------------------------------- T13 signed draw reference (A7, post hoc)
+
+
+def write_draw_reference(LL: dict, D: dict, results: list[dict], noise: dict) -> None:
+    lines = header("T13: X2 beside a signed draw reference, post hoc and descriptive (dev, item level) — A7", [
+        "Added after the audit; **not a registered test**: no Holm, no reading, never cited as evidence for or",
+        "against H4. The **reference** is X2's own statistic (A2) at rung 1, where the added edit is alone in both",
+        "queries: Σ h_id·(h_iso − h_rung1) ÷ Σ h_id over the leaves. Any signed gap there comes from the rung and",
+        "isolated queries being different rewrite draws, not from company. It is printed on the text-different",
+        "leaves (the draw reference) and the text-equal ones (ties only). T3's bar is the gross disagreement on",
+        "the same text-different leaves, printed for comparison. **X2 − reference** is computed on the same",
+        "stratified draws for both, so its interval is paired over leaves.",
+    ])
+    lines += population_lines(D)
+    lines += ["| arm | scoring | X2 | X2 CI (stratified) | reference, text-different | CI (stratified) | at-risk mass | "
+              "reference, text-equal | CI (stratified) | T3 bar (gross) | X2 − reference | CI (stratified) | CI (concept) |",
+              "|---|---|---:|---|---:|---|---:|---:|---|---:|---:|---|---|"]
+    same = D["same_draw"].astype(float)
+    for short in BASE7:
+        x2 = next(r for r in results if r["id"] == "X2" and r["arm"] == short)
+        for v in ("tf", "run"):
+            num2, den2 = terms("x2", LL[short], D, v)
+            num1, den1 = terms("x2", LL[short], D, v, rungs=[1])
+            label = f"s8|T13|{short}|{v}"
+            ws, wc = strat_weights(D["concept"], label), cluster_leaf_weights(D["concept"], label)
+            diff_d = (ratio_draws(num1 * (1 - same), den1 * (1 - same), ws), ratio_draws(num1 * same, den1 * same, ws))
+            gap_s = ratio_draws(num2, den2, ws) - diff_d[0]
+            gap_c = ratio_draws(num2, den2, wc) - ratio_draws(num1 * (1 - same), den1 * (1 - same), wc)
+            ref, eq = stat(num1 * (1 - same), den1 * (1 - same)), stat(num1 * same, den1 * same)
+            fin = [d[np.isfinite(d)] for d in (*diff_d, gap_s, gap_c)]
+            lines.append(f"| {name(short)} | {VARIANT_LABEL[v]} | {fd(x2[v]['est'])} | {fci(x2[v]['s'], True)} | "
+                         f"{fd(ref)} | {fci(ci(fin[0]), True)} | {(den1 * (1 - same)).sum():,.1f} | "
+                         f"{fd(eq)} | {fci(ci(fin[1]), True)} | {f4(noise[short]['diff'][1])} | "
+                         f"{fd(x2[v]['est'] - ref)} | {fci(ci(fin[2]), True)} | {fci(ci(fin[3]), True)} |")
+    lines += ["", "Positive means the isolated query hits where the rung query misses, the direction X2 calls",
+              "super-additive. T3's bar is tie-free in both rows, as A2 (d) fixes it."]
+    lines += sources_block([DOSE, ISO, IDENT], arms=BASE7)
+    write(OUT / "draw_reference.md", lines)
+
+
 # --------------------------------------------------------------------------- T5 X2 marginal
 
 
@@ -910,6 +950,7 @@ def main() -> None:
     write_noise(noise, D)
     write_additivity(LL, D, results)
     write_x1_split(LL, D)
+    write_draw_reference(LL, D, results, noise)
     write_marginal(LL, D)
     write_dose_response(LL, D, results)
     write_pairs(LL, D)
