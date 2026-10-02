@@ -1452,3 +1452,18 @@ one of those excesses exceeds the draw noise between the isolated and ladder rew
 ladder unchanged.
 **Open with it.** Whether S12 keeps A2 (d)'s noise bar, which counts rank-1 tie-breaks as disagreement and so
 overstates the bar for BM25 and TF-IDF (S8 report, known-wrong 2), must be decided before S12 opens.
+**Revised 2026-10-02, after the S8 audit (`SPRINT_S8_AUDIT.md`).** The audit (F1–F4, F7, F10),
+T12 (A6) and T13 (A7) withdraw three supports of the proposal above. Not "roughly as the clipped sum predicts": X1
+is floor-bound for six of seven arms and is the net of two one-sided rates, so a non-significant X1 is not
+additivity. Not "one excess exceeds the draw noise": `tfidf_phrases_replace`'s X2 does so tie-free only, and the
+registered bar is itself a gross rate set against a signed excess; against a post-hoc signed reference (T13) the
+X2 excess is beyond draw noise for four or five arms. Not "decelerates with dose" as evidence: the floor and
+independent per-edit losses both give that shape. Revised proposal: *on four OEB canalization concepts, stacked
+rendering edits drive item-level accuracy to the floor for most methods, while late-interaction and E5 retrieval
+keep concept-level accuracy. Whether stacked edits interact beyond their isolated effects is not resolved on the
+development ladder: the cumulative test is uninformative where the additive prediction is already at the floor,
+and the per-step excess is within the registered draw-noise bar but not within a signed draw reference adopted
+after the fact; the held-out ladder tests it with that reference registered in advance.* The label *partly
+supported* stays recorded and unused. **Open with it**, replacing the paragraph above: S12 registers, before it
+opens, the X2 noise reference (the signed rung-1 reference of T13, matched on type) and whether X1 is read at all
+(report, known-wrong 3). S8's post-hoc X2 reading does not enter the manuscript as a result.
