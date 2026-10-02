@@ -601,7 +601,10 @@ def write_draw_reference(LL: dict, D: dict, results: list[dict], noise: dict) ->
         "isolated queries being different rewrite draws, not from company. It is printed on the text-different",
         "leaves (the draw reference) and the text-equal ones (ties only). T3's bar is the gross disagreement on",
         "the same text-different leaves, printed for comparison. **X2 − reference** is computed on the same",
-        "stratified draws for both, so its interval is paired over leaves.",
+        "stratified draws for both, so its interval is paired over leaves. Two limits: the reference is drawn",
+        "from the types each leaf carries at rung 1, while X2 sums over the types added at rungs 2 to 5, so a",
+        "draw gap that differs by type is not matched; and its at-risk set is identity hits, not hits at the",
+        "previous rung.",
     ])
     lines += population_lines(D)
     lines += ["| arm | scoring | X2 | X2 CI (stratified) | reference, text-different | CI (stratified) | at-risk mass | "
