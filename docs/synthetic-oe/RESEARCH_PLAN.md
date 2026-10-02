@@ -50,7 +50,7 @@ baseline taken from a different system — all provenance failures, none of them
 | S6 | Statistical analysis and mediation | H1, H2, H5 | 2 w | S4, S5 |
 | S7 | E2 stacked headline and stratifications | H1, H4 | 1 w | S6 |
 | S8 | E3 balanced dose design | H4 | 1.5 w | S7 + upstream |
-| S9 | Track C — query-side normalisation and rewriting | H6 | 2 w | S6 |
+| S9 | Track C — query-side normalisation and rewriting | H6 | 3 w (2 planned; S9 design) | S6 |
 | S10 | Track D — learned representations | O4 | 3 w | S6 |
 | S11 | Track E — two-stage architecture | O4 | 3 w | S6 |
 | S12 | Frozen test evaluation and artefact release | O5 | 1 w | S8–S11 |
@@ -283,6 +283,12 @@ measured in S3.
   published. It is a slot-filling candidate here, compared with normalisation and rewriting, not a
   Track B baseline. Its prompts were chosen on OEB `resumen` queries, whose concepts sit on both sides
   of OE's split: state that exposure.
+
+*Added 2026-10-02 (from the S9 opening, [design](sprints/SPRINT_S9_DESIGN.md)):* the overlap axis is
+the untransformed query's S3 lexical coverage, over one dev leaf population (2,691 leaves) rendered as
+identity `texto`, coded `resumen`, single, L2 and stacked; every δ paired on the same query. HyDE and
+rewriting run on local `qwen2.5:14b`, extraction on `phi4` (ollama, digests stamped). The canonicaliser
+reads only generic Spanish and the indexed corpus, never the rewrite menus. Effort 3 weeks, not 2.
 
 **Exit.** The crossover curve: accuracy delta of expansion as a function of query-target
 overlap, and the threshold below which expansion pays. A prediction to be tested, not
