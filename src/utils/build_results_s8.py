@@ -537,6 +537,48 @@ def write_additivity(LL: dict, D: dict, results: list[dict]) -> None:
     write(OUT / "additivity.md", lines)
 
 
+# --------------------------------------------------------------------------- T12 X1 decomposition (A6, post hoc)
+
+
+def x1_split_terms(L: Ladder, D: dict, variant: str, weight: np.ndarray, open_only: bool) -> tuple[np.ndarray, np.ndarray]:
+    """X1's per-leaf terms weighted by `weight`; with `open_only`, a leaf-rung counts only if its prediction is above 0."""
+    h, iso = L.hits(variant)
+    n = len(h)
+    num, den = np.zeros(n), np.zeros(n)
+    for k in STACK_RUNGS:
+        pred = predicted(h, iso, D["member"], k)
+        m = weight * ((pred > 0) if open_only else np.ones(n))
+        num += (h[:, k] - pred) * m
+        den += m
+    return num, den
+
+
+def write_x1_split(LL: dict, D: dict) -> None:
+    lines = header("T12: X1 decomposed, post hoc and descriptive (dev, item level) — A6", [
+        "Added after the audit (F1, F2); **not a registered test**: no Holm, no reading, never cited as evidence",
+        "for or against H4. X1 (A2) split by the leaf's identity outcome, each leaf weighted by its expected",
+        "identity hit (tie-free) or its hit as run, so a tie at identity splits its leaf between the rows. **Open**",
+        "keeps only the leaf-rungs whose clipped-additive prediction is above 0, where X1 can move in either",
+        "direction (T4, floor-bound); its leaf-rungs column is the mass X1 had left to test.",
+    ])
+    lines += population_lines(D)
+    lines += ["| arm | scoring | subset | weight (leaves) | leaf-rungs | X1 | CI (stratified) | CI (concept) | per concept |",
+              "|---|---|---|---:|---:|---:|---|---|---|"]
+    for short in BASE7:
+        for v in ("tf", "run"):
+            h, _ = LL[short].hits(v)
+            for label, w, open_only in (("all", np.ones(len(h)), False), ("hit at identity", h[:, 0], False),
+                                        ("missed at identity", 1 - h[:, 0], False), ("all, open", np.ones(len(h)), True)):
+                num, den = x1_split_terms(LL[short], D, v, w, open_only)
+                r = summarise(num, den, D["concept"], f"s8|T12|{short}|{v}|{label}")
+                lines.append(f"| {name(short)} | {VARIANT_LABEL[v]} | {label} | {w.sum():,.1f} | {den.sum():,.1f} | "
+                             f"{fd(r['est'])} | {fci(r['s'], True)} | {fci(r['c'], True)} | {concept_cells(r['per'])} |")
+    lines += ["", "Per-concept estimates in the order " + ", ".join(f"`{c}`" for c in sorted(set(D["concept"]))) + ".",
+              "*All* reproduces T10's X1 for its scoring; the hit and missed rows sum to it, weighted by their leaf-rungs."]
+    lines += sources_block([DOSE, ISO, IDENT], arms=BASE7)
+    write(OUT / "x1_split.md", lines)
+
+
 # --------------------------------------------------------------------------- T5 X2 marginal
 
 
@@ -856,6 +898,7 @@ def main() -> None:
     write_isolated(LL, D, single_reference(dup, parents))
     write_noise(noise, D)
     write_additivity(LL, D, results)
+    write_x1_split(LL, D)
     write_marginal(LL, D)
     write_dose_response(LL, D, results)
     write_pairs(LL, D)
