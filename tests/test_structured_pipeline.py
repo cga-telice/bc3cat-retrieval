@@ -213,11 +213,15 @@ def test_load_passes_stage3_value_match_to_the_catalogue(tmp_path):
 @pytest.mark.parametrize(
     "params, error",
     [
-        ({**RULES, "stage2_method": "llm"}, NotImplementedError),
+        # S9 work item 4 ports the LLM extractor; what is refused now is any model or mode the
+        # design does not fix.
+        ({**RULES, "stage2_method": "llm"}, ValueError),
+        ({**RULES, "stage2_method": "llm", "llm_model": "llama3.1:8b", "llm_prompt_mode": "extract"}, ValueError),
+        ({**RULES, "stage2_method": "gpt"}, NotImplementedError),
         ({**RULES, "oracle": True}, NotImplementedError),
         ({"stage2_method": "rules"}, KeyError),
     ],
-    ids=["llm", "oracle", "no-stage1"],
+    ids=["llm-unfixed", "llm-other-model", "unknown", "oracle", "no-stage1"],
 )
 def test_load_refuses_what_is_not_ported(tmp_path, params, error):
     with pytest.raises(error):
@@ -232,9 +236,9 @@ def test_load_fails_loud_when_stage1_lists_other_documents(tmp_path):
 
 @pytest.mark.parametrize(
     "params",
-    [{**RULES, "stage2_method": "llm"}, {**RULES, "oracle": True}, {"stage2_method": "rules"},
+    [{**RULES, "stage2_method": "gpt"}, {**RULES, "oracle": True}, {"stage2_method": "rules"},
      {**RULES, "stage3_value_match": "fuzzy"}],
-    ids=["llm", "oracle", "no-stage1", "unknown-value-match"],
+    ids=["unknown-stage2", "oracle", "no-stage1", "unknown-value-match"],
 )
 def test_builder_refuses_what_is_not_ported(params):
     with pytest.raises(ValueError):

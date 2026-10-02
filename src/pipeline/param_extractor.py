@@ -1,5 +1,24 @@
 """LLM-based parameter extractor (Stage 2) using Ollama.
 
+Ported from `research/structured-retrieval@85c3359` for S9 work item 4 (D-026: file checkout, the
+unmodified source is commit `1d27b40` on this branch). Changes against the source, and only these:
+
+- **Every generation goes through S9's client** (`query_rewrite.llm`): the model is pinned by digest,
+  the options are the design's (`temperature 0`, `seed`, `num_predict`, `num_ctx`; the source set
+  temperature only), and each response is cached append-only, so a run reads back exactly what it
+  generated. `ollama_base_url`, `model` and `temperature` are therefore the client's, not arguments.
+- **Fail loud.** The source's `_call_ollama` returned `""` on a request error, which the parser then
+  read as an unparseable answer and the extractor as "all axes null" — a server outage would have been
+  scored as an extraction. It now raises.
+- **The retry on a parse failure is kept**, and is a no-op by construction: the same prompt has the
+  same cache key, so the retry returns the same response. Under the source's temperature 0 it would
+  have returned the same response too, up to GPU non-determinism (S9 A1).
+- **Schema.** No OEB default; the caller passes the collection's schema (OE, via the resolver).
+- **Imports** are `pipeline.prompts`, this branch's package layout; `prompts.py` is unmodified.
+- The `__main__` test harness, which read OEB parquets, is not ported.
+
+The prompt mode S9 uses is `extract` (S9 design, work item 4).
+
 Sends a structured Spanish prompt to Llama 3.1 8B via Ollama's REST API,
 parses the JSON response into {axis_label: value | None}, which feeds
 into Stage 3 (catalog lookup).
@@ -17,9 +36,9 @@ import re
 import time
 from pathlib import Path
 
-import requests
+from query_rewrite.llm import Cache, OllamaClient
 
-from src.pipeline.prompts import (
+from pipeline.prompts import (
     build_extraction_prompt,
     build_classification_prompt,
     build_twostep_extract_prompt,
@@ -32,9 +51,6 @@ from src.pipeline.prompts import (
 
 logger = logging.getLogger(__name__)
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = ROOT_DIR / "data" / "processed"
-SCHEMA_PATH = DATA_DIR / "OEB_concept_schema.json"
 
 
 class LLMParamExtractor:
@@ -46,18 +62,17 @@ class LLMParamExtractor:
 
     def __init__(
         self,
-        schema_path: str | Path = SCHEMA_PATH,
-        ollama_base_url: str = "http://ollama:11434",
-        model: str = "llama3.1:8b",
-        temperature: float = 0.0,
+        schema_path: str | Path,
+        client: OllamaClient,
+        cache: Cache,
         prompt_mode: str = "classify",
     ):
         with open(schema_path, encoding="utf-8") as f:
             self.schema = json.load(f)
 
-        self.base_url = ollama_base_url.rstrip("/")
-        self.model = model
-        self.temperature = temperature
+        self._client = client
+        self._cache = cache
+        self.model = client.model
         self._prompt_mode = prompt_mode
         self._paraaware2_step2_fallbacks = 0
 
@@ -441,24 +456,8 @@ class LLMParamExtractor:
         return result
 
     def _call_ollama(self, prompt: str) -> str:
-        """Send a prompt to Ollama and return the raw response text."""
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {"temperature": self.temperature},
-        }
-        try:
-            resp = requests.post(
-                f"{self.base_url}/api/generate",
-                json=payload,
-                timeout=120,
-            )
-            resp.raise_for_status()
-            return resp.json().get("response", "")
-        except requests.RequestException as e:
-            logger.error(f"Ollama request failed: {e}")
-            return ""
+        """Send a prompt through the cached, pinned client and return the raw response text."""
+        return self._cache.get_or_generate(self._client, "extract", prompt)["response"]
 
     @staticmethod
     def _parse_json_response(raw: str) -> dict | None:
@@ -497,194 +496,3 @@ class LLMParamExtractor:
             pass
 
         return None
-
-
-# ---------------------------------------------------------------------------
-# Tests (run with: python -m src.pipeline.param_extractor)
-# ---------------------------------------------------------------------------
-
-def _get_ground_truth(row) -> dict[str, str]:
-    """Extract ground-truth axis values from a parquet row's parameters."""
-    params = row["parameters"]
-    gt = {}
-    for axis_key, axis_data in params.items():
-        if axis_data is None:
-            continue
-        label = axis_data["label"].strip()
-        value = axis_data["values"][0]["value"].strip()
-        gt[label] = value
-    return gt
-
-
-def _run_tests(base_url: str, n_queries: int = 20):
-    """Run connectivity, single extraction, and batch tests."""
-    import pandas as pd
-
-    print("=" * 60)
-    print("LLM Parameter Extractor — Tests")
-    print("=" * 60)
-
-    # --- T1: Connectivity ---
-    print("\n[T1] Connectivity check...")
-    try:
-        resp = requests.get(f"{base_url}/api/tags", timeout=10)
-        resp.raise_for_status()
-        tags = resp.json()
-        models = [m["name"] for m in tags.get("models", [])]
-        print(f"  Ollama reachable at {base_url}")
-        print(f"  Models available: {models}")
-        if not any("llama3.1" in m for m in models):
-            print("  WARNING: llama3.1:8b not found! Pull it first.")
-            return
-        print("  PASS")
-    except requests.RequestException as e:
-        print(f"  FAIL: Cannot reach Ollama at {base_url}: {e}")
-        print("  Make sure Ollama is running and the model is pulled.")
-        return
-
-    # --- Load extractor and data ---
-    extractor = LLMParamExtractor(
-        ollama_base_url=base_url, model="llama3.1:8b"
-    )
-    print(f"  Prompt mode: {extractor._prompt_mode}")
-
-    queries_path = DATA_DIR / "OEB_short_norm.parquet"
-    df = pd.read_parquet(queries_path)
-    df = df[df["parent_key"].str.endswith("$")]
-
-    # --- T2: Single extraction ---
-    print("\n[T2] Single extraction test...")
-    # Pick a query from a small group for quick testing
-    row = df[df["parent_key"] == "OEB010$"].iloc[0]
-    query_text = row["text"]
-    parent_key = row["parent_key"]
-    gt = _get_ground_truth(row)
-
-    print(f"  Query: {query_text!r:.120}")
-    print(f"  Concept group: {parent_key}")
-    print(f"  Ground truth: {gt}")
-
-    t0 = time.time()
-    extracted = extractor.extract(parent_key, query_text)
-    elapsed_ms = (time.time() - t0) * 1000
-
-    print(f"  Extracted:     {extracted}")
-    print(f"  Time: {elapsed_ms:.0f}ms")
-
-    # Compare
-    axes_correct = 0
-    axes_total = len(gt)
-    for axis, gt_val in gt.items():
-        ext_val = extracted.get(axis)
-        match = (
-            ext_val is not None
-            and ext_val.strip().lower() == gt_val.strip().lower()
-        )
-        if match:
-            axes_correct += 1
-        else:
-            print(f"  MISMATCH axis '{axis}': expected '{gt_val}', got '{ext_val}'")
-
-    print(f"  Axes correct: {axes_correct}/{axes_total}")
-    print(f"  {'PASS' if axes_correct == axes_total else 'PARTIAL'}")
-
-    # --- T3: Batch of N queries ---
-    print(f"\n[T3] Batch extraction test ({n_queries} queries)...")
-
-    # Sample from different concept groups
-    sample = df.groupby("parent_key", group_keys=False).apply(
-        lambda x: x.sample(n=min(1, len(x)), random_state=42)
-    )
-    if len(sample) < n_queries:
-        extra = df[~df.index.isin(sample.index)].sample(
-            n=min(n_queries - len(sample), len(df) - len(sample)),
-            random_state=42,
-        )
-        sample = pd.concat([sample, extra])
-    sample = sample.head(n_queries)
-
-    items = list(zip(sample["parent_key"], sample["text"]))
-
-    t0 = time.time()
-    results = extractor.extract_batch(items)
-    total_elapsed = time.time() - t0
-
-    # Evaluate
-    total_axes = 0
-    correct_axes = 0
-    queries_all_correct = 0
-
-    print(f"\n  {'#':>3}  {'parent':>8}  {'axes_ok':>7}  result")
-    print(f"  {'---':>3}  {'--------':>8}  {'-------':>7}  ------")
-
-    for i, (idx, row) in enumerate(sample.iterrows()):
-        gt = _get_ground_truth(row)
-        extracted = results[i]
-        q_correct = 0
-        q_total = len(gt)
-
-        for axis, gt_val in gt.items():
-            total_axes += 1
-            ext_val = extracted.get(axis)
-            if (
-                ext_val is not None
-                and ext_val.strip().lower() == gt_val.strip().lower()
-            ):
-                correct_axes += 1
-                q_correct += 1
-
-        all_ok = q_correct == q_total
-        if all_ok:
-            queries_all_correct += 1
-
-        status = "OK" if all_ok else f"{q_correct}/{q_total}"
-        print(f"  {i + 1:>3}  {row['parent_key']:>8}  {status:>7}  {extracted}")
-
-    avg_ms = (total_elapsed / len(items)) * 1000
-
-    print(f"\n  Summary:")
-    print(f"    Per-axis accuracy:  {correct_axes}/{total_axes} = {correct_axes / total_axes:.1%}")
-    print(f"    Per-query accuracy: {queries_all_correct}/{len(items)} = {queries_all_correct / len(items):.1%}")
-    print(f"    Total time: {total_elapsed:.1f}s")
-    print(f"    Avg time/query: {avg_ms:.0f}ms")
-
-    # --- T4: Edge case — malformed response ---
-    print("\n[T4] Edge case: JSON parsing robustness...")
-    test_cases = [
-        ('```json\n{"A": "x"}\n```', {"A": "x"}),
-        ('{"A": "x",}', {"A": "x"}),
-        ("  {  } ", {}),
-        ("not json at all", None),
-        ("", None),
-    ]
-    for raw, expected in test_cases:
-        result = LLMParamExtractor._parse_json_response(raw)
-        status = "PASS" if result == expected else "FAIL"
-        print(f"  {status}: parse({raw!r:.40}) -> {result}")
-
-    print("\n" + "=" * 60)
-    print("Tests complete.")
-    print("=" * 60)
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="LLM Parameter Extractor (Stage 2) — Tests"
-    )
-    parser.add_argument(
-        "--base-url",
-        default="http://localhost:11434",
-        help="Ollama base URL (default: http://localhost:11434)",
-    )
-    parser.add_argument(
-        "--n-queries",
-        type=int,
-        default=20,
-        help="Number of queries for batch test (default: 20)",
-    )
-    args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO)
-    _run_tests(base_url=args.base_url, n_queries=args.n_queries)

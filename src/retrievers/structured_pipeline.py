@@ -21,8 +21,9 @@ Ported from `research/structured-retrieval@85c3359` (D-026). Changes against the
 - **Fail loud.** `load` refuses a Stage-1 index whose document order differs from this
   index's `mapping.jsonl`: the ranking addresses documents by E5 row, and `retrieve.ipynb`
   reads ids from `external_ids`, so a silent disagreement would score the wrong leaves.
-- **Scope.** Rules only. The LLM extractor and the oracle-parent mode are not ported (S5);
-  asking for either raises instead of falling back.
+- **Scope.** Rules, and from S9 the LLM extractor (`stage2_method: llm`, `pipeline.param_extractor`,
+  `phi4` in `extract` mode, generations cached; S9 work item 4). The oracle-parent mode is not ported
+  (S5); asking for it raises instead of falling back.
 - **Batching.** `search_batch` sends all queries through E5's `search_batch` (which blocks
   them itself, S2), then runs Stages 2–3 per query. The source looped over `search()`, which encodes one query at a time.
   Stages 1–3 and the three-tier ranking are otherwise unchanged; `search()` and
@@ -50,6 +51,8 @@ from .dense_e5 import DenseE5Searcher
 from pipeline.catalog_lookup import CatalogLookup
 from pipeline.param_extractor_oracle import OracleParamsExtractor
 from pipeline.param_extractor_rules import RuleBasedParamExtractor
+from pipeline.param_extractor import LLMParamExtractor
+from query_rewrite.llm import Cache, OllamaClient
 from utils.run_context import data_paths
 
 logger = logging.getLogger(__name__)
@@ -250,7 +253,13 @@ class StructuredPipelineSearcher:
 
 # ── Factory ──────────────────────────────────────────────────────────────────
 
-STAGE2_METHODS = ("rules", "oracle_params")
+STAGE2_METHODS = ("rules", "oracle_params", "llm")
+
+#: S9 work item 4: the LLM extractor's model and prompt mode are fixed by the design, and its
+#: generations are cached here, append-only, shared by every run of the arm (`query_rewrite.llm`).
+LLM_MODEL = "phi4:latest"
+LLM_PROMPT_MODE = "extract"
+LLM_CACHE = "llm_cache/structured_llm_extract.jsonl"
 
 def _read_mapping_ids(path: Path) -> list[str]:
     with open(path, encoding="utf-8") as f:
@@ -280,7 +289,7 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     if stage2 not in STAGE2_METHODS:
         raise NotImplementedError(
             f"{variant}: stage2_method={stage2!r}. Only {STAGE2_METHODS} exist on this branch "
-            "(D-026, S5); LLM extraction is S9's."
+            "(D-026, S5, S9)."
         )
     if params.get("oracle"):
         raise NotImplementedError(f"{variant}: oracle-parent mode is not ported (S5).")
@@ -329,6 +338,13 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     # Stage 2: rule-based extractor, or the oracle bound
     if stage2 == "rules":
         extractor = RuleBasedParamExtractor(paths.concept_schema)
+    elif stage2 == "llm":
+        model, mode = params.get("llm_model"), params.get("llm_prompt_mode")
+        if (model, mode) != (LLM_MODEL, LLM_PROMPT_MODE):
+            raise ValueError(f"{variant}: llm_model / llm_prompt_mode are ({model!r}, {mode!r}); "
+                             f"the S9 design fixes ({LLM_MODEL!r}, {LLM_PROMPT_MODE!r})")
+        extractor = LLMParamExtractor(paths.concept_schema, OllamaClient(model),
+                                      Cache(paths.data_dir / LLM_CACHE), prompt_mode=mode)
     else:
         extractor = OracleParamsExtractor(paths.concept_schema)
     print(f"  Stage 2: {stage2}")

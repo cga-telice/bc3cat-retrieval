@@ -1,0 +1,40 @@
+# Structured pipeline, LLM-extraction variant, Stage-3 value matching normalised, on OE (S9 work item 4).
+# Identical to structured_pipeline_rules_valuenorm__OE except Stage 2: the LLM extractor ported from
+# research/structured-retrieval@85c3359 (src/pipeline/param_extractor.py, D-026), `extract` mode, phi4,
+# through S9's pinned and cached client. Its prompts were chosen on OEB `resumen`, whose concepts sit on
+# both sides of OE's split: that exposure is stated with every figure.
+# Stage 1: E5 item index (dense_e5__OE) -> parent_key of the top-1 leaf
+# Stage 2: LLM extraction of axis values from the query text
+# Stage 3: deterministic catalogue lookup, three-tier ranking
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_llm_valuenorm__OE
+  impl: structured_pipeline_llm
+  save_as: structured_pipeline_llm_valuenorm__OE
+  params:
+    stage2_method: llm
+    llm_model: "phi4:latest"
+    llm_prompt_mode: extract
+    oracle: false
+    stage1_index: dense_e5__OE
+    stage3_value_match: normalized
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.structured_pipeline_llm
+  entrypoint: load
