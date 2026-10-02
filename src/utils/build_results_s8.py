@@ -540,14 +540,16 @@ def write_additivity(LL: dict, D: dict, results: list[dict]) -> None:
 # --------------------------------------------------------------------------- T12 X1 decomposition (A6, post hoc)
 
 
-def x1_split_terms(L: Ladder, D: dict, variant: str, weight: np.ndarray, open_only: bool) -> tuple[np.ndarray, np.ndarray]:
-    """X1's per-leaf terms weighted by `weight`; with `open_only`, a leaf-rung counts only if its prediction is above 0."""
+def x1_split_terms(L: Ladder, D: dict, variant: str, weight: np.ndarray, region: str) -> tuple[np.ndarray, np.ndarray]:
+    """X1's per-leaf terms weighted by `weight`, over the leaf-rungs whose clipped prediction lies in `region`."""
     h, iso = L.hits(variant)
     n = len(h)
     num, den = np.zeros(n), np.zeros(n)
     for k in STACK_RUNGS:
         pred = predicted(h, iso, D["member"], k)
-        m = weight * ((pred > 0) if open_only else np.ones(n))
+        inside = {"any": np.ones(n, bool), "ceiling": pred >= 1, "floor": pred <= 0,
+                  "interior": (pred > 0) & (pred < 1)}[region]
+        m = weight * inside
         num += (h[:, k] - pred) * m
         den += m
     return num, den
@@ -556,10 +558,12 @@ def x1_split_terms(L: Ladder, D: dict, variant: str, weight: np.ndarray, open_on
 def write_x1_split(LL: dict, D: dict) -> None:
     lines = header("T12: X1 decomposed, post hoc and descriptive (dev, item level) — A6", [
         "Added after the audit (F1, F2); **not a registered test**: no Holm, no reading, never cited as evidence",
-        "for or against H4. X1 (A2) split by the leaf's identity outcome, each leaf weighted by its expected",
-        "identity hit (tie-free) or its hit as run, so a tie at identity splits its leaf between the rows. **Open**",
-        "keeps only the leaf-rungs whose clipped-additive prediction is above 0, where X1 can move in either",
-        "direction (T4, floor-bound); its leaf-rungs column is the mass X1 had left to test.",
+        "for or against H4. X1 (A2) split two ways. By the leaf's identity outcome, each leaf weighted by its",
+        "expected identity hit (tie-free) or its hit as run, so a tie at identity splits its leaf between the rows.",
+        "By where the clipped-additive prediction of the leaf-rung lies: **ceiling-bound** (prediction 1: every",
+        "isolated edit survives, so the term can only be ≤ 0), **floor-bound** (prediction 0: the term can only be",
+        "≥ 0) and **interior** (either sign possible). X1 is the leaf-rung-weighted net of the three; with hits that",
+        "are mostly 0 or 1, the interior is thin and X1 is a balance of two one-sided rates, not a two-sided test.",
     ])
     lines += population_lines(D)
     lines += ["| arm | scoring | subset | weight (leaves) | leaf-rungs | X1 | CI (stratified) | CI (concept) | per concept |",
@@ -567,9 +571,11 @@ def write_x1_split(LL: dict, D: dict) -> None:
     for short in BASE7:
         for v in ("tf", "run"):
             h, _ = LL[short].hits(v)
-            for label, w, open_only in (("all", np.ones(len(h)), False), ("hit at identity", h[:, 0], False),
-                                        ("missed at identity", 1 - h[:, 0], False), ("all, open", np.ones(len(h)), True)):
-                num, den = x1_split_terms(LL[short], D, v, w, open_only)
+            one = np.ones(len(h))
+            for label, w, region in (("all", one, "any"), ("hit at identity", h[:, 0], "any"),
+                                     ("missed at identity", 1 - h[:, 0], "any"), ("ceiling-bound", one, "ceiling"),
+                                     ("floor-bound", one, "floor"), ("interior", one, "interior")):
+                num, den = x1_split_terms(LL[short], D, v, w, region)
                 if not den.sum():
                     lines.append(f"| {name(short)} | {VARIANT_LABEL[v]} | {label} | {w.sum():,.1f} | {den.sum():,.1f} | "
                                  "— | — | — | — |")
@@ -578,7 +584,8 @@ def write_x1_split(LL: dict, D: dict) -> None:
                 lines.append(f"| {name(short)} | {VARIANT_LABEL[v]} | {label} | {w.sum():,.1f} | {den.sum():,.1f} | "
                              f"{fd(r['est'])} | {fci(r['s'], True)} | {fci(r['c'], True)} | {concept_cells(r['per'])} |")
     lines += ["", "Per-concept estimates in the order " + ", ".join(f"`{c}`" for c in sorted(set(D["concept"]))) + ".",
-              "*All* reproduces T10's X1 for its scoring; the hit and missed rows sum to it, weighted by their leaf-rungs."]
+              "*All* reproduces T10's X1 for its scoring. The hit and missed rows combine to it, and so do the three",
+              "prediction regions, each weighted by its leaf-rungs."]
     lines += sources_block([DOSE, ISO, IDENT], arms=BASE7)
     write(OUT / "x1_split.md", lines)
 
