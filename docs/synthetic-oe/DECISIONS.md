@@ -1437,7 +1437,7 @@ no generalisation across concepts is made, and S12's 3 test-side ladder concepts
 any run on it, not a relaxation chosen after a result.
 
 ### D-054 — H4 is restated on what S8 measured: super-additivity is not established
-**Status:** Proposed · **Date:** 2026-10-02 · **Owner:** César · **Raised in:** S8 report
+**Status:** **Accepted** (César, 2026-10-02, as revised after the second S8 audit) · **Date:** 2026-10-02 · **Owner:** César · **Raised in:** S8 report
 **Context.** S8's design resolves H4 by a three-way rule (supported / contradicted / partly supported). On the dev
 E3 ladder (328 leaves, `OEB020$ 030$ 230$ 290$`) no tested arm has both X1 and X2 supported, and the rule then reads
 *partly supported* (A3). In `results/S8/predictions.md`: X1 (cumulative) supported for `dense_e5` only, not robust
