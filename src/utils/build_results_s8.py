@@ -686,7 +686,8 @@ def write_s7_reference(LL: dict, D: dict, dup: set[str], parents: dict[str, str]
         for k in sorted(set(feats["dose"]) | set(RUNGS)):
             sub = frame[frame["dose"] == k]
             s7 = cell(sub, "item", f"s8|T8|{short}|{k}") if len(item(sub)) else None
-            lad = summarise(h[:, k] - h[:, 0], np.ones(len(h)), D["concept"], f"s8|T8|lad|{short}|{k}") \
+            # A5: T1's label, so the ladder side reuses T1's draws and prints T1's intervals (audit F9)
+            lad = summarise(h[:, k] - h[:, 0], np.ones(len(h)), D["concept"], f"s8|T1|{short}|item|{k}") \
                 if k in RUNGS else None
             lines.append(f"| {name(short)} | {k} | "
                          + (f"{s7['n']:,} | {s7['excluded']:,} | {s7['concepts']} | {fd(s7['delta'])} | {fci(s7['c'], True)} | "
@@ -712,12 +713,14 @@ def write_d004(D: dict, results: list[dict]) -> None:
     lines += [f"Flagged: {int(D['rung_flag'].sum()):,} of {D['rung_flag'][:, 1:].size:,} dev rung queries, "
               f"{int(D['iso_flag'].sum()):,} of {D['iso_flag'].size:,} dev isolated queries.", "",
               "| test | arm | estimate | CI (stratified) | reading | clean estimate | clean CI (stratified) | clean leaves | "
-              "clean reading | robust |", "|---|---|---:|---|---|---:|---|---:|---|---|"]
+              "clean reading | robust | clean CI (concept, A5) | clean per concept (A5) | clean Holm p (A5) |",
+              "|---|---|---:|---|---|---:|---|---:|---|---|---|---|---:|"]
     for r in results:
         t, c = r["tf"], r["clean"]
         lines.append(f"| {r['id']} | {name(r['arm'])} | {fd(t['est'])} | {fci(t['s'], True)} | {t['reading']} | "
                      f"{fd(c['est'])} | {fci(c['s'], True)} | {c['leaves']:,} | {c['reading']} | "
-                     f"{'yes' if r['robust'] else '**no**'} |")
+                     f"{'yes' if r['robust'] else '**no**'} | {fci(c['c'], True)} | {concept_cells(c['per'])} | "
+                     f"{fp(c['holm'])} |")
     lines += sources_block([DOSE, ISO, IDENT], arms=BASE7)
     write(OUT / "d004.md", lines)
 
@@ -733,18 +736,26 @@ def write_predictions(results: list[dict], floors: dict, noise: dict, D: dict) -
     ])
     lines += population_lines(D)
     lines += ["| test | arm | statement | estimate | CI (stratified) | CI (concept) | per concept | p | Holm p | BH q | "
-              "reading | as run | clean | text-different draw noise | exceeds noise |",
-              "|---|---|---|---:|---|---|---|---:|---:|---:|---|---|---|---:|---|"]
+              "reading | as run | clean | text-different draw noise | exceeds noise | as-run estimate (A5) | "
+              "as-run CI (stratified, A5) | as-run CI (concept, A5) | as-run per concept (A5) | as-run Holm p (A5) | "
+              "as run exceeds noise (A5) |",
+              "|---|---|---|---:|---|---|---|---:|---:|---:|---|---|---|---:|---|---:|---|---|---|---:|---|"]
     for r in results:
-        t = r["tf"]
+        t, a = r["tf"], r["run"]
         nz = noise[r["arm"]]["diff"][1]
-        exceeds = "—" if r["id"] == "X3" else ("yes" if abs(t["est"]) > nz else "no")
+        x3 = r["id"] == "X3"
+        exceeds = "—" if x3 else ("yes" if abs(t["est"]) > nz else "no")
+        # A5: the same T3 bar (tie-free, A2 d) against the as-run estimate; ⚐ when the two disagree (audit F3)
+        run_exceeds = "—" if x3 else ("yes" if abs(a["est"]) > nz else "no") + (" ⚐" if (abs(a["est"]) > nz) != (abs(t["est"]) > nz) else "")
         flag = " ⚑" if r["differs_run"] else ""
         lines.append(f"| {r['id']} | {name(r['arm'])} | {r['what']} | {fd(t['est'])} | {fci(t['s'], True)} | "
                      f"{fci(t['c'], True)} | {concept_cells(t['per'])} | {fp(t['p'])} | {fp(t['holm'])} | {fp(t['bh'])} | "
-                     f"**{t['reading']}**{flag} | {r['run']['reading']} | {r['clean']['reading']} | {f4(nz)} | {exceeds} |")
+                     f"**{t['reading']}**{flag} | {a['reading']} | {r['clean']['reading']} | {f4(nz)} | {exceeds} | "
+                     f"{fd(a['est'])} | {fci(a['s'], True)} | {fci(a['c'], True)} | {concept_cells(a['per'])} | "
+                     f"{fp(a['holm'])} | {run_exceeds} |")
     verdict, held, contra = h4_resolution(results)
-    lines += ["", "⚑ the as-run reading differs from the tie-free one.", "",
+    lines += ["", "⚑ the as-run reading differs from the tie-free one. ⚐ (A5) the as-run estimate and the tie-free "
+              "one fall on different sides of the draw-noise bar.", "",
               "## H4 under the design's rule", "",
               f"**{verdict}** on these leaves (tie-free), by the design's three-way rule: supported if X1 and X2 "
               "hold for every tested arm, contradicted if X1 reads contradicted for any, partly supported otherwise. "
