@@ -1467,3 +1467,16 @@ after the fact; the held-out ladder tests it with that reference registered in a
 supported* stays recorded and unused. **Open with it**, replacing the paragraph above: S12 registers, before it
 opens, the X2 noise reference (the signed rung-1 reference of T13, matched on type) and whether X1 is read at all
 (report, known-wrong 3). S8's post-hoc X2 reading does not enter the manuscript as a result.
+**Revised again 2026-10-02, after the second S8 audit (`SPRINT_S8_AUDIT.md`, top entry, F1).** The revision
+above carries T13's post-hoc reading into the manuscript sentence ("not within a signed draw reference adopted
+after the fact") and into its context ("beyond draw noise for four or five arms"), although T13 is never evidence
+for or against H4 and the paragraph itself says the reading does not enter the manuscript. Both are withdrawn,
+and the registered result stands: under the design's rule no X2 excess is attributed to interaction. T13's
+reference is not near 0 for every arm either (as run, `bm25_unigram_params` −0.0586 [−0.1134, −0.0044]). Revised
+proposal, replacing the one above: *on four OEB canalization concepts, stacked rendering edits drive item-level
+accuracy to the floor for most methods, while late-interaction and E5 retrieval keep concept-level accuracy.
+Whether stacked edits interact beyond their isolated effects is not resolved on the development ladder: the
+cumulative test is uninformative where the additive prediction is already at the floor, and the per-step excess
+does not exceed the registered draw-noise bar; the held-out ladder tests it against a signed draw reference
+registered in advance.* The **Open with it** paragraph above stands, and T13 serves only as the candidate for
+that reference.

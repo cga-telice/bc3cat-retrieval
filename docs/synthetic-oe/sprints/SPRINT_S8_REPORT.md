@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Design** | [`SPRINT_S8_DESIGN.md`](SPRINT_S8_DESIGN.md) · frozen at `4f62d5a`; [amendments](SPRINT_S8_AMENDMENTS.md) A1–A7 |
-| **Closed** | 2026-10-02 (report written). [Audit](SPRINT_S8_AUDIT.md): PASS WITH FINDINGS (`8bceabc`); findings resolved below. `done` withheld until a second `/audit S8` in a fresh session |
+| **Closed** | 2026-10-02 (report written). [Audit](SPRINT_S8_AUDIT.md): PASS WITH FINDINGS (`8bceabc`), findings resolved below; second audit, fresh session: PASS WITH FINDINGS (`1b1d00c`), F1–F5 resolved (Audit response) |
 | **Code commit** | runs at `f330ee3` (all 36); `results/S8/` generated at `2fc7bc3` (A7; `e2e9191` A6, `54aa49c` A5, `907990f` A4, `da654e2` before them) |
 | **Query-set digests** | `OE_dose_texto.json` `555fab84`, feature table `ef8c6295` · `OE_isolated_texto.json` `054041ff`, feature table `701dd1da` · identity `texto` `643f1a72` (ColBERT and `bge_m3_dense` read `OE_long_norm` `75477221`, as in S7) |
 | **Runs** | `runs/OE/dose_texto/…` (18), `runs/OE/isolated_texto/…` (18); identity `runs/OE/texto/…` |
@@ -40,11 +40,12 @@ supported only for `dense_e5`, −0.0671 [−0.1029, −0.0328], and that readin
 pantry-artefact queries it is −0.0524 and not supported (T9). For the other six arms X1 is not supported, and that
 is not evidence of additivity, for two reasons. First, most leaf-rungs are floor-bound (finding 3), where the term
 can only be ≥ 0. Second, with hits that are mostly 0 or 1, X1 is the net of two one-sided rates of opposite sign
-(T12, post hoc, A6). Where every single edit survives alone, the stack still fails: ceiling-bound X1 is −0.3694
-for ColBERT, −0.4785 for `dense_e5` and −0.2800 for `bm25_unigram`. Where some single edit fails alone, the stack
-sometimes survives: floor-bound X1 is +0.3024 for ColBERT, +0.0690 for `dense_e5` and +0.0243 for `bm25_unigram`.
-The registered statistic nets the two. Neither rate has a no-interaction reference, because rung and isolated
-queries are different rewrite draws (finding 5). `dense_e5`'s reading comes from the leaves it misses at identity:
+(T12, post hoc, A6). Ceiling-bound X1, on leaf-rungs where every single edit survives alone, is −0.3694 for
+ColBERT, −0.4785 for `dense_e5` and −0.2800 for `bm25_unigram`; floor-bound X1, where some single edit fails alone,
+is +0.3024, +0.0690 and +0.0243. The registered statistic nets the two. Both signs are expected under draw noise
+alone: the regions are defined by the isolated outcome, and rung and isolated queries are different rewrite draws
+(finding 5), so any disagreement between the draws makes the ceiling-bound term negative and the floor-bound term
+positive with no interaction at all. Neither rate is read as super- or sub-additive. `dense_e5`'s reading comes from the leaves it misses at identity:
 X1 is −0.1418 on those and +0.0512 [−0.0040, +0.1090] on the leaves it hits (T12). It is not evidence of
 super-additivity.
 
@@ -55,7 +56,7 @@ ColBERT 0.2927–0.6555. One L1 edit alone breaks most leaves for BM25: `unit_ex
 `num_to_text` −0.8716 (T2). A floor-bound leaf can only count as sub-additive. The design named this risk; no
 equivalence margin was registered, so a non-significant X1 is not a finding of additivity for any arm.
 
-**4. X2 is supported for six of seven arms; whether its excesses exceed draw noise depends on the reference**
+**4. X2 is supported for six of seven arms; under the design's rule none of its excesses is attributed to interaction**
 (T5, T10, T13; not `dense_e5`). Tie-free: ColBERT +0.1271 [+0.0916, +0.1632]; `tfidf_phrases_replace` +0.1010
 [+0.0803, +0.1238]; `dense_es_hiiamsid` +0.1080. `bm25_unigram` (+0.0643) and `bge_m3_dense` (+0.0738) are not
 robust to D-004 and read *not supported* as run (⚑, T9, T10). Against the design's bar, T3's gross disagreement,
@@ -63,20 +64,17 @@ only `tfidf_phrases_replace` exceeds its noise rate of 0.0863, and only tie-free
 +0.0768 (⚐, T10, A5). ColBERT's +0.1271 sits below its 0.2171, and so do the other four. Under the design's rule
 none of the six supported X2 readings can be attributed to interaction.
 
-That bar compares a signed excess with a gross rate (known-wrong 2). A signed reference, X2's own statistic at
-rung 1 where the edit is alone in both queries, is near 0 for every arm (T13, post hoc, A7). X2 minus that
-reference, on paired draws, has a stratified interval above 0 for `bm25_unigram_params` +0.1266
-[+0.0666, +0.1880], `tfidf_phrases_replace` +0.1093 [+0.0802, +0.1402], ColBERT +0.1266 [+0.0684, +0.1837] and
-`dense_es_hiiamsid` +0.0912 [+0.0108, +0.1758], under both scorings; for `bm25_unigram` +0.0867
-[+0.0098, +0.1654] tie-free only; not for `bge_m3_dense` (+0.0278) or `dense_e5` (+0.0844). Read against it, the
-excess is not draw noise for four or five arms. The reference was chosen after the results were seen, is drawn
-from rung-1 types while X2 sums over the types added at rungs 2 to 5, and carries no reading. **The X2 evidence is
-therefore ambiguous**: within noise by the registered bar, beyond it by a post-hoc signed one.
+This is the result. The bar compares a signed excess with a gross rate (known-wrong 2), which is why T13 (post
+hoc, A7) prints X2 beside a signed reference: X2's own statistic at rung 1, where the edit is alone in both
+queries. T13 is not a test and, as its header states, is never evidence for or against H4; it only motivates the
+reference S12 must register. Nor is that reference 0: as run, `bm25_unigram_params` is −0.0586 [−0.1134, −0.0044]
+and `dense_e5` −0.0909 [−0.1800, +0.0000] (tie-free [−0.1828, +0.0000], 99 at-risk leaves). It is also drawn from
+rung-1 types while X2 sums over the types added at rungs 2 to 5.
 
 **5. The noise bar is mostly draw noise; only TF-IDF's carries a material tie component** (T3). T3 counts an
 expected rank-1 tie-break as disagreement, so a text-equal leaf can disagree with itself. On text-equal leaves the
 rate is 0.0000 for the three dense encoders, 0.0348 and 0.0404 for the BM25 pair and 0.0593 for ColBERT, against
-text-different rates of 0.1659 to 0.2469. For `tfidf_phrases_replace` it is 0.1489, above its text-different
+text-different rates of 0.1255 to 0.2469. For `tfidf_phrases_replace` it is 0.1489, above its text-different
 0.0863. The bar stands as draw noise for six arms; for TF-IDF ties are a large part of it.
 
 **6. G3: H4 is identifiable within leaf for 34 of 36 type pairs on 328 dev leaves; across concepts it is not
@@ -88,7 +86,7 @@ parent level, descriptive). At rung 5, BM25's parent Acc@1 is 0.0884 and its ora
 for ColBERT; `dense_e5` and the oracle TF-IDF stay at 1.0000. The other two encoders lose part of it: parent δ at
 rung 5 is −0.1128 [−0.1463, −0.0793] for `bge_m3_dense` and −0.1402 [−0.1768, −0.1037] for `dense_es_hiiamsid`.
 
-**8. S7's stacked dose gradient and the ladder's are of the same order** (T8, between-population, descriptive).
+**8. S7's stacked dose gradient beside the ladder's** (T8, between-population, descriptive).
 At dose 2, S7's stacked BM25 δ is −0.5606 over 27 concepts; the ladder's is −0.7510 on four. At dose 3 ColBERT is
 −0.6000 stacked and −0.5174 on the ladder. Nothing here is a contrast. That dose lowers accuracy within a leaf, with
 family held fixed, rests on X3 (finding 1), not on this table.
@@ -97,7 +95,7 @@ family held fixed, rests on X3 (finding 1), not on this table.
 
 | Hypothesis | Movement | Evidence |
 |---|---|---|
-| H4 (super-additivity) | **Partly supported** under the design's rule, which has no category for "no arm holds both tests" (A3). On these 4 concepts no arm has X1 and X2 both supported. X1 is supported for `dense_e5` only: not robust to D-004, and driven by the leaves it misses at identity (T12). X2 is supported for six arms; two are not robust to D-004 and differ as run. None clears the registered draw-noise bar under both scorings; four or five clear a post-hoc signed reference (T13). **H4 is not resolved on this design**: X1 is floor-bound for most arms and nets two one-sided rates, and the X2 evidence is ambiguous between the registered bar and the post-hoc reference. D-054 proposes the restatement | T10, T4, T5, T3, T9, T12, T13 |
+| H4 (super-additivity) | **Partly supported** under the design's rule, which has no category for "no arm holds both tests" (A3). On these 4 concepts no arm has X1 and X2 both supported. X1 is supported for `dense_e5` only: not robust to D-004, and driven by the leaves it misses at identity (T12). X2 is supported for six arms; two are not robust to D-004 and differ as run. None clears the registered draw-noise bar under both scorings, so under the design's rule no X2 excess is attributed to interaction. **H4 is not resolved on this design**: X1 is floor-bound for most arms and nets two one-sided rates whose signs draw noise alone fixes, and X2 does not exceed the registered bar. T13 (post hoc) is not evidence; it motivates the reference S12 registers. D-054 proposes the restatement | T10, T4, T5, T3, T9, T12, T13 |
 | Dose-response (X3) | **Supported** for all seven arms; the curve's shape is descriptive | T6 |
 | G3 | **Answered**: identifiable within leaf (34 of 36 pairs), not across concepts | T7; design |
 
@@ -107,17 +105,17 @@ family held fixed, rests on X3 (finding 1), not on this table.
    assumes at least one arm would hold both. The literal label overstates the evidence; D-054 asks César to restate
    H4.
 2. **A2 (d)'s noise bar compares a net excess with a gross disagreement rate.** X2 is a signed difference between
-   two one-sided flows; T3's bar is their sum. Under draw noise alone X2's expectation is 0 whatever the gross rate,
-   so the bar is conservative for every arm, not only those with ties. The like-for-like reference, X2's statistic
-   at rung 1, is computed post hoc in T13 (A7) and is near 0 for every arm; the largest in size is `dense_e5`'s
-   −0.0909, on 99 at-risk leaves. It is not matched on type (rung-1 types against those added at rungs 2 to 5), so
-   S12 should register a reference that is.
+   two one-sided flows; T3's bar is their sum, so the two are not like for like. Nor is X2's expectation under draw
+   noise known to be 0: the signed reference computed post hoc in T13 (A7), X2's statistic at rung 1, is not 0 for
+   every arm (as run, `bm25_unigram_params` −0.0586 [−0.1134, −0.0044]; `dense_e5` −0.0909 [−0.1800, +0.0000] on 99
+   at-risk leaves). It is not matched on type either (rung-1 types against those added at rungs 2 to 5), so S12
+   should register a reference that is.
 3. **X1 as registered cannot answer H4 when hits are mostly 0 or 1.** Each leaf-rung is ceiling- or floor-bound, so
-   X1 is the net of a super-additive and a sub-additive rate (T12), and with most leaves floor-bound it leans toward
-   the sub-additive side by construction. A cumulative test needs interior leaves or a registered equivalence margin.
-4. **S4's isolated δ is not a stand-in for the ladder's.** On the ladder leaves BM25's `unit_expansion` δ is
-   −0.9192; on S4's population it is −0.4153 [−0.7625, −0.0653] (T2). The two are different populations and are not
-   read as a contrast; the E3 isolated set on the same leaves was the right reference (D-052).
+   X1 is the net of a ceiling-bound and a floor-bound term whose signs draw noise alone fixes (T12, finding 2), and
+   with most leaves floor-bound it leans positive by construction. A cumulative test needs interior leaves or a registered equivalence margin.
+4. **S4's isolated δ is not a stand-in for the ladder's.** It is measured on a different population, so it cannot
+   supply the ladder leaves' isolated effects; the E3 isolated set on the same leaves was the right reference
+   (D-052). T2 prints S4's column for context only, and it is not read against the ladder's.
 5. **Pantry artefacts are common on the ladder**: 481 of 1,640 rung queries and 316 of 2,952 isolated queries are
    flagged (T9). Three readings change without them, all toward *not supported*: X1 for `dense_e5`, X2 for
    `bm25_unigram` and X2 for `bge_m3_dense`.
@@ -151,15 +149,34 @@ family held fixed, rests on X3 (finding 1), not on this table.
 - **S12**: re-read X1–X3 on the test-side ladder (`OEB040$ 280$ 300$`, 272 leaves), under A2–A4 and D-053, as
   the replication D-053 names. Decide first, and register before it runs: the X2 noise reference (known-wrong 2; T13's
   signed reference, matched on type, is the candidate), and whether X1 is read at all, given known-wrong 3. S12
-  is where the X2 ambiguity of finding 4 is settled; S8's post-hoc reading is not carried into the manuscript as
-  a result. Running the isolated edits on the ladder's own draws would remove the draw gap altogether.
-- **S10/S11**: within one leaf, ColBERT keeps the concept at every dose while BM25 loses it (finding 7). A
-  within-family reranker needs a first stage of the ColBERT kind.
+  is where X2 is first tested against a signed reference; T13 is not carried into the manuscript. Running the isolated edits on the ladder's own draws would remove the draw gap altogether.
+- **S10/S11**: at rung 5, ColBERT, `dense_e5` and the oracle TF-IDF keep the concept while BM25 loses it
+  (finding 7). A within-family reranker needs a first stage that keeps the concept; on this ladder any of the three
+  does, and S8 gives no reason to prefer one.
 - **Debt**: A2 (d)'s gross noise bar; generator runs before `run8` are logged without their commit (audit, unverifiable); the redundant "right parent, wrong item" column carried from S7; `index/*/meta.json`
   still omits the ML stack (H4 defect); BGE-M3 reachability from `bc3cat-s3` (A1).
+
+## Audit response (second audit)
+
+`/audit S8` ran a second time in a fresh session on 2026-10-02 and returned **PASS WITH FINDINGS**
+([`SPRINT_S8_AUDIT.md`](SPRINT_S8_AUDIT.md), top entry, verbatim). It re-checked all 36 run stamps, regenerated
+every table and Fig. 6 byte-identically at HEAD, recomputed X1, X2 and T13 independently from the per-query
+results, and found no number that fails to reproduce. It raised 1 major and 4 minor findings. No run, table or
+generator changed; every change is to prose and to D-054.
+
+| Finding | Resolution |
+|---|---|
+| F1 — T13, a post-hoc reference, recasts the registered X2 outcome as "ambiguous"; "near 0 for every arm" is not what T13 shows | **Fixed** (César chose the audited resolution). Finding 4 and the H4 row state the registered result: no X2 excess is attributed to interaction. T13 is presented only as the motivation for S12's reference, quoted with its intervals. "Four or five" is gone from the H4 row and from D-054, whose manuscript sentence is revised again in `DECISIONS.md`. Known-wrong 2 no longer assumes X2's expectation under draw noise is 0 |
+| F2 — finding 5's text-different range omits `dense_e5` | **Fixed.** 0.1255 to 0.2469 |
+| F3 — T12's region split is signed by construction under draw noise | **Fixed.** Finding 2 and known-wrong 3 say both signs are expected under draw noise alone and call neither rate super- nor sub-additive |
+| F4 — between-population tables still framed as comparisons | **Fixed.** Finding 8's heading is descriptive; known-wrong 4 no longer sets the two δ against each other |
+| F5 — the S10/S11 recommendation names ColBERT over two arms that also keep the concept | **Fixed.** All three are named, and the report states that S8 gives no reason to prefer one |
+
+The auditor's three unverifiable items stand as listed: A2's process claims, the uncommitted logs of generator
+runs `run1`–`run7`, and the OEB fixture as a separate gate.
 
 ## Decisions raised
 
 | ID | Status | What |
 |---|---|---|
-| D-054 | **Proposed** (César), revised after the audit | H4 is restated for the manuscript. Stacked edits drive item accuracy to the floor for most arms, while ColBERT, `dense_e5` and the oracle TF-IDF keep the concept. Whether stacked edits interact beyond their isolated effects is not resolved on this design: X1 is floor-bound for most arms and nets two one-sided rates, and the per-step excess (X2) is within the registered draw-noise bar but beyond a post-hoc signed reference for most arms. S12 registers the signed reference and settles it on test. The design's label (*partly supported*) is recorded and not used in the manuscript |
+| D-054 | **Proposed** (César), revised after the audit | H4 is restated for the manuscript. Stacked edits drive item accuracy to the floor for most arms, while ColBERT, `dense_e5` and the oracle TF-IDF keep the concept. Whether stacked edits interact beyond their isolated effects is not resolved on this design: X1 is floor-bound for most arms and nets two one-sided rates, and the per-step excess (X2) does not exceed the registered draw-noise bar for any arm under both scorings. S12 registers a signed draw reference, matched on type, and tests X2 against it. Revised again after the second audit (F1). The design's label (*partly supported*) is recorded and not used in the manuscript |
