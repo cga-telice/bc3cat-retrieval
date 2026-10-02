@@ -99,7 +99,7 @@ OE_S9 = [
     "OE_resumen_u_feats.parquet",
 ]
 S9_BASES = ("texto_u", "resumen_u", "single_texto", "single_l2_texto", "stacked_texto")
-S9_GENERATED = ("canon",)
+S9_GENERATED = ("canon", "hyde")
 
 
 def _s9_transformed(transform: str) -> list[str]:
