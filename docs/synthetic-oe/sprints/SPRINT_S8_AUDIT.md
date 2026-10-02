@@ -1,3 +1,84 @@
+# Sprint S8 — audit (second, fresh session)
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-10-02 · report `ac89864` · runs `runs/OE/dose_texto/` (18), `runs/OE/isolated_texto/` (18), `runs/OE/texto/` (identity, 7 base arms)
+
+## Verified
+- **Run stamps, all 36.** Every `run_meta.json`: split `dev`, `code_dirty: false`, commit `f330ee3`, query-set digest `ef8c6295` (dose, 1,640) / `701dd1da` (isolated, 2,952). Every `config_sha256` equals the SHA-256 of the config file in the tree. Data digests re-hashed: `OE_dose_texto.json` `555fab84`, `OE_isolated_texto.json` `054041ff`. `check_run_inputs.py --collection OE`: 280 of 280 resolve.
+- **Split.** The feature tables hold all 7 concepts (3,000 / 5,400 rows), but every S8 run contains only `OEB020$ 030$ 230$ 290$`. No test-side query was scored. Nothing was tuned, and every config SHA equals the S4/S5 frozen arm.
+- **Regeneration.** I ran `build_results_s8.main()` at HEAD in `bc3cat-s3` with `OUT` redirected to `/tmp`. All 14 tables and `fig6_ladder.png` are byte-identical to the committed `results/S8/`. `src/` has not changed since `2fc7bc3`, and the tree was clean before and after.
+- **Independent recomputation** from `results_perquery.parquet` (as run). All of these match T1, T10 and T13:
+  - X1 `dense_e5` −0.0671 (headline X1)
+  - X2 ColBERT +0.1193, `tfidf_phrases_replace` +0.0768 (the ⚐ case), `bm25_unigram` +0.0609, `bm25_unigram_params` +0.0927
+  - X1 for all 7 arms
+  - rung-5 item Acc@1 `bm25_unigram` 0.0000 and parent 0.0884; ColBERT 0.2835 item
+  - T13 reference `bm25_unigram_params` −0.0586 and `dense_e5` −0.0909 (at-risk mass 99)
+  - text-equal count 89 of 328
+- **Prose against tables.** Checked against T1, T2, T4, T6, T8, T9, T10, T12 and T13: findings 1, 2, 3, 4 and 7, known-wrong 4–5, and the floor-bound shares. All quoted values match. This includes the T12 ceiling/floor rates (−0.3694 / +0.3024 / −0.4785 / +0.0690 / −0.2800 / +0.0243), the T9 clean X1 `dense_e5` −0.0524, and the pantry counts 481/1,640 and 316/2,952.
+- **Executed path.** The tie-free hits, the clipped prediction, the D-004 clean masks and the D-053 sign rule are all called from `evaluate()` (`build_results_s8.py` l.192–299). The as-run/tie-free consistency guard (l.128–132) is active.
+- **Design freeze.** `git diff 4f62d5a..HEAD -- SPRINT_S8_DESIGN.md` shows only the freeze header (`75798ee`). Amendments A1–A7 are append-only: every later commit to the file adds 1 line and deletes 0. D-052 and D-053 are unchanged since the freeze.
+- **Tests.** `test_intake_s8` + `test_report_traceability`: 19 passed. `test_generated_prose`: 12 passed. Full suite: 1334 passed, 2 skipped, 1 xfailed, which matches exit criterion 7.
+
+## Findings
+### F1 — major — A reference chosen after the results were seen is used to recast the registered X2 outcome. The table that produces it says it must not be used that way.
+- **What the artefacts say.** T13's header says the reference is "never cited as evidence for or against H4".
+- **What the report does.** The Hypotheses H4 row, finding 4 ("Read against it, the excess is not draw noise for four or five arms") and D-054's revised manuscript sentence ("within the registered draw-noise bar but not within a signed draw reference adopted after the fact") all use it to move the registered result to "ambiguous".
+- **Self-contradiction.** D-054 then says "S8's post-hoc X2 reading does not enter the manuscript as a result", while its own proposed manuscript text carries that reading.
+- **Under the frozen rule** (design, "Isolated and ladder edits are different draws"), no X2 excess is attributed to interaction. The only exception is `tfidf_phrases_replace`, and only tie-free (T10).
+- **"Near 0 for every arm" (finding 4, known-wrong 2) is not what T13 shows.** As run, `bm25_unigram_params` is −0.0586 [−0.1134, −0.0044], which excludes 0. `dense_e5` is −0.0909 [−0.1828, +0.0000]. A non-zero signed draw gap also weakens known-wrong 2's premise that X2's expectation under draw noise is 0.
+- **What must change.**
+  - State the registered outcome as the result.
+  - Present T13 only as the motivation for what S12 must register.
+  - Remove "four or five clear" from the H4 row and from D-054's manuscript sentence.
+  - Quote the reference with its intervals instead of "near 0".
+
+### F2 — minor — The range of text-different noise rates in finding 5 is wrong.
+- **What the report says.** "text-different rates of 0.1659 to 0.2469" for the six arms other than TF-IDF.
+- **What T3 says.** `dense_e5` is 0.1255.
+- **Why the test missed it.** The traceability test passes because both endpoints appear in T3.
+- **What must change.** Restate the range as 0.1255–0.2469.
+
+### F3 — minor — The prediction-region split in T12 is signed by construction, but the report reads it as a substantive rate.
+- **Why.** Ceiling-bound and floor-bound are defined by the isolated outcome, and the isolated queries are a different draw from the rung queries. With any draw disagreement, the ceiling-bound term is < 0 and the floor-bound term is > 0 even with no interaction at all (regression on a noisy predictor).
+- **What the report says.** Finding 2 ("Where every single edit survives alone, the stack still fails") and known-wrong 3 ("the net of a super-additive and a sub-additive rate") read the two terms as real effects.
+- **What must change.** Say that the signs are expected under draw noise alone. Do not call either rate super- or sub-additive.
+
+### F4 — minor — Comparisons across different populations are still framed as comparisons.
+- **Finding 8's heading.** It says the two gradients are "of the same order". At dose 2, BM25 is −0.5606 on S7 (query CI [−0.5988, −0.5229], 26 excluded, 27 concepts) against −0.7510 on the ladder [−0.7959, −0.7066]. The intervals do not overlap.
+- **Known-wrong 4.** It still sets −0.9192 against −0.4153 as a correction.
+- **What the design says.** T8 and T2's S4 column are "never read as a contrast".
+- **What must change.** Drop the comparative heading and keep the table descriptive.
+
+### F5 — minor — The S10/S11 recommendation is not supported over its alternatives.
+- **What the report says.** The reranker "needs a first stage of the ColBERT kind".
+- **What T1 shows.** `dense_e5` and the oracle TF-IDF also keep parent Acc@1 at 1.0000 at rung 5.
+- **What must change.** Name all three, or state why ColBERT is preferred.
+
+## Unverifiable
+- **A2's process claims** ("no metrics file opened", "fixed before first run"). Only the commit order can be checked, and it is consistent.
+- **Generator runs `run1`–`run7`.** Their logs carry no commit (the report's debt list states this). This is moot for the current outputs, which I regenerated byte-identically.
+- **OEB fixture as a separate gate.** I did not identify it separately; it is covered only insofar as it sits inside the 1334-test suite.
+
+## Exit criteria
+| Criterion | Met | Evidence |
+|---|---|---|
+| 1. Sets resolve, `balanced_texto` gone, zero undecidable | yes | `test_intake_s8.py` passes; runs hold only the 4 dev concepts |
+| 2. 36 clean runs on the two digests, resolving | yes | 36 `run_meta.json`: dev, clean, `f330ee3`, `ef8c6295`/`701dd1da`, config SHAs match; `check_run_inputs` 280/280 |
+| 3a. T1–T11 + Fig. 6 generated, byte-identical | yes | Regenerated at HEAD: 14 .md + PNG identical |
+| 3b. Prose guard | yes | `test_generated_prose` 12 passed |
+| 3c. n excluded, both intervals, per-concept on every contrast | yes | T1–T10 columns present (A4/A5); T3 holds rates, not contrasts |
+| 4. X1–X3 read tie-free, as run, clean, noise beside | yes | T10 (as-run columns A5), T9 |
+| 5a. H4 resolved under the frozen rule | yes | T10 "partly supported", as A3 corrected; the report's post-hoc gloss is F1 |
+| 5b. G3 in the design's words; 4-concept scope; non-identifiable pairs; different-draw limitation | yes | Finding 6, Hypotheses, T7 |
+| 6. D-052, D-053 unchanged | yes | No diff to either in `DECISIONS.md` since `4f62d5a` |
+| 7. Full suite and OEB fixture | yes | 1334 passed, 2 skipped, 1 xfailed (rerun) |
+
+Files: `D:\Users\cesar\Dev\Phd\bc3cat-retrieval\docs\synthetic-oe\sprints\SPRINT_S8_REPORT.md`, `D:\Users\cesar\Dev\Phd\bc3cat-retrieval\docs\synthetic-oe\results\S8\draw_reference.md`, `D:\Users\cesar\Dev\Phd\bc3cat-retrieval\docs\synthetic-oe\results\S8\draw_noise.md`, `D:\Users\cesar\Dev\Phd\bc3cat-retrieval\docs\synthetic-oe\results\S8\x1_split.md`, `D:\Users\cesar\Dev\Phd\bc3cat-retrieval\docs\synthetic-oe\results\S8\s7_reference.md`, `D:\Users\cesar\Dev\Phd\bc3cat-retrieval\docs\synthetic-oe\DECISIONS.md` (D-054, l.1439)
+
+---
+
+*The first audit of this sprint (PASS WITH FINDINGS, report `9b53476`) follows unchanged.*
+
 # Sprint S8 — audit
 
 **Verdict:** PASS WITH FINDINGS
