@@ -88,7 +88,8 @@ OE_S91 = [
 ]
 # S9 work item 1: the two corpus-rendering bases of U (`build_s9_bases.py`) and their tables
 # (`build_s9_query_tables.py`, path proven on the stored corpus rows). Generated here, not delivered.
-# The transformed sets `{base}__{t}` are added by work item 2 as they are generated.
+# Work item 2 adds the transformed sets `{base}__{t}`: the query JSON, its provenance sidecar, its two
+# tables and, for the LLM transforms, the generation cache. Listed per transform as each is generated.
 OE_S9 = [
     "OE_texto_u.json",
     "OE_resumen_u.json",
@@ -97,6 +98,21 @@ OE_S9 = [
     "OE_resumen_u_norm.parquet",
     "OE_resumen_u_feats.parquet",
 ]
+S9_BASES = ("texto_u", "resumen_u", "single_texto", "single_l2_texto", "stacked_texto")
+S9_GENERATED = ("canon",)
+
+
+def _s9_transformed(transform: str) -> list[str]:
+    files = []
+    for base in S9_BASES:
+        stem = f"OE_{base}__{transform}"
+        files += [f"{stem}.json", f"{stem}.meta.json", f"{stem}_norm.parquet", f"{stem}_feats.parquet"]
+        if transform != "canon":
+            files.append(f"llm_cache/{stem}.jsonl")
+    return files
+
+
+OE_S9 += [f for t in S9_GENERATED for f in _s9_transformed(t)]
 OEB = [
     "OEB_texto.json",
     "OEB_resumen.json",
