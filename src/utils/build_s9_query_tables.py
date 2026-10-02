@@ -7,8 +7,9 @@ Two kinds of set (`run_context.S9_QUERY_SETS`):
   subset itself:** the derived rows must equal the stored `OE_long_*` / `OE_short_*` rows of the same
   leaves, column for column, so that a `texto_u` run reads exactly what the existing `texto` run read for
   those queries, and the existing run can serve as its untransformed reference.
-- **`{base}__{t}`** — a base with its `text` rewritten by transform `t`. The JSON must equal its base's
-  record for record in every field but `text`, in the same order; that is checked before anything is
+- **`{base}__{t}`** — a base's **dev** records with their `text` rewritten by transform `t` (test queries
+  are never transformed). The JSON must equal the base's dev records, record for record, in every field but
+  `text`, in the same order; that is checked before anything is
   derived. It then takes its base's path: the corpus path for `texto_u` / `resumen_u`, the synthetic path
   (`build_s6_query_tables.derive`) for the three synthetic bases, whose own stored tables are re-derived
   first, as S6 and S8 did.
@@ -41,13 +42,18 @@ from utils.corpus_prep import (  # noqa: E402
     load_records,
 )
 from utils.run_context import S9_BASES, S9_TRANSFORMS, data_paths  # noqa: E402
+from utils.splits import load_split  # noqa: E402
 
 CORPUS_BASES = {"texto_u": "long", "resumen_u": "short"}
 
 
-def same_but_text(base: Path, transformed: Path) -> None:
-    """Fail unless `transformed` is `base` with only `text` changed."""
+def same_but_text(base: Path, transformed: Path, split_concepts: frozenset[str] | None = None) -> None:
+    """Fail unless `transformed` is `base` with only `text` changed. With `split_concepts`, the base is
+    first restricted to the records of those concepts: a transformed set holds dev records only, because
+    test queries are never generated or transformed (S9 design, Dev only)."""
     left = json.loads(base.read_text(encoding="utf-8"))
+    if split_concepts is not None:
+        left = [r for r in left if r["parent_key"] in split_concepts]
     right = json.loads(transformed.read_text(encoding="utf-8"))
     if len(left) != len(right):
         raise SystemExit(f"{transformed.name}: {len(right)} records, base has {len(left)}")
@@ -97,6 +103,7 @@ def main() -> None:
             same_content(feats, pd.read_parquet(paths.query_feats[base]), f"OE_{base}_feats")
             print(f"path proven: `{base}` re-derives to its stored norm and feats tables exactly")
 
+    dev = load_split("dev")
     pending = []
     for base in S9_BASES:
         for transform in S9_TRANSFORMS:
@@ -104,7 +111,7 @@ def main() -> None:
             if name not in paths.query_json:
                 pending.append(name)
                 continue
-            same_but_text(paths.query_json[base], paths.query_json[name])
+            same_but_text(paths.query_json[base], paths.query_json[name], dev)
             norm, feats = derive(base, paths.query_json[name])
             write_or_match(norm, feats, paths.query_norm[name], paths.query_feats[name])
     if pending:
