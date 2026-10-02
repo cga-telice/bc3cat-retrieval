@@ -83,7 +83,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-S9 work item 1: derived query sets `{base}__{transform}`, D-040 in the harness, the ollama client with its determinism test, prompts committed before any scored run. Ollama 0.17.7 answers from `bc3cat-s3` at `host.docker.internal:11434` (checked 2026-10-02). S10–S11 remain unblocked; S12 must register its X2 signed reference and whether X1 is read before it opens. Suite: 1334 passed, 2 skipped, 1 xfailed.
+S9 work item 1 **done** (`25965f6`, `87a85b8`): 17 S9 query sets registered; `texto_u` / `resumen_u` written (2,691 dev leaves), paths proven; D-040 in `utils/exclusions.py`, its counts regenerated exactly (25,498 scored on dev); ollama client and prompts committed (SHA-256 hyde `ed5de490`, rewrite `6811f1a9`); regeneration 98 / 100 (HyDE), 99 / 100 (rewrite), recorded as A1. Next: work item 2, the transforms. Ollama 0.17.7 answers from `bc3cat-s3` at `host.docker.internal:11434` (checked 2026-10-02). S10–S11 remain unblocked; S12 must register its X2 signed reference and whether X1 is read before it opens. Suite: 1418 passed, 2 skipped, 1 xfailed.
 
 **BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
 
