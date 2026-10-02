@@ -3,11 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-02 (**S8 done**) · **Updated by:** Claude
+**Last updated:** 2026-10-02 (**S9 active**) · **Updated by:** Claude
 
 ---
 
 ## Where we are
+
+**S9 is active** (2026-10-02; Track C, query-side normalisation and rewriting, H6; [design](sprints/SPRINT_S9_DESIGN.md) frozen at `587e466`, [amendments](sprints/SPRINT_S9_AMENDMENTS.md) empty). H6 is tested paired on 2,691 dev leaves rendered five ways (identity `texto`, coded `resumen`, single, L2, stacked), on the untransformed query's lexical coverage. Transforms: a catalogue-only canonicaliser, HyDE and LLM rewrite (`qwen2.5:14b`, local ollama), and the S91 decoder; plus an IDF guard and a `phi4` extractor in `rules_valuenorm`. 120 runs, 44 blind tests. Effort 3 weeks.
 
 **S8 is done** (2026-10-02; E3 balanced dose design, H4; [design](sprints/SPRINT_S8_DESIGN.md) frozen at `4f62d5a`, [amendments](sprints/SPRINT_S8_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S8_REPORT.md), [audit](sprints/SPRINT_S8_AUDIT.md), [results](results/S8)). 36 runs clean on 328 dev ladder leaves in 4 OEB concepts. Accuracy falls with every added edit for all seven arms (X3). X1 is supported for `dense_e5` only, not robust, and is floor-bound for most arms. X2 is supported for six arms, but none clears the registered draw-noise bar under both scorings, so no excess is attributed to interaction. **H4 is not resolved on this design**; the design's label reads *partly supported*. Two audits **PASS WITH FINDINGS**, all resolved; the second (F1) withdrew a post-hoc reading of X2 (T13), which now only motivates S12's signed reference. D-054 accepted as revised twice (César, 2026-10-02): H4 is not established on dev; S12 tests X2 against a signed reference registered in advance.
 
@@ -81,7 +83,7 @@ resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
 
 ## Next action
 
-D-054 accepted (2026-10-02). S9–S11 remain unblocked; S12 must register its X2 signed reference and whether X1 is read before it opens. Suite: 1334 passed, 2 skipped, 1 xfailed.
+S9 work item 1: derived query sets `{base}__{transform}`, D-040 in the harness, the ollama client with its determinism test, prompts committed before any scored run. Ollama 0.17.7 answers from `bc3cat-s3` at `host.docker.internal:11434` (checked 2026-10-02). S10–S11 remain unblocked; S12 must register its X2 signed reference and whether X1 is read before it opens. Suite: 1334 passed, 2 skipped, 1 xfailed.
 
 **BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
 

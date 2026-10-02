@@ -1,9 +1,9 @@
 # Sprint S9 — Track C: query-side normalisation and rewriting · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `587e466` · `2026-10-02`
 > This document is read-only from that commit. Changes go in
 > [`SPRINT_S9_AMENDMENTS.md`](SPRINT_S9_AMENDMENTS.md) (D-045), dated and justified — never as
-> in-place edits. `git log -- <this file>` after the freeze date is an
+> in-place edits. `git log -- SPRINT_S9_DESIGN.md` after the freeze date is an
 > audit trail; keep it honest.
 
 | Field | Value |
