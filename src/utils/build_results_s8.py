@@ -570,6 +570,10 @@ def write_x1_split(LL: dict, D: dict) -> None:
             for label, w, open_only in (("all", np.ones(len(h)), False), ("hit at identity", h[:, 0], False),
                                         ("missed at identity", 1 - h[:, 0], False), ("all, open", np.ones(len(h)), True)):
                 num, den = x1_split_terms(LL[short], D, v, w, open_only)
+                if not den.sum():
+                    lines.append(f"| {name(short)} | {VARIANT_LABEL[v]} | {label} | {w.sum():,.1f} | {den.sum():,.1f} | "
+                                 "— | — | — | — |")
+                    continue
                 r = summarise(num, den, D["concept"], f"s8|T12|{short}|{v}|{label}")
                 lines.append(f"| {name(short)} | {VARIANT_LABEL[v]} | {label} | {w.sum():,.1f} | {den.sum():,.1f} | "
                              f"{fd(r['est'])} | {fci(r['s'], True)} | {fci(r['c'], True)} | {concept_cells(r['per'])} |")
