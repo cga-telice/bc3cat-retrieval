@@ -6,6 +6,8 @@ import pandas as pd
 from scipy import sparse
 from sklearn.feature_extraction.text import CountVectorizer
 
+from index_builders.idf_cap import apply_idf_cap
+
 def _sha256_sample(texts, cap=1000) -> str:
     h = hashlib.sha256()
     n = len(texts)
@@ -40,6 +42,8 @@ def build(cfg: Dict[str, Any], long_df: pd.DataFrame, text_field: str):
 
     df = np.asarray((X_counts > 0).sum(axis=0)).ravel().astype(np.int32)
     idf = np.log((N - df + 0.5) / (df + 0.5) + 1.0).astype(np.float32)
+    # S9 work item 3: optional IDF guard; a no-op unless the config sets idf_cap_df.
+    idf, _ = apply_idf_cap(idf, N, p)
 
     k1 = float(p.get("k1", 1.2))
     b  = float(p.get("b", 0.75))

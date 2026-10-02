@@ -6,6 +6,8 @@ import pandas as pd
 from scipy import sparse
 from sklearn.feature_extraction.text import CountVectorizer
 
+from index_builders.idf_cap import apply_idf_cap
+
 def _sha256_sample(texts, cap=1000) -> str:
     h = hashlib.sha256()
     n = len(texts)
@@ -45,6 +47,8 @@ def build(cfg: Dict[str, Any], long_df: pd.DataFrame, text_field: str):
     # BM25 idf (Robertson/Sparck Jones)
     # add "+1" as many impls do to keep idf positive for all terms
     idf = np.log((N - df + 0.5) / (df + 0.5) + 1.0).astype(np.float32)
+    # S9 work item 3: optional IDF guard; a no-op unless the config sets idf_cap_df.
+    idf, _ = apply_idf_cap(idf, N, p)
 
     # Okapi BM25 weights for docs (no pivoting at query-time)
     k1 = float(p.get("k1", 1.2))
