@@ -86,6 +86,17 @@ OE_S91 = [
     "OE_resumen_stripped_norm.parquet",
     "OE_resumen_stripped_feats.parquet",
 ]
+# S9 work item 1: the two corpus-rendering bases of U (`build_s9_bases.py`) and their tables
+# (`build_s9_query_tables.py`, path proven on the stored corpus rows). Generated here, not delivered.
+# The transformed sets `{base}__{t}` are added by work item 2 as they are generated.
+OE_S9 = [
+    "OE_texto_u.json",
+    "OE_resumen_u.json",
+    "OE_texto_u_norm.parquet",
+    "OE_texto_u_feats.parquet",
+    "OE_resumen_u_norm.parquet",
+    "OE_resumen_u_feats.parquet",
+]
 OEB = [
     "OEB_texto.json",
     "OEB_resumen.json",
@@ -170,7 +181,7 @@ def main() -> None:
     ).strip()
 
     rows: list[tuple[str, int, int | str, str, str]] = []
-    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_L2 + OE_SIDECARS + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OEB:
+    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_L2 + OE_SIDECARS + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OE_S9 + OEB:
         p = DATA / name
         digest = sha256(p)
         expected = INTAKE_PREFIXES.get(name)

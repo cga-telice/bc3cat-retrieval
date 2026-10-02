@@ -77,11 +77,22 @@ def assert_work_root_is_the_main_checkout(work_root: Path) -> None:
 #: D-052: the nested dose ladder and each of the nine types alone, over the same 600 leaves. They
 #: replace the single name `balanced_texto` that D-008 reserved, which is retired. Their tables come
 #: from `build_s8_query_tables.py`, along the same path.
+#: S9 (work item 1) adds two kinds. `texto_u` / `resumen_u` are the identity `texto` and coded
+#: `resumen` of U, the 2,691 dev leaves that carry a single, L2 or stacked query: subsets of the
+#: corpus's own records with `gold_item_key` added, as S91's renderings carry it. `{base}__{t}` is a
+#: base set with its query text rewritten by transform `t` (`canon`, `hyde`, `rewrite`) and nothing
+#: else changed. All of them come from `build_s9_bases.py` / `build_s9_query_tables.py`.
+S9_BASES = ("texto_u", "resumen_u", "single_texto", "single_l2_texto", "stacked_texto")
+S9_TRANSFORMS = ("canon", "hyde", "rewrite")
+S9_QUERY_SETS = ("texto_u", "resumen_u") + tuple(
+    f"{base}__{transform}" for base in S9_BASES for transform in S9_TRANSFORMS
+)
+
 QUERY_SETS = (
     "texto", "resumen", "single_texto", "stacked_texto",
     "resumen_decoded", "resumen_stripped", "single_l2_texto",
     "dose_texto", "isolated_texto",
-)
+) + S9_QUERY_SETS
 
 #: The three shapes `inputs` takes across the 77 configs, in the order they are looked for.
 #: `feats` is the lexical family (70 configs), `text` the neural one (5), `norm` the hybrid
