@@ -620,6 +620,10 @@ def write_guard(F: Frames, diag: list) -> None:
     write(OUT / "idf_guard.md", lines + footer())
 
 
+#: Audit F7 renamed the row; its bootstrap label keeps the old name so that its draw does not move.
+DRAW_NAME = {"vs literal-oracle bound": "vs oracle bound"}
+
+
 def write_extraction(F: Frames) -> None:
     lines = header("T6: slot filling — the LLM extractor as Stage 2 of `rules_valuenorm`", [
         "`structured_pipeline_llm_valuenorm__OE` (phi4, `extract`, ported from `research/structured-retrieval@85c3359`; "
@@ -638,7 +642,7 @@ def write_extraction(F: Frames) -> None:
         for scope_name, sel in (("L1", L1), ("all single types", None)):
             f = variant(frame, "tf")
             f = f[f["type"].isin(sel)] if sel else f
-            c = delta_cell(f, "item", f"T6|{name}|{scope_name}")
+            c = delta_cell(f, "item", f"T6|{DRAW_NAME.get(name, name)}|{scope_name}")
             lines.append(f"| {name} | {scope_name} | {ncell(c)} | {f4(c['ref'])} | {f4(c['mod'])} | {fd(c['est'])} | "
                          f"{fci(c['c'], True)} | {fci(c['q'], True)} |")
     lines += ["", "## Profile on every base", "", "| base | LLM arm item | LLM arm parent | rules_valuenorm item | n scored "
@@ -746,7 +750,7 @@ def keytol_section(F: Frames) -> list[str]:
         for scope_name, sel in (("L1", L1), ("all single types", None)):
             f = variant(frame, "tf")
             f = f[f["type"].isin(sel)] if sel else f
-            c = delta_cell(f, "item", f"T6k|{name}|{scope_name}")
+            c = delta_cell(f, "item", f"T6k|{DRAW_NAME.get(name, name)}|{scope_name}")
             lines.append(f"| {name} | {scope_name} | {ncell(c)} | {f4(c['ref'])} | {f4(c['mod'])} | {fd(c['est'])} | "
                          f"{fci(c['c'], True)} | {fci(c['q'], True)} |")
     lines += ["", "Every base, item and parent Acc@1, tie-free, beside the registered arm:", "",
