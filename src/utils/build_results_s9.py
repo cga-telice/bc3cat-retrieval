@@ -587,39 +587,83 @@ def write_extraction(F: Frames) -> None:
     write(OUT / "extraction.md", lines + footer())
 
 
+#: `phi4:latest`'s full digest, the one every extractor run used (A4's log, the runs' client); its prefix is
+#: the design's (`query_rewrite.llm.MODELS`), asserted. The cache key needs the full digest.
+PHI4_DIGEST = "ac896e5b8b34a1f4efa7b14d7520725140d5512484457fab45d2a4ea14c69dba"
+
+
+def axis_outcomes(F: Frames) -> pd.DataFrame:
+    """Per query and schema axis of its Stage-1 concept, how the cached response names the axis (A7).
+
+    The Stage-1 concept is the registered run's rank-1 concept (S2's consistency, `structured_stages`); the
+    prompt is rebuilt as the pipeline built it, and its response is read from the cache. A prompt absent from
+    the cache stops the generator: the runs read every one."""
+    from pipeline.param_extractor import LLMParamExtractor
+    from pipeline.prompts import build_extraction_prompt
+    from query_rewrite import llm as L
+    if not PHI4_DIGEST.startswith(L.MODELS["phi4:latest"]):
+        raise ValueError("PHI4_DIGEST does not carry the design's prefix")
+    schema = json.loads((DATA / "OE_concept_schema.json").read_text(encoding="utf-8"))
+    cache = {}
+    for line in (DATA / "llm_cache" / "structured_llm_extract.jsonl").read_text(encoding="utf-8").splitlines():
+        if line:
+            r = json.loads(line)
+            cache[r["cache_key"]] = r["response"]
+    _, parents = corpus()
+    rows = []
+    for base in S9_BASES:
+        feats = pd.read_parquet(DATA / f"OE_{base}_feats.parquet", columns=["item_key", "text_norm"]).set_index("item_key")
+        keys = set(F.Q[base].index)
+        from utils.build_results_s7 import iter_top100
+        for r in iter_top100(RUNS / base / LLM_ARM):
+            k = str(r["query_item_key"])
+            if k not in keys:
+                continue
+            concept = parents[str(r["candidates"][0]["index_item_key"])]
+            g = schema[concept]
+            prompt = build_extraction_prompt(g["concept"], g["axes"], feats.loc[k, "text_norm"])
+            ck = L.sha256_text(json.dumps([PHI4_DIGEST, L.OPTIONS, None, prompt], ensure_ascii=False, sort_keys=True))
+            if ck not in cache:
+                raise KeyError(f"{base}/{k}: its extraction prompt is not in the cache")
+            parsed = LLMParamExtractor._parse_json_response(cache[ck]) or {}
+            for axis in g["axes"]:
+                if axis in parsed:
+                    kind = "exact"
+                elif any(key.strip() == axis.strip() for key in parsed):
+                    kind = "trimmed"
+                elif any(LLMParamExtractor._key(key) == LLMParamExtractor._key(axis) for key in parsed):
+                    kind = "renamed"
+                else:
+                    kind = "absent"
+                rows.append({"base": base, "key": k, "axis_padded": axis != axis.strip(), "kind": kind})
+    return pd.DataFrame(rows)
+
+
 def keytol_section(F: Frames) -> list[str]:
     """A7: why the registered extractor drops axes, and the key-tolerant variant. Post hoc, descriptive."""
-    from pipeline.param_extractor import LLMParamExtractor
-    schema = json.loads((DATA / "OE_concept_schema.json").read_text(encoding="utf-8"))
-    axes = {a for g in schema.values() for a in g["axes"]}
-    tolerant = {LLMParamExtractor._key(a) for a in axes}
-    counts = Counter()
-    for line in (DATA / "llm_cache" / "structured_llm_extract.jsonl").read_text(encoding="utf-8").splitlines():
-        if not line:
-            continue
-        parsed = LLMParamExtractor._parse_json_response(json.loads(line)["response"])
-        counts["responses"] += 1
-        if parsed is None:
-            counts["unparsed"] += 1
-            continue
-        kinds = ["exact" if k in axes else "renamed" if LLMParamExtractor._key(k) in tolerant else "unknown" for k in parsed]
-        counts.update(kinds)
-        counts["responses with a renamed key"] += "renamed" in kinds
+    out = axis_outcomes(F)
     lines = ["", "## Post hoc (A7): why the extractor drops axes, and a key-tolerant variant", "",
              "Added after this table was first read, at César's decision; descriptive: no test, no Holm, no reading, "
              "no bearing on E1, E2 or H6. The registered arm reads each axis from the response under its schema name "
-             "exactly, as the source does. Every cached response's keys, against the axis names of the schema: "
-             "*exact* is a schema name, *renamed* matches one only under A7's tolerant form (case-folded, accents "
-             "stripped, `_` and `-` as spaces), *unknown* matches none.", "",
-             "| responses | unparsed | keys exact | keys renamed | keys unknown | responses with a renamed key |",
-             "|---:|---:|---:|---:|---:|---:|",
-             f"| {counts['responses']:,} | {counts['unparsed']:,} | {counts['exact']:,} | {counts['renamed']:,} | "
-             f"{counts['unknown']:,} | {counts['responses with a renamed key']:,} |", "",
-             "The variant reads the same cached responses (no new generation; the run script checked that the cache "
-             "did not grow) and differs from the registered arm only in that match. Paired, tie-free, on "
-             "`single_texto`:", "",
-             "| comparison | scope | n | n scored | n excluded | concepts | reference | variant | δ | CI (concept) | CI (query) |",
-             "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|"]
+             "exactly, as the source does. For every query, each axis of its Stage-1 concept, by how the cached "
+             "response names it: *exact*; *trimmed*, equal only once surrounding spaces are removed (the schema "
+             "carries axis names with stray spaces, and the model writes them without); *renamed*, equal only under "
+             "A7's tolerant form (case-folded, accents stripped, `_` and `-` as spaces); *absent*. The registered "
+             "arm reads only *exact*; the variant reads all but *absent*.", "",
+             "| base | axes | exact | trimmed | renamed | absent | lost by the registered arm | of them, on a padded schema name |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for base in S9_BASES + ["all"]:
+        f = out if base == "all" else out[out["base"] == base]
+        k = f["kind"].value_counts()
+        lost = f[f["kind"].isin(["trimmed", "renamed"])]
+        label = "all bases" if base == "all" else f"`{base}`"
+        lines.append(f"| {label} | {len(f):,} | {k.get('exact', 0):,} | {k.get('trimmed', 0):,} | {k.get('renamed', 0):,} | "
+                     f"{k.get('absent', 0):,} | {len(lost):,} ({len(lost) / len(f):.1%}) | {int(lost['axis_padded'].sum()):,} |")
+    lines += ["", "The variant reads the same cached responses (no new generation; the run script checked that the cache "
+              "did not grow) and differs from the registered arm only in that match. Paired, tie-free, on "
+              "`single_texto`:", "",
+              "| comparison | scope | n | n scored | n excluded | concepts | reference | variant | δ | CI (concept) | CI (query) |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|"]
     Q = F.Q["single_texto"]
     mod = ("single_texto", KEYTOL_ARM)
     for name, ref in (("vs the registered LLM arm", LLM_ARM), ("vs rules_valuenorm", RULES_ARM),
