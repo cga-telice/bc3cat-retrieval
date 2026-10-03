@@ -343,8 +343,9 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
         if (model, mode) != (LLM_MODEL, LLM_PROMPT_MODE):
             raise ValueError(f"{variant}: llm_model / llm_prompt_mode are ({model!r}, {mode!r}); "
                              f"the S9 design fixes ({LLM_MODEL!r}, {LLM_PROMPT_MODE!r})")
+        key_match = params.get("llm_key_match", "exact")
         extractor = LLMParamExtractor(paths.concept_schema, OllamaClient(model),
-                                      Cache(paths.data_dir / LLM_CACHE), prompt_mode=mode)
+                                      Cache(paths.data_dir / LLM_CACHE), prompt_mode=mode, key_match=key_match)
     else:
         extractor = OracleParamsExtractor(paths.concept_schema)
     print(f"  Stage 2: {stage2}")

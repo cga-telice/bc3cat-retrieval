@@ -1,0 +1,38 @@
+# The LLM-extraction arm with A7's tolerant key match: post hoc and descriptive (S9 A7, César 2026-10-03).
+# Identical to structured_pipeline_llm_valuenorm__OE except llm_key_match: tolerant, so a response key is
+# matched to a schema axis after case-folding, stripping accents, `_`/`-` to spaces and collapsing whitespace.
+# The registered arm is the exact-match one; this variant is never pooled with it or read as a test.
+# It reads the same generation cache: the prompts are unchanged, so no new generation is made.
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_llm_keytol_valuenorm__OE
+  impl: structured_pipeline_llm
+  save_as: structured_pipeline_llm_keytol_valuenorm__OE
+  params:
+    stage2_method: llm
+    llm_model: "phi4:latest"
+    llm_prompt_mode: extract
+    llm_key_match: tolerant
+    oracle: false
+    stage1_index: dense_e5__OE
+    stage3_value_match: normalized
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.structured_pipeline_llm
+  entrypoint: load

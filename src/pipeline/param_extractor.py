@@ -19,6 +19,12 @@ unmodified source is commit `1d27b40` on this branch). Changes against the sourc
 
 The prompt mode S9 uses is `extract` (S9 design, work item 4).
 
+**`key_match`** (S9 A7, post hoc). The source reads each axis with `parsed.get(axis_label)`, exactly, and
+`phi4` often names an axis differently ("BANDA_DE_MANTENIMIENTO"), so the value is dropped. `"exact"`, the
+default, is the source's behaviour and the registered arm's. `"tolerant"` matches a response key to a schema
+axis after case-folding, stripping accents, turning `_` and `-` into spaces and collapsing whitespace; value
+validation is unchanged. It applies to the `extract` / `classify` path, the one S9 runs.
+
 Sends a structured Spanish prompt to Llama 3.1 8B via Ollama's REST API,
 parses the JSON response into {axis_label: value | None}, which feeds
 into Stage 3 (catalog lookup).
@@ -34,6 +40,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 from pathlib import Path
 
 from query_rewrite.llm import Cache, OllamaClient
@@ -66,6 +73,7 @@ class LLMParamExtractor:
         client: OllamaClient,
         cache: Cache,
         prompt_mode: str = "classify",
+        key_match: str = "exact",
     ):
         with open(schema_path, encoding="utf-8") as f:
             self.schema = json.load(f)
@@ -74,6 +82,9 @@ class LLMParamExtractor:
         self._cache = cache
         self.model = client.model
         self._prompt_mode = prompt_mode
+        if key_match not in ("exact", "tolerant"):
+            raise ValueError(f"key_match={key_match!r}: 'exact' (the source) or 'tolerant' (S9 A7)")
+        self._key_match = key_match
         self._paraaware2_step2_fallbacks = 0
 
         # Pre-build lowercase lookup for value validation
@@ -144,7 +155,7 @@ class LLMParamExtractor:
         # Validate extracted values against schema
         result = {}
         for axis_label in axes:
-            extracted = parsed.get(axis_label)
+            extracted = self._lookup(parsed, axis_label)
             if extracted is None:
                 result[axis_label] = None
                 continue
@@ -458,6 +469,20 @@ class LLMParamExtractor:
     def _call_ollama(self, prompt: str) -> str:
         """Send a prompt through the cached, pinned client and return the raw response text."""
         return self._cache.get_or_generate(self._client, "extract", prompt)["response"]
+
+    @staticmethod
+    def _key(label: str) -> str:
+        """A7's tolerant form of an axis name."""
+        s = "".join(c for c in unicodedata.normalize("NFD", str(label)) if unicodedata.category(c) != "Mn")
+        return re.sub(r"\s+", " ", re.sub(r"[_-]", " ", s.casefold())).strip()
+
+    def _lookup(self, parsed: dict, axis_label: str):
+        """The response's value for an axis: exactly, as the source, or under A7's tolerant match."""
+        if self._key_match == "exact" or axis_label in parsed:
+            return parsed.get(axis_label)
+        want = self._key(axis_label)
+        hits = [v for k, v in parsed.items() if self._key(k) == want]
+        return hits[0] if len(hits) == 1 else None
 
     @staticmethod
     def _parse_json_response(raw: str) -> dict | None:

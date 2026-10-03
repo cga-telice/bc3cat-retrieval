@@ -104,3 +104,44 @@ def test_pipeline_fixes_model_and_mode():
     assert "llm" in sp.STAGE2_METHODS
     assert (sp.LLM_MODEL, sp.LLM_PROMPT_MODE) == ("phi4:latest", "extract")
     assert sp.LLM_MODEL in llm.MODELS
+
+
+# ── S9 A7: the key-tolerant variant, post hoc ───────────────────────────────
+
+
+def make_kt(schema_path, tmp_path, responses, key_match):
+    client = FakeClient(responses)
+    return pe.LLMParamExtractor(schema_path, client, llm.Cache(tmp_path / f"{key_match}.jsonl"),
+                                prompt_mode="extract", key_match=key_match), client
+
+
+def test_exact_is_the_source_and_drops_a_renamed_axis(schema_path, tmp_path):
+    ex, _ = make_kt(schema_path, tmp_path, ['{"dimensiones": "30x15 mm", "TRABAJO": "Diurno"}'], "exact")
+    assert ex.extract("OEA010$", "q") == {"DIMENSIONES": None, "TRABAJO": "Diurno"}
+
+
+def test_tolerant_matches_case_accents_and_separators(schema_path, tmp_path):
+    ex, _ = make_kt(schema_path, tmp_path, ['{"dimensiones": "30x15 mm", "TRA_BAJO": "x"}'], "tolerant")
+    assert ex.extract("OEA010$", "q") == {"DIMENSIONES": "30x15 mm", "TRABAJO": None}
+    assert pe.LLMParamExtractor._key("CONDICIONES_DE_EJECUCIÓN") == pe.LLMParamExtractor._key("condiciones de ejecucion")
+
+
+def test_tolerant_refuses_an_ambiguous_key(schema_path, tmp_path):
+    ex, _ = make_kt(schema_path, tmp_path, ['{"Dimensiones": "30x15 mm", "DIMENSIONES ": "40x25 mm"}'], "tolerant")
+    assert ex.extract("OEA010$", "q")["DIMENSIONES"] is None
+
+
+def test_unknown_key_match_is_refused(schema_path, tmp_path):
+    with pytest.raises(ValueError):
+        make_kt(schema_path, tmp_path, [], "fuzzy")
+
+
+def test_keytol_arm_differs_from_the_registered_arm_only_in_key_match():
+    reg = yaml.safe_load((REPO / "configs" / "structured_pipeline_llm_valuenorm__OE.yaml").read_text(encoding="utf-8"))
+    kt = yaml.safe_load((REPO / "configs" / "structured_pipeline_llm_keytol_valuenorm__OE.yaml").read_text(encoding="utf-8"))
+    assert kt["method"]["params"].pop("llm_key_match") == "tolerant"
+    assert "llm_key_match" not in reg["method"]["params"]
+    for k in ("name", "save_as"):
+        assert kt["method"][k] == "structured_pipeline_llm_keytol_valuenorm__OE"
+        kt["method"][k] = reg["method"][k]
+    assert kt == reg
