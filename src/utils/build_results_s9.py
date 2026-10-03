@@ -403,8 +403,9 @@ def write_profile(F: Frames, fl: dict[str, float]) -> None:
     floor_line = ", ".join(f"`{a}` {f4(fl[a])}" for a in BASE7)
     lines += [f"Identity item Acc@1 on `texto_u`, tie-free, per arm (floor below {FLOOR}): {floor_line}.", ""]
     lines += ["| arm | base | transform | n | n scored | n excluded | concepts | item ref | item mod | item δ "
-              "| CI (concept) | CI (query) | item δ as run | parent ref | parent mod | parent δ | CI (concept) | collisions |",
-              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|---:|"]
+              "| CI (concept) | CI (query) | item δ as run | parent ref | parent mod | parent δ | CI (concept) | collisions "
+              "| parent CI (query) |",
+              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|---:|---|"]
     for arm in BASE7:
         mark = "†" if arm in ORACLE else ""
         for base in S9_BASES:
@@ -417,7 +418,7 @@ def write_profile(F: Frames, fl: dict[str, float]) -> None:
                 lines.append(f"| `{arm}`{mark} | `{base}` | {T_LABEL[t]} | {ncell(ci_)} | {f4(ci_['ref'])} | "
                              f"{f4(ci_['mod'])} | {fd(ci_['est'])} | {fci(ci_['c'], True)} | {fci(ci_['q'], True)} | "
                              f"{fd(cr['est'])} | {f4(cp['ref'])} | {f4(cp['mod'])} | {fd(cp['est'])} | "
-                             f"{fci(cp['c'], True)} | {coll:,} |")
+                             f"{fci(cp['c'], True)} | {coll:,} | {fci(cp['q'], True)} |")
     write(OUT / "profile.md", lines + footer())
 
 
@@ -464,14 +465,14 @@ def write_crossover(F: Frames) -> list[dict]:
                          f"{fci(fit['slope_c'], True)} | {fci(fit['slope_q'], True)} | {fd(fit['icept'])} | "
                          f"{f4(fit['cstar'])} | {fci(fit['cstar_c'])} | {fit['neg_share']:.1%} | "
                          f"[{f4(lo)}, {f4(hi)}] | {'yes' if fit['in_range'] else 'no crossing in range'} |")
-    lines += ["", "## Per base, descriptive", "", "| arm | transform | base | n scored | concepts | slope | CI (concept) |",
-              "|---|---|---|---:|---:|---:|---|"]
+    lines += ["", "## Per base, descriptive", "", "| arm | transform | base | n scored | concepts | slope | CI (concept) | CI (query) |",
+              "|---|---|---|---:|---:|---:|---|---|"]
     for arm in TESTED:
         for t in ("hyde", "rewrite"):
             for base in NONID:
                 fit = crossover(variant(F.T[(arm, base, t)], "tf"), f"T3b|{arm}|{t}|{base}")
                 lines.append(f"| `{arm}` | {T_LABEL[t]} | `{base}` | {fit['n']:,} | {fit['concepts']} | "
-                             f"{fd(fit['slope'])} | {fci(fit['slope_c'], True)} |")
+                             f"{fd(fit['slope'])} | {fci(fit['slope_c'], True)} | {fci(fit['slope_q'], True)} |")
     write(OUT / "crossover.md", lines + footer())
     return fits
 
@@ -501,7 +502,8 @@ def write_canon(F: Frames, actions: dict[str, pd.DataFrame]) -> None:
         "same queries). What C did per type is re-derived with the committed canonicaliser and checked equal to "
         "the stored set. Types are read for analysis only; C never sees them."])
     lines += ["| arm | base | type | n | n scored | concepts | changed by C (of n) | conversions | declined | item δ_C "
-              "| CI (concept) | identity-paired δ | CI (concept) |", "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---|"]
+              "| CI (concept) | identity-paired δ | CI (concept) | δ_C CI (query) | identity-paired CI (query) |",
+              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---|---|---|"]
     for arm in TESTED:
         for base in ("single_texto", "single_l2_texto"):
             f = variant(F.T[(arm, base, "canon")], "tf")
@@ -519,7 +521,8 @@ def write_canon(F: Frames, actions: dict[str, pd.DataFrame]) -> None:
                 a = act.loc[g.index]
                 lines.append(f"| `{arm}` | `{base}` | `{typ}` | {c['n_all']:,} | {c['n']:,} | {c['concepts']} | {int(a['changed'].sum()):,} | "
                              f"{int(a['converted'].sum()):,} | {int(a['declined'].sum()):,} | {fd(c['est'])} | "
-                             f"{fci(c['c'], True)} | {fd(ip['est'])} | {fci(ip['c'], True)} |")
+                             f"{fci(c['c'], True)} | {fd(ip['est'])} | {fci(ip['c'], True)} | {fci(c['q'], True)} | "
+                             f"{fci(ip['q'], True)} |")
     write(OUT / "canon_types.md", lines + footer())
 
 
