@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Design** | [`SPRINT_S9_DESIGN.md`](SPRINT_S9_DESIGN.md) · frozen at `587e466`; [amendments](SPRINT_S9_AMENDMENTS.md) A1–A12 |
-| **Closed** | 2026-10-03 (report written). [Audit](SPRINT_S9_AUDIT.md): PASS WITH FINDINGS (`ad4094e`), 4 major and 3 minor, all resolved (A11 and this revision; see Audit response) |
+| **Closed** | 2026-10-03 (done: D-055 as amended, D-056, D-057 accepted by César). [Audit](SPRINT_S9_AUDIT.md): PASS WITH FINDINGS (`ad4094e`), 4 major and 3 minor, all resolved (A11 and this revision; see Audit response) |
 | **Code commit** | runs at `7174392` (C, IDF guard), `d24e7c7` (H), `58e950f` (W, extractor), `d2db530` (A7 variant); `results/S9/` generated at `639c6f4` (A11–A12; `86b995c` before the audit) |
 | **Query-set digests** | bases `OE_texto_u.json` `703940b6`, `OE_resumen_u.json` `000021c5`, `OE_single_texto.json` `b6a43961`, `OE_single_l2_texto.json` `fff7dd3b`, `OE_stacked_texto.json` `c34a222a`; every derived set and feature table in T10 |
 | **Runs** | `runs/OE/{base}__{canon,hyde,rewrite}/…` (105), `runs/OE/{base}/…idfcap-1200__OE` (10), `runs/OE/{base}/structured_pipeline_llm_valuenorm__OE` (5), `…llm_keytol…` (5, A7) |
@@ -194,6 +194,6 @@ runs 1–14, whose logs record no hashes. From A11 on, each regeneration logs it
 
 | ID | Status | What |
 |---|---|---|
-| D-055 | Proposed, amended after the audit | H6 restated for the manuscript: expansion and rewriting harm near-verbatim queries; no gain was detected at low overlap on OE dev; c* is reported as the rule's fit and not as a gain region (findings 1–2, known-wrong 1) |
-| D-056 | Proposed | `OE_concept_schema.json`'s padded axis names recorded as an upstream defect (P-class); the harness strips axis labels before any comparison; the registered extractor result stands as published (finding 5) |
-| D-057 | Proposed | BM25 identity ceilings quoted with the IDF-cap caveat; S12 registers whether the capped arm is admitted (known-wrong 3) |
+| D-055 | **Accepted** as amended after the audit (César, 2026-10-03) | H6 restated for the manuscript: expansion and rewriting harm near-verbatim queries; no gain was detected at low overlap on OE dev; c* is reported as the rule's fit and not as a gain region (findings 1–2, known-wrong 1) |
+| D-056 | **Accepted** (César, 2026-10-03) | `OE_concept_schema.json`'s padded axis names recorded as an upstream defect (P-class); the harness strips axis labels before any comparison; the registered extractor result stands as published (finding 5) |
+| D-057 | **Accepted** (César, 2026-10-03) | BM25 identity ceilings quoted with the IDF-cap caveat; S12 registers whether the capped arm is admitted (known-wrong 3) |

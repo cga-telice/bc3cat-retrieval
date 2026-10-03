@@ -1482,7 +1482,7 @@ registered in advance.* The **Open with it** paragraph above stands, and T13 ser
 that reference.
 
 ### D-055 — H6 is restated on what S9 measured: no crossover
-**Status:** Proposed · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report
+**Status:** **Superseded** by its amendment below (César, 2026-10-03) · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report
 **Context.** H6 predicts that HyDE-style expansion and rewriting hurt near-verbatim queries and help below an
 overlap threshold. On OE dev (`results/S9/predictions.md`, `bins.md`), HyDE hurts every tested arm in every
 coverage bin; Y2 is supported for no arm under either transform and contradicted for two under HyDE. The design's
@@ -1492,21 +1492,21 @@ from zero. The design's rule reads *partly supported*.
 and reports no crossover threshold; c* is printed in `results/` and not quoted as a decision rule.
 
 ### D-056 — The schema's padded axis names: a P-class defect, stripped by the harness
-**Status:** Proposed · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report (A7, A8)
+**Status:** **Accepted** (César, 2026-10-03) · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report (A7, A8)
 **Context.** `DATASET_DEFECTS.md` P9. The published LLM extractor loses most of its dropped axes to it.
 **Proposal.** Record P9 upstream for information; the harness strips axis labels wherever it compares them, from
 the next sprint that compares them; S9's registered E1 / E2 stand as computed, and the key-tolerant variant stays
 post hoc unless a later sprint registers it before use.
 
 ### D-057 — BM25 identity ceilings carry the IDF-cap caveat
-**Status:** Proposed · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report (known-wrong 3)
+**Status:** **Accepted** (César, 2026-10-03; both parts) · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report (known-wrong 3)
 **Context.** Capping IDF at df 1,200 raises `bm25_unigram`'s identity item Acc@1 on `texto_u` and lowers no base
 (`results/S9/idf_guard.md`); the cut was read on dev, so this is in-sample.
 **Proposal.** Wherever S3's BM25 identity ceiling is quoted, it is quoted as the uncapped arm's; S12 registers,
 before it runs, whether the capped arms are admitted.
 
 ### D-055 — amendment: c* is reported by the rule; the gain clause is contradicted for two arms, not refuted
-**Status:** Proposed (amendment to D-055) · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 audit (F2, F3)
+**Status:** **Accepted** (amendment to D-055; César, 2026-10-03, option a: c* reported by the rule, not as a gain region) · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 audit (F2, F3)
 **Context.** The S9 audit found D-055's wording beyond its evidence. HyDE does not hurt every arm in every bin: for
 `bge_m3_dense` and `dense_e5` the B1 and B2 intervals contain 0. The gain clause (Y2) is contradicted for H on
 `bm25_unigram` and ColBERT and not supported elsewhere, which is not a refutation. And "no crossover" overrode the

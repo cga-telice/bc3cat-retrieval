@@ -202,7 +202,7 @@ untreated and its δ is 0 by construction. That dilutes the treatment-on-the-tre
   `OE_P8_test_exclusion.json` (`6cda7fa0`), used in S12 for the "without" view. Future builds drop
   such candidates.
 
-## P9 — `OE_concept_schema.json` names axes with stray spaces · **open; the registered extractor is defeated by it** (S9, 2026-10-03; D-056 proposed)
+## P9 — `OE_concept_schema.json` names axes with stray spaces · **open; the registered extractor is defeated by it** (S9, 2026-10-03; D-056 accepted 2026-10-03: stripped in the harness from the next sprint that compares axis labels)
 
 Axis labels in the delivered schema carry leading or trailing spaces in some concepts and not in others:
 `' Nº TUBOS '`, `' TIPO DE TERRENO '`, `'TIPO '`, `' CONDICIONES DE EJECUCIÓN'`, `'MATERIAL '`, and more; the same
