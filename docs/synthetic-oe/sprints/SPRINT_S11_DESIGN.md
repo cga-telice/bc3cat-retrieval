@@ -1,6 +1,6 @@
 # Sprint S11 — Track E: two-stage architecture · design
 
-> **Frozen at:** `<commit SHA>` · `<date>`
+> **Frozen at:** `931ee0c` · `2026-10-04`
 > This document is read-only from that commit. Changes go in
 > [`SPRINT_S11_AMENDMENTS.md`](SPRINT_S11_AMENDMENTS.md) (D-045), dated and justified — never as
 > in-place edits. `git log -- SPRINT_S11_DESIGN.md` after the freeze date is an

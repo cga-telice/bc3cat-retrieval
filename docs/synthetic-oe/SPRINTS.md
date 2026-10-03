@@ -26,7 +26,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S8 | backbone | **done** | E3 balanced dose design | H4 | S7 |
 | S9 | backbone | **done** | Track C — query-side normalisation and rewriting | H6 | S6 |
 | S10 | backbone | **blocked** | Track D — learned representations | O4 | S6, G2, upstream training set (D-058) |
-| S11 | backbone | planned | Track E — two-stage architecture | O4 | S6, G2 |
+| S11 | backbone | **active** | Track E — two-stage architecture | O4 | S6, G2 |
 | S12 | backbone | planned | Frozen test evaluation and artefact release | O5 | S8–S11 |
 | S13 | backbone | planned | Manuscript | — | S12 |
 | S90 | probe | planned | Real-query anchor (Telice estimator queries) | validity | external (D-014) |
@@ -114,3 +114,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-10-03 | S9 | audited fresh → findings resolved | **PASS WITH FINDINGS** (`ad4094e`): 4 major, 3 minor; no number failed to reproduce, no mixed sample, freeze clean. Resolved by A11–A12 (one draw per statistic across tables, T9 unchanged; T3 δ below c*; T4 layers and tokens; ‡; T10 extractor provenance; `results/S9/` byte-identical twice at `639c6f4`, hashes logged) and a revised report (H6 wording, all 10 c* stated). D-055 amended; D-055–D-057 await César. S9 stays **active** until they are ruled |
 | 2026-10-03 | S9 | active → **done** | César accepted D-055 as amended (option a: harm reported, no gain detected, c* reported by the rule and not as a gain region), D-056 (padded axis names: P9 upstream, harness strips labels from the next sprint that compares them, E1/E2 stand, key-tolerant variant only if registered) and D-057 (BM25 ceilings quoted as uncapped; S12 registers before it runs whether the capped arms are admitted). All 7 exit criteria met |
 | 2026-10-04 | S10 | planned → **blocked** | Entry check at `/sprint-open S10`: no training data. The delivered query sets share rewrite menus across the split (D-058), so training waits for a menu-disjoint upstream set, requested in `requests/S10_TRAINING_SET.md`. D-015 closed by D-058 (RL out). Opens when the delivery lands with its digests |
+| 2026-10-04 | S11 | planned → **active** | Design frozen at `931ee0c`; entry state verified in the tree. Stage 1 `dense_e5` concept; Stage 2 `phi4` extraction with D-056's tolerant keys (A7 registered) or rules + C; soft match and ColBERT within-family order; arms K0 K1 K2 R2 F1, 30 new runs on seven dev bases; the E3 ladder is the blind population (never seen by an LLM arm); 11 tests. Amendments file started empty (D-045) |
