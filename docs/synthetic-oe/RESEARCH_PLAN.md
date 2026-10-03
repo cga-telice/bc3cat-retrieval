@@ -308,6 +308,11 @@ and time-boxed: it enters the paper only if it beats the contrastive baseline.
 **Exit.** Does fine-tuning recover item-level discrimination, and does it stay robust under
 L1? Cost and latency reported alongside.
 
+*Added 2026-10-04 (D-058, from the S10 opening):* encoders `dense_e5` and BGE-M3 ColBERT; RL is out of S10.
+Training data is a new upstream set on dev concepts with menu entries disjoint from every evaluation query
+([`requests/S10_TRAINING_SET.md`](requests/S10_TRAINING_SET.md)), because the delivered sets share rewrites across
+the split, mixed with decoded `resumen`. Dev figures come from concept-level cross-fitting. S10 waits for the delivery.
+
 ---
 
 ### S11 — Track E: two-stage architecture
@@ -391,6 +396,7 @@ Off the critical path, and parallelisable given compute:
 | Balanced dose set (counts 1–5, randomised mixes, `reorder` admitted) | `bc3cat-dataset` | S0 | S8 |
 | Per-item modification sidecar for artefact sensitivity analysis | `bc3cat-dataset` | S1 | S6 |
 | Wider `paraphrase` / `expansion` slices (n≈206–211 today) — issued 2026-09-29 as [`requests/WIDER_THIN_SLICES.md`](requests/WIDER_THIN_SLICES.md), widened to all three L2 types, which reach 5 dev concepts; answered the same day, build approved, then corrected: waits for an upstream engine fix, at most 9 / 9 / 8 dev concepts (D-043 amended) | `bc3cat-dataset` | S4 | S6 |
+| S10 training set: dev concepts only, menu entries disjoint from every delivered query, all nine types single and stacked, menu-entry IDs in the sidecar — issued 2026-10-04 as [`requests/S10_TRAINING_SET.md`](requests/S10_TRAINING_SET.md) (D-058) | `bc3cat-dataset` | S10 | S10 |
 
 ## 6. Risk register
 

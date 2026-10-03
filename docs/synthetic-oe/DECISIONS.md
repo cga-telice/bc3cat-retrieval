@@ -168,7 +168,7 @@ strongest available answer to the practical-impact objection, and it depends on 
 rather than compute.
 
 ### D-015 — Scope of Track D
-**Status:** Open
+**Status:** Superseded by D-058
 How far reinforcement-learning-style optimisation is pursued relative to contrastive
 fine-tuning with sibling hard negatives. Gated by G2 (after S5).
 
@@ -1517,3 +1517,25 @@ harm near-verbatim queries (Y1: 5 of 5 arms under HyDE, 3 of 5 under rewriting) 
 low overlap for any arm (Y2 contradicted for two HyDE arms, not supported for the rest). c* is reported per arm and
 transform as the design's rule gives it, with its interval, and described as the zero of a straight-line fit to
 these renderings, beside the observed δ below it; it is not presented as a threshold below which rewriting helps.
+
+### D-058 — Track D is contrastive fine-tuning only, trained on a menu-disjoint upstream set, scored by concept cross-fitting
+**Status:** **Accepted** (César, 2026-10-04) · **Date:** 2026-10-04 · **Owner:** César · **Raised in:** S10 opening · **Supersedes:** D-015
+**Context.** S10 needs training queries on dev concepts. The delivered query sets cannot serve: their rewrite menus
+are shared across concepts, so a concept split does not separate them. Of the applied single rewrites on test
+concepts, 73 of 89 `synonym_label` pairs, 33 of 37 `num_to_text` pairs and 38 of 38 `compression` strings also occur
+on dev (`OE_single_modifications.jsonl` against `SPLITS.md`, 2026-10-04). A model trained on them would be scored at
+S12 partly on recall of the generator. Coded `resumen` → `texto` alone was rejected: `resumen` is a shortened
+rendering and carries none of the L1–L3 variation the study measures.
+**Decision.**
+1. **Encoders:** `multilingual-e5-base` (`dense_e5`) and BGE-M3 ColBERT, fine-tuned contrastively with sibling hard
+   negatives.
+2. **Training data:** a new upstream set on dev concepts whose menu entries occur in no delivered evaluation query
+   (`requests/S10_TRAINING_SET.md`), mixed with the decoded `resumen` of the same dev leaves. Disjointness is
+   verified at intake from per-modification menu-entry IDs, not taken on trust.
+3. **Dev evaluation:** concept-level k-fold cross-fitting. Each dev query is scored only by a model that never saw
+   its concept; k is fixed in the S10 design.
+4. **Reinforcement-learning-style optimisation is out of S10.** If the contrastive result motivates it, it is a
+   separate probe with its own stop.
+**Consequence.** S10 is `blocked` on the delivery and opens when it lands and its digests are recorded. S11 is
+independent of it (D-046 kept S10's priority, not an ordering).
+

@@ -25,7 +25,7 @@ Statuses: `planned` · `active` · `done` · `abandoned` · `blocked`.
 | S7 | backbone | **done** | E2 stacked headline and stratifications | H1, H4 | S6 |
 | S8 | backbone | **done** | E3 balanced dose design | H4 | S7 |
 | S9 | backbone | **done** | Track C — query-side normalisation and rewriting | H6 | S6 |
-| S10 | backbone | planned | Track D — learned representations | O4 | S6, G2 |
+| S10 | backbone | **blocked** | Track D — learned representations | O4 | S6, G2, upstream training set (D-058) |
 | S11 | backbone | planned | Track E — two-stage architecture | O4 | S6, G2 |
 | S12 | backbone | planned | Frozen test evaluation and artefact release | O5 | S8–S11 |
 | S13 | backbone | planned | Manuscript | — | S12 |
@@ -113,3 +113,4 @@ Append one line per status transition. Date, ID, transition, one clause of reaso
 | 2026-10-03 | S9 | report written | All 7 exit criteria met (4 after A9–A10); 120 registered runs + 5 post hoc (A7) clean, 405 of 405 OE runs resolve; T1–T10 and Fig. 7 byte-identical at `86b995c`. H6 partly supported by the rule: harm clause supported, gain clause refuted, no crossover (D-055). C recovers BM25's number-word damage (Z1); Z2 holds by construction. IDF cap lowers no base and raises most (G1, G2). E1/E2 not supported; post hoc, padded schema axis names (P9) explain the extractor's failure (A7–A8, D-056). Amendments A1–A10. `done` withheld until `/audit S9` in a fresh session |
 | 2026-10-03 | S9 | audited fresh → findings resolved | **PASS WITH FINDINGS** (`ad4094e`): 4 major, 3 minor; no number failed to reproduce, no mixed sample, freeze clean. Resolved by A11–A12 (one draw per statistic across tables, T9 unchanged; T3 δ below c*; T4 layers and tokens; ‡; T10 extractor provenance; `results/S9/` byte-identical twice at `639c6f4`, hashes logged) and a revised report (H6 wording, all 10 c* stated). D-055 amended; D-055–D-057 await César. S9 stays **active** until they are ruled |
 | 2026-10-03 | S9 | active → **done** | César accepted D-055 as amended (option a: harm reported, no gain detected, c* reported by the rule and not as a gain region), D-056 (padded axis names: P9 upstream, harness strips labels from the next sprint that compares them, E1/E2 stand, key-tolerant variant only if registered) and D-057 (BM25 ceilings quoted as uncapped; S12 registers before it runs whether the capped arms are admitted). All 7 exit criteria met |
+| 2026-10-04 | S10 | planned → **blocked** | Entry check at `/sprint-open S10`: no training data. The delivered query sets share rewrite menus across the split (D-058), so training waits for a menu-disjoint upstream set, requested in `requests/S10_TRAINING_SET.md`. D-015 closed by D-058 (RL out). Opens when the delivery lands with its digests |

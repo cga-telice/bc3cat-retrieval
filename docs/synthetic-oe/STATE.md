@@ -3,11 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-03 (**S9 done**) · **Updated by:** Claude
+**Last updated:** 2026-10-04 (**S10 blocked** on upstream) · **Updated by:** Claude
 
 ---
 
 ## Where we are
+
+**S10 is blocked** (2026-10-04) on a training set from `bc3cat-dataset` ([request](requests/S10_TRAINING_SET.md), issued). The delivered query sets share rewrite menus across the dev/test split (73 of 89 test `synonym_label` pairs occur on dev), so training on them would teach the model test rewrites. D-058 (César): `dense_e5` + ColBERT, contrastive with sibling negatives, trained on the menu-disjoint delivery mixed with decoded `resumen`, scored on dev by concept k-fold cross-fitting; RL out (D-015 closed). **Next: S11, which does not wait on it; S10 opens when the delivery lands with its digests.**
 
 **S9 is done** (2026-10-03; Track C, H6; [design](sprints/SPRINT_S9_DESIGN.md) frozen at `587e466`, [amendments](sprints/SPRINT_S9_AMENDMENTS.md) A1–A12, [report](sprints/SPRINT_S9_REPORT.md), [audit](sprints/SPRINT_S9_AUDIT.md), [results](results/S9)). Audit **PASS WITH FINDINGS**, 4 major and 3 minor, all resolved (A11–A12; `results/S9/` at `639c6f4`, byte-identical twice, hashes logged; T9 unchanged). Rewriting and HyDE harm near-verbatim queries; no gain was detected at low overlap; c* is reported by the rule and not as a gain region (D-055 as amended, accepted). The published LLM extractor is defeated by the schema's padded axis names (P9); the key-tolerant variant is a lead for S10/S11 only if registered there (D-056, accepted). The IDF cap helps every base in-sample; BM25 ceilings are quoted as uncapped, and S12 registers whether the capped arms are admitted (D-057, accepted). **Next: S10 or S11 (D-046); S12 must register its X2 signed reference, whether X1 is read, and the capped-BM25 admission before it opens.**
 
