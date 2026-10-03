@@ -1,0 +1,35 @@
+{
+  "queries": 16590,
+  "indexes": {
+    "bm25_unigram": {
+      "vocabulary": 337,
+      "documents": 47513,
+      "duplicate_groups": 1602,
+      "duplicate_documents": 3276,
+      "affected_queries": 1152,
+      "affected_share": 0.06943942133815552,
+      "acc1_ceiling": 0.9645067309624271,
+      "acc1_measured": 0.8690777577
+    },
+    "bm25_unigram_params__k1-0.60__b-0.35": {
+      "vocabulary": 398,
+      "documents": 47513,
+      "duplicate_groups": 0,
+      "duplicate_documents": 0,
+      "affected_queries": 0,
+      "affected_share": 0.0,
+      "acc1_ceiling": 1.0,
+      "acc1_measured": 0.9736588306
+    },
+    "bm25_unibigram__k1-0.80__b-0.35": {
+      "vocabulary": 1142,
+      "documents": 47513,
+      "duplicate_groups": 0,
+      "duplicate_documents": 0,
+      "affected_queries": 0,
+      "affected_share": 0.0,
+      "acc1_ceiling": 1.0,
+      "acc1_measured": 0.826702833
+    }
+  }
+}
