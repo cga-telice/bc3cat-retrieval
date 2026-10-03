@@ -113,6 +113,9 @@ def _s9_transformed(transform: str) -> list[str]:
 
 
 OE_S9 += [f for t in S9_GENERATED for f in _s9_transformed(t)]
+# Work item 5: the LLM extractor's generations, cached by the structured pipeline while its five runs ran
+# (`retrievers.structured_pipeline.LLM_CACHE`), shared by all of them.
+OE_S9 += ["llm_cache/structured_llm_extract.jsonl"]
 OEB = [
     "OEB_texto.json",
     "OEB_resumen.json",
