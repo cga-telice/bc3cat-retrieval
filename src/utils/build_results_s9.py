@@ -652,7 +652,7 @@ def keytol_section(F: Frames) -> list[str]:
              "arm reads only *exact*; the variant reads all but *absent*.", "",
              "| base | axes | exact | trimmed | renamed | absent | lost by the registered arm | of them, on a padded schema name |",
              "|---|---:|---:|---:|---:|---:|---:|---:|"]
-    for base in S9_BASES + ["all"]:
+    for base in list(S9_BASES) + ["all"]:
         f = out if base == "all" else out[out["base"] == base]
         k = f["kind"].value_counts()
         lost = f[f["kind"].isin(["trimmed", "renamed"])]
