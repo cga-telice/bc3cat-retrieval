@@ -17,6 +17,7 @@ The analysis stack is pinned (`analysis_stack.py`): the script refuses to run on
 
 from __future__ import annotations
 
+import difflib
 import json
 import os
 
@@ -190,6 +191,12 @@ def scored(f: pd.DataFrame, level: str) -> pd.DataFrame:
 # --------------------------------------------------------------------------- statistics
 
 
+#: Audit F1: one bootstrap draw per statistic. A statistic is its scored queries, their concepts and both sides'
+#: hits; the first table to draw it fixes its label, and every later table that prints it reuses that draw.
+#: `main` evaluates the registered tests first, so T1, T2, T4, T5, T6 and Fig. 7 quote T9's intervals.
+_CELLS: dict = {}
+
+
 def delta_cell(frame: pd.DataFrame, level: str, label: str) -> dict:
     """Mean paired δ on the level's scored queries, with concept and query intervals."""
     f = scored(frame, level)
@@ -198,12 +205,14 @@ def delta_cell(frame: pd.DataFrame, level: str, label: str) -> dict:
         return {"n_all": n_all, "n": 0, "excluded": n_all, "concepts": 0, "est": float("nan"), "ref": float("nan"),
                 "mod": float("nan"), "c": (float("nan"),) * 2, "q": (float("nan"),) * 2, "draws": np.array([])}
     ref, mod = f[f"ref_{level}"].to_numpy(float), f[f"mod_{level}"].to_numpy(float)
-    d = mod - ref
-    c = boot_cluster(d[:, None], f["concept"].to_numpy(), f"s9|{label}|{level}")[:, 0]
-    q = boot_query(d[:, None], f"s9|{label}|{level}")[:, 0]
-    return {"n_all": n_all, "n": len(f), "excluded": n_all - len(f), "concepts": int(f["concept"].nunique()),
-            "est": float(d.mean()), "ref": float(ref.mean()), "mod": float(mod.mean()), "c": ci(c), "q": ci(q),
-            "draws": c}
+    key = (level, tuple(f.index), tuple(f["concept"]), ref.tobytes(), mod.tobytes())
+    if key not in _CELLS:
+        d = mod - ref
+        c = boot_cluster(d[:, None], f["concept"].to_numpy(), f"s9|{label}|{level}")[:, 0]
+        q = boot_query(d[:, None], f"s9|{label}|{level}")[:, 0]
+        _CELLS[key] = {"n": len(f), "concepts": int(f["concept"].nunique()), "est": float(d.mean()),
+                       "ref": float(ref.mean()), "mod": float(mod.mean()), "c": ci(c), "q": ci(q), "draws": c}
+    return {"n_all": n_all, "excluded": n_all - len(f), **_CELLS[key]}
 
 
 def _sums(x: np.ndarray, y: np.ndarray, groups: np.ndarray, labels: np.ndarray) -> np.ndarray:
@@ -399,13 +408,17 @@ def write_profile(F: Frames, fl: dict[str, float]) -> None:
     lines = header("T1: profile — every arm, base and transform against its untransformed reference", [
         "Paired on the same queries (A5 b). Tie-free primary; as-run δ beside. Item level excludes D-033 golds, "
         "D-040 on the `resumen` family and S4's P7 query; n excluded per row. † oracle arm (D-010): profiled, "
-        "never tested. Collisions: queries whose transformed text equals another gold's (counted, not excluded)."])
+        "never tested. Collisions: queries whose transformed text equals another gold's (counted, not excluded). "
+        "Fallbacks (A3): LLM queries whose response did not parse and that kept their text, counted over the set "
+        "(— for C, which generates nothing). ‡ fewer than "
+        f"{FEW_CLUSTERS} concepts. LLM sets regenerate identically for 98 (H) and 99 (W) of 100 queries (A1); "
+        "every figure here reads the cached generation."])
     floor_line = ", ".join(f"`{a}` {f4(fl[a])}" for a in BASE7)
     lines += [f"Identity item Acc@1 on `texto_u`, tie-free, per arm (floor below {FLOOR}): {floor_line}.", ""]
     lines += ["| arm | base | transform | n | n scored | n excluded | concepts | item ref | item mod | item δ "
               "| CI (concept) | CI (query) | item δ as run | parent ref | parent mod | parent δ | CI (concept) | collisions "
-              "| parent CI (query) |",
-              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|---:|---|"]
+              "| parent CI (query) | fallbacks | |",
+              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---:|---|---:|---|---:|---|"]
     for arm in BASE7:
         mark = "†" if arm in ORACLE else ""
         for base in S9_BASES:
@@ -415,10 +428,13 @@ def write_profile(F: Frames, fl: dict[str, float]) -> None:
                 cr = delta_cell(variant(f, "run"), "item", f"T1r|{arm}|{base}|{t}")
                 cp = delta_cell(variant(f, "tf"), "parent", f"T1p|{arm}|{base}|{t}")
                 coll = text_collisions(json.loads((DATA / f"OE_{base}__{t}.json").read_text(encoding="utf-8")))
+                fb = "—" if t == "canon" else str(json.loads(
+                    (DATA / f"OE_{base}__{t}.meta.json").read_text(encoding="utf-8"))["fallback"])
+                thin = "‡" if ci_["concepts"] < FEW_CLUSTERS else ""
                 lines.append(f"| `{arm}`{mark} | `{base}` | {T_LABEL[t]} | {ncell(ci_)} | {f4(ci_['ref'])} | "
                              f"{f4(ci_['mod'])} | {fd(ci_['est'])} | {fci(ci_['c'], True)} | {fci(ci_['q'], True)} | "
                              f"{fd(cr['est'])} | {f4(cp['ref'])} | {f4(cp['mod'])} | {fd(cp['est'])} | "
-                             f"{fci(cp['c'], True)} | {coll:,} | {fci(cp['q'], True)} |")
+                             f"{fci(cp['c'], True)} | {coll:,} | {fci(cp['q'], True)} | {fb} | {thin} |")
     write(OUT / "profile.md", lines + footer())
 
 
@@ -427,7 +443,9 @@ def write_bins(F: Frames) -> None:
     lines = header("T2: item δ by overlap bin", [
         f"Bins on the untransformed query's lexical coverage of its gold (S3's definition), over the non-identity "
         f"bases pooled: {edges}. B5 is `texto_u`, the identity rendering. Tie-free. ‡ fewer than "
-        f"{FEW_CLUSTERS} concepts: printed, not read. † oracle arm."])
+        f"{FEW_CLUSTERS} concepts: printed, not read. † oracle arm. A cell that is also a registered test (Y1 in B4, "
+        "Y2 in B1) or a T1 row (B5) prints that statistic's own draw. LLM figures read the cached generation, "
+        "which regenerates identically for 98 (H) and 99 (W) of 100 queries (A1)."])
     lines += ["| arm | transform | bin | n | n scored | n excluded | concepts | item δ | CI (concept) | CI (query) | |",
               "|---|---|---|---:|---:|---:|---:|---:|---|---|---|"]
     for arm in BASE7:
@@ -473,8 +491,43 @@ def write_crossover(F: Frames) -> list[dict]:
                 fit = crossover(variant(F.T[(arm, base, t)], "tf"), f"T3b|{arm}|{t}|{base}")
                 lines.append(f"| `{arm}` | {T_LABEL[t]} | `{base}` | {fit['n']:,} | {fit['concepts']} | "
                              f"{fd(fit['slope'])} | {fci(fit['slope_c'], True)} | {fci(fit['slope_q'], True)} |")
+    lines += below_cstar(F, fits)
     write(OUT / "crossover.md", lines + footer())
     return fits
+
+
+def below_cstar(F: Frames, fits: list[dict]) -> list[str]:
+    """A11 (audit F3), post hoc: the observed item δ on the queries below each fit's point c*.
+
+    A fit with a negative slope predicts δ > 0 below c*; this prints what was observed there, beside the base mix
+    (coverage co-varies with base) and the same cell without `stacked_texto`. The region is cut at the point c*,
+    itself an estimate, so the cell is descriptive and reads no test."""
+    lines = ["", "## Post hoc (A11): observed item δ below c*", "",
+             "Added after the report was audited (F3); descriptive: no test, no Holm, no reading. For each fit read "
+             "*yes* above, the non-identity queries whose untransformed coverage is below the point c*, tie-free: the "
+             "untransformed item Acc@1 there, the observed δ with both intervals, and how many of the scored queries "
+             "come from each base. The fit predicts δ > 0 in this region. The last columns repeat the cell without "
+             f"`stacked_texto`, which supplies most of it. ‡ fewer than {FEW_CLUSTERS} concepts: printed, not read.", "",
+             "| arm | transform | c* | n | n scored | n excluded | concepts | untransformed item | item δ | CI (concept) "
+             "| CI (query) | | scored by base | without stacked: n scored | concepts | item δ | CI (concept) | CI (query) | |",
+             "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|---|---:|---:|---:|---|---|---|"]
+    for fit in fits:
+        if fit["t"] == "canon" or not fit["in_range"]:
+            continue
+        arm, t = fit["arm"], fit["t"]
+        pooled = variant(F.pooled(arm, t), "tf")
+        below = pooled[pooled["cov"] < fit["cstar"]]
+        c = delta_cell(below, "item", f"T3c|{arm}|{t}|below")
+        mix = scored(below, "item")["base"].value_counts()
+        mix_s = ", ".join(f"`{b}` {int(mix.get(b, 0)):,}" for b in NONID if mix.get(b, 0))
+        rest = below[below["base"] != "stacked_texto"]
+        r = delta_cell(rest, "item", f"T3c|{arm}|{t}|below|nostacked")
+        thin = lambda x: "‡" if x["concepts"] < FEW_CLUSTERS else ""
+        rest_s = (f"{r['n']:,} | {r['concepts']} | {fd(r['est'])} | {fci(r['c'], True)} | {fci(r['q'], True)} | {thin(r)}"
+                  if r["n"] else "0 | 0 | — | — | — | ")
+        lines.append(f"| `{arm}` | {T_LABEL[t]} | {f4(fit['cstar'])} | {ncell(c)} | {f4(c['ref'])} | {fd(c['est'])} | "
+                     f"{fci(c['c'], True)} | {fci(c['q'], True)} | {thin(c)} | {mix_s or '—'} | {rest_s} |")
+    return lines
 
 
 def canon_actions(dev: frozenset[str]) -> dict[str, pd.DataFrame]:
@@ -489,8 +542,11 @@ def canon_actions(dev: frozenset[str]) -> dict[str, pd.DataFrame]:
             text, rep = c.apply(r["text"])
             if text != stored[r["item_key"]]:
                 raise ValueError(f"{base}: the canonicaliser no longer reproduces the stored text of {r['item_key']}")
+            before, after = r["text"].split(), text.split()
+            ops = difflib.SequenceMatcher(None, before, after, autojunk=False).get_opcodes()
             rows.append({"key": r["item_key"], "changed": text != r["text"], "numbers": rep.numbers,
-                         "units": rep.units, "converted": rep.converted, "declined": rep.declined})
+                         "units": rep.units, "converted": rep.converted, "declined": rep.declined,
+                         "tokens": sum(i2 - i1 for op, i1, i2, _, _ in ops if op != "equal")})
         out[base] = pd.DataFrame(rows).set_index("key")
     return out
 
@@ -500,29 +556,35 @@ def write_canon(F: Frames, actions: dict[str, pd.DataFrame]) -> None:
         "Item δ_C (C − untransformed) per single type, tie-free. Beside it, the damage C works against: the "
         "untransformed query's δ against the identity rendering of its gold (S4's pairing, recomputed here on the "
         "same queries). What C did per type is re-derived with the committed canonicaliser and checked equal to "
-        "the stored set. Types are read for analysis only; C never sees them."])
+        "the stored set. Types are read for analysis only; C never sees them. Tokens rewritten: whitespace tokens "
+        "of the untransformed query that C replaced or removed (a word-level diff), summed over n. After each "
+        "arm's types, one row per layer pools them (A11); the L1 row on `single_texto` is Z1's statistic and "
+        f"prints its draw. ‡ fewer than {FEW_CLUSTERS} concepts: printed, not read."])
     lines += ["| arm | base | type | n | n scored | concepts | changed by C (of n) | conversions | declined | item δ_C "
-              "| CI (concept) | identity-paired δ | CI (concept) | δ_C CI (query) | identity-paired CI (query) |",
-              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---|---|---|"]
+              "| CI (concept) | identity-paired δ | CI (concept) | δ_C CI (query) | identity-paired CI (query) "
+              "| tokens rewritten | |",
+              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---|---|---|---:|---|"]
     for arm in TESTED:
         for base in ("single_texto", "single_l2_texto"):
             f = variant(F.T[(arm, base, "canon")], "tf")
             ident = F.T[(arm, "texto_u", "canon")]
             ref_of_gold = variant(ident, "tf").set_index("gold")["ref_item"]
             act = actions[base]
-            for typ in sorted(f["type"].unique()):
-                g = f[f["type"] == typ]
-                c = delta_cell(g, "item", f"T4|{arm}|{base}|{typ}")
+            groups = [(f"`{typ}`", f[f["type"] == typ], typ) for typ in sorted(f["type"].unique())]
+            groups += [(f"**{lay}** (layer)", f[f["layer"] == lay], lay) for lay in LAYERS if (f["layer"] == lay).any()]
+            for name, g, tag in groups:
+                c = delta_cell(g, "item", f"T4|{arm}|{base}|{tag}")
                 s = scored(g, "item")
                 h = s.copy()
                 h["mod_item"] = s["ref_item"]
                 h["ref_item"] = s["gold"].map(ref_of_gold).astype(float)
-                ip = delta_cell(h, "item", f"T4i|{arm}|{base}|{typ}")
+                ip = delta_cell(h, "item", f"T4i|{arm}|{base}|{tag}")
                 a = act.loc[g.index]
-                lines.append(f"| `{arm}` | `{base}` | `{typ}` | {c['n_all']:,} | {c['n']:,} | {c['concepts']} | {int(a['changed'].sum()):,} | "
+                thin = "‡" if c["concepts"] < FEW_CLUSTERS else ""
+                lines.append(f"| `{arm}` | `{base}` | {name} | {c['n_all']:,} | {c['n']:,} | {c['concepts']} | {int(a['changed'].sum()):,} | "
                              f"{int(a['converted'].sum()):,} | {int(a['declined'].sum()):,} | {fd(c['est'])} | "
                              f"{fci(c['c'], True)} | {fd(ip['est'])} | {fci(ip['c'], True)} | {fci(c['q'], True)} | "
-                             f"{fci(ip['q'], True)} |")
+                             f"{fci(ip['q'], True)} | {int(a['tokens'].sum()):,} | {thin} |")
     write(OUT / "canon_types.md", lines + footer())
 
 
@@ -545,14 +607,16 @@ def write_guard(F: Frames, diag: list) -> None:
         capped = np.load(INDEX / d / "data" / "idf.npy")
         lines.append(f"| `{d}` | {len(plain):,} | {int((plain > capped).sum()):,} | {f4(float(capped.max()))} |")
     lines += ["", "## The guard against the uncapped arm, every base", "",
-              "| arm | base | level | n | n scored | n excluded | concepts | uncapped | capped | δ | CI (concept) | CI (query) |",
-              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|"]
+              f"G1 and G2 print their own draws. ‡ fewer than {FEW_CLUSTERS} concepts: printed, not read.", "",
+              "| arm | base | level | n | n scored | n excluded | concepts | uncapped | capped | δ | CI (concept) | CI (query) | |",
+              "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|"]
     for arm in GUARD:
         for base in S9_BASES:
             for level in ("item", "parent"):
                 c = delta_cell(variant(F.G[(arm, base)], "tf"), level, f"T5|{arm}|{base}|{level}")
+                thin = "‡" if c["concepts"] < FEW_CLUSTERS else ""
                 lines.append(f"| `{arm}` | `{base}` | {level} | {ncell(c)} | {f4(c['ref'])} | {f4(c['mod'])} | "
-                             f"{fd(c['est'])} | {fci(c['c'], True)} | {fci(c['q'], True)} |")
+                             f"{fd(c['est'])} | {fci(c['c'], True)} | {fci(c['q'], True)} | {thin} |")
     write(OUT / "idf_guard.md", lines + footer())
 
 
@@ -560,14 +624,16 @@ def write_extraction(F: Frames) -> None:
     lines = header("T6: slot filling — the LLM extractor as Stage 2 of `rules_valuenorm`", [
         "`structured_pipeline_llm_valuenorm__OE` (phi4, `extract`, ported from `research/structured-retrieval@85c3359`; "
         "its prompts were chosen on OEB `resumen`, whose concepts sit on both sides of OE's split) against "
-        "`rules_valuenorm` (same pipeline, rules Stage 2), `bm25_unigram`, and S5's oracle-extraction bound, "
-        "paired on the same queries, tie-free. A reference without a run on a base is left blank."])
+        "`rules_valuenorm` (same pipeline, rules Stage 2), `bm25_unigram`, and S5's literal-oracle bound, "
+        "paired on the same queries, tie-free. The literal-oracle bound reads the query record's schema literals and "
+        "leaves a rewritten axis blank, so it bounds a literal-reading extractor, not a value-reading one. E1 and E2 "
+        "print their own draws. A reference without a run on a base is left blank."])
     E = extraction_frames(F)
     lines += ["| comparison | scope | n | n scored | n excluded | concepts | reference | LLM arm | δ | CI (concept) | CI (query) |",
               "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|"]
     Q = F.Q["single_texto"]
     refs = [("vs rules_valuenorm", E["vs_rules"]), ("vs bm25_unigram", E["vs_bm25"]),
-            ("vs oracle bound", pair(Q, ("single_texto", LLM_ARM), ("single_texto", ORACLE_BOUND)))]
+            ("vs literal-oracle bound", pair(Q, ("single_texto", LLM_ARM), ("single_texto", ORACLE_BOUND)))]
     for name, frame in refs:
         for scope_name, sel in (("L1", L1), ("all single types", None)):
             f = variant(frame, "tf")
@@ -575,8 +641,8 @@ def write_extraction(F: Frames) -> None:
             c = delta_cell(f, "item", f"T6|{name}|{scope_name}")
             lines.append(f"| {name} | {scope_name} | {ncell(c)} | {f4(c['ref'])} | {f4(c['mod'])} | {fd(c['est'])} | "
                          f"{fci(c['c'], True)} | {fci(c['q'], True)} |")
-    lines += ["", "## Profile on every base", "", "| base | LLM arm item | LLM arm parent | rules_valuenorm item | n scored |",
-              "|---|---:|---:|---:|---:|"]
+    lines += ["", "## Profile on every base", "", "| base | LLM arm item | LLM arm parent | rules_valuenorm item | n scored "
+              "| n | n excluded |", "|---|---:|---:|---:|---:|---:|---:|"]
     for base in S9_BASES:
         Qb = F.Q[base]
         own = variant(pair(Qb, (base, LLM_ARM), (base, LLM_ARM)), "tf")
@@ -585,7 +651,8 @@ def write_extraction(F: Frames) -> None:
         if (RUNS / rq / RULES_ARM / "results_perquery.parquet").exists():
             rules = f4(scored(variant(pair(Qb, (base, LLM_ARM), (rq, RULES_ARM)), "tf"), "item")["ref_item"].mean())
         lines.append(f"| `{base}` | {f4(scored(own, 'item')['mod_item'].mean())} | "
-                     f"{f4(scored(own, 'parent')['mod_parent'].mean())} | {rules} | {int(own['item_scored'].sum()):,} |")
+                     f"{f4(scored(own, 'parent')['mod_parent'].mean())} | {rules} | {int(own['item_scored'].sum()):,} | "
+                     f"{len(own):,} | {int((~own['item_scored']).sum()):,} |")
     lines += keytol_section(F)
     write(OUT / "extraction.md", lines + footer())
 
@@ -593,6 +660,9 @@ def write_extraction(F: Frames) -> None:
 #: `phi4:latest`'s full digest, the one every extractor run used (A4's log, the runs' client); its prefix is
 #: the design's (`query_rewrite.llm.MODELS`), asserted. The cache key needs the full digest.
 PHI4_DIGEST = "ac896e5b8b34a1f4efa7b14d7520725140d5512484457fab45d2a4ea14c69dba"
+#: Audit F4: how many extraction prompts `axis_outcomes` found in the cache under PHI4_DIGEST and the design's
+#: options (each key hashes digest, options and prompt), for T10.
+_EXTRACT_CHECKED: Counter = Counter()
 
 
 def axis_outcomes(F: Frames) -> pd.DataFrame:
@@ -628,6 +698,7 @@ def axis_outcomes(F: Frames) -> pd.DataFrame:
             ck = L.sha256_text(json.dumps([PHI4_DIGEST, L.OPTIONS, None, prompt], ensure_ascii=False, sort_keys=True))
             if ck not in cache:
                 raise KeyError(f"{base}/{k}: its extraction prompt is not in the cache")
+            _EXTRACT_CHECKED[base] += 1
             parsed = LLMParamExtractor._parse_json_response(cache[ck]) or {}
             for axis in g["axes"]:
                 if axis in parsed:
@@ -670,7 +741,7 @@ def keytol_section(F: Frames) -> list[str]:
     Q = F.Q["single_texto"]
     mod = ("single_texto", KEYTOL_ARM)
     for name, ref in (("vs the registered LLM arm", LLM_ARM), ("vs rules_valuenorm", RULES_ARM),
-                      ("vs bm25_unigram", ARM_DIR["bm25_unigram"]), ("vs oracle bound", ORACLE_BOUND)):
+                      ("vs bm25_unigram", ARM_DIR["bm25_unigram"]), ("vs literal-oracle bound", ORACLE_BOUND)):
         frame = pair(Q, mod, ("single_texto", ref))
         for scope_name, sel in (("L1", L1), ("all single types", None)):
             f = variant(frame, "tf")
@@ -679,11 +750,13 @@ def keytol_section(F: Frames) -> list[str]:
             lines.append(f"| {name} | {scope_name} | {ncell(c)} | {f4(c['ref'])} | {f4(c['mod'])} | {fd(c['est'])} | "
                          f"{fci(c['c'], True)} | {fci(c['q'], True)} |")
     lines += ["", "Every base, item and parent Acc@1, tie-free, beside the registered arm:", "",
-              "| base | variant item | variant parent | registered item | n scored |", "|---|---:|---:|---:|---:|"]
+              "| base | variant item | variant parent | registered item | n scored | n | n excluded |",
+              "|---|---:|---:|---:|---:|---:|---:|"]
     for base in S9_BASES:
         f = variant(pair(F.Q[base], (base, KEYTOL_ARM), (base, LLM_ARM)), "tf")
         lines.append(f"| `{base}` | {f4(scored(f, 'item')['mod_item'].mean())} | {f4(scored(f, 'parent')['mod_parent'].mean())} | "
-                     f"{f4(scored(f, 'item')['ref_item'].mean())} | {int(f['item_scored'].sum()):,} |")
+                     f"{f4(scored(f, 'item')['ref_item'].mean())} | {int(f['item_scored'].sum()):,} | {len(f):,} | "
+                     f"{int((~f['item_scored']).sum()):,} |")
     return lines
 
 
@@ -813,10 +886,40 @@ def write_provenance(F: Frames) -> None:
             m = json.loads((DATA / f"OE_{base}__{t}.meta.json").read_text(encoding="utf-8"))
             lines.append(f"| `{base}__{t}` | `{m['model_digest'][:16]}` | {m['ollama_version']} | `{m['prompt_sha256'][:16]}` | "
                          f"`{json.dumps(m['options'], sort_keys=True)}` |")
+    lines += extractor_provenance()
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "status", "--porcelain", "src"], cwd=REPO, capture_output=True, text=True).stdout.strip()
     lines += ["", f"Generator commit `{commit}`, `src/` {'dirty' if dirty else 'clean'}."]
     write(OUT / "run_provenance.md", lines + footer())
+
+
+def extractor_provenance() -> list[str]:
+    """Audit F4: the extractor runs' model digest, ollama version, prompt-template SHA-256 and options.
+
+    Their `run_meta.json` does not carry them (written by the ported pipeline, unmodified in this); they are read
+    here from the code and the cache the runs read, and the digest and options are checked against every cache key
+    the runs used (`axis_outcomes`)."""
+    import inspect
+    from pipeline.prompts import build_extraction_prompt
+    from query_rewrite import llm as L
+    if not _EXTRACT_CHECKED:
+        raise RuntimeError("T10 needs T6's cache check: write_extraction must run first")
+    det = json.loads((REPO / "logs" / "S9" / "determinism_extract.json").read_text(encoding="utf-8"))
+    if det["model_digest"] != PHI4_DIGEST or det["options"] != L.OPTIONS:
+        raise ValueError("A4's determinism log does not match the extractor's digest and options")
+    template = L.sha256_text(inspect.getsource(build_extraction_prompt))
+    prompts_py = f"`src/pipeline/prompts.py` `{sha256_file(REPO / 'src' / 'pipeline' / 'prompts.py')[:16]}`"
+    runs = ", ".join(f"`{run_meta(b, arm)['run_id']}`" for arm in (LLM_ARM, KEYTOL_ARM) for b in S9_BASES)
+    checked = ", ".join(f"`{b}` {_EXTRACT_CHECKED[b]:,}" for b in S9_BASES)
+    return ["", "| LLM extractor | model digest | ollama | prompt template SHA-256 | options |", "|---|---|---|---|---|",
+            f"| `{LLM_ARM}`, `{KEYTOL_ARM}` (one cache) | `{PHI4_DIGEST[:16]}` | {det['ollama_version']} (A4's log) | "
+            f"`{template[:16]}` | `{json.dumps(L.OPTIONS, sort_keys=True)}` |", "",
+            "The extractor's prompt template is `pipeline.prompts.build_extraction_prompt`; its SHA-256 is of that "
+            "function's source, in " + prompts_py + ", checked out unmodified (D-026) and unchanged since. Every "
+            "prompt the registered runs sent, rebuilt from their Stage-1 concept, was found in "
+            "`llm_cache/structured_llm_extract.jsonl` under a key that hashes this digest and these options, per "
+            f"base: {checked}. The key-tolerant runs read the same cache, which their run script checked did not "
+            f"grow (A7). Runs: {runs}.", ""]
 
 
 def write_overlap(F: Frames) -> None:
