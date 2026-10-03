@@ -1504,3 +1504,16 @@ post hoc unless a later sprint registers it before use.
 (`results/S9/idf_guard.md`); the cut was read on dev, so this is in-sample.
 **Proposal.** Wherever S3's BM25 identity ceiling is quoted, it is quoted as the uncapped arm's; S12 registers,
 before it runs, whether the capped arms are admitted.
+
+### D-055 — amendment: c* is reported by the rule; the gain clause is contradicted for two arms, not refuted
+**Status:** Proposed (amendment to D-055) · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 audit (F2, F3)
+**Context.** The S9 audit found D-055's wording beyond its evidence. HyDE does not hurt every arm in every bin: for
+`bge_m3_dense` and `dense_e5` the B1 and B2 intervals contain 0. The gain clause (Y2) is contradicted for H on
+`bm25_unigram` and ColBERT and not supported elsewhere, which is not a refutation. And "no crossover" overrode the
+design's rule, which places c* in range for 9 of 10 fits (`results/S9/crossover.md`). A11 adds what was observed
+below each c*: negative, or indistinguishable from zero, and mostly `stacked_texto`.
+**Proposal (replaces D-055's).** The manuscript states that, on OE dev and these renderings, expansion and rewriting
+harm near-verbatim queries (Y1: 5 of 5 arms under HyDE, 3 of 5 under rewriting) and that no gain was detected at
+low overlap for any arm (Y2 contradicted for two HyDE arms, not supported for the rest). c* is reported per arm and
+transform as the design's rule gives it, with its interval, and described as the zero of a straight-line fit to
+these renderings, beside the observed δ below it; it is not presented as a threshold below which rewriting helps.

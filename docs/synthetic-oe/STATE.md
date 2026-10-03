@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-03 (**S9 report written**) · **Updated by:** Claude
+**Last updated:** 2026-10-03 (**S9 audit findings resolved**) · **Updated by:** Claude
 
 ---
 
 ## Where we are
 
-**S9 report written** (2026-10-03; Track C, H6; [design](sprints/SPRINT_S9_DESIGN.md) frozen at `587e466`, [amendments](sprints/SPRINT_S9_AMENDMENTS.md) A1–A10, [report](sprints/SPRINT_S9_REPORT.md), [results](results/S9)). 120 registered runs + 5 post hoc, all clean. HyDE hurts every arm at every overlap; no crossover (H6 partly supported by the rule, gain clause refuted; D-055). The canonicaliser recovers BM25's number-word damage; the IDF cap lowers no base and raises most. The published LLM extractor fails on padded schema axis names (P9, D-056); a post-hoc key-tolerant variant is the strongest S9 arm. D-055–D-057 proposed. **Next: `/audit S9` in a fresh session.**
+**S9 audited, findings resolved; D-055 (amended), D-056, D-057 await César** (2026-10-03; Track C, H6; [design](sprints/SPRINT_S9_DESIGN.md) frozen at `587e466`, [amendments](sprints/SPRINT_S9_AMENDMENTS.md) A1–A12, [report](sprints/SPRINT_S9_REPORT.md), [audit](sprints/SPRINT_S9_AUDIT.md), [results](results/S9)). Audit **PASS WITH FINDINGS**, 4 major and 3 minor, all resolved: A11–A12 give one bootstrap draw per statistic across tables (T9 byte-identical, no reading moved), T3's observed δ below c*, T4 layers, ‡, T10's extractor digest and prompt SHA; `results/S9/` regenerated at `639c6f4`, byte-identical twice with output hashes logged. Report revised: HyDE harms or has no detectable effect in every bin; the gain clause is contradicted for BM25 and ColBERT under H, not supported elsewhere; c* is stated for all 10 fits by the rule and is not a gain region. **Next: César rules on D-055–D-057; then S9 → done.**
 
 **S8 is done** (2026-10-02; E3 balanced dose design, H4; [design](sprints/SPRINT_S8_DESIGN.md) frozen at `4f62d5a`, [amendments](sprints/SPRINT_S8_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S8_REPORT.md), [audit](sprints/SPRINT_S8_AUDIT.md), [results](results/S8)). 36 runs clean on 328 dev ladder leaves in 4 OEB concepts. Accuracy falls with every added edit for all seven arms (X3). X1 is supported for `dense_e5` only, not robust, and is floor-bound for most arms. X2 is supported for six arms, but none clears the registered draw-noise bar under both scorings, so no excess is attributed to interaction. **H4 is not resolved on this design**; the design's label reads *partly supported*. Two audits **PASS WITH FINDINGS**, all resolved; the second (F1) withdrew a post-hoc reading of X2 (T13), which now only motivates S12's signed reference. D-054 accepted as revised twice (César, 2026-10-02): H4 is not established on dev; S12 tests X2 against a signed reference registered in advance.
 
