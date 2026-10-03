@@ -453,7 +453,9 @@ def write_crossover(F: Frames) -> list[dict]:
     fits = []
     for arm in TESTED:
         for t in ("hyde", "rewrite", "canon"):
-            fit = crossover(variant(F.pooled(arm, t), "tf"), f"T3|{arm}|{t}")
+            # Y3's own draws for H and W (A6), so that T3, T9 and Fig. 7 quote one interval per statistic.
+            label = f"Y3|{arm}|{t}|tf" if t != "canon" else f"T3|{arm}|{t}"
+            fit = crossover(variant(F.pooled(arm, t), "tf"), label)
             fits.append({"arm": arm, "t": t, **fit})
             lo, hi = fit["range"]
             lines.append(f"| `{arm}` | {T_LABEL[t]} | {fit['n']:,} | {fit['concepts']} | {fd(fit['slope'])} | "
