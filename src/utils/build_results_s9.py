@@ -72,6 +72,8 @@ GUARD = {"bm25_unigram": "bm25_unigram__k1-0.60__b-0.35__idfcap-1200__OE",
 LLM_ARM = "structured_pipeline_llm_valuenorm__OE"
 RULES_ARM = "structured_pipeline_rules_valuenorm__OE"
 ORACLE_BOUND = "structured_pipeline_oracleparams_valuenorm__OE"
+#: A7 (post hoc, César): the LLM arm with a tolerant key match; never a test, never pooled with the registered arm.
+KEYTOL_ARM = "structured_pipeline_llm_keytol_valuenorm__OE"
 
 TRANSFORMS = ("canon", "hyde", "rewrite")
 T_LABEL = {"canon": "C", "hyde": "H", "rewrite": "W"}
@@ -581,7 +583,61 @@ def write_extraction(F: Frames) -> None:
             rules = f4(scored(variant(pair(Qb, (base, LLM_ARM), (rq, RULES_ARM)), "tf"), "item")["ref_item"].mean())
         lines.append(f"| `{base}` | {f4(scored(own, 'item')['mod_item'].mean())} | "
                      f"{f4(scored(own, 'parent')['mod_parent'].mean())} | {rules} | {int(own['item_scored'].sum()):,} |")
+    lines += keytol_section(F)
     write(OUT / "extraction.md", lines + footer())
+
+
+def keytol_section(F: Frames) -> list[str]:
+    """A7: why the registered extractor drops axes, and the key-tolerant variant. Post hoc, descriptive."""
+    from pipeline.param_extractor import LLMParamExtractor
+    schema = json.loads((DATA / "OE_concept_schema.json").read_text(encoding="utf-8"))
+    axes = {a for g in schema.values() for a in g["axes"]}
+    tolerant = {LLMParamExtractor._key(a) for a in axes}
+    counts = Counter()
+    for line in (DATA / "llm_cache" / "structured_llm_extract.jsonl").read_text(encoding="utf-8").splitlines():
+        if not line:
+            continue
+        parsed = LLMParamExtractor._parse_json_response(json.loads(line)["response"])
+        counts["responses"] += 1
+        if parsed is None:
+            counts["unparsed"] += 1
+            continue
+        kinds = ["exact" if k in axes else "renamed" if LLMParamExtractor._key(k) in tolerant else "unknown" for k in parsed]
+        counts.update(kinds)
+        counts["responses with a renamed key"] += "renamed" in kinds
+    lines = ["", "## Post hoc (A7): why the extractor drops axes, and a key-tolerant variant", "",
+             "Added after this table was first read, at César's decision; descriptive: no test, no Holm, no reading, "
+             "no bearing on E1, E2 or H6. The registered arm reads each axis from the response under its schema name "
+             "exactly, as the source does. Every cached response's keys, against the axis names of the schema: "
+             "*exact* is a schema name, *renamed* matches one only under A7's tolerant form (case-folded, accents "
+             "stripped, `_` and `-` as spaces), *unknown* matches none.", "",
+             "| responses | unparsed | keys exact | keys renamed | keys unknown | responses with a renamed key |",
+             "|---:|---:|---:|---:|---:|---:|",
+             f"| {counts['responses']:,} | {counts['unparsed']:,} | {counts['exact']:,} | {counts['renamed']:,} | "
+             f"{counts['unknown']:,} | {counts['responses with a renamed key']:,} |", "",
+             "The variant reads the same cached responses (no new generation; the run script checked that the cache "
+             "did not grow) and differs from the registered arm only in that match. Paired, tie-free, on "
+             "`single_texto`:", "",
+             "| comparison | scope | n | n scored | n excluded | concepts | reference | variant | δ | CI (concept) | CI (query) |",
+             "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|"]
+    Q = F.Q["single_texto"]
+    mod = ("single_texto", KEYTOL_ARM)
+    for name, ref in (("vs the registered LLM arm", LLM_ARM), ("vs rules_valuenorm", RULES_ARM),
+                      ("vs bm25_unigram", ARM_DIR["bm25_unigram"]), ("vs oracle bound", ORACLE_BOUND)):
+        frame = pair(Q, mod, ("single_texto", ref))
+        for scope_name, sel in (("L1", L1), ("all single types", None)):
+            f = variant(frame, "tf")
+            f = f[f["type"].isin(sel)] if sel else f
+            c = delta_cell(f, "item", f"T6k|{name}|{scope_name}")
+            lines.append(f"| {name} | {scope_name} | {ncell(c)} | {f4(c['ref'])} | {f4(c['mod'])} | {fd(c['est'])} | "
+                         f"{fci(c['c'], True)} | {fci(c['q'], True)} |")
+    lines += ["", "Every base, item and parent Acc@1, tie-free, beside the registered arm:", "",
+              "| base | variant item | variant parent | registered item | n scored |", "|---|---:|---:|---:|---:|"]
+    for base in S9_BASES:
+        f = variant(pair(F.Q[base], (base, KEYTOL_ARM), (base, LLM_ARM)), "tf")
+        lines.append(f"| `{base}` | {f4(scored(f, 'item')['mod_item'].mean())} | {f4(scored(f, 'parent')['mod_parent'].mean())} | "
+                     f"{f4(scored(f, 'item')['ref_item'].mean())} | {int(f['item_scored'].sum()):,} |")
+    return lines
 
 
 def write_cost() -> None:
