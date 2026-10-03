@@ -202,6 +202,19 @@ untreated and its δ is 0 by construction. That dilutes the treatment-on-the-tre
   `OE_P8_test_exclusion.json` (`6cda7fa0`), used in S12 for the "without" view. Future builds drop
   such candidates.
 
+## P9 — `OE_concept_schema.json` names axes with stray spaces · **open; the registered extractor is defeated by it** (S9, 2026-10-03; D-056 proposed)
+
+Axis labels in the delivered schema carry leading or trailing spaces in some concepts and not in others:
+`' Nº TUBOS '`, `' TIPO DE TERRENO '`, `'TIPO '`, `' CONDICIONES DE EJECUCIÓN'`, `'MATERIAL '`, and more; the same
+axis is spelled both ways across concepts (`'Nº TUBOS'` and `' Nº TUBOS '`).
+- **Class.** Candidate P: the labels are upstream's. They are harmless to every arm that does not compare axis
+  names, and to the rules extractor.
+- **Effect.** The LLM extractor ported from `research/structured-retrieval` reads each axis from the model's JSON
+  by its exact schema name; the model writes the name trimmed, so the value is dropped. On S9's runs, 15,046 of
+  the 16,401 axes the registered arm loses are this case (`results/S9/extraction.md`, post hoc, A7–A8).
+- **Handling.** The registered S9 result stands as published. Proposed (D-056): the harness strips axis labels
+  wherever it compares them; reported upstream for information.
+
 ## H1 — `normalize_text` reads a synthetic decimal as a thousands group · **open** (D-010 note)
 
 `\d\.\d{3}` is rewritten as a thousands separator, so `0.03x0.015 m` becomes `0.03x0015 m` in

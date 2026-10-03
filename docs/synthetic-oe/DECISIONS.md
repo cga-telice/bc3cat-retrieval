@@ -1480,3 +1480,27 @@ cumulative test is uninformative where the additive prediction is already at the
 does not exceed the registered draw-noise bar; the held-out ladder tests it against a signed draw reference
 registered in advance.* The **Open with it** paragraph above stands, and T13 serves only as the candidate for
 that reference.
+
+### D-055 — H6 is restated on what S9 measured: no crossover
+**Status:** Proposed · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report
+**Context.** H6 predicts that HyDE-style expansion and rewriting hurt near-verbatim queries and help below an
+overlap threshold. On OE dev (`results/S9/predictions.md`, `bins.md`), HyDE hurts every tested arm in every
+coverage bin; Y2 is supported for no arm under either transform and contradicted for two under HyDE. The design's
+c*, where a linear fit crosses zero, falls where the observed lowest bin is still negative or indistinguishable
+from zero. The design's rule reads *partly supported*.
+**Proposal.** The manuscript states H6's first clause as supported and its second as refuted on these renderings,
+and reports no crossover threshold; c* is printed in `results/` and not quoted as a decision rule.
+
+### D-056 — The schema's padded axis names: a P-class defect, stripped by the harness
+**Status:** Proposed · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report (A7, A8)
+**Context.** `DATASET_DEFECTS.md` P9. The published LLM extractor loses most of its dropped axes to it.
+**Proposal.** Record P9 upstream for information; the harness strips axis labels wherever it compares them, from
+the next sprint that compares them; S9's registered E1 / E2 stand as computed, and the key-tolerant variant stays
+post hoc unless a later sprint registers it before use.
+
+### D-057 — BM25 identity ceilings carry the IDF-cap caveat
+**Status:** Proposed · **Date:** 2026-10-03 · **Owner:** César · **Raised in:** S9 report (known-wrong 3)
+**Context.** Capping IDF at df 1,200 raises `bm25_unigram`'s identity item Acc@1 on `texto_u` and lowers no base
+(`results/S9/idf_guard.md`); the cut was read on dev, so this is in-sample.
+**Proposal.** Wherever S3's BM25 identity ceiling is quoted, it is quoted as the uncapped arm's; S12 registers,
+before it runs, whether the capped arms are admitted.
