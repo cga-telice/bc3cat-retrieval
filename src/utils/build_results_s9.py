@@ -500,8 +500,8 @@ def write_canon(F: Frames, actions: dict[str, pd.DataFrame]) -> None:
         "untransformed query's δ against the identity rendering of its gold (S4's pairing, recomputed here on the "
         "same queries). What C did per type is re-derived with the committed canonicaliser and checked equal to "
         "the stored set. Types are read for analysis only; C never sees them."])
-    lines += ["| arm | base | type | n scored | concepts | changed by C | conversions | declined | item δ_C "
-              "| CI (concept) | identity-paired δ | CI (concept) |", "|---|---|---|---:|---:|---:|---:|---:|---:|---|---:|---|"]
+    lines += ["| arm | base | type | n | n scored | concepts | changed by C (of n) | conversions | declined | item δ_C "
+              "| CI (concept) | identity-paired δ | CI (concept) |", "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---|"]
     for arm in TESTED:
         for base in ("single_texto", "single_l2_texto"):
             f = variant(F.T[(arm, base, "canon")], "tf")
@@ -517,7 +517,7 @@ def write_canon(F: Frames, actions: dict[str, pd.DataFrame]) -> None:
                 h["ref_item"] = s["gold"].map(ref_of_gold).astype(float)
                 ip = delta_cell(h, "item", f"T4i|{arm}|{base}|{typ}")
                 a = act.loc[g.index]
-                lines.append(f"| `{arm}` | `{base}` | `{typ}` | {c['n']:,} | {c['concepts']} | {int(a['changed'].sum()):,} | "
+                lines.append(f"| `{arm}` | `{base}` | `{typ}` | {c['n_all']:,} | {c['n']:,} | {c['concepts']} | {int(a['changed'].sum()):,} | "
                              f"{int(a['converted'].sum()):,} | {int(a['declined'].sum()):,} | {fd(c['est'])} | "
                              f"{fci(c['c'], True)} | {fd(ip['est'])} | {fci(ip['c'], True)} |")
     write(OUT / "canon_types.md", lines + footer())
