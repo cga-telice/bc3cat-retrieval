@@ -404,6 +404,15 @@ def ncell(c: dict) -> str:
     return f"{c['n_all']:,} | {c['n']:,} | {c['excluded']:,} | {c['concepts']}"
 
 
+def regeneration_rate() -> str:
+    """A1's rate, read from work item 1 (c)'s logs (audit F6)."""
+    parts = []
+    for t in ("hyde", "rewrite"):
+        d = json.loads((REPO / "logs" / "S9" / f"determinism_{t}.json").read_text(encoding="utf-8"))
+        parts.append(f"{d['identical']} of {d['n']} ({T_LABEL[t]})")
+    return "LLM sets regenerate identically for " + " and ".join(parts) + " queries (A1)"
+
+
 def write_profile(F: Frames, fl: dict[str, float]) -> None:
     lines = header("T1: profile — every arm, base and transform against its untransformed reference", [
         "Paired on the same queries (A5 b). Tie-free primary; as-run δ beside. Item level excludes D-033 golds, "
@@ -411,8 +420,7 @@ def write_profile(F: Frames, fl: dict[str, float]) -> None:
         "never tested. Collisions: queries whose transformed text equals another gold's (counted, not excluded). "
         "Fallbacks (A3): LLM queries whose response did not parse and that kept their text, counted over the set "
         "(— for C, which generates nothing). ‡ fewer than "
-        f"{FEW_CLUSTERS} concepts. LLM sets regenerate identically for 98 (H) and 99 (W) of 100 queries (A1); "
-        "every figure here reads the cached generation."])
+        f"{FEW_CLUSTERS} concepts. {regeneration_rate()}; every figure here reads the cached generation."])
     floor_line = ", ".join(f"`{a}` {f4(fl[a])}" for a in BASE7)
     lines += [f"Identity item Acc@1 on `texto_u`, tie-free, per arm (floor below {FLOOR}): {floor_line}.", ""]
     lines += ["| arm | base | transform | n | n scored | n excluded | concepts | item ref | item mod | item δ "
@@ -444,8 +452,8 @@ def write_bins(F: Frames) -> None:
         f"Bins on the untransformed query's lexical coverage of its gold (S3's definition), over the non-identity "
         f"bases pooled: {edges}. B5 is `texto_u`, the identity rendering. Tie-free. ‡ fewer than "
         f"{FEW_CLUSTERS} concepts: printed, not read. † oracle arm. A cell that is also a registered test (Y1 in B4, "
-        "Y2 in B1) or a T1 row (B5) prints that statistic's own draw. LLM figures read the cached generation, "
-        "which regenerates identically for 98 (H) and 99 (W) of 100 queries (A1)."])
+        f"Y2 in B1) or a T1 row (B5) prints that statistic's own draw. {regeneration_rate()}; LLM figures read the "
+        "cached generation."])
     lines += ["| arm | transform | bin | n | n scored | n excluded | concepts | item δ | CI (concept) | CI (query) | |",
               "|---|---|---|---:|---:|---:|---:|---:|---|---|---|"]
     for arm in BASE7:
