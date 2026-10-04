@@ -564,14 +564,29 @@ def write_ladder(F: Frames) -> None:
     write(OUT / "ladder.md", lines + footer())
 
 
-def cache_seconds() -> dict[str, float]:
-    """Median generation seconds per query key in the extraction cache (one line per prompt)."""
-    secs: dict[str, list[float]] = {}
+def extraction_seconds(base: str) -> list[float]:
+    """Generation seconds of K0's extraction for every query of `base`. The extractor caches every prompt under the
+    query key `"extract"`, so a query's line is found by its cache key: the prompt is rebuilt from K0's Stage-1
+    concept and the run's query text, keyed as `OllamaClient.key` keys it. A prompt absent from the cache stops
+    the generator: every K0 run read one."""
+    import gzip
+    from pipeline.prompts import build_extraction_prompt
+    from utils.s11_stages import OfflineClient
+    by_key = {}
     for line in LLM_CACHE.read_text(encoding="utf-8").splitlines():
         if line:
             r = json.loads(line)
-            secs.setdefault(str(r.get("query_key")), []).append(float(r.get("seconds", 0.0)))
-    return {k: float(np.median(v)) for k, v in secs.items()}
+            by_key[r["cache_key"]] = float(r.get("seconds", float("nan")))
+    client, schema, parents = OfflineClient(), STAGES.schema, corpus_parents()
+    out = []
+    with gzip.open(RUNS / base / S11_ARMS["K0"] / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
+        for r in map(json.loads, fh):
+            g = schema[parents[r["candidates"][0]["index_item_key"]]]
+            k = client.key(build_extraction_prompt(g["concept"], g["axes"], r["query_text"]))
+            if k not in by_key:
+                raise KeyError(f"{base}/{r['query_item_key']}: its extraction prompt is not in the cache")
+            out.append(by_key[k])
+    return out
 
 
 def write_cost(F: Frames) -> None:
@@ -588,13 +603,12 @@ def write_cost(F: Frames) -> None:
                 continue
             meta = run_meta(run_qs(base, m), m)
             lines.append(f"| `{base}` | {name(arm)} | {meta['queries']:,} | {meta['elapsed_s'] / meta['queries']:.4f} |")
-    secs = cache_seconds()
     lines += ["", "| base | extractions found | phi4 seconds / query, median | ColBERT family build s | queries scored | "
               "s / query |", "|---|---:|---:|---:|---:|---:|"]
     for base in BASES:
-        keys = [k for k in F.Q[base].index if k in secs]
+        secs = extraction_seconds(base)
         cm = json.loads((INDEX / "_colbert_family" / f"{base}.meta.json").read_text(encoding="utf-8"))
-        lines.append(f"| `{base}` | {len(keys):,} | {(np.median([secs[k] for k in keys]) if keys else float('nan')):.2f} | "
+        lines.append(f"| `{base}` | {len(secs):,} | {np.median(secs):.2f} | "
                      f"{cm['seconds']:,.0f} | {cm['queries']:,} | {cm['seconds'] / cm['queries']:.3f} |")
     write(OUT / "cost.md", lines + footer())
 
