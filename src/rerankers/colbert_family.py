@@ -137,7 +137,9 @@ def score_in_run_blocks(searcher, families: dict[str, np.ndarray], texts: list[s
     """Per query, None or {concept: (doc_ids, scores)}, for the concepts listed in `concepts[i]` (empty: skip).
 
     `texts` must be the reference run's full query list in run order: it is encoded in `search_batch`'s blocks.
-    Within a block, queries are scored grouped by concept so each family is put on the GPU once per block."""
+    Encoding comes first, block by block, keeping the scored queries' matrices; then each family is put on the GPU
+    once and scored against every query that lists it (a family per block cost about 7 minutes a block on `texto_u`).
+    Neither changes a score: encoding blocks are the run's, and a family's padded blocks are the same whoever asks."""
     from retrievers import bge_m3_colbert as cb
     if len(texts) != len(concepts):
         raise ValueError("texts and concepts differ in length")
@@ -145,32 +147,39 @@ def score_in_run_blocks(searcher, families: dict[str, np.ndarray], texts: list[s
     if use_gpu is None:
         use_gpu = cb._HAS_TORCH and cb.torch.cuda.is_available()
     want_c = [tuple(sorted(set(c or ()))) for c in concepts]
-    out: list = [None] * len(texts)
+    # Pass 1: encode in the run's blocks, keeping only the matrices of queries that are scored.
+    mats: dict[int, np.ndarray] = {}
     for s in range(0, len(texts), block):
         want = [i for i in range(s, min(s + block, len(texts))) if want_c[i]]
         if not want:
             continue
-        mats = searcher._encode_queries(texts[s : s + block])
-        if len(mats) != min(block, len(texts) - s):
+        enc = searcher._encode_queries(texts[s : s + block])
+        if len(enc) != min(block, len(texts) - s):
             raise ValueError("the encoder dropped texts (empty queries?); block alignment is lost")
-        for c in sorted({c for i in want for c in want_c[i]}):
-            if c not in families:
-                raise KeyError(f"{c}: no leaves of this concept in the ColBERT index")
-            fam = families[c]
-            onfam = [i for i in want if c in want_c[i]]
-            if use_gpu:
-                g = _FamilyOnGPU(searcher, fam)
-                for i in onfam:
-                    out[i] = out[i] or {}
-                    out[i][c] = (fam, g.score(searcher, mats[i - s]))
-                del g
-                cb.torch.cuda.empty_cache()
-            else:
-                for i in onfam:
-                    out[i] = out[i] or {}
-                    out[i][c] = (fam, np.asarray(searcher._maxsim_cpu_one(mats[i - s], fam), dtype=np.float32))
+        for i in want:
+            mats[i] = enc[i - s]
         if log:
-            log(f"scored queries {s}..{min(s + block, len(texts)) - 1}")
+            log(f"encoded queries {s}..{min(s + block, len(texts)) - 1}")
+    # Pass 2: one family at a time, put on the GPU once and scored against every query that needs it.
+    out: list = [None] * len(texts)
+    for c in sorted({c for cs in want_c for c in cs}):
+        if c not in families:
+            raise KeyError(f"{c}: no leaves of this concept in the ColBERT index")
+        fam = families[c]
+        onfam = [i for i in mats if c in want_c[i]]
+        if use_gpu:
+            g = _FamilyOnGPU(searcher, fam)
+            for i in onfam:
+                out[i] = out[i] or {}
+                out[i][c] = (fam, g.score(searcher, mats[i]))
+            del g
+            cb.torch.cuda.empty_cache()
+        else:
+            for i in onfam:
+                out[i] = out[i] or {}
+                out[i][c] = (fam, np.asarray(searcher._maxsim_cpu_one(mats[i], fam), dtype=np.float32))
+        if log:
+            log(f"scored concept {c}: {len(onfam)} queries, {len(fam)} leaves")
     return out
 
 
