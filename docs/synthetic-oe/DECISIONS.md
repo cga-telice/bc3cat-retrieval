@@ -1539,3 +1539,24 @@ rendering and carries none of the L1–L3 variation the study measures.
 **Consequence.** S10 is `blocked` on the delivery and opens when it lands and its digests are recorded. S11 is
 independent of it (D-046 kept S10's priority, not an ordering).
 
+### D-059 — Track E's method on dev is K2; S12 registers K2 and R2 for admission
+**Status:** Proposed · **Date:** 2026-10-04 · **Owner:** César · **Raised in:** S11 report
+**Context.** S11's design rule reads the method contribution *established on dev*: K2 (E5 concept, `phi4` values
+with tolerant keys, soft match, within-family ColBERT order) beats ColBERT on stacked and pooled L1 and on the
+blind E3 ladder (`results/S11/predictions.md`). The gain is the order (A2), not the tolerance (A3). R2, without an
+LLM, is the best arm on one edit and fails under stacking (descriptive). K2 costs accuracy on verbatim queries (A6)
+and about a second of `phi4` per query (T6).
+**Proposal.** K2 is the paper's Track E method, stated on dev and in-sample for the tolerant-key rule. S12
+registers, before it opens, whether K2 and R2 are admitted, with their cost beside them; their test family caches
+are built from the test ColBERT runs' own batches with S11's exact check, and `phi4` extraction is generated for
+test with its regeneration rate recorded. K0 / S9-A7 figures are quoted tie-free only.
+
+### D-060 — ColBERT scores depend on the request batch: an H-class defect
+**Status:** Proposed · **Date:** 2026-10-04 · **Owner:** César · **Raised in:** S11 report (A2)
+**Context.** The BGE-M3 server's ColBERT query vectors depend on which texts share the request; the same query
+encoded in another batch moves MaxSim (S11 A2). A partial document block also takes a different fp16 kernel (S11
+work item 1b). Earlier ColBERT runs are each internally consistent, but their near-ties are batch-dependent.
+**Proposal.** Record it in `DATASET_DEFECTS.md` as H-class (harness). Any later comparison of ColBERT scores across
+runs either encodes in the same batches (as S11's caches do, checked exactly) or states that it does not. No
+earlier figure is re-read.
+
