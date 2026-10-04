@@ -132,7 +132,7 @@ Extractor regeneration (work item 2): 100 of 100 identical, 0 unparsed, 0 trunca
 | `single_l2_texto` | 518 | 518 |
 | `stacked_texto` | 2,521 | 2,521 |
 
-Generator commit `1c9e38d`, `src/` clean.
+Generator commit `f60210c`, `src/` clean.
 
 Bootstrap: B = 10,000, seed = 20260917, percentile intervals at level 95%; concept-clustered (D-030) unless marked otherwise; on the E3 ladder, concept-stratified leaf bootstrap (D-053). Split `dev`.
 
