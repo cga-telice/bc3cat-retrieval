@@ -19,6 +19,7 @@ The analysis stack is pinned (`analysis_stack.py`): the script refuses to run on
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 
@@ -275,11 +276,22 @@ def acc_cell(Q: pd.DataFrame, base: str, arm: str, level: str, v: str) -> dict:
             "acc": float(s["hit"].mean()) if len(s) else float("nan")}
 
 
+_LADDERS: dict = {}
+
+
 def ladder_cell(frame: pd.DataFrame, label: str) -> dict:
     """D-053 on the E3 ladder: per leaf, Σ δ over its scored queries and their count; concept-stratified leaf
-    bootstrap (the reading) and concept-clustered (beside); per-concept estimates for the sign rule."""
+    bootstrap (the reading) and concept-clustered (beside); per-concept estimates for the sign rule.
+    One bootstrap draw per statistic, as in `delta_cell`: T5 reuses T2's draws for A7's rung (S11 audit F5)."""
     f = scored(frame, "item")
     d = (f["mod_item"] - f["ref_item"]).to_numpy(float)
+    key = (tuple(f.index), tuple(f["gold"]), tuple(f["concept"]), d.tobytes())
+    if key not in _LADDERS:
+        _LADDERS[key] = _ladder_draws(f, d, label)
+    return {"n_all": len(frame), "excluded": len(frame) - len(f), **_LADDERS[key]}
+
+
+def _ladder_draws(f: pd.DataFrame, d: np.ndarray, label: str) -> dict:
     g = pd.DataFrame({"gold": f["gold"].to_numpy(), "concept": f["concept"].to_numpy(), "d": d})
     leaf = g.groupby("gold", sort=True).agg(num=("d", "sum"), den=("d", "size"), concept=("concept", "first"))
     num, den, conc = leaf["num"].to_numpy(float), leaf["den"].to_numpy(float), leaf["concept"].to_numpy()
@@ -288,8 +300,7 @@ def ladder_cell(frame: pd.DataFrame, label: str) -> dict:
         c = (cluster_leaf_weights(conc, label) @ num) / (cluster_leaf_weights(conc, label) @ den)
     s, c = s[np.isfinite(s)], c[np.isfinite(c)]
     per = {k: float(num[conc == k].sum() / den[conc == k].sum()) for k in sorted(set(conc))}
-    return {"n_all": len(frame), "n": len(f), "excluded": len(frame) - len(f), "concepts": len(per),
-            "leaves": len(leaf), "est": float(num.sum() / den.sum()), "ref": float(f["ref_item"].mean()),
+    return {"n": len(f), "concepts": len(per), "leaves": len(leaf), "est": float(num.sum() / den.sum()), "ref": float(f["ref_item"].mean()),
             "mod": float(f["mod_item"].mean()), "c": ci(s), "q": ci(c), "draws": s, "per": per}
 
 
@@ -550,8 +561,9 @@ def write_ladder(F: Frames) -> None:
         f"(a supported reading needs {SIGN_MIN}). No LLM arm had seen these queries (design). Rows are scoped to "
         "these concepts."])
     arms = list(S11_ARMS) + ["bge_m3_colbert", "dense_e5", "bm25_unigram", "rules_valuenorm"]
-    lines += ["| set | rung | n scored | leaves | " + " | ".join(name(a) for a in arms) + " | K2 − ColBERT | CI (D-053) | "
-              "concepts with δ > 0 |", "|---|---:|---:|---:|" + "---:|" * len(arms) + "---:|---|---:|"]
+    lines += ["| set | rung | n scored | n excluded | concepts | leaves | " + " | ".join(name(a) for a in arms)
+              + " | K2 − ColBERT | CI (D-053) | concepts with δ > 0 |",
+              "|---|---:|---:|---:|---:|---:|" + "---:|" * len(arms) + "---:|---|---:|"]
     for base in E3_BASES:
         Q = F.Q[base]
         for k in sorted(Q["rung"].unique()):
@@ -559,7 +571,7 @@ def write_ladder(F: Frames) -> None:
             accs = [acc_cell(sub, base, a, "item", "tf") for a in arms]
             c = ladder_cell(variant(pair(sub, base, "K2", "bge_m3_colbert"), "tf"), f"T5|{base}|{k}")
             pos = sum(1 for v in c["per"].values() if v > 0)
-            lines.append(f"| `{base}` | {k} | {c['n']:,} | {c['leaves']} | " + " | ".join(f4(a["acc"]) for a in accs)
+            lines.append(f"| `{base}` | {k} | {c['n']:,} | {c['excluded']:,} | {c['concepts']} | {c['leaves']} | " + " | ".join(f4(a["acc"]) for a in accs)
                          + f" | {fd(c['est'])} | {fci(c['c'], True)} | {pos} of {len(c['per'])} |")
     write(OUT / "ladder.md", lines + footer())
 
@@ -670,6 +682,22 @@ def k0_comparison() -> list[str]:
     return out
 
 
+def prompt_source() -> list[str]:
+    """The extraction prompt has no template file: `build_extraction_prompt` in `src/pipeline/prompts.py` is the
+    prompt. Its SHA-256 at each run commit stands in for the prompt SHA that no `run_meta.json` carries (S11 audit F1)."""
+    path = "src/pipeline/prompts.py"
+    commits = sorted({run_meta(qs, m)["code_commit"] for qs, m, _ in _HITS if m in S11_ARMS.values()})
+    shas = {}
+    for c in commits:
+        blob = subprocess.run(["git", "show", f"{c}:{path}"], cwd=REPO, capture_output=True, check=True).stdout
+        shas[c[:7]] = hashlib.sha256(blob).hexdigest()
+    if len(set(shas.values())) != 1:
+        raise ValueError(f"{path} differs across the S11 run commits: {shas}")
+    return ["", f"Extraction prompt (`{path}`, `build_extraction_prompt`): SHA-256 `{next(iter(shas.values()))[:16]}` "
+            f"at every S11 run commit ({', '.join(f'`{c}`' for c in shas)}). Recorded here, not in the runs' "
+            "`run_meta.json`, which carry neither the prompt SHA nor the model digest."]
+
+
 def write_provenance() -> None:
     lines = header("T9: provenance", [
         "Every run these tables read, with its stamp; then the data files, the ColBERT family caches and their "
@@ -701,6 +729,7 @@ def write_provenance() -> None:
     lines += ["", f"Extractor regeneration (work item 2): {det['identical']} of {det['n']} identical, "
               f"{len(det['unparsed'])} unparsed, {det['truncated']} truncated; model `{det['model_digest'][:16]}`, ollama "
               f"{det['ollama_version']}, options `{json.dumps(det['options'], sort_keys=True)}`."]
+    lines += prompt_source()
     lines += k0_comparison()
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "status", "--porcelain", "src"], cwd=REPO, capture_output=True, text=True).stdout.strip()
