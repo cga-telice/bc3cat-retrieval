@@ -16,6 +16,11 @@ model digest, ollama version, prompt SHA-256, the sample's keys and every mismat
 pipeline passes it. The prompt needs a concept; this test uses the query's gold concept, since it measures
 only whether generation repeats, and no extraction is scored. A response "parses" if the source's own
 parser returns an object.
+
+`--s11` (S11 work item 2) runs the same `extract` check on the two E3 dev sets the S11 arms are the first LLM
+to see, 50 queries from each with the same seed, and writes `logs/S11/determinism_extract.json`.
+
+    python src/query_rewrite/determinism.py extract --s11
 """
 
 from __future__ import annotations
@@ -41,14 +46,19 @@ SEED = 20261002
 PER_BASE = 20
 
 
-def sample() -> list[dict]:
+#: S11 work item 2: the E3 dev sets and how many queries each contributes to the 100.
+S11_BASES = ("dose_texto", "isolated_texto")
+S11_PER_BASE = 50
+
+
+def sample(bases=S9_BASES, per_base: int = PER_BASE) -> list[dict]:
     dev = load_split("dev")
     rng = random.Random(SEED)
     out = []
-    for base in S9_BASES:
+    for base in bases:
         records = json.loads((REPO / "data" / "processed" / f"OE_{base}.json").read_text(encoding="utf-8"))
         out += [{"base": base, "key": r["item_key"], "text": r["text"], "parent_key": r["parent_key"]}
-                for r in rng.sample([r for r in records if r["parent_key"] in dev], PER_BASE)]
+                for r in rng.sample([r for r in records if r["parent_key"] in dev], per_base)]
     return out
 
 
@@ -101,9 +111,11 @@ def run(transform: str, queries: list[dict]) -> dict:
     }
 
 
-def main(transforms: list[str]) -> None:
-    queries = sample()
-    out_dir = REPO / "logs" / "S9"
+def main(transforms: list[str], s11: bool = False) -> None:
+    if s11 and transforms != ["extract"]:
+        raise SystemExit("--s11 checks the extractor only")
+    queries = sample(S11_BASES, S11_PER_BASE) if s11 else sample()
+    out_dir = REPO / "logs" / ("S11" if s11 else "S9")
     out_dir.mkdir(parents=True, exist_ok=True)
     for transform in transforms:
         result = run(transform, queries)
@@ -113,4 +125,5 @@ def main(transforms: list[str]) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or ["hyde", "rewrite"])
+    args = [a for a in sys.argv[1:] if a != "--s11"]
+    main(args or ["hyde", "rewrite"], s11="--s11" in sys.argv[1:])
