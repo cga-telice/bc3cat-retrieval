@@ -3,13 +3,13 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-04 (**S11 report written**, audit pending; S10 blocked on upstream) · **Updated by:** Claude
+**Last updated:** 2026-10-04 (**S11 audited, findings resolved**, `done` awaits César; S10 blocked on upstream) · **Updated by:** Claude
 
 ---
 
 ## Where we are
 
-**S11 report written** (2026-10-04; Track E, two-stage; [design](sprints/SPRINT_S11_DESIGN.md) frozen at `931ee0c`, [amendments](sprints/SPRINT_S11_AMENDMENTS.md) A1–A6, [report](sprints/SPRINT_S11_REPORT.md), [results](results/S11)). 35 runs clean; all 7 exit criteria met. K2 (E5 concept → `phi4` values → ColBERT order inside the family) beats ColBERT on stacked and on the blind E3 ladder; the method contribution reads **established on dev**. The gain is the order, not soft matching; R2 (no LLM) wins on one edit and breaks under stacking. ColBERT scores proved batch-dependent (A2, D-060). **Next: `/audit S11` in a fresh session; D-059 and D-060 await César.**
+**S11 audited, findings resolved** (2026-10-04; Track E, two-stage; [design](sprints/SPRINT_S11_DESIGN.md) frozen at `931ee0c`, [amendments](sprints/SPRINT_S11_AMENDMENTS.md) A1–A6, [report](sprints/SPRINT_S11_REPORT.md), [audit](sprints/SPRINT_S11_AUDIT.md), [results](results/S11)). Audit **PASS WITH FINDINGS**, 3 major and 7 minor, resolved in the report (`results/S11/` at `8e60502`). 35 runs clean; 6 of 7 exit criteria met, EC3 not (no run stamps model digest or prompt SHA). K2 (E5 concept → `phi4` values → ColBERT order inside the family) beats ColBERT on stacked and on the blind E3 ladder; the method contribution reads **established on dev**. Soft matching adds nothing detectable; ordering by ColBERT adds to K0, but most of the gain is reading values and filtering on them; R2 (no LLM) wins on one edit and breaks under stacking. ColBERT scores proved batch-dependent (A2; unlogged, so D-060 waits for a logged re-measurement). **Next: César decides D-059, D-060 and whether EC3 is accepted as not met; then S11 → `done`.**
 
 **S10 is blocked** (2026-10-04) on a training set from `bc3cat-dataset` ([request](requests/S10_TRAINING_SET.md), issued). The delivered query sets share rewrite menus across the dev/test split (73 of 89 test `synonym_label` pairs occur on dev), so training on them would teach the model test rewrites. D-058 (César): `dense_e5` + ColBERT, contrastive with sibling negatives, trained on the menu-disjoint delivery mixed with decoded `resumen`, scored on dev by concept k-fold cross-fitting; RL out (D-015 closed). S10 opens when the delivery lands with its digests.
 
