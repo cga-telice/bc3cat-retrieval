@@ -129,7 +129,12 @@ class StructuredPipelineSearcher:
     TEXT_FIELD = "text_norm"
 
     def bind_queries(self, queries_df: pd.DataFrame) -> None:
-        """Receive the scored query rows, in scoring order. A no-op unless Stage 2 is oracle."""
+        """Receive the scored query rows, in scoring order. Oracle Stage 2 keeps the records; the ColBERT family
+        order (S11) selects the one family-score file that holds every bound query text. Otherwise a no-op."""
+        if self._family_scores is not None:
+            if self.TEXT_FIELD not in queries_df.columns:
+                raise KeyError(f"the ColBERT family order needs column {self.TEXT_FIELD!r} in the query table")
+            print(f"  ColBERT family scores: {self._family_scores.select(queries_df[self.TEXT_FIELD].astype(str))}")
         if not self._needs_record:
             return
         for col in (self.TEXT_FIELD, "parameters_norm"):

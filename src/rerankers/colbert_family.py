@@ -44,33 +44,51 @@ class FamilyScoreStore:
 
     Each file holds, per scored query: the SHA-256 of its text, its concept, and its family's scores in
     `doc_id` order (`offsets` delimit them). The family itself is not stored: it is the index's, and `require`
-    checks the stored length against it."""
+    checks the stored length against it.
+
+    **One base per run.** The same text can be a query of two bases (S8: dose rung-1 and isolated queries share
+    texts), and each base's file encodes it in its own reference run's batches, so the two scores differ (A2).
+    `select` therefore picks, for a run's bound query texts, the single file that holds every one of them, and
+    `require` reads only that file. None, or more than one, is refused."""
 
     def __init__(self, directory: Path, families: dict[str, np.ndarray]):
         self.dir = Path(directory)
         self._fam = families
-        self._d: dict[tuple[str, str], np.ndarray] = {}
         self.files = sorted(self.dir.glob("*.npz"))
+        self._by_file: dict[str, dict[tuple[str, str], np.ndarray]] = {}
         for f in self.files:
-            z = np.load(f, allow_pickle=False)
-            for i, (h, c) in enumerate(zip(z["text_sha"], z["concept"])):
-                sc = z["scores"][z["offsets"][i] : z["offsets"][i + 1]]
-                key = (str(h), str(c))
-                if key in self._d and not np.array_equal(self._d[key], sc):
-                    raise ValueError(f"{f.name}: a different score for a query already stored (concept {c})")
-                self._d[key] = sc
+            # Each `z[name]` access decompresses the whole array again: read every array once.
+            with np.load(f, allow_pickle=False) as z:
+                shas, cons, offs, allsc = z["text_sha"], z["concept"], z["offsets"], z["scores"]
+            d = {}
+            for i, (h, c) in enumerate(zip(shas, cons)):
+                d[(str(h), str(c))] = allsc[offs[i] : offs[i + 1]]
+            self._by_file[f.stem] = d
+        self._shas = {name: {h for h, _ in d} for name, d in self._by_file.items()}
+        self.selected: str | None = None
+
+    def select(self, texts) -> str:
+        want = {text_sha(str(t)) for t in texts}
+        cover = [name for name, shas in self._shas.items() if want <= shas]
+        if len(cover) != 1:
+            raise ValueError(f"the bound queries are covered by {len(cover)} ColBERT family files ({cover}); "
+                             "exactly one is required")
+        self.selected = cover[0]
+        return self.selected
 
     def require(self, text: str, concept: str):
-        sc = self._d.get((text_sha(text), concept))
+        if self.selected is None:
+            raise RuntimeError("no ColBERT family file selected: bind the run's queries first")
+        sc = self._by_file[self.selected].get((text_sha(text), concept))
         if sc is None:
-            raise KeyError(f"no ColBERT family score for concept {concept} and this query; build the cache first")
+            raise KeyError(f"{self.selected}: no ColBERT family score for concept {concept} and this query")
         fam = self._fam[concept]
         if len(fam) != len(sc):
             raise ValueError(f"{concept}: stored scores do not match the index's family size")
         return fam, sc
 
     def __len__(self) -> int:
-        return len(self._d)
+        return sum(len(d) for d in self._by_file.values())
 
 
 def write_store(path: Path, texts: list[str], scored) -> int:

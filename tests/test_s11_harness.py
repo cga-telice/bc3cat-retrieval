@@ -138,12 +138,36 @@ def test_store_round_trip_and_fail_loud(tmp_path):
     out = cf.score_in_run_blocks(s, fams, texts, [("A$", "B$"), ("B$",)], use_gpu=False)
     assert cf.write_store(tmp_path / "x.npz", texts, out) == 3
     store = cf.FamilyScoreStore(tmp_path, fams)
+    with pytest.raises(RuntimeError):
+        store.require("q11", "B$")                                   # nothing selected yet
+    assert store.select(["q0", "q11"]) == "x"
     fam, sc = store.require("q11", "B$")
     assert fam.tolist() == [3, 4, 5] and sc.tolist() == out[1]["B$"][1].tolist()
     with pytest.raises(KeyError):
         store.require("q11", "A$")
+    bad = cf.FamilyScoreStore(tmp_path, {"A$": np.array([0, 1]), "B$": fams["B$"]})
+    bad.select(["q0"])
     with pytest.raises(ValueError):
-        cf.FamilyScoreStore(tmp_path, {"A$": np.array([0, 1]), "B$": fams["B$"]}).require("q0", "A$")
+        bad.require("q0", "A$")
+
+
+def test_store_reads_only_the_file_that_holds_every_bound_query(tmp_path):
+    s, fams = fake()
+    # the same text in two bases, encoded in different blocks, so its scores differ (A2)
+    a = cf.score_in_run_blocks(s, fams, ["q0", "shared"], [("A$",), ("A$",)], use_gpu=False)
+    b = cf.score_in_run_blocks(s, fams, ["shared", "q9", "q99"], [("A$",), ("A$",), ("A$",)], use_gpu=False)
+    cf.write_store(tmp_path / "base_a.npz", ["q0", "shared"], a)
+    cf.write_store(tmp_path / "base_b.npz", ["shared", "q9", "q99"], b)
+    store = cf.FamilyScoreStore(tmp_path, fams)
+    assert store.select(["q0", "shared"]) == "base_a"
+    assert store.require("shared", "A$")[1].tolist() == a[1]["A$"][1].tolist()
+    assert store.select(["shared", "q9"]) == "base_b"
+    assert store.require("shared", "A$")[1].tolist() == b[0]["A$"][1].tolist()
+    assert a[1]["A$"][1].tolist() != b[0]["A$"][1].tolist()
+    with pytest.raises(ValueError):
+        store.select(["shared"])                                     # held by both: ambiguous
+    with pytest.raises(ValueError):
+        store.select(["q0", "q9"])                                   # held by neither
 
 
 def test_verify_counts_every_family_leaf_in_the_run_top100():

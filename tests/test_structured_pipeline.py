@@ -467,6 +467,9 @@ class FakeFamilyScores:
     def __init__(self, scores: dict[tuple[str, str], list[float]]):
         self._s = scores
 
+    def select(self, texts):
+        return "fake"
+
     def require(self, text, concept):
         if (text, concept) not in self._s:
             raise KeyError(concept)
@@ -537,6 +540,13 @@ def test_colbert_order_fails_loud_without_a_score(catalogue):
     s = _s11(catalogue, None, soft=False, colbert={})
     with pytest.raises(KeyError):
         s.search(Q, k=4)
+
+
+def test_bind_queries_selects_the_family_file(catalogue):
+    s = _s11(catalogue, None, soft=False, colbert=CB)
+    s.bind_queries(pd.DataFrame({"text_norm": [Q]}))
+    with pytest.raises(KeyError):
+        s.bind_queries(pd.DataFrame({"text": [Q]}))
 
 
 def test_exact_colbert_ties_stay_ties(catalogue):
