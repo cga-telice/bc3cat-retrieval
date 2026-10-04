@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Design** | [`SPRINT_S11_DESIGN.md`](SPRINT_S11_DESIGN.md) · frozen at `931ee0c`; [amendments](SPRINT_S11_AMENDMENTS.md) A1–A6 |
-| **Closed** | 2026-10-04 (report written; `done` withheld until `/audit S11` in a fresh session) · audited: [PASS WITH FINDINGS](SPRINT_S11_AUDIT.md), resolved below |
+| **Closed** | 2026-10-04 (report written; `done` withheld until `/audit S11` in a fresh session) · audited: [PASS WITH FINDINGS](SPRINT_S11_AUDIT.md), resolved below · **done** 2026-10-04 (D-059 accepted, D-060 on condition, EC3 accepted as not met by César) |
 | **Code commit** | K0 runs at `4fe109d` (7); K1, K2, R2, F1 runs at `1c9e38d` (28); `results/S11/` generated at `8e60502` (audit F1, F5, F9; `f60210c` at A6, `1c9e38d` before it) |
 | **Query-set digests** | `OE_texto_u` `bb7f5471`, `OE_resumen_u` `1e08fe58`, `OE_single_texto` `e5b79ae4`, `OE_single_l2_texto` `9612ad99`, `OE_stacked_texto` `f34c1798`, `OE_dose_texto` `ef8c6295`, `OE_isolated_texto` `701dd1da` (feature-table digests as stamped; data files in T9); ColBERT's `texto` / `resumen` references read `OE_long_norm` `75477221` / `OE_short_norm` `28d09f40`, the same query IDs (checked by the audit; F10) |
 | **Runs** | `runs/OE/{base}/structured_pipeline_{llm_keytol_hard, llm_keytol_hard_colbert, llm_keytol_soft_colbert, rules_canon_soft_colbert, colbert_in_concept}__OE`, seven bases (35) |
@@ -151,9 +151,9 @@ per query on `single_texto` and `stacked_texto`. Scoped as finding 1.
 
 ## Decisions raised
 
-- **D-059 (proposed)**: K2 is Track E's method on dev; S12 registers K2 and R2 for admission, with their cost.
+- **D-059 (accepted, context corrected per audit F3)**: K2 is Track E's method on dev; S12 registers K2 and R2 for admission, with their cost.
   K0 / A7 figures are quoted tie-free only.
-- **D-060 (proposed, after a logged re-measurement)**: ColBERT batch dependence (A2) is recorded as an H-class defect in `DATASET_DEFECTS.md`;
+- **D-060 (accepted on condition of a logged re-measurement)**: ColBERT batch dependence (A2) is recorded as an H-class defect in `DATASET_DEFECTS.md`;
   any later comparison of ColBERT scores across runs must encode in the same batches or say it does not.
 
 ## Audit resolution
@@ -162,7 +162,7 @@ per query on `single_texto` and `stacked_texto`. Scoped as finding 1.
 
 | Finding | Resolution |
 |---|---|
-| F1 EC3 marked met, no model digest or prompt SHA in the runs | **Accepted as not met.** Runs are not re-made for it, and `runs/` is never hand-edited. T9 now records the prompt source's SHA-256 at every run commit (`8e60502`) beside the model digest. S12 stamps both |
+| F1 EC3 marked met, no model digest or prompt SHA in the runs | **Accepted as not met** (César, 2026-10-04). Runs are not re-made for it, and `runs/` is never hand-edited. T9 now records the prompt source's SHA-256 at every run commit (`8e60502`) beside the model digest. S12 stamps both |
 | F2 EC6 scope and `bm25_unigram` cost missing | Fixed: scope in finding 1, `bm25_unigram` cost in finding 9 |
 | F3 finding 2 contradicted by T1 | Fixed: finding 2, the hypotheses row, known-wrong 5 and the S10 line restated; the reading's share marked descriptive |
 | F4 test tally | Fixed: 9 supported, 2 not supported |
