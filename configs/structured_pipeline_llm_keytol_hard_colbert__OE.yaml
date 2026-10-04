@@ -1,0 +1,37 @@
+# S11 K1 (design frozen at 931ee0c): K0 (structured_pipeline_llm_keytol_valuenorm__OE) with the match set and the
+# rest of the family ordered by within-family ColBERT score instead of catalogue order. Isolates the order (A2).
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_llm_keytol_hard_colbert__OE
+  impl: structured_pipeline_llm
+  save_as: structured_pipeline_llm_keytol_hard_colbert__OE
+  params:
+    stage2_method: llm
+    llm_model: "phi4:latest"
+    llm_prompt_mode: extract
+    llm_key_match: tolerant
+    oracle: false
+    stage1_index: dense_e5__OE
+    stage3_value_match: normalized
+    stage3_match: hard
+    family_order: colbert
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.structured_pipeline_llm
+  entrypoint: load

@@ -237,8 +237,10 @@ def test_load_fails_loud_when_stage1_lists_other_documents(tmp_path):
 @pytest.mark.parametrize(
     "params",
     [{**RULES, "stage2_method": "gpt"}, {**RULES, "oracle": True}, {"stage2_method": "rules"},
-     {**RULES, "stage3_value_match": "fuzzy"}],
-    ids=["unknown-stage2", "oracle", "no-stage1", "unknown-value-match"],
+     {**RULES, "stage3_value_match": "fuzzy"}, {**RULES, "stage3_match": "fuzzy"},
+     {**RULES, "family_order": "bm25"}, {**RULES, "stage2_method": "llm", "stage2_canon": True}],
+    ids=["unknown-stage2", "oracle", "no-stage1", "unknown-value-match", "unknown-stage3-match",
+         "unknown-family-order", "canon-not-rules"],
 )
 def test_builder_refuses_what_is_not_ported(params):
     with pytest.raises(ValueError):
@@ -455,3 +457,89 @@ def test_oracle_on_20_dev_l1_queries_abstains_on_exactly_one_axis():
         misread = [a for a, v in got.items() if v is not None and v != gold[a]]
         assert len(abstained) == 1 and not misread, f"{row.item_key}: {abstained} {misread}"
         assert row.gold_item_key in catalog.lookup(row.parent_key, got)
+
+
+# ── S11 work item 1c-1d: soft match and the within-family ColBERT order ─────
+
+class FakeFamilyScores:
+    """FamilyScoreStore stand-in: ColBERT doc ids equal E5 doc ids here."""
+
+    def __init__(self, scores: dict[tuple[str, str], list[float]]):
+        self._s = scores
+
+    def require(self, text, concept):
+        if (text, concept) not in self._s:
+            raise KeyError(concept)
+        fam = np.array([i for i, k in enumerate(DOCS) if k.startswith(concept[:-1])])
+        return fam, np.asarray(self._s[(text, concept)], dtype=np.float32)
+
+
+class FixedExtractor:
+    def __init__(self, out):
+        self.out = out
+
+    def extract(self, parent_key, query):
+        return dict(self.out)
+
+
+def _s11(catalogue, extracted, *, soft, colbert=None):
+    schema_path, long_norm = catalogue
+    return sp.StructuredPipelineSearcher(
+        e5_searcher=FakeE5(QUERIES),
+        param_extractor=None if extracted is None else FixedExtractor(extracted),
+        catalog_lookup=CatalogLookup(schema_path, long_norm),
+        item_to_parent={k: ("AAA010$" if k.startswith("AAA010") else "AAA020$") for k in DOCS},
+        schema=SCHEMA,
+        stage3_match="soft" if soft else "hard",
+        family_scores=None if colbert is None else FakeFamilyScores(colbert),
+        colbert_to_docid=np.arange(len(DOCS)),
+    )
+
+
+Q = "tubo de 40 mm en trabajo nocturno"                      # Stage 1 → AAA010$
+CB = {(Q, "AAA010$"): [5.0, 7.0, 6.0, 4.0]}                 # aa ab ba bb
+
+
+def test_hard_match_ordered_by_colbert_keeps_the_match_set_first(catalogue):
+    s = _s11(catalogue, {"DIAMETRO": "40 mm", "TRABAJO": None}, soft=False, colbert=CB)
+    idx, sc = s.search(Q, k=6)
+    assert [DOCS[i] for i in idx[:4]] == ["AAA010ba", "AAA010bb", "AAA010ab", "AAA010aa"]
+    assert sc[0] == pytest.approx(2 * sp.StructuredPipelineSearcher.TIER_SPAN + 6.0)
+    assert all(x < sc[3] for x in sc[4:])                      # E5 fill below the family
+
+
+def test_soft_match_demotes_a_misread_leaf_instead_of_dropping_it(catalogue):
+    # the gold (bb: 40 mm, Nocturno) with TRABAJO misread as Diurno: hard keeps only ba; soft keeps
+    # every leaf agreeing on one axis above the one agreeing on none
+    s = _s11(catalogue, {"DIAMETRO": "40 mm", "TRABAJO": "Diurno"}, soft=True, colbert=CB)
+    keys = [DOCS[i] for i in s.search(Q, k=6)[0][:4]]
+    assert keys[0] == "AAA010ba"                               # agrees on 2
+    assert keys[1:3] == ["AAA010aa", "AAA010bb"]               # agree on 1, by ColBERT: aa 5 > bb 4
+    assert keys[3] == "AAA010ab"                               # agrees on none
+
+
+def test_soft_match_agreement_tiers_contain_the_hard_match_set(catalogue):
+    schema_path, long_norm = catalogue
+    cl = CatalogLookup(schema_path, long_norm)
+    for ex in ({"DIAMETRO": "40 mm", "TRABAJO": "Nocturno"}, {"DIAMETRO": "20 mm", "TRABAJO": None},
+               {"DIAMETRO": "99 mm", "TRABAJO": "Diurno"}, {}):
+        agree = cl.agreement("AAA010$", ex)
+        top = max(agree.values())
+        assert sorted(k for k, v in agree.items() if v == top) == cl.lookup("AAA010$", ex)
+
+
+def test_no_extraction_orders_the_whole_family_by_colbert(catalogue):
+    s = _s11(catalogue, None, soft=False, colbert=CB)
+    assert [DOCS[i] for i in s.search(Q, k=4)[0]] == ["AAA010ab", "AAA010ba", "AAA010aa", "AAA010bb"]
+
+
+def test_colbert_order_fails_loud_without_a_score(catalogue):
+    s = _s11(catalogue, None, soft=False, colbert={})
+    with pytest.raises(KeyError):
+        s.search(Q, k=4)
+
+
+def test_exact_colbert_ties_stay_ties(catalogue):
+    s = _s11(catalogue, None, soft=True, colbert={(Q, "AAA010$"): [5.0, 5.0, 3.0, 3.0]})
+    sc = s.search(Q, k=4)[1]
+    assert sc[0] == sc[1] and sc[2] == sc[3] and sc[1] > sc[2]

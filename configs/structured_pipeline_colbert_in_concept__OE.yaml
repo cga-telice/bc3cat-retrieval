@@ -1,0 +1,34 @@
+# S11 F1 (design frozen at 931ee0c): no extraction; Stage 1's concept, its whole family ordered by within-family
+# ColBERT score. The constraint alone, without reading values (A5).
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_colbert_in_concept__OE
+  impl: structured_pipeline_rules
+  save_as: structured_pipeline_colbert_in_concept__OE
+  params:
+    stage2_method: none
+    oracle: false
+    stage1_index: dense_e5__OE
+    stage3_value_match: normalized
+    stage3_match: hard
+    family_order: colbert
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.structured_pipeline_rules
+  entrypoint: load

@@ -92,6 +92,18 @@ class CatalogLookup:
         if parent_key not in self._index:
             return []
 
+        filters = self._filters(parent_key, extracted_params)
+
+        results = []
+        for item in self._index[parent_key]:
+            if all(item["params"].get(l) == v for l, v in filters.items()):
+                results.append(item["item_key"])
+        return sorted(results)
+
+    def _filters(self, parent_key: str, extracted_params: dict) -> dict:
+        """{normalised axis: normalised value} for every extracted axis whose value is in the schema.
+
+        An unknown axis or an unknown value is treated as None, as `lookup` always has."""
         filters = {}
         valid = self._valid_values.get(parent_key, {})
         for label, value in extracted_params.items():
@@ -112,11 +124,17 @@ class CatalogLookup:
                 continue
             filters[nl] = nv
 
-        results = []
-        for item in self._index[parent_key]:
-            if all(item["params"].get(l) == v for l, v in filters.items()):
-                results.append(item["item_key"])
-        return sorted(results)
+        return filters
+
+    def agreement(self, parent_key: str, extracted_params: dict) -> dict[str, int]:
+        """S11 soft match (work item 1c): per leaf of the family, how many of the usable extracted axes it agrees
+        with. Abstained, unknown-axis and unknown-value extractions count for no leaf, exactly as `lookup` ignores
+        them, so the leaves whose count equals `len(self._filters(...))` are `lookup`'s match set."""
+        if parent_key not in self._index:
+            return {}
+        filters = self._filters(parent_key, extracted_params)
+        return {item["item_key"]: sum(item["params"].get(l) == v for l, v in filters.items())
+                for item in self._index[parent_key]}
 
     def get_schema(self, parent_key: str) -> dict | None:
         """Return the schema for a concept group (axes, values), or None."""

@@ -1,0 +1,35 @@
+# S11 R2, the no-LLM route (design frozen at 931ee0c): rules_valuenorm's extractor reading the query after S9's
+# canonicaliser C, soft matching, within-family ColBERT order. Stage 1 and ColBERT read the query as given (A4).
+collection: OE
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats: "{data_dir}/{collection}_long_feats.parquet"
+
+method:
+  family: structured
+  name: structured_pipeline_rules_canon_soft_colbert__OE
+  impl: structured_pipeline_rules
+  save_as: structured_pipeline_rules_canon_soft_colbert__OE
+  params:
+    stage2_method: rules
+    stage2_canon: true
+    oracle: false
+    stage1_index: dense_e5__OE
+    stage3_value_match: normalized
+    stage3_match: soft
+    family_order: colbert
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json
+
+retriever:
+  module: src.retrievers.structured_pipeline_rules
+  entrypoint: load

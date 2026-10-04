@@ -16,9 +16,11 @@ chunks. `build_colbert_family_cache.py` does that and nothing else.
 in `DTYPE`, `einsum("qd,bld->bql")`, max over document tokens, sum over query tokens, then `float()`. Documents
 are padded to `TD_CAP` by the searcher's `_stack_docs`. What changes is only that a family's blocks are built
 once and kept on the GPU while all its queries are scored, instead of re-read from the memory map per query
-(9.7 s per query on a 6,336-leaf family). Per-document results do not depend on which documents share a block:
-the prototype scored families in `doc_id` order against runs that scored FAISS-candidate order and matched
-exactly. `verify_against_run` holds every score to the run's.
+(9.7 s per query on a 6,336-leaf family). **Every block is padded to `DOC_BLOCK` documents** with zero documents
+(dropped from the result): the run scored full blocks (preselect 256 = two blocks of 128), and a partial block
+takes a different fp16 kernel, which moved 8 of 43,446 compared `single_l2_texto` scores by one fp16 step
+(0.125 at about 140). Padded, all 35,747 compared scores of that base matched; which documents share a full
+block does not matter. `verify_against_run` holds every score to the run's.
 
 Scores are stored per reference base (`FamilyScoreStore`, keyed by query text and concept). The two-stage arms read
 them and **fail on a miss**: they never encode a query themselves, so they cannot score it under a different batch.
@@ -102,9 +104,13 @@ class _FamilyOnGPU:
         from retrievers import bge_m3_colbert as cb
         self.doc_ids = doc_ids
         self.blocks = []
+        self.sizes = []
         for s in range(0, len(doc_ids), cb.DOC_BLOCK):
             docs = [searcher._doc_tokens(int(i)) for i in doc_ids[s : s + cb.DOC_BLOCK]]
             Dnp, _ = cb._stack_docs(docs, cb.TD_CAP)
+            if len(docs) < cb.DOC_BLOCK:
+                Dnp = np.concatenate([Dnp, np.zeros((cb.DOC_BLOCK - len(docs),) + Dnp.shape[1:], dtype=Dnp.dtype)])
+            self.sizes.append(len(docs))
             Dt = cb.torch.from_numpy(Dnp)
             Dt = Dt.to(device="cuda", dtype=cb.DTYPE) if cb.DTYPE is not None else Dt.to(device="cuda")
             if not searcher._already_norm:
@@ -119,9 +125,9 @@ class _FamilyOnGPU:
         if not searcher._already_norm:
             Qt = cb.F.normalize(Qt, p=2, dim=-1)
         out = []
-        for Dt in self.blocks:
+        for Dt, n in zip(self.blocks, self.sizes):
             S = cb.torch.einsum("qd,bld->bql", Qt, Dt)
-            out.append(S.amax(dim=2).sum(dim=1).float().detach().cpu().numpy())
+            out.append(S.amax(dim=2).sum(dim=1).float().detach().cpu().numpy()[:n])
             del S
         return np.concatenate(out, axis=0) if out else np.zeros((0,), dtype=np.float32)
 

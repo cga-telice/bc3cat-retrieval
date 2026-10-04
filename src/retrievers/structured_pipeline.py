@@ -37,6 +37,15 @@ Ported from `research/structured-retrieval@85c3359` (D-026). Changes against the
   contract does not carry, so `retrieve.ipynb` calls `bind_queries(queries_df)` on any searcher
   that has it, and `search_batch` refuses texts that are not the bound ones, in order. `search()`
   is refused in this mode: a lone text has no record. Stage 1 and Stage 3 are the rules arm's.
+- **S11 (work item 1c-1d), all off by default, so every earlier arm ranks exactly as before.**
+  `stage2_method: none` extracts nothing (F1: the family alone). `stage2_canon: true` passes the query
+  through S9's canonicaliser C before the rules extractor (R2); Stage 1 and the ColBERT order still read
+  the query as given. `stage3_match: soft` replaces the hard filter by `CatalogLookup.agreement`: the family
+  is tiered by the number of usable extracted axes each leaf agrees with, highest first, so a misread axis
+  demotes the gold instead of removing it. `family_order: colbert` orders leaves inside each tier by their
+  within-family ColBERT score from `index/{collection}/_colbert_family/` (`rerankers.colbert_family`),
+  failing on a query it has no score for; the catalogue order stays the default. Under `colbert` the score
+  is `TIER_SPAN * (tiers - tier) + colbert`, so exact ColBERT ties stay ties for the tie-free reading.
 """
 
 from __future__ import annotations
@@ -54,6 +63,7 @@ from pipeline.param_extractor_rules import RuleBasedParamExtractor
 from pipeline.param_extractor import LLMParamExtractor
 from query_rewrite.llm import Cache, OllamaClient
 from utils.run_context import data_paths
+from rerankers.colbert_family import FamilyScoreStore, families_from_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +84,10 @@ class StructuredPipelineSearcher:
         catalog_lookup: CatalogLookup,
         item_to_parent: dict[str, str],
         schema: dict,
+        stage3_match: str = "hard",
+        family_scores: "FamilyScoreStore | None" = None,
+        colbert_to_docid: np.ndarray | None = None,
+        canon=None,
     ):
         """
         Args:
@@ -88,6 +102,12 @@ class StructuredPipelineSearcher:
         self._catalog = catalog_lookup
         self._item_to_parent = item_to_parent
         self._schema = schema
+        if stage3_match not in ("hard", "soft"):
+            raise ValueError(f"stage3_match={stage3_match!r}: 'hard' or 'soft'")
+        self._stage3_match = stage3_match
+        self._family_scores = family_scores
+        self._colbert_to_docid = colbert_to_docid
+        self._canon = canon
 
         # Inherit external_ids from E5 (same document space)
         self.external_ids = self._e5.external_ids
@@ -99,7 +119,7 @@ class StructuredPipelineSearcher:
         }
 
         # Oracle extraction reads the query record, bound before the batch (S5).
-        self._needs_record = isinstance(param_extractor, OracleParamsExtractor)
+        self._needs_record = param_extractor is not None and isinstance(param_extractor, OracleParamsExtractor)
         self._bound_texts: list[str] | None = None
         self._bound_records: list[dict] | None = None
 
@@ -177,16 +197,74 @@ class StructuredPipelineSearcher:
             return e5_idx[:k], e5_scores[:k]
 
         # --- Stage 2: Extract parameters (oracle: from the record, not the text) ---
-        if self._needs_record:
+        if self._extractor is None:
+            params = {}
+        elif self._needs_record:
             params = self._extractor.extract(parent_key, record)
         else:
-            params = self._extractor.extract(parent_key, query)
+            text = self._canon.apply(query)[0] if self._canon is not None else query
+            params = self._extractor.extract(parent_key, text)
+
+        # --- S11: soft match and / or within-family ColBERT order ---
+        if self._stage3_match == "soft" or self._family_scores is not None:
+            return self._build_ranking_s11(query, params, parent_key, e5_idx, e5_scores, k)
 
         # --- Stage 3: Catalog lookup ---
         matched_keys = self._catalog.lookup(parent_key, params)
 
         # --- Build three-tier ranking ---
         return self._build_ranking(matched_keys, parent_key, e5_idx, e5_scores, k)
+
+    #: S11: the score gap between tiers under `family_order: colbert`; MaxSim over at most 256 unit-norm
+    #: query tokens never exceeds 256, so a tier never overlaps the next.
+    TIER_SPAN = 1000.0
+
+    def _build_ranking_s11(self, query, params, parent_key, e5_idx, e5_scores, k):
+        """S11 ranking: family tiers (hard: matched, rest; soft: agreement count, descending), each ordered by
+        within-family ColBERT score (catalogue order without one), then the E5 fill below the family."""
+        group_keys = list(self._schema[parent_key].get("item_keys", []))
+        if self._stage3_match == "soft":
+            agree = self._catalog.agreement(parent_key, params)
+            tier_of = {key: -agree.get(key, 0) for key in group_keys}
+        else:
+            matched = set(self._catalog.lookup(parent_key, params))
+            tier_of = {key: (0 if key in matched else 1) for key in group_keys}
+        levels = sorted(set(tier_of.values()))
+        rank_of_level = {lv: r for r, lv in enumerate(levels)}
+
+        colbert = {}
+        if self._family_scores is not None:
+            fam, sc = self._family_scores.require(query, parent_key)
+            for d, v in zip(fam, sc):
+                colbert[int(self._colbert_to_docid[int(d)])] = float(v)
+
+        rows = []
+        for pos, key in enumerate(group_keys):
+            did = self._key_to_docid.get(key)
+            if did is None:
+                continue
+            t = rank_of_level[tier_of[key]]
+            if self._family_scores is not None:
+                if did not in colbert:
+                    raise KeyError(f"{parent_key}: no ColBERT score for leaf {key}")
+                score = self.TIER_SPAN * (len(levels) - t) + colbert[did]
+            else:
+                score = 1.0 * (len(levels) - t) - pos * 1e-6
+            rows.append((-score, pos, did, score))
+        rows.sort()
+        ranked = [(did, score) for _, _, did, score in rows]
+
+        placed = {did for did, _ in ranked}
+        floor = min((sc for _, sc in ranked), default=1.0)
+        fill = [(int(i), float(v)) for i, v in zip(e5_idx, e5_scores) if int(i) not in placed]
+        max_e5 = max((v for _, v in fill), default=1.0)
+        for did, v in fill:
+            ranked.append((did, (v / max_e5 if max_e5 > 0 else 0.0) * 0.49 * min(floor, 1.0)))
+
+        ranked = ranked[:k]
+        ids = [d for d, _ in ranked] + [0] * (k - len(ranked))
+        scores = [v for _, v in ranked] + [0.0] * (k - len(ranked))
+        return np.array(ids, dtype=np.int64), np.array(scores, dtype=np.float32)
 
     # ── Ranking builder ──────────────────────────────────────────────────────
 
@@ -253,7 +331,11 @@ class StructuredPipelineSearcher:
 
 # ── Factory ──────────────────────────────────────────────────────────────────
 
-STAGE2_METHODS = ("rules", "oracle_params", "llm")
+STAGE2_METHODS = ("rules", "oracle_params", "llm", "none")
+
+#: S11: the within-family ColBERT score stores, under index/{collection}/, and the ColBERT index they address.
+COLBERT_FAMILY_DIR = "_colbert_family"
+COLBERT_INDEX = "bge_m3_colbert__OE"
 
 #: S9 work item 4: the LLM extractor's model and prompt mode are fixed by the design, and its
 #: generations are cached here, append-only, shared by every run of the arm (`query_rewrite.llm`).
@@ -336,7 +418,9 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     print(f"  item_to_parent: {len(item_to_parent)} entries")
 
     # Stage 2: rule-based extractor, or the oracle bound
-    if stage2 == "rules":
+    if stage2 == "none":
+        extractor = None
+    elif stage2 == "rules":
         extractor = RuleBasedParamExtractor(paths.concept_schema)
     elif stage2 == "llm":
         model, mode = params.get("llm_model"), params.get("llm_prompt_mode")
@@ -355,12 +439,38 @@ def load(index_dir: str | Path, device_override: str | None = None) -> Structure
     catalog = CatalogLookup(paths.concept_schema, paths.long_norm, value_match=value_match)
     print(f"  Stage 3: catalog lookup ready (value_match={value_match})")
 
+    # S11 options (work item 1c-1d); absent keys keep every earlier arm unchanged.
+    stage3_match = params.get("stage3_match", "hard")
+    family_order = params.get("family_order", "catalogue")
+    if family_order not in ("catalogue", "colbert"):
+        raise ValueError(f"{variant}: family_order={family_order!r}")
+    canon = None
+    if params.get("stage2_canon"):
+        if stage2 != "rules":
+            raise ValueError(f"{variant}: stage2_canon applies to the rules extractor only (R2)")
+        from query_rewrite.canon import from_corpus
+        canon = from_corpus()
+        print("  Stage 2: canonicaliser C before extraction")
+    store = colbert_to_docid = None
+    if family_order == "colbert":
+        cdir = index_dir.parent / COLBERT_INDEX
+        cids = _read_mapping_ids(cdir / "mapping.jsonl")
+        key_to_docid = {str(x): i for i, x in enumerate(e5_ids)}
+        colbert_to_docid = np.asarray([key_to_docid[x] for x in cids], dtype=np.int64)
+        store = FamilyScoreStore(index_dir.parent / COLBERT_FAMILY_DIR, families_from_mapping(cids, item_to_parent))
+        print(f"  Family order: ColBERT, {len(store)} query-concept scores from {len(store.files)} files")
+    print(f"  Stage 3 match: {stage3_match}")
+
     searcher = StructuredPipelineSearcher(
         e5_searcher=e5,
         param_extractor=extractor,
         catalog_lookup=catalog,
         item_to_parent=item_to_parent,
         schema=schema,
+        stage3_match=stage3_match,
+        family_scores=store,
+        colbert_to_docid=colbert_to_docid,
+        canon=canon,
     )
     print(f"  Ready. {len(searcher.external_ids)} documents in index space.")
     return searcher
