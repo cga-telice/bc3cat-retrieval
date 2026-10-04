@@ -33,6 +33,7 @@ GENERATORS = [
     "src/utils/build_results_s7.py",
     "src/utils/build_results_s8.py",
     "src/utils/build_results_s9.py",
+    "src/utils/build_results_s11.py",
 ]
 
 #: Tables of cited figures whose source is named beside them.
