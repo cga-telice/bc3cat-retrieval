@@ -313,6 +313,31 @@ permission over `index/` (D-019), so removing it is César's call.
 document count while writing a required artefact somewhere nothing will read it. `num_docs` is not an
 integrity check.
 
+## H8 — ColBERT query vectors depend on which texts share the encoding request · **measured** (S11 A2; logged 2026-10-04; D-060)
+
+The BGE-M3 server returns a slightly different ColBERT vector for the same query text depending on the other
+texts in the request. The same request repeated gives identical vectors, so the server is deterministic; it is the
+batch composition that moves them.
+**Measured** by `src/utils/measure_colbert_batch_dependence.py` at `6cacf0a`, on 20 seeded `stacked_texto` dev
+queries, each re-scored against its 100 stored candidates in `runs/OE/stacked_texto/bge_m3_colbert__OE`
+(`logs/S11/colbert_batch_dependence.json`, SHA-256 `0181d1f6c66d4650`; `logs/` is not in git):
+
+| query encoded | scores moved (of 2000) | largest score move | rank 1 changed | top 10 changed | largest vector-component move |
+|---|---:|---:|---:|---:|---:|
+| in its own run batch (as the run did) | 0 | 0 | 0 | 0 | 0 |
+| in its own run batch, again | 0 | 0 | 0 | 0 | 0 |
+| alone | 442 | 0.125 | 0 of 20 | 3 of 20 | 0.0351 |
+| with the other 19 sampled queries | 533 | 0.1875 | 1 of 20 | 3 of 20 | 0.0399 |
+
+Score moves are in fp16 steps (0.0625 at scores near 100). **They are smaller than S11 A2 stated** (up to 0.13 per
+component and 0.3125 in score, 535 of 1,710 scores moved; never logged). The logged figures replace them.
+**Consequence.** Every ColBERT run is internally consistent, but its near-ties depend on how its queries were
+batched: re-encoding the same queries in other batches changed rank 1 for 1 query in 20 and the top 10 for 3 in 20
+here. Any comparison of ColBERT scores across runs encodes in the same batches (as S11's family caches do, checked
+exactly) or states that it does not. No earlier figure is re-read.
+
+---
+
 ## C1 — Identity is a control, not a quality bar · **recorded 2026-09-17**
 
 S2 gated on identity ≈0.98 for BM25 and ColBERT. Two things were conflated:

@@ -1556,8 +1556,8 @@ ColBERT comes from reading values and filtering on them (descriptive, T1). The p
 also stamp model digest and prompt SHA in `run_meta.json` (S11 audit F1).
 
 ### D-060 — ColBERT scores depend on the request batch: an H-class defect
-**Status:** **Accepted on condition** (César, 2026-10-04): recorded in `DATASET_DEFECTS.md` only after a logged
-re-measurement reproduces it · **Date:** 2026-10-04 · **Owner:** César · **Raised in:** S11 report (A2)
+**Status:** **Accepted** (César, 2026-10-04; condition met the same day: the logged re-measurement reproduces
+it, recorded as `DATASET_DEFECTS.md` H8) · **Date:** 2026-10-04 · **Owner:** César · **Raised in:** S11 report (A2)
 **Context.** The BGE-M3 server's ColBERT query vectors depend on which texts share the request; the same query
 encoded in another batch moves MaxSim (S11 A2). A partial document block also takes a different fp16 kernel (S11
 work item 1b). Earlier ColBERT runs are each internally consistent, but their near-ties are batch-dependent.
@@ -1567,4 +1567,8 @@ earlier figure is re-read.
 **Condition (S11 audit, unverifiable item).** S11 A2's measurement (20 queries on `stacked_texto`) was never
 logged. It is repeated with its output saved under `logs/` before the defect is recorded; until then the
 batching rule above applies as a precaution, and no claim cites the defect as measured.
+**Condition met (2026-10-04).** `measure_colbert_batch_dependence.py` at `6cacf0a`, 20 seeded `stacked_texto`
+queries: encoded in their own run batch, all 2,000 stored scores reproduce, twice; encoded alone, 442 move (up to
+0.125) and the top 10 changes for 3 queries; encoded with the other sampled queries, 533 move (up to 0.1875) and
+rank 1 changes for 1. Smaller than A2 stated; the logged figures replace A2's (H8).
 

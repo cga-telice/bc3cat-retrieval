@@ -7,7 +7,8 @@ two-stage arms need one for every sibling to order a family.
 
 **Query encodings are taken in the reference run's own blocks.** The BGE-M3 server's ColBERT vectors depend on
 which other texts share the request: the same query encoded alone and inside its run's block differed by up to
-0.13 per component, and the resulting MaxSim by up to 0.31 (S11 work item 1b, measured on `stacked_texto`). So a
+0.035 per component, and the resulting MaxSim by up to 0.125 (`DATASET_DEFECTS.md` H8, logged by
+`measure_colbert_batch_dependence.py`; S11 A2's unlogged figures were larger). So a
 family score equals the ColBERT run's own score only if the query is encoded exactly as that run encoded it: the
 run's full query list, in run order, in `search_batch`'s blocks (`DEFAULT_BATCH_SIZE`) and the remote client's
 chunks. `build_colbert_family_cache.py` does that and nothing else.
