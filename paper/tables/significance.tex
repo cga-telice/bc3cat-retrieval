@@ -8,13 +8,13 @@
 \toprule
 \textbf{System A} & \textbf{System B} & \textbf{Acc@1 A} & \textbf{Acc@1 B} & \textbf{$\Delta$ (pp)} & \textbf{95\% CI} & \textbf{$p_{\text{Holm}}$} \\
 \midrule
-BM25 + parameter phrases & TF-IDF char 3--5 & 0.974 & 0.558 & +41.5 & [+40.8, +42.3] & $<$0.0001$^{***}$ \\
-BM25 + parameter phrases & TF-IDF unigram & 0.974 & 0.627 & +34.7 & [+34.0, +35.4] & $<$0.0001$^{***}$ \\
-BM25 + parameter phrases & TF-IDF no stopwords & 0.974 & 0.642 & +33.2 & [+32.5, +33.9] & $<$0.0001$^{***}$ \\
-BM25 + parameter phrases & TF-IDF phrases (add) & 0.974 & 0.650 & +32.4 & [+31.7, +33.1] & $<$0.0001$^{***}$ \\
+BM25 with parameter tokens & TF-IDF char 3--5 & 0.974 & 0.558 & +41.5 & [+40.8, +42.3] & $<$0.0001$^{***}$ \\
+BM25 with parameter tokens & TF-IDF unigram & 0.974 & 0.627 & +34.7 & [+34.0, +35.4] & $<$0.0001$^{***}$ \\
+BM25 with parameter tokens & TF-IDF no stopwords & 0.974 & 0.642 & +33.2 & [+32.5, +33.9] & $<$0.0001$^{***}$ \\
+BM25 with parameter tokens & TF-IDF phrases (add) & 0.974 & 0.650 & +32.4 & [+31.7, +33.1] & $<$0.0001$^{***}$ \\
 BM25 unigram & TF-IDF char 3--5 & 0.869 & 0.558 & +31.1 & [+30.3, +31.9] & $<$0.0001$^{***}$ \\
 BM25 uni+bigram & TF-IDF char 3--5 & 0.827 & 0.558 & +26.8 & [+26.1, +27.6] & $<$0.0001$^{***}$ \\
-BM25 + parameter phrases & TF-IDF phrases (replace) & 0.974 & 0.708 & +26.5 & [+25.8, +27.2] & $<$0.0001$^{***}$ \\
+BM25 with parameter tokens & TF-IDF phrases (replace) & 0.974 & 0.708 & +26.5 & [+25.8, +27.2] & $<$0.0001$^{***}$ \\
 BM25 unigram & TF-IDF unigram & 0.869 & 0.627 & +24.3 & [+23.5, +25.0] & $<$0.0001$^{***}$ \\
 BM25 unigram & TF-IDF no stopwords & 0.869 & 0.642 & +22.7 & [+22.0, +23.5] & $<$0.0001$^{***}$ \\
 BM25 unigram & TF-IDF phrases (add) & 0.869 & 0.650 & +21.9 & [+21.1, +22.7] & $<$0.0001$^{***}$ \\
@@ -23,9 +23,9 @@ BM25 uni+bigram & TF-IDF no stopwords & 0.827 & 0.642 & +18.5 & [+17.9, +19.2] &
 BM25 uni+bigram & TF-IDF phrases (add) & 0.827 & 0.650 & +17.7 & [+17.0, +18.4] & $<$0.0001$^{***}$ \\
 BM25 unigram & TF-IDF phrases (replace) & 0.869 & 0.708 & +16.1 & [+15.3, +16.9] & $<$0.0001$^{***}$ \\
 TF-IDF phrases (replace) & TF-IDF char 3--5 & 0.708 & 0.558 & +15.0 & [+14.3, +15.7] & $<$0.0001$^{***}$ \\
-BM25 + parameter phrases & BM25 uni+bigram & 0.974 & 0.827 & +14.7 & [+14.1, +15.3] & $<$0.0001$^{***}$ \\
+BM25 with parameter tokens & BM25 uni+bigram & 0.974 & 0.827 & +14.7 & [+14.1, +15.3] & $<$0.0001$^{***}$ \\
 BM25 uni+bigram & TF-IDF phrases (replace) & 0.827 & 0.708 & +11.8 & [+11.2, +12.5] & $<$0.0001$^{***}$ \\
-BM25 + parameter phrases & BM25 unigram & 0.974 & 0.869 & +10.5 & [+10.0, +11.0] & $<$0.0001$^{***}$ \\
+BM25 with parameter tokens & BM25 unigram & 0.974 & 0.869 & +10.5 & [+10.0, +11.0] & $<$0.0001$^{***}$ \\
 TF-IDF phrases (add) & TF-IDF char 3--5 & 0.650 & 0.558 & +9.2 & [+8.5, +9.8] & $<$0.0001$^{***}$ \\
 TF-IDF no stopwords & TF-IDF char 3--5 & 0.642 & 0.558 & +8.3 & [+7.7, +9.0] & $<$0.0001$^{***}$ \\
 TF-IDF phrases (replace) & TF-IDF unigram & 0.708 & 0.627 & +8.2 & [+7.6, +8.7] & $<$0.0001$^{***}$ \\

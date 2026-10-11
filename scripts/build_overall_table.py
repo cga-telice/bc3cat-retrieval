@@ -23,9 +23,9 @@ HYB = RUNS / "hybrids"
 
 # (etiqueta, ruta del run, tipo de fuente, clave opcional)
 SISTEMAS = [
-    ("BM25 + parameter phrases ($k_1{=}0.60$, $b{=}0.35$)", RUNS / "bm25_unigram_params__k1-0.60__b-0.35", "dual", None),
-    ("RM3 over BM25 + parameter phrases ($M{=}5$, $N{=}20$, $\\lambda{=}0.7$)", RUNS / "prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7", "parent", None),
-    ("Rocchio over BM25 + parameter phrases ($M{=}10$, $N{=}20$, $\\beta{=}0.7$)", RUNS / "prf_rocchio__bm25_unigram_params__k1-0.60__b-0.35__M10__N20__beta0_7", "parent", None),
+    ("BM25 with parameter tokens ($k_1{=}0.60$, $b{=}0.35$)", RUNS / "bm25_unigram_params__k1-0.60__b-0.35", "dual", None),
+    ("RM3 over BM25 with parameter tokens ($M{=}5$, $N{=}20$, $\\lambda{=}0.7$)", RUNS / "prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7", "parent", None),
+    ("Rocchio over BM25 with parameter tokens ($M{=}10$, $N{=}20$, $\\beta{=}0.7$)", RUNS / "prf_rocchio__bm25_unigram_params__k1-0.60__b-0.35__M10__N20__beta0_7", "parent", None),
     ("Hybrid: BM25 + ColBERT + TF-IDF char", HYB / "hyb_bm25_uni__bge_colbert__tfidf_char_3_5", "parent", None),
     ("Hybrid: BM25 + BGE-dense + TF-IDF char", HYB / "hyb_bm25_uni__bge_dense__tfidf_char_3_5", "parent", None),
     ("Hybrid: BM25 + BGE-sparse + TF-IDF char", HYB / "hyb_bm25_uni__bge_sparse__tfidf_char_3_5", "parent", None),

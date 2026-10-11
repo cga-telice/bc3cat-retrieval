@@ -37,7 +37,7 @@ RUNS = Path("runs")
 CANONICAL_SAMPLE = Path("benchmark/query_samples/OEB_query_sample_test_16590.json")
 
 LABELS = {
-    "bm25_unigram_params__k1-0.60__b-0.35": "BM25 + parameter phrases",
+    "bm25_unigram_params__k1-0.60__b-0.35": "BM25 with parameter tokens",
     "bm25_unigram__k1-0.80__b-0.35": "BM25 unigram",
     "bm25_unibigram__k1-0.80__b-0.35": "BM25 uni+bigram",
     "tfidf_unigram_phrases_replace": "TF-IDF phrases (replace)",

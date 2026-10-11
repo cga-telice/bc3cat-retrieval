@@ -142,7 +142,7 @@ def render_tex(summary: dict, extra: dict, n: int) -> str:
         r"\begin{tabular}{lcccc}",
         r"\toprule",
         r"\textbf{Query representation} & \textbf{Acc@1} & \textbf{Recall@5}"
-        r" & \textbf{MRR@10} & \textbf{Parent Acc@1} \\",
+        r" & \textbf{MRR} & \textbf{Parent Acc@1} \\",
         r"\midrule",
     ]
     for key, label in ROWS:

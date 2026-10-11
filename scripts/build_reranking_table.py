@@ -86,7 +86,7 @@ def main() -> int:
         r"\begin{tabular}{lcccc}",
         r"\toprule",
         r"\textbf{System / strategy} & \textbf{Acc@1} & \textbf{Recall@5} & "
-        r"\textbf{Recall@10} & \textbf{MRR@10} \\",
+        r"\textbf{Recall@10} & \textbf{MRR} \\",
     ]
 
     faltan = []

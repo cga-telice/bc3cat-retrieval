@@ -34,7 +34,7 @@ VAL = RUNS / "val"
 FAMILIES = {
     "bm25_unigram": "BM25 unigram",
     "bm25_unibigram": "BM25 uni+bigram",
-    "bm25_unigram_params": "BM25 + parameter phrases",
+    "bm25_unigram_params": "BM25 with parameter tokens",
 }
 
 GRID = re.compile(r"^(?P<family>.+?)__k1-(?P<k1>[\d.]+)__b-(?P<b>[\d.]+)$")

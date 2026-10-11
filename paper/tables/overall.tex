@@ -7,9 +7,9 @@
 \toprule
 \textbf{Configuration} & \textbf{Acc@1} & \textbf{MRR} \\
 \midrule
-BM25 + parameter phrases ($k_1{=}0.60$, $b{=}0.35$) & 0.974 & 0.979 \\
-RM3 over BM25 + parameter phrases ($M{=}5$, $N{=}20$, $\lambda{=}0.7$) & 0.973 & 0.978 \\
-Rocchio over BM25 + parameter phrases ($M{=}10$, $N{=}20$, $\beta{=}0.7$) & 0.967 & 0.975 \\
+BM25 with parameter tokens ($k_1{=}0.60$, $b{=}0.35$) & 0.974 & 0.979 \\
+RM3 over BM25 with parameter tokens ($M{=}5$, $N{=}20$, $\lambda{=}0.7$) & 0.973 & 0.978 \\
+Rocchio over BM25 with parameter tokens ($M{=}10$, $N{=}20$, $\beta{=}0.7$) & 0.967 & 0.975 \\
 Rule-based structured pipeline & 0.903 & 0.917 \\
 Hybrid: BM25 + ColBERT + TF-IDF char & 0.893 & 0.910 \\
 Hybrid: BM25 + BGE-dense + TF-IDF char & 0.892 & 0.909 \\

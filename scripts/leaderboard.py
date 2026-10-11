@@ -61,7 +61,8 @@ LABELS = {
 
 PRESETS = {
     # La disociacion item/padre: el hallazgo que encabeza la version revisada.
-    # Ordenado por Acc@1 de item, para que la brecha crezca de forma monotona.
+    # Ordenado por Acc@1 de item, y la brecha crece de forma casi monotona: BGE-M3
+    # dense (item 0,127; brecha 83,4) rompe la monotonia frente a e5 (0,136; 84,5).
     "dissociation": [
         "bm25_unigram_params__k1-0.60__b-0.35",
         "bm25_unigram__k1-0.80__b-0.35",
@@ -102,6 +103,19 @@ PRESETS = {
         "structured_pipeline_classifier",
         "structured_pipeline_bio_tagger",
     ],
+}
+
+
+# Pie y etiqueta por defecto de cada preset que va al manuscrito, para que la
+# tabla se regenere sin tener que recordar los argumentos de la linea de comandos.
+PRESET_CAPTIONS = {
+    "dissociation": (
+        r"Item-level versus parent-level accuracy on the canonical test set"
+        r" ($n=16{,}590$). The gap is the difference in percentage points. Systems are"
+        r" ordered by item-level accuracy; the gap grows almost monotonically as"
+        r" item-level accuracy falls.",
+        "tab:dissociation",
+    ),
 }
 
 
@@ -194,6 +208,12 @@ def main() -> int:
         help="no verificar que los runs comparten la muestra canonica",
     )
     args = parser.parse_args()
+
+    if args.preset in PRESET_CAPTIONS:
+        caption, label = PRESET_CAPTIONS[args.preset]
+        args.caption = args.caption or caption
+        if args.label == "tab:generated":
+            args.label = label
 
     runs = list(args.runs or []) + (PRESETS[args.preset] if args.preset else [])
     if not runs:
