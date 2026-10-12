@@ -1,0 +1,34 @@
+# Exported 2026-10-12 from the notebook that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: prf
+  name: prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_5
+  impl: prf_rm3
+  params:
+    base_method: bm25_unigram_params__k1-0.60__b-0.35
+    variant: rm3
+    M: 5
+    N: 20
+    beta: 0.5
+    first_pass_k: 100
+    second_pass_k: 100
+    term_scoring: expansion terms scored by p(w|R) over the top-M documents with collection-frequency
+      (Dirichlet-like, mu=2000) smoothing
+    tokenizer: (?u)\b\w+\b, lowercased; single-digit tokens dropped
+    query_expansion: original query text followed by each expansion term repeated floor(w/max_w * beta
+      * 30) times
+    text_field: the base index's meta.json text_field, for queries and feedback documents
+    batch: 1024
+    query_sample: /work/benchmark/query_samples/OEB_query_sample_test_16590.json
+    query_sample_sha256: 884deade9d3c275b4c4fe325240ff5f0d46a2c9762b2ba68b8d3bfd7b9c36587
+base: index bm25_unigram_params__k1-0.60__b-0.35 (the strong base); papermill BASE_METHODS, see executed
+  log
+logged_metrics_item:
+  acc@1: 0.9731
+source:
+  notebook: src/prf_bm25_orchestrator.ipynb (RM3_GRID, ROCCHIO_GRID, run_prf_variant)
+  metrics: .claude/worktrees/structured-retrieval-type-5aeb7f/logs/prf__params_base.ipynb
+  executed_log: .claude/worktrees/structured-retrieval-type-5aeb7f/logs/prf__params_base.ipynb

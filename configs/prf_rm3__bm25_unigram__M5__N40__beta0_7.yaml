@@ -1,0 +1,37 @@
+# Exported 2026-10-12 from the notebook that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: prf
+  name: prf_rm3__bm25_unigram__M5__N40__beta0_7
+  impl: prf_rm3
+  params:
+    base_method: bm25_unigram
+    variant: rm3
+    M: 5
+    N: 40
+    beta: 0.7
+    first_pass_k: 100
+    second_pass_k: 100
+    term_scoring: expansion terms scored by p(w|R) over the top-M documents with collection-frequency
+      (Dirichlet-like, mu=2000) smoothing
+    tokenizer: (?u)\b\w+\b, lowercased; single-digit tokens dropped
+    query_expansion: original query text followed by each expansion term repeated floor(w/max_w * beta
+      * 30) times
+    text_field: the base index's meta.json text_field, for queries and feedback documents
+    batch: 1024
+    query_sample: /work/benchmark/query_samples/OEB_query_sample_test_16590.json
+    query_sample_sha256: 884deade9d3c275b4c4fe325240ff5f0d46a2c9762b2ba68b8d3bfd7b9c36587
+base: 'index bm25_unigram (the weak base: Acc@1 0.8691, same as bm25_unigram__k1-0.80__b-0.35); notebook
+  default BASE_METHODS'
+logged_metrics_item:
+  acc@1: 0.866
+  recall@5: 0.933
+  recall@10: 0.95
+  mrr: 0.896
+  ndcg@10: 0.908
+source:
+  notebook: src/prf_bm25_orchestrator.ipynb (RM3_GRID, ROCCHIO_GRID, run_prf_variant)
+  metrics: eval/prf/lb_item.tex (3 decimals)
