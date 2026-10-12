@@ -1,0 +1,107 @@
+{
+  "what": "Best configuration of each method family, Acc@1 at item and parent level, canonical test set (n=16590). Read by scripts/plot_acc1_by_family.py.",
+  "note": "Values with precision 10 come from full-precision eval/ files; values with precision 6 are the bar heights of the published figure, because runs/ was lost (D-019) and fusion and reranking are not re-run. cross_check gives every other surviving record of the same number.",
+  "families": [
+    {
+      "label": "Lexical\n(BM25 + params)",
+      "family": "lexical",
+      "run": "bm25_unigram_params__k1-0.60__b-0.35",
+      "item": {
+        "Acc@1": 0.9736588306208559,
+        "precision": 10,
+        "source": "eval/significance/pairs.json (acc_a)",
+        "cross_check": "rebuilt run 2026-10-12: 0.9736588306"
+      },
+      "parent": {
+        "Acc@1": 0.9852320675105485,
+        "precision": 10,
+        "source": "eval/param_tokens/computed.json (results.stored.parent)",
+        "cross_check": "rebuilt run 2026-10-12: 0.9852320675"
+      }
+    },
+    {
+      "label": "PRF\n(RM3)",
+      "family": "prf",
+      "run": "prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7",
+      "item": {
+        "Acc@1": 0.973177,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": ".claude/worktrees/structured-retrieval-type-5aeb7f/logs/metrics__prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7.ipynb: 0.9732"
+      },
+      "parent": {
+        "Acc@1": 0.98475,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": ".claude/worktrees/structured-retrieval-type-5aeb7f/logs/metrics__prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7.ipynb: 0.9847"
+      }
+    },
+    {
+      "label": "Structured\n(rules)",
+      "family": "structured",
+      "run": "structured_pipeline_rules",
+      "item": {
+        "Acc@1": 0.9033152501506931,
+        "precision": 10,
+        "source": "eval/significance/families.json (acc_a)",
+        "cross_check": "rebuilt run 2026-10-12: 0.9033152502"
+      },
+      "parent": {
+        "Acc@1": 0.98481,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": "docs/reviews/CORRECTIONS_LOG.md (N18): 0.9848; rebuilt run 2026-10-12: 0.9848101266"
+      }
+    },
+    {
+      "label": "Hybrid\n(3-way)",
+      "family": "fusion",
+      "run": "hyb_bm25_uni__bge_colbert__tfidf_char_3_5",
+      "item": {
+        "Acc@1": 0.892646,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": ".claude/worktrees/structured-retrieval-type-5aeb7f/logs/hybrid__hyb_bm25_uni__bge_colbert__tfidf_char_3_5__test.ipynb: 0.8926"
+      },
+      "parent": {
+        "Acc@1": 0.97396,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": "no other surviving source: the run was lost with runs/ (D-019)"
+      }
+    },
+    {
+      "label": "Reranking\n(BM25 + blend)",
+      "family": "reranking",
+      "run": "ce_blend__bm25_unigram__k50",
+      "item": {
+        "Acc@1": 0.766426,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": ".claude/worktrees/structured-retrieval-type-5aeb7f/logs/ce__bm25_unigram__k50.ipynb: 0.7664"
+      },
+      "parent": {
+        "Acc@1": 0.992465,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": "no other surviving source: the run was lost with runs/ (D-019)"
+      }
+    },
+    {
+      "label": "Neural\n(BGE-M3 ColBERT)",
+      "family": "neural",
+      "run": "bge_m3_colbert",
+      "item": {
+        "Acc@1": 0.4479807112718505,
+        "precision": 10,
+        "source": "eval/significance/pairs.json (acc_a)"
+      },
+      "parent": {
+        "Acc@1": 0.996624,
+        "precision": 6,
+        "source": "bar height in paper/figures/acc1_by_family.pdf as published (git 6eb316e), read from the PDF path coordinates; ±1e-6",
+        "cross_check": "docs/reviews/CORRECTIONS_LOG.md (dissociation table): 0.9966"
+      }
+    }
+  ]
+}

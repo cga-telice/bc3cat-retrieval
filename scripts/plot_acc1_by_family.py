@@ -6,13 +6,16 @@ y de reranking, porque `src/metrics.ipynb` no puede procesar runs sin índice
 propio. Justamente esas dos familias son las que combinan señal léxica y neuronal,
 así que su brecha ítem/padre es la que dice dónde está la aportación de cada una.
 
+Los valores se leen de `eval/families/acc1_by_family.json`, no de `runs/`: tras
+D-019 sólo se han reconstruido algunos runs, y la fusión y el cross-encoder no se
+vuelven a ejecutar. El JSON documenta la procedencia de cada cifra.
+
 Uso:  python scripts/plot_acc1_by_family.py
 """
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 import matplotlib
@@ -20,57 +23,22 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from eval_dual import load_ranking, metrics  # noqa: E402
-
-RUNS = Path("runs")
+DATA = Path("eval/families/acc1_by_family.json")
 OUT = Path("paper/figures/acc1_by_family.pdf")
-
-# (familia, mejor configuración de esa familia, cómo leerla)
-FAMILIAS = [
-    ("Lexical\n(BM25 + params)", RUNS / "bm25_unigram_params__k1-0.60__b-0.35" / "metrics_dual.json", "dual"),
-    ("PRF\n(RM3)", RUNS / "prf_rm3__bm25_unigram_params__k1-0.60__b-0.35__M5__N20__beta0_7" / "metrics_dual_parent.json", "parent"),
-    ("Structured\n(rules)", RUNS / "structured_pipeline_rules" / "metrics_dual.json", "dual"),
-    ("Hybrid\n(3-way)", RUNS / "hybrids" / "hyb_bm25_uni__bge_colbert__tfidf_char_3_5" / "metrics_dual_parent.json", "parent"),
-    ("Reranking\n(BM25 + blend)", RUNS / "bm25_unigram" / "results_top50_ce_blend.jsonl.gz", "ranking"),
-    ("Neural\n(BGE-M3 ColBERT)", RUNS / "bge_m3_colbert" / "metrics_dual.json", "dual"),
-]
-
-
-def leer(path: Path, tipo: str) -> tuple[float, float] | None:
-    if not path.exists():
-        return None
-    if tipo == "dual":
-        d = {
-            r["target"]: r
-            for r in json.loads(path.read_text(encoding="utf-8"))
-            if r.get("scope") == "overall"
-        }
-        return d["item"]["Acc@1"], d["parent"]["Acc@1"]
-    if tipo == "parent":
-        d = json.loads(path.read_text(encoding="utf-8"))
-        return d["item"]["Acc@1"], d["parent"]["Acc@1"]
-    if tipo == "ranking":
-        ranking = load_ranking(path)
-        return metrics(ranking, "item")["Acc@1"], metrics(ranking, "parent")["Acc@1"]
-    raise ValueError(tipo)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data", type=Path, default=DATA)
     parser.add_argument("--out", type=Path, default=OUT)
     args = parser.parse_args()
 
-    etiquetas, items, padres = [], [], []
-    for nombre, path, tipo in FAMILIAS:
-        valores = leer(path, tipo)
-        if valores is None:
-            print(f"sin artefacto: {path}", file=sys.stderr)
-            continue
-        etiquetas.append(nombre)
-        items.append(valores[0])
-        padres.append(valores[1])
-        print(f"  {nombre.replace(chr(10), ' '):34s} item={valores[0]:.4f}  padre={valores[1]:.4f}")
+    familias = json.loads(args.data.read_text(encoding="utf-8"))["families"]
+    etiquetas = [f["label"] for f in familias]
+    items = [f["item"]["Acc@1"] for f in familias]
+    padres = [f["parent"]["Acc@1"] for f in familias]
+    for nombre, item, padre in zip(etiquetas, items, padres):
+        print(f"  {nombre.replace(chr(10), ' '):34s} item={item:.4f}  padre={padre:.4f}")
 
     x = range(len(etiquetas))
     ancho = 0.38
@@ -88,7 +56,9 @@ def main() -> int:
     ax.set_ylabel("Acc@1", fontsize=9)
     ax.set_ylim(0, 1.12)
     ax.spines[["top", "right"]].set_visible(False)
-    ax.legend(loc="lower left", frameon=False, fontsize=8.5, ncol=2)
+    # La leyenda va por encima del eje, fuera del área de las barras, como en
+    # las demás figuras del manuscrito.
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), frameon=False, fontsize=8.5, ncol=2)
     fig.tight_layout()
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

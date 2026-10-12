@@ -29,7 +29,7 @@ METRICS = ["Acc@1", "Recall@5", "Recall@10", "MRR", "nDCG@10"]
 # Okabe e Ito, que se distinguen también con daltonismo; cada serie lleva además
 # su propio marcador, así que no dependen sólo del color.
 SERIES = {
-    "bm25_unigram_params__k1-0.60__b-0.35": ("BM25 + parameter tokens", "#0b4f9c", "-", "s"),
+    "bm25_unigram_params__k1-0.60__b-0.35": ("BM25 with parameter tokens", "#0b4f9c", "-", "s"),
     "bm25_unigram__k1-0.80__b-0.35": ("BM25-unigram", "#56b4e9", "-", "o"),
     "bm25_unibigram__k1-0.80__b-0.35": ("BM25-unibigram", "#009e73", "-", "P"),
     "tfidf_unigram_phrases_replace": ("TF-IDF phrases replace", "#d55e00", "--", "o"),
