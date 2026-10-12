@@ -39,6 +39,12 @@ SISTEMAS = [
 ]
 
 
+# Corte del MRR según la fuente: `metrics_dual.json` (src/metrics.ipynb) recorre
+# los 100 candidatos; `metrics_dual_parent.json` (scripts/eval_dual.py) y
+# `metrics_ce_*` (src/cross_encoder.ipynb) truncan en el rango 10.
+TRUNCADO = {"dual": False, "parent": True, "ce": True}
+
+
 def leer(run_dir: Path, tipo: str, clave: str | None) -> dict[str, float] | None:
     if tipo == "dual":
         path = run_dir / "metrics_dual.json"
@@ -79,6 +85,7 @@ def main() -> int:
         if m is None:
             faltan.append(f"{etiqueta} ({run_dir})")
             continue
+        m["truncado"] = TRUNCADO[tipo]
         filas.append((etiqueta, m))
 
     filas.sort(key=lambda f: -f[1]["acc@1"])
@@ -100,16 +107,23 @@ def main() -> int:
         r"\textbf{Configuration} & \textbf{Acc@1} & \textbf{MRR} \\",
         r"\midrule",
     ]
+    def fila(etiqueta: str, m: dict) -> str:
+        mrr = f"{m['mrr']:.3f}" + (r"$^{\dagger}$" if m["truncado"] else "")
+        return f"{etiqueta} & {m['acc@1']:.3f} & {mrr} " + r"\\"
+
     for etiqueta, m in mostradas:
-        lines.append(f"{etiqueta} & {m['acc@1']:.3f} & {m['mrr']:.3f} " + r"\\")
+        lines.append(fila(etiqueta, m))
 
     if resto:
         lines.append(r"\midrule")
         lines.append(r"\multicolumn{3}{l}{\textit{For reference:}} \\")
         for etiqueta, m in resto:
-            lines.append(f"{etiqueta} & {m['acc@1']:.3f} & {m['mrr']:.3f} " + r"\\")
+            lines.append(fila(etiqueta, m))
 
-    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}"]
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    if any(m["truncado"] for _, m in filas):
+        lines.append(r"\\[2pt]{\footnotesize $^{\dagger}$\,MRR@10 (reciprocal rank truncated at rank 10).}")
+    lines.append(r"\end{table}")
 
     for etiqueta, m in filas:
         print(f"  {m['acc@1']:.4f}  {m['mrr']:.4f}  {etiqueta[:62]}")

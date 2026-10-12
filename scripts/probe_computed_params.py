@@ -145,13 +145,15 @@ def render_tex(summary: dict, extra: dict, n: int) -> str:
         r" & \textbf{MRR} & \textbf{Parent Acc@1} \\",
         r"\midrule",
     ]
+    # Las filas medidas aqui truncan el MRR en 10 (evaluate()); la del pipeline
+    # estructurado sale de su metrics_dual.json, que recorre los 100 candidatos.
     for key, label in ROWS:
         m = summary.get(key)
         if not m:
             continue
         lines.append(
             f"{label} & {m['item']['Acc@1']:.3f} & {m['item']['Recall@5']:.3f}"
-            f" & {m['item']['MRR@10']:.3f} & {m['parent']['Acc@1']:.3f} " + r"\\"
+            f" & {m['item']['MRR@10']:.3f}$^{{\\dagger}}$ & {m['parent']['Acc@1']:.3f} " + r"\\"
         )
     if extra:
         lines.append(r"\midrule")
@@ -160,7 +162,12 @@ def render_tex(summary: dict, extra: dict, n: int) -> str:
             f" & {extra['Acc@1']:.3f} & {extra['Recall@5']:.3f}"
             f" & {extra['MRR@10']:.3f} & {extra['parent']:.3f} " + r"\\"
         )
-    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}"]
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"\\[2pt]{\footnotesize $^{\dagger}$\,MRR@10 (reciprocal rank truncated at rank 10).}",
+        r"\end{table}",
+    ]
     return "\n".join(lines) + "\n"
 
 

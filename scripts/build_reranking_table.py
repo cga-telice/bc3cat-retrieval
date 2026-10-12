@@ -28,8 +28,13 @@ DEPTHS = [20, 50, 100]
 METRICS = ["acc@1", "recall@5", "recall@10", "mrr@10"]
 
 
-def baseline(run_dir: Path) -> dict[str, float] | None:
-    """Métricas del sistema de primera etapa, antes de reranquear."""
+def baseline(run_dir: Path) -> tuple[dict[str, float], bool] | None:
+    """Métricas del sistema de primera etapa, antes de reranquear.
+
+    Devuelve también si su MRR está truncado en el rango 10. El de
+    `metrics_dual.json` (src/metrics.ipynb) recorre los 100 candidatos; el del
+    barrido de fusión (`best_from_sweep.json`, src/hybrid.ipynb) corta en 10.
+    """
     dual = run_dir / "metrics_dual.json"
     if dual.exists():
         for r in json.loads(dual.read_text(encoding="utf-8")):
@@ -39,10 +44,10 @@ def baseline(run_dir: Path) -> dict[str, float] | None:
                     "recall@5": r["Recall@5"],
                     "recall@10": r["Recall@10"],
                     "mrr@10": r["MRR"],
-                }
+                }, False
     sweep = run_dir / "best_from_sweep.json"
     if sweep.exists():
-        return json.loads(sweep.read_text(encoding="utf-8"))["metrics"]
+        return json.loads(sweep.read_text(encoding="utf-8"))["metrics"], True
     return None
 
 
@@ -53,7 +58,7 @@ def reranked(run_dir: Path, strategy: str, depth: int) -> dict[str, float] | Non
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def row(label: str, m: dict[str, float], bold: bool = False) -> str:
+def row(label: str, m: dict[str, float], bold: bool = False, truncated: bool = False) -> str:
     """Sólo se resalta Acc@1: es el criterio por el que se elige la mejor fila.
 
     Poner en negrita las cuatro métricas de esa fila sugeriría que también son las
@@ -63,7 +68,11 @@ def row(label: str, m: dict[str, float], bold: bool = False) -> str:
     cells = []
     for k in METRICS:
         v = f"{m[k]:.3f}"
-        cells.append(rf"\textbf{{{v}}}" if bold and k == "acc@1" else v)
+        if bold and k == "acc@1":
+            v = rf"\textbf{{{v}}}"
+        if truncated and k == "mrr@10":
+            v += r"$^{\dagger}$"
+        cells.append(v)
     return f"{label} & " + " & ".join(cells) + r" \\"
 
 
@@ -91,10 +100,11 @@ def main() -> int:
 
     faltan = []
     for label, run_dir in SYSTEMS:
-        base = baseline(run_dir)
-        if base is None:
+        found = baseline(run_dir)
+        if found is None:
             faltan.append(str(run_dir))
             continue
+        base, base_truncated = found
 
         lines.append(r"\midrule")
         lines.append(rf"\multicolumn{{5}}{{l}}{{\textit{{{label}}}}} \\")
@@ -108,7 +118,8 @@ def main() -> int:
                     candidatos.append(m["acc@1"])
         mejor = max(candidatos)
 
-        lines.append(row(r"\quad Baseline (no reranking)", base, base["acc@1"] == mejor))
+        lines.append(row(r"\quad Baseline (no reranking)", base, base["acc@1"] == mejor,
+                         base_truncated))
         for depth in DEPTHS:
             for strategy in ("replace", "blend"):
                 m = reranked(run_dir, strategy, depth)
@@ -116,9 +127,16 @@ def main() -> int:
                     faltan.append(f"{run_dir} {strategy} k={depth}")
                     continue
                 nombre = rf"\quad {strategy.capitalize()}, $K'={depth}$"
-                lines.append(row(nombre, m, m["acc@1"] == mejor))
+                # El cross-encoder (src/cross_encoder.ipynb) da MRR@10.
+                lines.append(row(nombre, m, m["acc@1"] == mejor, truncated=True))
 
-    lines += [r"\bottomrule", r"\end{tabular}", r"}", r"\end{table}"]
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"}",
+        r"\\[2pt]{\footnotesize $^{\dagger}$\,MRR@10 (reciprocal rank truncated at rank 10).}",
+        r"\end{table}",
+    ]
 
     if faltan:
         print("Faltan artefactos:")

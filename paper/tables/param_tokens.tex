@@ -7,12 +7,13 @@
 \toprule
 \textbf{Query representation} & \textbf{Acc@1} & \textbf{Recall@5} & \textbf{MRR} & \textbf{Parent Acc@1} \\
 \midrule
-Query text alone & 0.871 & 0.934 & 0.898 & 0.973 \\
-Parameter tuple alone & 0.219 & 0.760 & 0.431 & 0.219 \\
-Query text + tuple read from the catalog record & 0.974 & 0.985 & 0.979 & 0.985 \\
-Query text + tuple extracted from the query & 0.974 & 0.984 & 0.979 & 0.986 \\
+Query text alone & 0.871 & 0.934 & 0.898$^{\dagger}$ & 0.973 \\
+Parameter tuple alone & 0.219 & 0.760 & 0.431$^{\dagger}$ & 0.219 \\
+Query text + tuple read from the catalog record & 0.974 & 0.985 & 0.979$^{\dagger}$ & 0.985 \\
+Query text + tuple extracted from the query & 0.974 & 0.984 & 0.979$^{\dagger}$ & 0.986 \\
 \midrule
 Same extracted tuple, as an exact filter & 0.903 & 0.967 & 0.917 & 0.985 \\
 \bottomrule
 \end{tabular}
+\\[2pt]{\footnotesize $^{\dagger}$\,MRR@10 (reciprocal rank truncated at rank 10).}
 \end{table}

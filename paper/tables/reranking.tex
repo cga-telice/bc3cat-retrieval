@@ -10,31 +10,32 @@
 \midrule
 \multicolumn{5}{l}{\textit{BM25 (unigram)}} \\
 \quad Baseline (no reranking) & \textbf{0.869} & 0.932 & 0.950 & 0.898 \\
-\quad Replace, $K'=20$ & 0.451 & 0.871 & 0.948 & 0.630 \\
-\quad Blend, $K'=20$ & 0.764 & 0.946 & 0.964 & 0.846 \\
-\quad Replace, $K'=50$ & 0.434 & 0.841 & 0.916 & 0.607 \\
-\quad Blend, $K'=50$ & 0.766 & 0.942 & 0.966 & 0.845 \\
-\quad Replace, $K'=100$ & 0.427 & 0.825 & 0.908 & 0.596 \\
-\quad Blend, $K'=100$ & 0.765 & 0.939 & 0.966 & 0.844 \\
+\quad Replace, $K'=20$ & 0.451 & 0.871 & 0.948 & 0.630$^{\dagger}$ \\
+\quad Blend, $K'=20$ & 0.764 & 0.946 & 0.964 & 0.846$^{\dagger}$ \\
+\quad Replace, $K'=50$ & 0.434 & 0.841 & 0.916 & 0.607$^{\dagger}$ \\
+\quad Blend, $K'=50$ & 0.766 & 0.942 & 0.966 & 0.845$^{\dagger}$ \\
+\quad Replace, $K'=100$ & 0.427 & 0.825 & 0.908 & 0.596$^{\dagger}$ \\
+\quad Blend, $K'=100$ & 0.765 & 0.939 & 0.966 & 0.844$^{\dagger}$ \\
 \midrule
 \multicolumn{5}{l}{\textit{BGE-M3 ColBERT}} \\
 \quad Baseline (no reranking) & 0.448 & 0.753 & 0.785 & 0.580 \\
-\quad Replace, $K'=20$ & 0.310 & 0.693 & 0.768 & 0.473 \\
-\quad Blend, $K'=20$ & \textbf{0.475} & 0.766 & 0.787 & 0.601 \\
-\quad Replace, $K'=50$ & 0.299 & 0.664 & 0.740 & 0.455 \\
-\quad Blend, $K'=50$ & 0.475 & 0.764 & 0.786 & 0.601 \\
-\quad Replace, $K'=100$ & 0.298 & 0.657 & 0.730 & 0.451 \\
-\quad Blend, $K'=100$ & 0.475 & 0.764 & 0.786 & 0.601 \\
+\quad Replace, $K'=20$ & 0.310 & 0.693 & 0.768 & 0.473$^{\dagger}$ \\
+\quad Blend, $K'=20$ & \textbf{0.475} & 0.766 & 0.787 & 0.601$^{\dagger}$ \\
+\quad Replace, $K'=50$ & 0.299 & 0.664 & 0.740 & 0.455$^{\dagger}$ \\
+\quad Blend, $K'=50$ & 0.475 & 0.764 & 0.786 & 0.601$^{\dagger}$ \\
+\quad Replace, $K'=100$ & 0.298 & 0.657 & 0.730 & 0.451$^{\dagger}$ \\
+\quad Blend, $K'=100$ & 0.475 & 0.764 & 0.786 & 0.601$^{\dagger}$ \\
 \midrule
 \multicolumn{5}{l}{\textit{Hybrid (BM25 + BGE-ColBERT + TF-IDF char)}} \\
-\quad Baseline (no reranking) & \textbf{0.893} & 0.944 & 0.955 & 0.910 \\
-\quad Replace, $K'=20$ & 0.451 & 0.876 & 0.953 & 0.632 \\
-\quad Blend, $K'=20$ & 0.702 & 0.949 & 0.970 & 0.814 \\
-\quad Replace, $K'=50$ & 0.434 & 0.842 & 0.917 & 0.607 \\
-\quad Blend, $K'=50$ & 0.704 & 0.942 & 0.971 & 0.812 \\
-\quad Replace, $K'=100$ & 0.426 & 0.830 & 0.913 & 0.598 \\
-\quad Blend, $K'=100$ & 0.706 & 0.948 & 0.977 & 0.816 \\
+\quad Baseline (no reranking) & \textbf{0.893} & 0.944 & 0.955 & 0.910$^{\dagger}$ \\
+\quad Replace, $K'=20$ & 0.451 & 0.876 & 0.953 & 0.632$^{\dagger}$ \\
+\quad Blend, $K'=20$ & 0.702 & 0.949 & 0.970 & 0.814$^{\dagger}$ \\
+\quad Replace, $K'=50$ & 0.434 & 0.842 & 0.917 & 0.607$^{\dagger}$ \\
+\quad Blend, $K'=50$ & 0.704 & 0.942 & 0.971 & 0.812$^{\dagger}$ \\
+\quad Replace, $K'=100$ & 0.426 & 0.830 & 0.913 & 0.598$^{\dagger}$ \\
+\quad Blend, $K'=100$ & 0.706 & 0.948 & 0.977 & 0.816$^{\dagger}$ \\
 \bottomrule
 \end{tabular}
 }
+\\[2pt]{\footnotesize $^{\dagger}$\,MRR@10 (reciprocal rank truncated at rank 10).}
 \end{table}
