@@ -14,10 +14,23 @@ method:
   family: structured
   name: structured_pipeline_oracle_bio_tagger_frozen
   impl: structured_pipeline_oracle_bio_tagger_frozen
-  params: {}
+  params:
+    stage2_method: bio_tagger
+    oracle: true
+    stage2_model_dir: /work/models/e5_bio_tagger_frozen
+    text_field: text_norm
 
 io:
   data_dirname: data
   mapping_file: mapping.jsonl
   fields_file: fields.json
   meta_file: meta.json
+# Exported 2026-10-12: params above were empty; filled from the source below. Nothing was re-run.
+pseudo_index:
+  note: The pipeline reads these params from index/<name>/meta.json; that file is not versioned and was
+    lost with index/ (D-019). Stage 1 is the dense_e5 index.
+  stage1_index: /work/index/dense_e5
+in_paper_table: false
+source:
+  params: docs/sprints/SPRINT_LWN_04.md (git 7de16c5); src/retrievers/structured_pipeline_oracle_bio_tagger_frozen.py
+  code: src/retrievers/structured_pipeline.py (load)

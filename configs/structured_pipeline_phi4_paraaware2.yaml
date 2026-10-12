@@ -13,10 +13,25 @@ method:
   family: structured
   name: structured_pipeline_phi4_paraaware2
   impl: structured_pipeline
-  params: {}
+  params:
+    stage2_method: llm
+    oracle: false
+    stage2_ollama_url: http://ollama:11434
+    stage2_model: phi4:latest
+    stage2_prompt_mode: paraaware2
+    text_field: text_norm
 
 io:
   data_dirname: data
   mapping_file: mapping.jsonl
   fields_file: fields.json
   meta_file: meta.json
+# Exported 2026-10-12: params above were empty; filled from the source below. Nothing was re-run.
+pseudo_index:
+  note: The pipeline reads these params from index/<name>/meta.json; that file is not versioned and was
+    lost with index/ (D-019). Stage 1 is the dense_e5 index.
+  stage1_index: /work/index/dense_e5
+in_paper_table: false
+source:
+  params: scripts/setup_structured_index.py (git d38b0b1)
+  code: src/retrievers/structured_pipeline.py (load)

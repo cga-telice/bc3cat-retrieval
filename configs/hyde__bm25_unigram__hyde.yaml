@@ -1,0 +1,39 @@
+# Exported 2026-10-12 from the code and executed logs that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: hyde
+  name: hyde__bm25_unigram__hyde
+  impl: run_hyde
+  params:
+    retriever_index: bm25_unigram
+    query_representation: hyde
+    query_representation_desc: hypothetical document only
+    k: 100
+    batch: 500
+    text_preparation: 'by the index''s meta.json text_field: text_word -> text_word(), text_norm -> normalize_text()
+      (same functions as src/data.ipynb)'
+    query_sample: /work/benchmark/query_samples/OEB_query_sample_hyde_1976.json
+    query_sample_sha256: 4e9b933b3f08970c49defb4436d9cd2e7d5b0f61f110aa1098ea9897266b5d13
+    generation:
+      model: phi4:latest
+      backend: ollama /api/generate, stream=false
+      temperature: 0.0
+      num_predict: 110
+      workers: 4
+      timeout_s: 300
+      sample: stratified by template, weight sqrt(template size), >=1 per template, n=2000 requested,
+        seed 20260910 -> 1976 queries
+      prompt: |
+        Eres un tecnico redactor de bases de precios de obra ferroviaria.
+
+        A partir de la siguiente descripcion resumida de una partida de obra, redacta el texto descriptivo completo tal y como aparecerian en el pliego: unidad de obra, materiales, dimensiones y condiciones de ejecucion.
+
+        Descripcion resumida: "{query}"
+
+        Escribe unicamente el texto descriptivo, sin encabezados ni comentarios.
+source:
+  script: scripts/hyde_generate.py (generation); scripts/run_hyde.py (retrieval and metrics)
+  metrics: eval/hyde/results.json -> results['bm25_unigram::hyde']
