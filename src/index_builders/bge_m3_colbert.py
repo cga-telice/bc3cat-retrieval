@@ -16,9 +16,14 @@ def _encode_colbert_remote(
     max_length: int,
     timeout_s: int = 1200,
     batch: int = 128,
-) -> List[np.ndarray]:
+):
+    """Yields one float32 token matrix per text, one request of `batch` texts at a time.
+
+    It used to return the full list, which for 47,513 documents holds every token
+    vector in float32 at once and exhausted the 23.5 GiB of the Docker VM (D-019
+    rebuild, 2026-10-12). The requests and their batches are unchanged.
+    """
     url = api_base.rstrip("/") + "/encode_batch"
-    out: List[np.ndarray] = []
     for i in range(0, len(texts), batch):
         payload = {
             "texts": texts[i:i+batch],
@@ -29,8 +34,7 @@ def _encode_colbert_remote(
         r.raise_for_status()
         mats = r.json().get("colbert_vecs", [])
         for M in mats:
-            out.append(np.asarray(M, dtype=np.float32))
-    return out
+            yield np.asarray(M, dtype=np.float32)
 
 def _load_model_local(model_name: str, use_fp16: bool):
     from FlagEmbedding import BGEM3FlagModel
@@ -139,37 +143,41 @@ def build(cfg: Dict, long_df, text_field: str) -> Tuple[Dict, None, None]:
         mdl = _load_model_local(model_name, use_fp16)
         mats = _encode_colbert_local(mdl, texts, max_len_doc)
 
-    # ---- Sanity & shapes
-    dims = [m.shape[1] for m in mats if m.size]
-    if not dims:
-        raise RuntimeError("No token vectors produced by bge-m3 colbert variant.")
-    d = int(dims[0])
-    if any(dd != d for dd in dims):
-        raise ValueError(f"Dimension mismatch across token matrices: {sorted(set(dims))}")
-
-    lengths = np.array([m.shape[0] for m in mats], dtype=np.int64)
-    offsets = np.zeros(n_docs + 1, dtype=np.int64)
-    np.cumsum(lengths, out=offsets[1:])
-    # total_tokens = int(offsets[-1])  # not used directly, but keeps parity
-
-    # ---- Persist
+    # ---- Persist as the vectors arrive: each document is written in FP16 and
+    # reduced to its float32 centroid, then dropped. Same bytes and same
+    # centroids as holding them all first, without holding them all.
     data_dir = Path(index_root) / out_dirname / data_dirname
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    # Stream FP16 blocks to file (keeps RAM low)
+    lengths = np.zeros(n_docs, dtype=np.int64)
+    centroids = None
+    d = None
+    n_seen = 0
     with open(data_dir / "token_mats.bin", "wb") as f:
-        for m in mats:
+        for i, m in enumerate(mats):
+            n_seen += 1
+            lengths[i] = m.shape[0]
+            if m.size:
+                if d is None:
+                    d = int(m.shape[1])
+                    centroids = np.zeros((n_docs, d), dtype=np.float32)
+                elif m.shape[1] != d:
+                    raise ValueError(f"Dimension mismatch across token matrices: {d} vs {m.shape[1]}")
+                centroids[i] = m.mean(axis=0)
             f.write(np.asarray(m, dtype=np.float16).tobytes(order="C"))
+    if d is None:
+        raise RuntimeError("No token vectors produced by bge-m3 colbert variant.")
+    if n_seen != n_docs:
+        raise RuntimeError(f"Encoder returned {n_seen} matrices for {n_docs} documents")
+
+    offsets = np.zeros(n_docs + 1, dtype=np.int64)
+    np.cumsum(lengths, out=offsets[1:])
 
     np.save(data_dir / "offsets.npy", offsets)
     with open(data_dir / "dim.json", "w", encoding="utf-8") as f:
         json.dump({"d": d}, f)
 
     # ---- FAISS preselect (cosine via IP on centroids), parity with dense
-    centroids = np.zeros((n_docs, d), dtype=np.float32)
-    for i, L in enumerate(lengths):
-        if L:
-            centroids[i] = mats[i].mean(axis=0)
     faiss.normalize_L2(centroids)
     faiss_index = faiss.IndexFlatIP(d)
     faiss_index.add(centroids)
