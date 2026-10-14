@@ -109,8 +109,9 @@ reach 90.3\%. The target contains 94.1\% of the query's tokens and 99.96\% of it
 numeric values verbatim, which bounds the scope of these results.
 
 Dense embeddings therefore localise a query within the catalog but do not preserve the
-parametric distinctions that carry cost implications. BC3CAT, the exact query set,
-per-query outputs and all configurations are released.
+parametric distinctions that carry cost implications. BC3CAT, the exact query sets,
+the configuration and aggregate metrics of every run, and per-query outputs for the
+principal systems are released.
 
 \end{abstract}
 
@@ -159,7 +160,7 @@ Our contributions are the following. The primary contribution is an empirical ch
     \item We document a systematic dissociation between family-level and variant-level retrieval in parametric catalogs. Every multilingual dense retriever we evaluate identifies the correct parametric family almost perfectly and the correct variant almost never, with gaps of up to 92.9 percentage points. The dual evaluation protocol that exposes this --- scoring each system at both levels of the catalog hierarchy --- is itself transferable to any hierarchically organised technical catalog.
     \item We quantify the property of the benchmark that governs which methods succeed: how much of each query is already present verbatim in its target, lexically and numerically. Making this explicit is what distinguishes a genuine retrieval result from an artefact of how the evaluation pairs were constructed.
     \item We compare four families of approach under identical conditions --- lexical, neural, hybrid with reranking, and structured attribute matching over automatically extracted parameters --- and find that textual retrieval outperforms structured matching even when the latter is handed the correct template for free.
-    \item We create and release BC3CAT, a benchmark derived from the OEB subcategory of ADIF's parametric railway catalog: 47,513 items across 30 catalog concepts, of which 25 are parametric templates that generate 47,508 variants; the exact query set as a versioned list of identifiers, per-query outputs for every system, and the parsing tools that convert the raw BC3 format into a standard retrieval collection~\cite{bc3cat_dataset}.
+    \item We create and release BC3CAT, a benchmark derived from the OEB subcategory of ADIF's parametric railway catalog: 47,513 items across 30 catalog concepts, of which 25 are parametric templates that generate 47,508 variants; the exact query sets as versioned lists of identifiers, the configuration and aggregate metrics of every run, per-query outputs for the eleven principal systems, and the parsing tools that convert the raw BC3 format into a standard retrieval collection~\cite{bc3cat_dataset}.
 \end{itemize}
 
 The rest of this paper is organized as follows: Section 2 reviews related work on construction classification and retrieval methods. Section 3 describes the ADIF dataset, the preprocessing pipeline, the query--target overlap that characterises the benchmark, and the retrieval configurations evaluated. Section 4 presents the results, organised around the item-to-parent dissociation. Section 5 discusses what the dissociation implies for deploying catalog search, and Section 6 concludes with directions for future research.
@@ -421,7 +422,7 @@ Structured Attribute Matching & 8 & 5 extractors, 3 of them also with ground-tru
 
 \paragraph{BM25 Implementation}
 
-We implement BM25 directly over sparse term--document matrices rather than through an existing retrieval toolkit, so that tokenization and parameter-phrase handling can be controlled explicitly. Term counts are produced with the \texttt{CountVectorizer} of scikit-learn v1.2.2~\citep{pedregosa2011scikit} (accent stripping, lowercasing, token pattern \texttt{\textbackslash b\textbackslash w+\textbackslash b}), and BM25 weights are computed from them following the Okapi formulation~\citep{robertson2009probabilistic}, with Robertson--Sp\"arck Jones inverse document frequency
+We implement BM25 directly over sparse term--document matrices rather than through an existing retrieval toolkit, so that tokenization and parameter-phrase handling can be controlled explicitly. Term counts are produced with the \texttt{CountVectorizer} of scikit-learn v1.4.2~\citep{pedregosa2011scikit} (accent stripping, lowercasing, token pattern \texttt{\textbackslash b\textbackslash w+\textbackslash b}), and BM25 weights are computed from them following the Okapi formulation~\citep{robertson2009probabilistic}, with Robertson--Sp\"arck Jones inverse document frequency
 \begin{equation}
 \mathrm{idf}(t) = \log\!\left(\frac{N - \mathrm{df}(t) + 0.5}{\mathrm{df}(t) + 0.5} + 1\right)
 \end{equation}
@@ -444,7 +445,7 @@ This yields 62 BM25 configurations. Documents and queries undergo identical prep
 All 62 configurations are scored on a validation set of $5{,}000$ queries that is disjoint from the test set, and the configuration reported for each family is the one that maximises item-level Acc@1 there. The validation queries are sampled (seed 20260909) from the $30{,}923$ catalog items that are never used as test queries, so the test set remains the same $16{,}590$ queries used by every other system in this study and no comparison in the paper is affected by the split. Section~\ref{subsec:lexical_results} reports what selecting on the test set instead would have been worth.
 
 \paragraph{TF-IDF Implementation}
-TF-IDF baselines use scikit-learn v1.2.2~\citep{pedregosa2011scikit} with the following configurations:
+TF-IDF baselines use scikit-learn v1.4.2~\citep{pedregosa2011scikit} with the following configurations:
 \begin{itemize}
     \item \textbf{TF-IDF-unigram}: Word unigrams with standard stopword removal
     \item \textbf{TF-IDF-unigram-nonstop}: Word unigrams without stopword removal
@@ -477,8 +478,8 @@ We evaluate \texttt{hiiamsid/sentence\_similarity\_spanish\_es}, a model specifi
 \paragraph{GTE Model}
 We evaluate \texttt{Alibaba-NLP/gte-multilingual-base} with two query formats:
 \begin{itemize}
-    \item \textbf{GTE-direct}: Standard ``query:'' prefix
-    \item \textbf{GTE-instruct}: Spanish instruction prefix: ``query: Lookup for the most similar document to this query: [query]''
+    \item \textbf{GTE-direct}: the query text as is, with no prefix
+    \item \textbf{GTE-instruct}: a Spanish instruction prefix, ``query: Busca el documento que más se parezca a la siguiente consulta: [query]'' (find the document most similar to the following query)
 \end{itemize}
 
 \paragraph{BGE-M3 Model}
@@ -493,7 +494,7 @@ The ColBERT mode computes relevance as the sum of maximum token similarities. Al
 \subsubsection{Hybrid Fusion and Reranking}
 \label{subsec:hybrid_fusion}
 
-The fusion process consisted of three sequential steps applied to each query independently.
+The fusion process consisted of two steps applied to each query independently.
 
 First, retrieval scores from each ranker were normalized using min-max scaling to ensure comparability across heterogeneous scoring functions. For a given query $q$, document $d$ and ranker $r$, each document score $s_{d,r}$ was transformed as:
 
@@ -501,15 +502,13 @@ First, retrieval scores from each ranker were normalized using min-max scaling t
 s'_{d,r} = \frac{s_{d,r} - \min_r(s)}{\max_r(s) - \min_r(s)}
 \end{equation}
 
-Second, we applied numeric parameter bonuses to account for matches between query parameters and document metadata. Each document received an additional weighted reward based on exact parameter matches ($\beta_{\text{exact}}$) and partial parameter overlaps ($\beta_{\text{overlap}}$). These bonuses were added to the normalized scores before fusion.
-
-Third, the adjusted scores from all retrievers were combined using weighted linear combination (COMBSUM):
+Second, the normalized scores from all retrievers were combined by weighted linear combination (COMBSUM), and a numeric bonus was added to the result:
 
 \begin{equation}
-s_{\text{final}}(d) = \sum_{r \in R} w_r \cdot s'_{d,r}
+s_{\text{final}}(d) = \sum_{r \in R} w_r \cdot s'_{d,r} + \beta_{\text{exact}}\, e_d + \beta_{\text{overlap}}\, o_d
 \end{equation}
 
-where $w_r$ represents the fusion weight for ranker $r$, and $\sum_{r} w_r = 1$.
+where $w_r$ represents the fusion weight for ranker $r$, $\sum_{r} w_r = 1$, $e_d \in \{0,1\}$ indicates that every numeric value of the query occurs in document $d$, and $o_d \in [0,1]$ is the fraction of them that does.
 
 To identify optimal fusion configurations, we conducted a systematic parameter sweep over the weight space for several hybrid strategies: (1) three-way fusions combining BM25 with one BGE-M3 variant and character-level TF-IDF, and (2) a five-way fusion incorporating BM25, all three BGE-M3 variants (dense, sparse, ColBERT), and TF-IDF. For each configuration, we evaluated combinations of $\beta_{\text{exact}} \in \{0.0, 0.05, 0.10, 0.15\}$ and $\beta_{\text{overlap}} \in \{0.0, 0.05\}$ across a grid of weight distributions. The optimal configuration for each strategy was selected on item-level Acc@1. Unlike the lexical grids, the fusion sweep is selected on the test set; the validation experiment of Section~\ref{subsec:lexical_results} bounds what that is worth for the lexical families, and the hybrid results should be read as an upper bound on what fusion achieves here rather than as an out-of-sample estimate.
 
@@ -604,12 +603,12 @@ We employ four complementary metrics to assess retrieval quality. Because each q
     
     \item \textbf{Recall@k}: Proportion of queries with correct item in top-$k$ results. We report Recall@5 and Recall@10 as reasonable examination depths for human review.
     
-    \item \textbf{Mean Reciprocal Rank (MRR)}: Average of reciprocal ranks of first correct result, computed over the top-100 candidates returned by each system (the depth of the released per-query outputs); a query whose target is not among them contributes zero. Some tables label it MRR@10; in every row they share, the two figures coincide to three decimals.
+    \item \textbf{Mean Reciprocal Rank (MRR)}: Average of reciprocal ranks of first correct result, computed over the top-100 candidates returned by each system (the depth of the released per-query outputs); a query whose target is not among them contributes zero. For the fusion and reranking runs, whose top-100 lists were not retained, only MRR truncated at rank 10 (MRR@10) is available; tables mark those values with $^{\dagger}$, and in every row where both are known the two figures coincide to three decimals.
     
     \item \textbf{Normalized Discounted Cumulative Gain (nDCG@10)}: Accounts for rank position using logarithmic discount
 \end{enumerate}
 
-Metrics are computed with a purpose-written evaluator rather than a general-purpose library, because the parent-level criterion requires a non-standard ideal ranking: any of the sibling variants under the correct parent counts as relevant, so the nDCG denominator must be normalized against the number of siblings present in the catalog rather than against a single relevant document. The evaluator is released with the code, and per-query outputs are provided so that any metric can be recomputed independently.
+Metrics are computed with a purpose-written evaluator rather than a general-purpose library, because the parent-level criterion requires a non-standard ideal ranking: any of the sibling variants under the correct parent counts as relevant, so the nDCG denominator must be normalized against the number of siblings present in the catalog rather than against a single relevant document. The evaluator is released with the code, and per-query outputs of the principal systems are provided so that their metrics can be recomputed independently.
 
 \subsubsection{Query Subset Analysis}
 
@@ -655,9 +654,9 @@ Two of the five --- Near-Duplicate Error and Ranking Failure --- have zero frequ
 \subsection{Implementation Details}
 \label{subsec:implementation}
 
-All experiments run under Python 3.11.8 in a single container image. Lexical retrieval (BM25, TF-IDF) and pseudo-relevance feedback (RM3, Rocchio) are implemented directly over sparse matrices built with scikit-learn v1.2.2~\citep{pedregosa2011scikit} and SciPy; neural models are served through sentence-transformers v2.2.2~\citep{reimers2019sentence} with PyTorch 2.2.2, and BGE-M3 through FlagEmbedding. Retrieval metrics are computed by a purpose-written evaluator (Section~\ref{subsec:metrics}). The one exception is \texttt{gte-multilingual-base}, which cannot be loaded by this software stack and is evaluated separately; the reason and its consequences are documented in Section~\ref{subsec:gte}. Experiments run on a workstation with an Intel i9-13900KF CPU and an NVIDIA RTX 4090 GPU.
+All experiments run under Python 3.11.8 in a single container image. Lexical retrieval (BM25, TF-IDF) and pseudo-relevance feedback (RM3, Rocchio) are implemented directly over sparse matrices built with scikit-learn v1.4.2~\citep{pedregosa2011scikit} and SciPy; neural models are served through sentence-transformers v2.2.2~\citep{reimers2019sentence} with PyTorch 2.2.2, and BGE-M3 through FlagEmbedding. Retrieval metrics are computed by a purpose-written evaluator (Section~\ref{subsec:metrics}). The one exception is \texttt{gte-multilingual-base}, which cannot be loaded by this software stack and is evaluated separately; the reason and its consequences are documented in Section~\ref{subsec:gte}. Experiments run on a workstation with an Intel i9-13900KF CPU and an NVIDIA RTX 4090 GPU.
 
-For reproducibility, the exact set of $16{,}590$ evaluation queries is released as a versioned list of catalog identifiers rather than regenerated by sampling, model versions are pinned, and complete configurations are stored in YAML files. Code, data, per-query outputs and configurations are openly available at~\cite{bc3cat_software,bc3cat_dataset}.
+For reproducibility, the exact set of $16{,}590$ evaluation queries is released as a versioned list of catalog identifiers rather than regenerated by sampling, model versions are pinned, and complete configurations are stored in YAML files. The released per-query outputs were regenerated from those configurations in one environment (sentence-transformers v3.4.1, \texttt{transformers} v4.57); eight of the eleven systems reproduce the originally computed metrics to four decimals, and the three BGE-M3 modes differ by at most seven of the $16{,}590$ queries, through exact score ties at rank~1 and batch-dependent half-precision encoding. Every figure in this paper for those eleven systems is computed from the released outputs. Code, data, per-query outputs and configurations are openly available at~\cite{bc3cat_software,bc3cat_dataset}.
 
 \section{Results}
 \label{sec:results}
@@ -694,7 +693,7 @@ Figure~\ref{fig:bm25_heatmap_panel} shows the sensitivity of item-level Acc@1 to
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{bm25_heatmap_panel.pdf}
-\caption{Acc@1 sensitivity to BM25 hyperparameters ($k_1$, $b$) across three tokenization variants on the item-level retrieval task ($n=16{,}590$ queries). A shared color scale highlights the systematic dominance of the parameter-phrase variant (right panel) across the explored grid. The optimum of each panel is highlighted with a red border.}
+\caption{Acc@1 sensitivity to BM25 hyperparameters ($k_1$, $b$) across three tokenization variants on the item-level retrieval task ($n=16{,}590$ queries). A shared color scale highlights the systematic dominance of the parameter-token variant (right panel) across the explored grid. The optimum of each panel is highlighted with a red border.}
 \label{fig:bm25_heatmap_panel}
 \end{figure}
 
@@ -705,7 +704,7 @@ Reporting the best cell of a grid that was scored on the test set makes the repo
 
 For the two families that carry the paper's claims the two splits choose the same cell, so the optimism is exactly zero: BM25 with parameter tokens is $(k_1{=}0.60, b{=}0.35)$ under either criterion, and its $0.9737$ is an out-of-sample figure. For BM25-unigram the validation set prefers $(1.00, 0.35)$ where the test set prefers $(0.60, 0.35)$, a difference of $0.14$ points --- smaller than the gap between any two systems compared in this paper. The reported BM25-unigram runs keep $(0.80, 0.35)$, the configuration on which the hybrid fusions and the reranking cascades of Sections~\ref{subsec:hybrid_results} and~\ref{subsec:reranking} were built; on the test set it scores $0.8691$, between the two.
 
-Two properties of the grid explain why selection turns out to be so cheap here. First, the two splits order the configurations almost identically: Spearman's $\rho$ between validation and test scores is $0.995$ for the uni+bigram grid, $0.993$ for the unigram grid and $0.972$ for the parameter-phrase grid. Where the two splits do disagree it is among cells that are already tied for practical purposes: the five best uni+bigram cells appear in the same order on both, and the three best parameter-phrase cells do, while the unigram grid --- whose top four cells span $0.17$ points on the test set --- is the one that reorders. Second, the validation split is uniformly easier --- every one of the 62 configurations scores higher on it than on the test set, by between $0.10$ and $1.16$ points --- so the offset shifts all cells together instead of reordering them. This is what makes the split usable for selection and unusable as an estimate of absolute performance, and it is why the test figures are reported separately rather than being read off the validation column.
+Two properties of the grid explain why selection turns out to be so cheap here. First, the two splits order the configurations almost identically: Spearman's $\rho$ between validation and test scores is $0.995$ for the uni+bigram grid, $0.993$ for the unigram grid and $0.972$ for the parameter-token grid. Where the two splits do disagree it is among cells that are already tied for practical purposes: the five best uni+bigram cells appear in the same order on both, and the three best parameter-token cells do, while the unigram grid --- whose top four cells span $0.17$ points on the test set --- is the one that reorders. Second, the validation split is uniformly easier --- every one of the 62 configurations scores higher on it than on the test set, by between $0.10$ and $1.16$ points --- so the offset shifts all cells together instead of reordering them. This is what makes the split usable for selection and unusable as an estimate of absolute performance, and it is why the test figures are reported separately rather than being read off the validation column.
 
 Table~\ref{tab:statistical_significance} reports every pairwise comparison among the eight lexical configurations, without selection: $28$ pairs, all significant after correcting across the whole family. The narrowest gap in the table is $0.8$ points, between the two weakest TF-IDF variants, and it is the only comparison whose corrected $p$ exceeds $0.001$. With $16{,}590$ paired observations, differences of this size are resolvable; the substantive question is which of them matter, not which of them are detectable. BM25 with parameter tokens leads the next best configuration, BM25-unigram, by $10.5$ points, and the best TF-IDF variant by $26.5$; BM25-unigram in turn exceeds the TF-IDF family by $16.1$ to $31.1$ points and BM25-unibigram by $4.2$.
 
@@ -723,7 +722,7 @@ Based on item-level results, BM25 with parameter tokens ($k_1=0.60$, $b=0.35$) i
 
 Pseudo-relevance feedback (PRF) was evaluated to assess whether query expansion can improve on a lexical retriever in this domain. Two approaches were tested, RM3 and Rocchio, over two base retrievers: BM25-unigram ($k_1=0.80$, $b=0.35$; Acc@1 $=0.869$), and the best lexical configuration of Section~\ref{subsec:lexical_results}, BM25 with parameter tokens ($k_1=0.60$, $b=0.35$; Acc@1 $=0.974$). Expanding only the weaker base would leave open whether the null result is a property of PRF or of the headroom left by a mediocre first stage.
 
-Over the strong base, neither method helps. The best RM3 configuration reaches $0.9732$ against a baseline of $0.9737$, a difference of $-0.04$ percentage points; the best Rocchio configuration reaches $0.9672$, a degradation of $0.64$ points. The result over the weak base, reported in detail below, is the same in direction: RM3 neutral, Rocchio harmful.
+Over the strong base, neither method helps. The best RM3 configuration reaches $0.9732$ against a baseline of $0.9737$, a difference of $-0.05$ percentage points; the best Rocchio configuration reaches $0.9672$, a degradation of $0.64$ points. The result over the weak base, reported in detail below, is the same in direction: RM3 neutral, Rocchio harmful.
 
 Table~\ref{tab:prf_comparison} reports the best RM3 and the best Rocchio configuration over each base, from grids of eight configurations each ($M \in \{5, 10\}$, $N \in \{20, 40\}$, two interpolation weights).
 
@@ -775,24 +774,24 @@ Table~\ref{tab:bgem3_performance} presents performance across three retrieval mo
 \multicolumn{6}{c}{\textit{Item-Level Retrieval}} \\
 \hline
 BGE-M3-dense & 0.127 & 0.349 & 0.464 & 0.233 & 0.278 \\
-BGE-M3-sparse & 0.125 & 0.401 & 0.535 & 0.252 & 0.309 \\
-BGE-M3-colbert & \textbf{0.448} & \textbf{0.753} & \textbf{0.785} & \textbf{0.580} & \textbf{0.630} \\
+BGE-M3-sparse & 0.124 & 0.401 & 0.535 & 0.252 & 0.309 \\
+BGE-M3-colbert & \textbf{0.448} & \textbf{0.754} & \textbf{0.785} & \textbf{0.579} & \textbf{0.630} \\
 \hline
 \multicolumn{6}{c}{\textit{Parent-Level Retrieval}} \\
 \hline
 BGE-M3-dense & 0.960 & 0.984 & 0.993 & 0.971 & 0.906 \\
 BGE-M3-sparse & 0.994 & \textbf{0.999} & \textbf{1.000} & 0.996 & \textbf{0.983} \\
-BGE-M3-colbert & \textbf{0.997} & \textbf{0.999} & \textbf{1.000} & \textbf{0.998} & 0.958 \\
+BGE-M3-colbert & \textbf{0.997} & \textbf{0.999} & \textbf{1.000} & \textbf{0.998} & 0.957 \\
 \hline
 \end{tabular}
 }
 \end{table}
 
-The three modes share one $568$M-parameter encoder and differ only in how its output is used. That makes the comparison unusually clean, and the result is the dissociation in its purest form. At item level late interaction is worth a factor of $3.5$ over either single-vector mode, while the two single-vector modes --- one dense, one learned-sparse, built on entirely different principles --- land within $0.2$ points of each other. At parent level all three exceed $0.96$ and the ordering ceases to matter.
+The three modes share one $568$M-parameter encoder and differ only in how its output is used. That makes the comparison unusually clean, and the result is the dissociation in its purest form. At item level late interaction is worth a factor of $3.5$ over either single-vector mode, while the two single-vector modes --- one dense, one learned-sparse, built on entirely different principles --- land $0.2$ points apart. At parent level all three exceed $0.96$ and the ordering ceases to matter.
 
 Single-vector compression, then, is what costs the variant, and it costs the same whether the vector is dense or sparse: pooling a document into one representation preserves what family it belongs to and discards which member of it. Late interaction, by keeping one vector per token, recovers about a third of what is lost --- and still leaves BGE-M3-ColBERT $52.6$ points behind the best lexical configuration. It is nonetheless the strongest neural system in this study by a wide margin, ahead of multilingual-e5-base ($0.136$) and of both GTE variants ($0.070$ and $0.073$).
 
-On the 29 non-numeric queries all three modes improved markedly --- ColBERT and dense reach Acc@1 $=0.759$ and sparse $0.655$, with Recall@5 of $1.000$ in every case --- while on numeric queries accuracy dropped substantially (ColBERT: $44.7\%$, sparse and dense: ${\sim}12.5\%$), confirming ColBERT's relative robustness to numeric constraints. This subset is too small ($0.17\%$ of the test set) to support a quantitative claim, and is reported only to show the direction of the effect.
+On the 29 non-numeric queries all three modes improved markedly --- ColBERT and dense reach Acc@1 $=0.759$ and sparse $0.655$, with Recall@5 of $1.000$ in every case --- while on numeric queries accuracy dropped substantially (ColBERT: $44.7\%$, sparse $12.4\%$, dense $12.6\%$), confirming ColBERT's relative robustness to numeric constraints. This subset is too small ($0.17\%$ of the test set) to support a quantitative claim, and is reported only to show the direction of the effect.
 
 \subsubsection{Cross-Family Performance Comparisons}
 \label{subsec:cross_family}
@@ -801,7 +800,7 @@ Table~\ref{tab:dissociation} places every method evaluated in this study side by
 
 \input{tables/item_parent_dissociation.tex}
 
-Three observations follow. First, the ordering at item level is almost exactly reversed at parent level: the systems that discriminate variants worst are among those that identify families best. Second, the gap widens almost monotonically as item-level accuracy falls, from $1.2$ percentage points for BM25 with parameter tokens to $92.9$ for GTE; the only inversion, between BGE-M3 dense and multilingual-e5-base, amounts to $1.1$ points. Third, the one clear exception --- \texttt{sentence\_similarity\_spanish\_es}, with a gap of only $37.1$ points --- is the exception that confirms the pattern: it is a monolingual sentence-similarity model rather than a retriever, and it is weak at both levels, so it never reaches the regime in which the dissociation appears.
+Three observations follow. First, the ordering at item level is almost exactly reversed at parent level: the systems that discriminate variants worst are among those that identify families best. Second, the gap widens almost monotonically as item-level accuracy falls, from $1.2$ percentage points for BM25 with parameter tokens to $92.9$ for GTE; the only inversion, between BGE-M3 dense and multilingual-e5-base, amounts to $1.2$ points. Third, the one clear exception --- \texttt{sentence\_similarity\_spanish\_es}, with a gap of only $37.1$ points --- is the exception that confirms the pattern: it is a monolingual sentence-similarity model rather than a retriever, and it is weak at both levels, so it never reaches the regime in which the dissociation appears.
 
 The dissociation is not an artefact of any single architecture, and it is not confined to neural retrieval. It holds for single-vector dense encoders, for learned sparse representations and, attenuated, for late interaction --- but it also holds for the lexical family, which is where it is easiest to overlook because the item-level numbers there are high enough to look like success. TF-IDF with parameter phrases places the correct family first for $99.0\%$ of queries and the correct variant for $70.8\%$: a gap of $28.1$ points, larger than that of BGE-M3 ColBERT relative to its own item-level score. BM25-unigram gives up $10.4$ points the same way. Section~\ref{subsec:error_analysis} shows the phenomenon at the level of the representation itself: for $6.94\%$ of queries, BM25-unigram assigns the target and at least one sibling variant \emph{identical} vectors, so no ranking function operating on that representation can separate them.
 
@@ -826,7 +825,7 @@ This is a negative result about a design element we expected to help. In a catal
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llcccc@{}}
 \toprule
-\textbf{Fusion Strategy} & \textbf{Weight Distribution} & \textbf{Acc@1} & \textbf{R@5} & \textbf{R@10} & \textbf{MRR} \\
+\textbf{Fusion Strategy} & \textbf{Weight Distribution} & \textbf{Acc@1} & \textbf{R@5} & \textbf{R@10} & \textbf{MRR}$^{\dagger}$ \\
 \midrule
 \multicolumn{6}{l}{\textit{Three-way fusions (BM25 + BGE-M3 variant + TF-IDF)}} \\
 \midrule
@@ -864,9 +863,10 @@ TF-IDF: 0.450
 \bottomrule
 \end{tabular}
 }
+\\[2pt]{\footnotesize $^{\dagger}$\,MRR@10 (reciprocal rank truncated at rank 10).}
 \end{table}
 
-What the sweep does with the weights is more informative than the scores it reaches. In every three-way fusion the optimiser assigns BM25 $87.9\%$ of the weight, character-level TF-IDF $11.0\%$, and the neural ranker $1.2\%$ --- whichever of the three BGE-M3 modes it is. Given free rein over the weight space, the procedure turns the neural signal off. The five-way fusion is the exception that shows why: forced to accommodate all three BGE-M3 modes, it gives them $9.9\%$ between them and splits the remainder evenly between BM25 and TF-IDF, and it loses $28.5$ points of Acc@1 against the best three-way configuration ($0.608$ against $0.893$). It does, however, reach the highest Recall@10 of any fusion ($0.971$). The neural signal is not worthless here; it is worth something at depth and negative at rank one, which is the same dissociation seen from the fusion side.
+What the sweep does with the weights is more informative than the scores it reaches. In every three-way fusion the optimiser assigns BM25 $87.9\%$ of the weight, character-level TF-IDF $11.0\%$, and the neural ranker $1.2\%$ --- whichever of the three BGE-M3 modes it is. Given free rein over the weight space, the procedure turns the neural signal off. The five-way fusion is the exception that shows why: forced to accommodate all three BGE-M3 modes, it gives them $10.0\%$ between them and splits the remainder evenly between BM25 and TF-IDF, and it loses $28.4$ points of Acc@1 against the best three-way configuration ($0.608$ against $0.893$). It does, however, reach the highest Recall@10 of any fusion ($0.971$). The neural signal is not worthless here; it is worth something at depth and negative at rank one, which is the same dissociation seen from the fusion side.
 
 None of the four fusions reaches the best lexical configuration alone ($0.974$). Fusion buys about two points over BM25-unigram ($0.893$ against $0.869$) and costs a second ranker, an embedding index and a weight sweep to do it.
 
@@ -884,7 +884,7 @@ First, \textbf{reranking does not improve the systems that are already strong}. 
 
 Second, \textbf{blend always beats replace, by a wide margin}: $+0.17$ to $+0.34$ in Acc@1, the gap being largest for BM25 and smallest for BGE-M3-ColBERT. Ranking by cross-encoder score alone discards precisely the lexical evidence that resolves parametric variants. The gap is a direct measure of how much of the useful signal lives in the first stage.
 
-Third, \textbf{depth barely matters, and what effect it has runs in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$, the hybrid from $0.451$ to $0.426$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend the three depths are within $0.004$ of each other for every system, with a slight preference for the deepest. The declared choice of depth, in other words, was never the decision it appeared to be: what determines the outcome is whether the first-stage score is kept, not how many candidates are rescored.
+Third, \textbf{depth barely matters, and what effect it has runs in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$, the hybrid from $0.451$ to $0.426$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend the three depths are within $0.004$ of each other for every system, with no consistent preference among them. The declared choice of depth, in other words, was never the decision it appeared to be: what determines the outcome is whether the first-stage score is kept, not how many candidates are rescored.
 
 The practical reading is that a general-purpose reranker has nothing to add here. Its training objective --- is this passage about this question --- is satisfied equally by every variant of a template, which is precisely the distinction the task requires. Reranking would only help if the reranker were trained to compare parameter values, and no off-the-shelf model is.
 
@@ -954,11 +954,11 @@ Both approaches need the same two artefacts: a machine-readable schema for every
 \subsection{Error Analysis}
 \label{subsec:error_analysis}
 
-To understand the failure modes of each retrieval approach we classified \emph{every} failed query for three representative methods, using the five-category taxonomy of Section~\ref{subsec:error_taxonomy}. All three are evaluated on the same 16,590 queries, so their failure counts are directly comparable: 2,172 for BM25-unigram, 1,781 for the hybrid and 9,158 for BGE-M3-ColBERT.
+To understand the failure modes of each retrieval approach we classified \emph{every} failed query for three representative methods, using the five-category taxonomy of Section~\ref{subsec:error_taxonomy}. All three are evaluated on the same 16,590 queries, so their failure counts are directly comparable: 2,172 for BM25-unigram, 1,781 for the hybrid and 9,160 for BGE-M3-ColBERT.
 
 \subsubsection{Error Type Distribution}
 
-Table~\ref{tab:error_distribution} presents the distribution of error types across the three representative methods. The three profiles are almost indistinguishable: numeric mismatches account for $97.97\%$, $98.21\%$ and $97.53\%$ of failures for BM25-unigram, BGE-M3-ColBERT and the hybrid respectively, even though the three differ by up to $44$ percentage points in accuracy and share little architecture. What separates these systems is how often they fail, not how. Whatever the representation --- sparse term weights, late-interaction token embeddings, or a weighted combination of both --- the residual errors are the same errors: a parameter value read wrong.
+Table~\ref{tab:error_distribution} presents the distribution of error types across the three representative methods. The three profiles are almost indistinguishable: numeric mismatches account for $97.97\%$, $98.22\%$ and $97.53\%$ of failures for BM25-unigram, BGE-M3-ColBERT and the hybrid respectively, even though the three differ by up to $44$ percentage points in accuracy and share little architecture. What separates these systems is how often they fail, not how. Whatever the representation --- sparse term weights, late-interaction token embeddings, or a weighted combination of both --- the residual errors are the same errors: a parameter value read wrong.
 
 \begin{table}[htbp]
 \centering
@@ -969,11 +969,11 @@ Table~\ref{tab:error_distribution} presents the distribution of error types acro
 \toprule
 \textbf{Error Type} & \textbf{BM25 Unigram} & \textbf{BGE-M3 ColBERT} & \textbf{Hybrid} \\
 \midrule
-Numeric Mismatch     & 97.97\% & 98.21\% & 97.53\% \\
-Lexical Confusion    & 0.55\%  & 0.37\%  & 0.22\%  \\
+Numeric Mismatch     & 97.97\% & 98.22\% & 97.53\% \\
+Lexical Confusion    & 0.55\%  & 0.36\%  & 0.22\%  \\
 Other                & 1.47\%  & 1.42\%  & 2.25\%  \\
 \midrule
-Failed queries ($n$) & 2,172   & 9,158   & 1,781   \\
+Failed queries ($n$) & 2,172   & 9,160   & 1,781   \\
 \bottomrule
 \end{tabular}
 }
@@ -990,24 +990,24 @@ Figure~\ref{fig:error_distribution} shows the same distribution. The hybrid remo
 
 \subsubsection{Hierarchical Error Classification}
 
-Beyond categorical error types, we analyzed outcomes according to the hierarchical structure of the catalog, where items are organized under parents (e.g. OEB280\$ for 40\,mm polyethylene conduits). Table~\ref{tab:hierarchical_errors} partitions \emph{all} queries into four mutually exclusive outcomes: correct at rank 1; correct parent but wrong variant; wrong parent; and correct parent absent from the top 10. The four columns therefore sum to $100\%$ for each method, and the complement of the first row is that method's error rate.
+Beyond categorical error types, we analyzed outcomes according to the hierarchical structure of the catalog, where items are organized under parents (e.g. OEB280\$ for 40\,mm polyethylene conduits). Table~\ref{tab:hierarchical_errors} partitions \emph{all} queries into three mutually exclusive outcomes: correct at rank 1; correct parent but wrong variant; and wrong parent. The three sum to $100\%$ for each method, and the complement of the first row is that method's error rate. A last row gives the subset of wrong-parent queries whose correct parent does not appear anywhere in the top 100.
 
-Read this way the table makes the dissociation concrete at the level of individual failures. For BGE-M3-ColBERT, $54.86\%$ of all queries land on a wrong variant of the \emph{right} parent, against $0.34\%$ that land on a wrong parent altogether: when this model fails, it has almost always found the right family and picked the wrong member of it. BM25-unigram shows the same asymmetry in miniature ($10.38\%$ against $2.71\%$), and the hybrid sits between them.
+Read this way the table makes the dissociation concrete at the level of individual failures. For BGE-M3-ColBERT, $54.88\%$ of all queries land on a wrong variant of the \emph{right} parent, against $0.34\%$ that land on a wrong parent altogether: when this model fails, it has almost always found the right family and picked the wrong member of it. BM25-unigram shows the same asymmetry in miniature ($10.38\%$ against $2.71\%$), and the hybrid sits between them.
 
 \begin{table}[htbp]
 \centering
-\caption{Hierarchical outcome patterns, as a percentage of \emph{all} queries ($n=16{,}590$, identical for the three methods). The four categories are mutually exclusive and sum to 100\%; the complement of the first row is the method's error rate.}
+\caption{Hierarchical outcome patterns, as a percentage of \emph{all} queries ($n=16{,}590$, identical for the three methods). The first three rows are mutually exclusive and sum to 100\%; the complement of the first row is the method's error rate. The last row is a subset of the third.}
 \label{tab:hierarchical_errors}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Error Pattern} & \textbf{BM25} & \textbf{BGE-M3} & \textbf{Hybrid} \\
  & \textbf{Unigram} & \textbf{ColBERT} & \\
 \midrule
-Correct at rank 1        & 86.91\% & 44.80\% & 89.26\% \\
+Correct at rank 1        & 86.91\% & 44.79\% & 89.26\% \\
 \midrule
-Right parent, wrong item & 10.38\% & 54.86\% & 8.13\%  \\
+Right parent, wrong item & 10.38\% & 54.88\% & 8.13\%  \\
 Wrong parent             & 2.71\%  & 0.34\%  & 2.60\%  \\
-Parent not in top-10     & 0.10\%  & 0.00\%  & 0.00\%  \\
+\quad of which parent not in top-100 & 0.10\%  & 0.00\%  & 0.00\%  \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1053,7 +1053,7 @@ One limit is imposed by the representation before any scoring happens. After nor
 
 Adding the $61$ parameter tokens raises the vocabulary to $398$ types and removes every collision: the parameter-token index has no duplicate vectors at all. Part of the $10.3$ points those tokens are worth is therefore not better weighting but a representation that can distinguish the items in the first place. Injectivity alone does not explain the gain, though: the uni+bigram index has $1{,}142$ types and no duplicates either, and scores $0.8267$, below plain unigram. What the parameter tokens add is not vocabulary but the specific $61$ distinctions the catalog is organised around.
 
-The hybrid has the lowest right-parent-wrong-item rate of the three ($8.13\%$ against $10.38\%$ for BM25 and $54.86\%$ for ColBERT), which is where its advantage over BM25 comes from: the character n-gram and neural signals resolve a subset of the within-template confusions that BM25 alone gets wrong. Its wrong-parent rate, however, is essentially BM25's ($2.60\%$ against $2.71\%$), so the fusion helps inside the template and not outside it.
+The hybrid has the lowest right-parent-wrong-item rate of the three ($8.13\%$ against $10.38\%$ for BM25 and $54.88\%$ for ColBERT), which is where its advantage over BM25 comes from: the character n-gram and neural signals resolve a subset of the within-template confusions that BM25 alone gets wrong. Its wrong-parent rate, however, is essentially BM25's ($2.60\%$ against $2.71\%$), so the fusion helps inside the template and not outside it.
 
 \subsection{Overall Performance Summary}
 \label{sec:4.7_Overall Performance Summary}
@@ -1079,7 +1079,7 @@ These rankings are based on Acc@1, which reflects automated deployment, where on
 \section{Discussion}
 \label{sec:discussion}
 
-The result that organises the rest is the dissociation. On this catalog, identifying the parametric family is close to solved by anything --- nine of the ten systems in Table~\ref{tab:dissociation} place the correct family first for at least $96\%$ of queries, the exception being a monolingual sentence-similarity model that is weak at both levels --- and identifying the variant is not solved by most of them. That the same query, the same corpus and the same ranking produce $99.8\%$ and $7.0\%$ depending only on which level is scored means that a single accuracy figure on a parametric catalog says almost nothing until the level is stated. Studies that report family-level or category-level accuracy on such catalogs, as much of the prior work in this domain does, are measuring the part of the task that is already easy.
+The result that organises the rest is the dissociation. On this catalog, identifying the parametric family is close to solved by anything --- nine of the ten systems in Table~\ref{tab:dissociation} place the correct family first for between $96.0\%$ and $99.8\%$ of queries, the exception being a monolingual sentence-similarity model that is weak at both levels --- and identifying the variant is not solved by most of them. That the same query, the same corpus and the same ranking produce $99.8\%$ and $7.0\%$ depending only on which level is scored means that a single accuracy figure on a parametric catalog says almost nothing until the level is stated. Studies that report family-level or category-level accuracy on such catalogs, as much of the prior work in this domain does, are measuring the part of the task that is already easy.
 
 That a well-tuned lexical configuration ends up on top is consistent with prior findings that optimized lexical models surpass neural approaches in domain-specific settings with consistent terminology~\cite{thakur2021beir}, and with work showing that term dictionaries improve AEC search precision~\cite{fan2015project}. But the reading a practitioner should take from it is narrower than ``use BM25''. The configuration that reaches $97.4\%$ is BM25 plus a step that resolves the query's parameter values against the template schema; without that step the same index reaches $87.1\%$, in line with every other lexical configuration here. What is doing the work is making the parameter values explicit, and that is available to any ranker.
 
@@ -1180,10 +1180,12 @@ This research did not receive any specific grant from funding agencies in the pu
 
 Cesáreo González-Alvarez is an employee of Telice S.A., which supported this work in kind as stated under Funding. Telice S.A. had no role in the study design, the analysis or interpretation of the results, or the decision to publish. The other authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
 
+%% TODO (César): sustituir los dos DOI de abajo, y los de references.bib
+%% (bc3cat_dataset, bc3cat_software), por los de los depósitos nuevos al publicarlos.
 \section*{Data availability statement}
 \addcontentsline{toc}{section}{Data availability}
 
-The BC3CAT benchmark is openly available in two archived repositories: the dataset and BC3/FIEBDC processing pipeline at \url{https://github.com/cga-telice/bc3cat-dataset} (archived on Zenodo, DOI: \href{https://doi.org/10.5281/zenodo.20277801}{10.5281/zenodo.20277801}), and the retrieval and evaluation code at \url{https://github.com/cga-telice/bc3cat-retrieval} (archived on Zenodo, DOI: \href{https://doi.org/10.5281/zenodo.20277824}{10.5281/zenodo.20277824}). The release contains the full parametric catalog with parsed parameter values; the exact query set as a versioned list of identifiers with a checksum; per-query outputs (top-100 candidates with scores) for every configuration; and the evaluation code, including the dual item/parent scorer, with the YAML configuration of every run. The raw catalog derives from ADIF's publicly available \textit{Base de Precios} (\url{https://bpa.adif.es}).
+The BC3CAT benchmark is openly available in two archived repositories: the dataset and BC3/FIEBDC processing pipeline at \url{https://github.com/cga-telice/bc3cat-dataset} (archived on Zenodo, DOI: \href{https://doi.org/10.5281/zenodo.20277801}{10.5281/zenodo.20277801}), and the retrieval and evaluation code at \url{https://github.com/cga-telice/bc3cat-retrieval} (archived on Zenodo, DOI: \href{https://doi.org/10.5281/zenodo.20277824}{10.5281/zenodo.20277824}). The release contains the full parametric catalog with parsed parameter values and the BC3 conversion tools; the test ($16{,}590$) and validation ($5{,}000$) query sets as versioned lists of identifiers with SHA-256 checksums; the YAML configuration and the aggregate item- and parent-level metrics of every run reported in this paper; per-query outputs (top-100 candidates with scores) for the ten systems of Table~\ref{tab:dissociation} and the rule-based structured pipeline; and the evaluation code, including the dual item/parent scorer. Per-query outputs are not released for the pseudo-relevance feedback, fusion, cross-encoder, HyDE and LLM-based extraction runs. The raw catalog derives from ADIF's publicly available \textit{Base de Precios} (\url{https://bpa.adif.es}).
 
 \section*{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
 \addcontentsline{toc}{section}{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
