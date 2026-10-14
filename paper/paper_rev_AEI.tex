@@ -1,4 +1,4 @@
-\documentclass[preprint,12pt]{elsarticle}
+\documentclass[preprint,review,12pt]{elsarticle}
 \usepackage{float}
 \usepackage{placeins}
 %% Use the option review to obtain double line spacing
@@ -36,6 +36,16 @@
 \usepackage{hyperref}
 
 \usepackage{booktabs}
+\usepackage{etoolbox}
+%% The review option double-spaces the text; tables stay single-spaced so the
+%% tallest ones still fit a page.
+\AtBeginEnvironment{table}{\renewcommand{\baselinestretch}{1}\selectfont}
+\AtBeginEnvironment{table*}{\renewcommand{\baselinestretch}{1}\selectfont}
+%% Tables wider than the text block are scaled down to fit it; narrower ones
+%% are left as they are. Several generated tables overflowed the page.
+\usepackage{adjustbox}
+\BeforeBeginEnvironment{tabular}{\begin{adjustbox}{max width=\linewidth}}
+\AfterEndEnvironment{tabular}{\end{adjustbox}}
 
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, fit, backgrounds}
@@ -121,7 +131,7 @@ principal systems are released.
 %% PACS codes here, in the form: \PACS code \sep code
 %% MSC codes here, in the form: \MSC code \sep code
 %% or \MSC[2008] code \sep code (2000 is the default)
-Information retrieval \sep Construction cost catalog \sep BM25 \sep Dense retrieval \sep Parametric catalog \sep Domain knowledge \sep Benchmark dataset
+Information retrieval \sep Parametric construction catalog \sep BM25 \sep Dense retrieval \sep Domain knowledge \sep Benchmark dataset
 \end{keyword}
 
 \end{frontmatter}
@@ -162,6 +172,8 @@ Our contributions are the following. The primary contribution is an empirical ch
     \item We compare four families of approach under identical conditions --- lexical, neural, hybrid with reranking, and structured attribute matching over automatically extracted parameters --- and find that textual retrieval outperforms structured matching even when the latter is handed the correct template for free.
     \item We create and release BC3CAT, a benchmark derived from the OEB subcategory of ADIF's parametric railway catalog: 47,513 items across 30 catalog concepts, of which 25 are parametric templates that generate 47,508 variants; the exact query sets as versioned lists of identifiers, the configuration and aggregate metrics of every run, per-query outputs for the eleven principal systems, and the parsing tools that convert the raw BC3 format into a standard retrieval collection~\cite{bc3cat_dataset}.
 \end{itemize}
+
+One asymmetry of the comparison is deliberate and is stated here rather than left to the discussion: the lexical systems are tuned on the validation queries and consume the parameter values that the BC3 format declares, whereas the neural retrievers are used zero-shot on text alone. Section~\ref{sec:discussion} returns to what this does and does not license.
 
 The rest of this paper is organized as follows: Section 2 reviews related work on construction classification and retrieval methods. Section 3 describes the ADIF dataset, the preprocessing pipeline, the query--target overlap that characterises the benchmark, and the retrieval configurations evaluated. Section 4 presents the results, organised around the item-to-parent dissociation. Section 5 discusses what the dissociation implies for deploying catalog search, and Section 6 concludes with directions for future research.
 
@@ -473,7 +485,7 @@ All neural models are used in zero-shot mode without fine-tuning on construction
 We evaluate \texttt{intfloat/multilingual-e5-base} (278M parameters, 768 dimensions) using the sentence-transformers library v2.2.2~\citep{reimers2019sentence}. Following the model documentation, queries receive the prefix ``query: '' and documents receive ``passage: '' before encoding. Embeddings are L2-normalized before similarity computation.
 
 \paragraph{Spanish Sentence Similarity}
-We evaluate \texttt{hiiamsid/sentence\_similarity\_spanish\_es}, a model specifically fine-tuned for Spanish semantic similarity tasks, to compare against multilingual alternatives.
+We evaluate \texttt{hiiamsid/\allowbreak sentence\_similarity\_spanish\_es}, a model specifically fine-tuned for Spanish semantic similarity tasks, to compare against multilingual alternatives.
 
 \paragraph{GTE Model}
 We evaluate \texttt{Alibaba-NLP/gte-multilingual-base} with two query formats:
