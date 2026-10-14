@@ -1,0 +1,1202 @@
+\documentclass[preprint,12pt]{elsarticle}
+\usepackage{float}
+\usepackage{placeins}
+%% Use the option review to obtain double line spacing
+%\documentclass[authoryear,preprint,review,12pt]{elsarticle}
+
+%% Use the options 1p,twocolumn; 3p; 3p,twocolumn; 5p; or 5p,twocolumn
+%% for a journal layout:
+%% \documentclass[final,1p,times]{elsarticle}
+%% \documentclass[final,1p,times,twocolumn]{elsarticle}
+%% \documentclass[final,3p,times]{elsarticle}
+%% \documentclass[final,3p,times,twocolumn]{elsarticle}
+%% \documentclass[final,5p,times]{elsarticle}
+%% \documentclass[final,5p,times,twocolumn]{elsarticle}
+
+%% For including figures, graphicx.sty has been loaded in
+%% elsarticle.cls. If you prefer to use the old commands
+%% please give \usepackage{epsfig}
+\usepackage[utf8]{inputenc}
+\usepackage{comment}
+\usepackage{lmodern}
+\usepackage{textgreek}
+
+%\usepackage[numbers,square]{natbib}
+%% The amssymb package provides various useful mathematical symbols
+\usepackage{amssymb}
+%% The amsmath package provides various useful equation environments.
+\usepackage{amsmath}
+%% The amsthm package provides extended theorem environments
+%% \usepackage{amsthm}
+
+%% Pongo los números de línea porque lo pide la revista
+\usepackage[left]{lineno}
+\usepackage{listings}
+
+\usepackage{hyperref}
+
+\usepackage{booktabs}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, fit, backgrounds}
+
+\setlength{\marginparwidth}{2cm}
+
+% Las figuras viven en paper/figures/ y las tablas generadas en eval/.
+\graphicspath{{figures/}}
+
+\sloppy
+
+\journal{Advanced Engineering Informatics}
+
+\begin{document}
+\linenumbers
+\begin{frontmatter}
+
+%% Title, authors and addresses
+
+%% use the tnoteref command within \title for footnotes;
+%% use the tnotetext command for theassociated footnote;
+%% use the fnref command within \author or \affiliation for footnotes;
+%% use the fntext command for theassociated footnote;
+%% use the corref command within \author for corresponding author footnotes;
+%% use the cortext command for theassociated footnote;
+%% use the ead command for the email address,
+%% and the form \ead[url] for the home page:
+\title{A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches}
+
+\author[deptA,b]{Cesáreo González-Alvarez\corref{cor1}}
+\cortext[cor1]{Corresponding author}
+\ead{cgonza06@estudiantes.unileon.es}
+%% \ead[url]{home page}
+
+\author[deptA]{Laura Fernández-Robles}
+\author[deptA]{Enrique Alegre}
+\author[deptA]{Manuel Castejón-Limas}
+
+\affiliation[deptA]{organization={Group for Vision and Intelligent Systems, I4 Institute, Universidad de León},
+%%             addressline={},
+               city={León},
+               postcode={24071},
+%%             state={},
+               country={Spain}}
+\affiliation[b]{organization={Telice S.A.},
+            city={León},
+            postcode={24391},
+            country={Spain}}               
+
+%% Abstract
+\begin{abstract}
+
+Construction cost estimation relies on parametric catalogs in which tens of thousands
+of items are generated from a small number of templates and differ only in attribute
+values such as diameter, terrain type or work-shift conditions. Only the exact item,
+not merely its family, fixes the correct unit price.
+We introduce BC3CAT, a benchmark built from the 47,513 items of one subcategory of the
+Spanish railway infrastructure catalog (ADIF), and use it to compare lexical, zero-shot
+neural, hybrid and structured retrieval at two levels: the exact parametric variant and
+its parent family.
+
+The central finding is a systematic dissociation between those two levels. Zero-shot
+single-vector and learned-sparse multilingual retrievers place the correct family first
+for 96.0--99.8\% of queries but the correct variant for only 7.0--13.6\%; the best
+neural system, BGE-M3 with late interaction, reaches 44.8\% against 99.7\%. BM25 that
+exploits the domain knowledge encoded in the BC3 parametric structure, as one token per
+parameter value, shows almost no gap (97.4\% item, 98.5\% parent), and extracting those
+values from the query text instead of reading them from the catalog costs nothing
+measurable. Used as an exact filter rather than as ranking evidence, the same values
+reach 90.3\%. The target contains 94.1\% of the query's tokens and 99.96\% of its
+numeric values verbatim, which bounds the scope of these results.
+
+Dense embeddings therefore localise a query within the catalog but do not preserve the
+parametric distinctions that carry cost implications. BC3CAT, the exact query set,
+per-query outputs and all configurations are released.
+
+\end{abstract}
+
+%% Keywords
+\begin{keyword}
+%% keywords here, in the form: keyword \sep keyword
+%% PACS codes here, in the form: \PACS code \sep code
+%% MSC codes here, in the form: \MSC code \sep code
+%% or \MSC[2008] code \sep code (2000 is the default)
+Information retrieval \sep Construction cost catalog \sep BM25 \sep Dense retrieval \sep Parametric catalog \sep Domain knowledge \sep Benchmark dataset
+\end{keyword}
+
+\end{frontmatter}
+
+
+\section{Introduction}
+\label{sec:introduction}
+In modern construction project management, accurately retrieving the correct work item from standardized catalogs  is critical for budget control, procurement and stakeholder communication ~\cite{martinez-rojasApproachAutomaticClassification2015, wuNaturalLanguageProcessing2022}. Large infrastructure projects increasingly rely on parametric construction catalogs containing tens of thousands of highly similar items, where small lexical or numeric differences correspond to distinct technical specifications and unit costs. In this context, catalog retrieval is a precision-critical task rather than a general semantic search problem.
+
+The challenge is compounded by terminology variability across stakeholders. Field workers, designers, and cost estimators often use different terms for identical concepts, creating a vocabulary mismatch between queries and catalog entries  ~\cite{chungComparingNaturalLanguage2023, role_martnezrojas_2016, rampiniArtificialIntelligenceConstruction2022, casiniAdvancedSiteManagement2022}. Moreover, construction descriptions frequently contain critical numeric parameters—dimensions, quantities, specifications—where even minor discrepancies can lead to costly errors in project estimation ~\cite{wuNaturalLanguageProcessing2022}. These domain-specific characteristics demand retrieval methods that balance lexical precision with semantic understanding while maintaining sensitivity to numeric values.
+
+These terminology mismatches are particularly evident in two operational contexts. First, during cost estimation for design-bid-build tenders, estimators must map project specifications—often drafted with company-specific or region-specific wording—to standardized catalog entries. A project item description related to pipes must be matched to the precise catalog variant that accounts for terrain type, pipe diameter, and work-shift conditions, yet the source document may omit or paraphrase critical parameters. Second, during project execution, field engineers produce daily progress reports using abbreviated or colloquial item descriptions that must be reconciled with contractual line items for billing and compliance. A site note should map unambiguously to a specific catalog entry, but the terse phrasing and implicit context challenge both manual lookup and automated systems. In both scenarios, failure to retrieve the correct item carries tangible consequences: cost overruns from misquoted unit prices, contractual disputes over scope interpretation, or delays in payment certification. Robust retrieval methods that tolerate terminological variation while preserving numeric and parametric precision are therefore essential to practical construction workflows.
+
+Both scenarios require two distinct capabilities, and this study is designed to separate them. The first is bridging vocabulary: recognising that an independently worded description refers to a given family of catalog concepts at all. The second is discriminating within that family: choosing, among hundreds or thousands of variants that differ only in attribute values, the one whose unit price applies. These are usually entangled, and a single accuracy figure cannot say which of them a system failed at.
+
+We therefore hold the first fixed and vary only the second. Queries are the catalog's own short-form descriptions, so the vocabulary gap is deliberately small --- Section~\ref{subsec:overlap} measures exactly how small --- and every system is scored twice, once on the parametric family and once on the exact variant. The design gives lexical matching an easy ride by construction, and that is the point: with the vocabulary variable removed, whatever difficulty remains is parametric. What the results show is that this residual difficulty is severe, that it is not confined to any one architecture, and that a benchmark varying both capabilities at once would have hidden it.
+
+Attempts to automate this mapping process predominantly employed rule-based systems and traditional machine learning methods, which often rely on structured datasets and expert-driven input ~\cite{caldasAutomatingHierarchicalDocument2003, wuNaturalLanguageProcessing2022}. Although these methods have shown limited success, they struggle with the domain-specific variability, nuanced language, and unstructured data prevalent in construction management ~\cite{rampiniArtificialIntelligenceConstruction2022, baekCriticalReviewTextbased2021}. Advances in natural language processing (NLP), particularly transformer-based models such as BERT, have shown promise in addressing these challenges by capturing semantic variability and contextual relationships ~\cite{tangAutomatedConstructionQuantity2022, dezaMachineLearningApproach2022}. However, issues such as data sparsity, domain-specific jargon, and computational resource demands persist ~\cite{chungComparingNaturalLanguage2023, martinez-rojasUsingClassificationTechniques2018}.
+
+This study addresses one specific and well-defined part of that challenge through a systematic comparative evaluation of lexical, neural and hybrid retrieval methods on a large-scale parametric catalog from the railway infrastructure domain. The task is to retrieve the exact catalog item corresponding to a short description, among $47{,}513$ candidates that belong to a single subcategory and are generated from only $25$ parametric templates. Entries within a template therefore share almost all of their vocabulary and differ only in attribute values such as terrain type, pipe diameter or work-shift conditions. Queries are the catalog's own short-form descriptions rather than text written independently by practitioners; Section~\ref{subsec:overlap} quantifies exactly how much of each query is contained verbatim in its target.
+
+Figure~\ref{fig:retrieval_workflow} summarizes the retrieval setting considered in this study, from short catalog descriptions, used as proxies for practitioner-oriented queries, to the identification of the corresponding detailed construction item.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{graphical_abstract.png}
+    \caption{Overview of the construction catalog retrieval task evaluated in this study. Short catalog descriptions are used as proxy practitioner-oriented queries to retrieve the exact matching item from a large parametric catalog, where near-duplicate entries may differ only in technical or numeric attributes.}
+    \label{fig:retrieval_workflow}
+\end{figure}
+
+Throughout, the retrieval systems are evaluated as carriers of domain knowledge as much as ranking algorithms: the BC3 format declares, for every item, its template, its parameter axes and their admissible values, and the comparison asks which systems can use that explicit representation of the catalog --- and at what cost --- to resolve the variant that a cost estimate requires.
+
+Our contributions are the following. The primary contribution is an empirical characterisation of an existing failure mode rather than a new retrieval method.
+
+\begin{itemize}
+    \item We document a systematic dissociation between family-level and variant-level retrieval in parametric catalogs. Every multilingual dense retriever we evaluate identifies the correct parametric family almost perfectly and the correct variant almost never, with gaps of up to 92.9 percentage points. The dual evaluation protocol that exposes this --- scoring each system at both levels of the catalog hierarchy --- is itself transferable to any hierarchically organised technical catalog.
+    \item We quantify the property of the benchmark that governs which methods succeed: how much of each query is already present verbatim in its target, lexically and numerically. Making this explicit is what distinguishes a genuine retrieval result from an artefact of how the evaluation pairs were constructed.
+    \item We compare four families of approach under identical conditions --- lexical, neural, hybrid with reranking, and structured attribute matching over automatically extracted parameters --- and find that textual retrieval outperforms structured matching even when the latter is handed the correct template for free.
+    \item We create and release BC3CAT, a benchmark derived from the OEB subcategory of ADIF's parametric railway catalog: 47,513 items across 30 catalog concepts, of which 25 are parametric templates that generate 47,508 variants; the exact query set as a versioned list of identifiers, per-query outputs for every system, and the parsing tools that convert the raw BC3 format into a standard retrieval collection~\cite{bc3cat_dataset}.
+\end{itemize}
+
+The rest of this paper is organized as follows: Section 2 reviews related work on construction classification and retrieval methods. Section 3 describes the ADIF dataset, the preprocessing pipeline, the query--target overlap that characterises the benchmark, and the retrieval configurations evaluated. Section 4 presents the results, organised around the item-to-parent dissociation. Section 5 discusses what the dissociation implies for deploying catalog search, and Section 6 concludes with directions for future research.
+
+\section{Related Work}
+
+\subsection{Construction Classification Systems and Standards}
+
+Construction work breakdown structures present a fundamental taxonomic challenge that distinguishes this domain from general information retrieval applications. National and organizational classification systems—including MasterFormat, UniFormat, OmniClass, and infrastructure-specific frameworks such as the price catalog of ADIF (\textit{Administrador de Infraestructuras Ferroviarias}, the Spanish railway infrastructure manager)\footnote{ADIF's \textit{Base de Precios} is publicly available at \url{https://bpa.adif.es}.} used in this study—impose hierarchical structures where items are organized by trade, material, location, or function ~\cite{royanoAnalysisClassificationSystems2023a, guvenConstructionClassificationSystem2022}. These parametric catalogs contain thousands to tens of thousands of work items characterized by structured attributes (dimensions, materials, performance specifications, unit costs) alongside free-text descriptions that exhibit substantial terminological variability. The ADIF catalog spans civil works, track infrastructure, electrification and signalling; the single subcategory examined here already contains $47{,}513$ distinct work items.
+
+The vocabulary mismatch problem is particularly acute in construction contexts. Practitioners use regional terminology, abbreviations, brand names, and informal descriptors that diverge significantly from standardized catalog entries. A single concept—such as a reinforced concrete beam of specific dimensions—may appear under dozens of lexical variants across project documents, specifications, and bills of quantities. This heterogeneity is further compounded in multilingual settings and when integrating catalogs from different organizations. 
+
+Prior work has addressed this complexity through ontology-based approaches. The Industry Foundation Classes (IFC) and International Framework for Dictionaries (IFD) provide semantic frameworks for mapping between classification systems and enabling interoperability across software platforms. Wu et al.~\cite{wuNaturallanguagebasedIntelligentRetrieval2019} developed natural-language retrieval engines for BIM object databases using vector-space models enhanced with domain ontologies, establishing a paradigm where lexical retrieval is augmented with explicit semantic expansion. Liu et al.~\cite{43f8dc68b3d05e73df8185c5a051e207a64e4ed4} proposed Enhanced Explicit Semantic Analysis for construction product model retrieval, leveraging concept spaces derived from construction knowledge bases to bridge vocabulary gaps. Wang et al.~\cite{wangMultiscaleInformationRetrieval2021} extended this work with multi-scale BIM information retrieval using hierarchical structure modeling based on IFC. These foundational approaches established that effective retrieval in construction requires explicit handling of domain semantics, though they predate the neural revolution in information retrieval and have not been systematically compared against modern dense retrieval methods.
+
+\subsection{Automated Classification and Retrieval in Construction}
+
+The application of natural language processing and machine learning to construction document processing has grown substantially over the past decade. Early work by Caldas and Soibelman~\cite{caldasAutomatingHierarchicalDocument2003} applied text classification to organize construction project documents, while subsequent studies extended these methods to bills of quantities, specifications, and regulatory texts. Systematic reviews by Wu et al.~\cite{wuNaturalLanguageProcessing2022} and Chung et al.~\cite{chungComparingNaturalLanguage2023} document the evolution from rule-based and bag-of-words approaches through support vector machines to contemporary transformer-based methods.
+
+Most published work in construction NLP addresses category-level classification rather than item-level retrieval. Tang et al.~\cite{tangAutomatedConstructionQuantity2022} applied deep learning to construction specification classification; Martínez-Rojas et al.~\cite{martinez-rojasUsingClassificationTechniques2018} developed automated text classification pipelines for public procurement documents using support vector machines and later neural approaches. de Sousa et al.~\cite{ebef73f3fbc92afecc62385adfa62bfe418b6749} recently reviewed automation approaches for the budgeting phase, finding that text classification methods achieve reasonable accuracy for category assignment but struggle with fine-grained item matching.
+
+Critically, classification accuracy degrades as taxonomic granularity increases. Caldas et al.~\cite{caldasAutomatingHierarchicalDocument2003} reported 95.88\% accuracy for top-level MasterFormat divisions but substantially lower performance for fine-grained subcategories. Similarly, Martínez-Rojas et al.~\cite{martinez-rojasApproachAutomaticClassification2015} achieved 92.4\% accuracy at the chapter level of work breakdown structures, with performance declining for detailed categorization. Deza et al.~\cite{dezaMachineLearningApproach2022} explored bidirectional LSTMs and Temporal Convolutional Networks for short construction text classification, demonstrating that even modern sequence models struggle with the brevity and density of catalog-style descriptions. These findings underscore that the granularity required for item-level retrieval—distinguishing among tens of thousands of near-identical entries—exceeds the capabilities demonstrated in existing classification studies.
+
+\subsection{Technical Catalog Retrieval: Methods and Cross-Domain Evidence}
+
+Information retrieval for technical catalogs has received extensive attention in e-commerce and manufacturing domains, offering methodological insights transferable to construction applications. The fundamental architectural choice—lexical versus neural retrieval—has been systematically evaluated in product search contexts with findings directly relevant to parametric construction catalogs.
+
+Lexical methods, exemplified by BM25 and its variants, remain remarkably competitive for technical domains. Mendes et al.~\cite{mendesComparativeStudyLexical2025} compared BM25 against semantic embedding methods on governmental product catalogs and electronic invoices, finding that lexical retrieval achieved faster identification of relevant products while semantic methods improved ranking within retrieved sets. This complementarity motivates hybrid architectures. Chang et al.~\cite{changExtremeMultilabelLearning2021} demonstrated that sparse TF-IDF representations with extreme multi-label classification (the PECOS framework) achieved superior recall and latency on catalogs exceeding 100 million items compared to dense neural embeddings trained on the same data. Ubrangala et al.~\cite{ubrangalaSearchingFastSlow2024} showed that character-level TF-IDF outperformed word-level variants for SKU search with abbreviation-heavy queries—a finding directly applicable to construction catalogs where alphanumeric codes and abbreviated specifications are prevalent. These results suggest that technical identifiers, part numbers, and precise parametric specifications benefit from exact matching that dense representations may inadvertently blur.
+
+Neural approaches have nonetheless advanced substantially in product retrieval. Dual-encoder architectures trained on large-scale click logs demonstrate strong performance when vocabulary mismatch is substantial and paraphrase recognition is required. Nigam et al.~\cite{nigamSemanticProductSearch2019a} at Amazon introduced semantic product search using bi-encoder transformers, achieving significant improvements in recall over lexical baselines. Choi et al.~\cite{choiSemanticProductSearch2020} developed structured matching modules that encode multi-field product information—titles, descriptions, dimensions, metadata—into unified representations that respect the heterogeneous structure of catalog entries. The CHARM architecture ~\cite{freymuthHierarchicalMultifieldRepresentations2025} proposed cascading hierarchical attention to align query tokens with specific product fields. More recent work explores learned sparse retrieval, where neural networks generate interpretable term expansions that combine lexical precision with semantic generalization. Biswas et al.~\cite{biswasEfficientInterpretableInformation2024} showed that hybrid encoders jointly learning dense and sparse representations can match cross-encoder effectiveness while maintaining first-stage retrieval efficiency—a critical consideration for production systems with latency constraints.
+
+Relevant cross-domain work also addresses procurement and product standardization. The TPDR system ~\cite{cunhaTPDRNovelTwoStep2023} developed for intermediary procurement—including construction-related purchases—employs a two-stage architecture: dual transformer encoders for initial retrieval followed by syntactic reranking. This hybrid approach achieved substantial gains over purely lexical or purely semantic baselines when matching noisy, abbreviated initial specifications to standardized product descriptions. Cross-lingual product matching systems using hierarchical metric learning ~\cite{kooDeepMetricLearning2023} further demonstrate how taxonomy-aware training objectives can distinguish exact duplicates from substitutes and unrelated items—a distinction critical for construction catalogs where material grades or dimensional variants carry significant cost implications.
+
+\subsection{Research Gap and Contribution}
+
+Despite the maturity of retrieval methods in adjacent domains, no systematic benchmark exists for evaluating lexical, neural, and hybrid approaches on construction parametric catalogs. The AEC-specific literature remains dominated by ontology-enhanced lexical methods developed before the transformer era, with limited adoption of the dense retrieval and learned sparse techniques that have transformed e-commerce search. Meanwhile, the product search literature, while methodologically sophisticated, lacks evaluation on the particular characteristics of construction work items: dense parametric specifications with numeric constraints, deep hierarchical classification structures, and domain-specific terminology in languages beyond English. This gap leaves practitioners without empirical guidance when selecting retrieval architectures for construction applications.
+
+This study addresses that gap through a systematic comparison of retrieval methods on a large-scale Spanish railway construction catalog. We evaluate lexical baselines (BM25 and TF-IDF, with and without tokens derived from the catalog's parameter structure), pretrained multilingual dense retrievers used zero-shot, hybrid configurations with cross-encoder reranking, and structured attribute matching over extracted parameters --- more than one hundred configurations in total (Table~\ref{tab:method_families}), all scored on the same fixed query set. The queries are the catalog's own short descriptions, a deliberate control whose consequences Section~\ref{subsec:overlap} quantifies. The findings provide empirical guidance for implementing catalog retrieval systems and a public benchmark for retrieval on parametric construction work items, together with an account of the conditions under which an explicit representation of the catalog's parameters decides the outcome.
+
+\section{Methodology}
+
+\subsection{Dataset Characteristics and Processing}
+
+\subsubsection{Dataset Scope and Selection}
+
+The experimental dataset derives from ADIF's parametric price catalog for Spanish railway infrastructure. While the complete catalog spans several technical chapters (among them Architecture, Civil Works, Control Systems, Energy, Environmental Management, Protection and Security, Safety and Health, Telecommunications, and Track), this study focuses on the OEB subcategory within the Civil Works chapter, which addresses platform system infrastructure such as trenches, conduits, and piping systems, providing a controlled yet demanding testbed for retrieval evaluation. Extending the benchmark to additional chapters remains a priority for future work, as discussed in Section~\ref{sec:discussion}.
+
+The OEB subcategory provides an ideal testbed for retrieval evaluation as it exhibits high parametric variability while maintaining manageable scope for comprehensive analysis. Through parametric expansion of base templates across combinations of attributes such as pipe material, diameter (e.g., 40, 110 or 160\,mm), number of pipes, terrain type (e.g., normal, rocky, under tracks, road crossing, ballast) and work-shift conditions (e.g., daytime, nighttime, exceptional), the subcategory generates $47{,}513$ distinct items~\cite{bc3cat_dataset}.
+
+The following terminology is used throughout. A \emph{template} is the parametric definition of a work item: a description with named attributes (terrain type, diameter, work shift) whose values are left open; the OEB subcategory contains $30$ templates, $25$ of them parametric. A \emph{variant} (or \emph{item}) is one instance of a template with every attribute bound to a concrete value; variants are the retrieval targets. A \emph{parent} (or \emph{parametric family}) collects all variants of one template and is identified by a shared six-character code. The expressions \emph{model family} and \emph{method family} refer to groupings of retrieval approaches and never to the catalog. Each variant therefore belongs to a two-level hierarchy:
+\begin{itemize}
+    \item the \emph{item level}, the fully specified variant including all parameters (e.g., ``6 PVC tubes, 160\,mm, under tracks, nighttime'');
+    \item the \emph{parent level}, the shared template that groups all variants under a common parametric definition.
+\end{itemize}
+
+Table~\ref{tab:dataset_statistics} presents key characteristics of the processed dataset.
+
+\begin{table}[ht]
+\centering
+\caption{OEB Subcategory Dataset Statistics}
+\label{tab:dataset_statistics}
+\begin{tabular}{|l|r|}
+\hline
+\textbf{Characteristic} & \textbf{Value} \\
+\hline
+Total unique items & 47,513 \\
+Base templates & 30 \\
+\quad of which parametric & 25 (47,508 items) \\
+\quad of which single-item & 5 \\
+Variants per parametric template (mean / median) & 1900.3 / 144 \\
+Variants per parametric template (min / max) & 3 / 6,336 \\
+\hline
+\textit{Short-Format description (`resumen')} (query) & \\
+\quad Mean length (words) & 19.7 \\
+\quad Median length (words) & 20 \\
+\quad Std deviation (words) & 2.4 \\
+\hline
+\textit{Long-Format description (`texto')} (target) & \\
+\quad Mean length (words) & 84.5 \\
+\quad Median length (words) & 83 \\
+\quad Std deviation (words) & 15.0 \\
+\hline
+Items with numeric parameters (full catalog) & 47,430 (99.8\%) \\
+Items without numeric parameters (full catalog) & 83 (0.2\%) \\
+\hline
+\end{tabular}
+\end{table}
+\smallskip
+\small\textit{Note:} `resumen' and `texto' are the field names in the original Spanish dataset.
+\smallskip
+
+To illustrate the dataset structure, Figure \ref{fig:oeb_example} presents a translated example from the original Spanish corpus. A template (e.g., OEB020\$) defines a base construction concept and several configurable parameters. Each unique combination of parameter values produces a distinct item, with both a concise short-format description used as the query and a detailed long-format description serving as the retrieval target.
+
+\begin{figure}[ht]
+\centering
+\small
+\fbox{\parbox{0.92\textwidth}{
+\textbf{Template:} OEB020\$ --- Concrete-encased PVC conduit, 110 mm\\[6pt]
+%
+\textbf{Parameters:}\\
+\begin{tabular}{@{}ll@{}}
+No. of pipes & 2 \\
+Terrain type & Normal \\
+Work shift & Daytime \\
+Maintenance window & $\geq$5 hours \\
+Execution conditions & High volume \\
+\end{tabular}\\[6pt]
+%
+\textbf{Short-format (\textit{resumen}):}\\
+Concrete-encased conduit, 2 pipes, PVC 110 mm, normal terrain. (Daytime / i $\geq$5h / High volume)\\[6pt]
+%
+\textbf{Long-format (\textit{texto}):}\\
+Concrete-encased conduit installation of 2 PVC pipes, 110 mm diameter, in any terrain except rock, including trench backfilling and compaction, supply and installation of pipes and HE-20 concrete (non-vibrated), conduit testing, transport and removal of materials to worksite. Work shift: Daytime. Maintenance window: $\geq$5 hours. Execution conditions: High volume.
+}}
+\caption{Example item from the OEB dataset (translated from Spanish). Each template expands into multiple items by varying parameter combinations. In the short-format description, $i$ denotes the maintenance window (the available track-possession interval), so ``$i \geq 5$h'' reads ``maintenance window of at least 5 hours''.}
+\label{fig:oeb_example}
+\end{figure}
+
+\subsubsection{BC3 Format Processing}
+
+ADIF distributes its catalog in BC3 format (Base de Costes de la Construcción), the standard exchange format established by FIEBDC, a Spanish industry consortium that maintains data interchange standards for construction cost databases. We developed a custom parsing pipeline to transform the BC3 specification into structured JSON suitable for retrieval experiments.
+
+The parsing pipeline handles three key transformations:
+
+\begin{enumerate}
+    \item \textbf{Parametric Expansion}: The BC3 format encodes base items with parameter placeholders (e.g., \texttt{\textbackslash No\_PIPES\textbackslash}, \texttt{\textbackslash TERRAIN\_TYPE\textbackslash}). The parser extracts parameter definitions, generates all valid combinations, and instantiates complete item descriptions by substituting parameter values into templates.
+    
+    \item \textbf{Dual-Text Extraction}: Each item contains two text fields: \textit{short-format} (condensed summary with parametric codes) and \textit{long-format} (detailed technical specification). The parser extracts both fields while preserving their association through unique item identifiers.
+    
+    \item \textbf{Metadata Preservation}: The parser retains hierarchical information including chapter codes, base template identifiers (first 6 characters), and parametric family relationships to enable parent-level evaluation.
+\end{enumerate}
+
+The complete parsing pipeline implementation is available in our code repository ~\cite{bc3cat_software}.
+
+\subsubsection{Text Preprocessing}
+
+All text fields undergo standardized preprocessing before indexing and retrieval. The preprocessing pipeline applies the following transformations:
+
+\paragraph{Normalization}
+\begin{itemize}
+    \item Lowercase conversion for case-insensitive matching
+    \item Whitespace standardization (multiple spaces → single space)
+    \item Punctuation preservation except for sentence-final periods
+    \item Numeric normalization (e.g., ``1,256.84'' for ``1256,84'')
+    \item Accented character retention for proper Spanish processing
+\end{itemize}
+
+\paragraph{Tokenization}
+Different retrieval methods receive appropriately tokenized input:
+\begin{itemize}
+    \item \textbf{Word tokens}: Regex pattern \texttt{\textbackslash w+} for lexical methods, yielding sequences like \texttt{["conduit", "concrete-cased", "2", "pipes", "pvc", "110", "mm"]}
+    \item \textbf{Character n-grams}: Overlapping sequences of length 3, 4, and 5 for character-based methods (e.g., ``pvc'' → \texttt{["pvc", "\#pv", "pvc", "vc\#"]})
+    \item \textbf{Subword tokens}: Pretrained tokenizers for neural methods (WordPiece for BERT-based models, SentencePiece for others)
+\end{itemize}
+
+\paragraph{Parameter-Based Phrase Identification}
+We leverage the catalog's parametric structure to identify domain-specific multi-word expressions. From the BC3 parameter definitions, we extract 127 multi-word parameter values (e.g., terrain types, work conditions, installation contexts) that function as atomic units in the classification system.
+
+The preprocessing pipeline evaluated two phrase handling strategies:
+\begin{itemize}
+    \item \textbf{Additive}: Phrases supplement unigrams (``road'', ``crossing'', ``road\_crossing'')
+    \item \textbf{Replacement}: Phrases substitute component words (``road\_crossing'' only)
+\end{itemize}
+
+This domain-specific phrase handling enables retrieval methods to align with the catalog's inherent parametric vocabulary.
+
+\paragraph{Numeric Feature Extraction}
+The pipeline identifies and normalizes integer quantities, decimal measurements with units, numeric ranges, and percentages.
+
+Extracted numeric features enable exact numeric matching as a complementary retrieval signal (Section~\ref{subsec:hybrid_fusion}).
+
+\subsubsection{How Much Do Query and Target Share?}
+\label{subsec:overlap}
+
+Because queries are the catalog's own \textit{resumen} field and targets its \textit{texto} field, the two are not independent formulations of the same concept. Characterising the benchmark therefore requires measuring how much of a query is already present in its target. Table~\ref{tab:overlap} reports this over all $47{,}513$ aligned pairs.
+
+\begin{table}[ht]
+\centering
+\caption{Lexical and numeric overlap between each query (\textit{resumen}) and its target document (\textit{texto}), over all 47,513 aligned pairs. Coverage is the fraction of query tokens, or query numeric values, that also occur in the target.}
+\label{tab:overlap}
+\input{tables/overlap_summary.tex}
+\end{table}
+
+Two facts follow. First, the target contains on average $94.10\%$ of the query's tokens and $99.96\%$ of its numeric values verbatim, so the task rewards literal matching and a strong lexical result should not be read as evidence of semantic understanding. Second, full token containment holds for only $7.79\%$ of queries, and the $25$ parametric templates each generate a set of variants that share nearly all of their vocabulary --- $144$ for the median template, $6{,}336$ for each of the six largest. The difficulty of the benchmark therefore lies not in bridging a vocabulary gap but in discriminating among near-identical candidates --- which is precisely the regime in which the methods compared here diverge most sharply.
+
+\subsubsection{Methodological Overview}
+
+Figure~\ref{fig:pipeline} summarises the whole pipeline, from the raw BC3 catalog file to the dual evaluation, and shows where each of the following subsections fits.
+
+\begin{figure}[ht]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    node distance = 7mm and 9mm,
+    stage/.style = {draw, rounded corners=2pt, align=center, font=\small,
+                    minimum height=9mm, inner xsep=3mm},
+    data/.style  = {stage, fill=black!4},
+    proc/.style  = {stage, fill=black!8},
+    result/.style = {stage, fill=black!12},
+    arrow/.style = {-{Stealth[length=2mm]}, thick},
+]
+\node[data] (bc3)     {Raw BC3 catalog\\(ADIF, subcategory OEB)};
+\node[proc, right=of bc3] (parse) {Parsing and\\normalisation};
+\node[data, right=of parse] (items) {47,513 items\\\textit{resumen} / \textit{texto}\\30 templates};
+\node[data, below=12mm of items] (sample) {Query sets\\16,590 test\\5,000 validation\\(versioned ids)};
+
+\node[proc, right=14mm of items] (index) {Indexing};
+\node[stage, above right=3mm and 10mm of index] (lex) {Lexical\\BM25, TF-IDF, PRF};
+\node[stage, below right=3mm and 10mm of index] (neu) {Neural\\BGE-M3, E5, GTE};
+
+\node[proc, below=16mm of lex] (fuse) {Fusion and\\cross-encoder reranking};
+\node[proc, left=of fuse] (struct) {Structured attribute\\matching};
+
+\node[result, below=12mm of fuse] (eval) {Dual evaluation\\\textbf{item} (exact variant)\\\textbf{parent} (family)};
+
+\draw[arrow] (bc3)   -- (parse);
+\draw[arrow] (parse) -- (items);
+\draw[arrow] (items) -- (index);
+\draw[arrow] (index) -- (lex);
+\draw[arrow] (index) -- (neu);
+\draw[arrow] (sample) -- node[midway, above, font=\scriptsize] {queries} (index);
+\draw[arrow] (lex)   -- (fuse);
+\draw[arrow] (neu)   -- (fuse);
+\draw[arrow] (items.south west) |- (struct.west);
+\draw[arrow] (struct) -- (fuse);
+\draw[arrow] (fuse)  -- (eval);
+\end{tikzpicture}
+}
+\caption{Overview of the evaluation pipeline. The catalog is parsed into aligned short (\textit{resumen}) and long (\textit{texto}) descriptions; a fixed, versioned set of 16,590 queries is used by every method, with a disjoint validation set of 5,000 queries reserved for hyperparameter selection. Every system is scored at two levels: the exact parametric variant and its parent family.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Retrieval System Configurations}
+
+We evaluate more than one hundred retrieval configurations organized into seven method families. Table~\ref{tab:method_families} summarizes the configuration space.
+
+\begin{table}[ht]
+\centering
+\caption{Overview of evaluated retrieval configurations. Counts are configurations scored on the test set; the fusion count refers to the best configuration of each strategy, selected from a weight sweep.}
+\label{tab:method_families}
+\begin{tabular}{|l|r|p{6cm}|}
+\hline
+\textbf{Method Family} & \textbf{Configs} & \textbf{Key Variations} \\
+\hline
+Lexical (BM25 \& TF-IDF) & 67 & 62 BM25 grid cells (three tokenizations) and 5 TF-IDF variants \\
+Pseudo-Relevance Feedback & 32 & RM3 and Rocchio, 8 configurations each, over two BM25 bases (12 per base reported) \\
+Neural Dense Retrieval & 7 & E5, Spanish sentence similarity, GTE (2), BGE-M3 (3), all zero-shot \\
+Hybrid Fusion & 4 & Three-way (3) and five-way (1) score fusion \\
+Cross-Encoder Reranking & 18 & 3 first stages $\times$ 3 depths $\times$ 2 score combinations \\
+Query Expansion (HyDE) & 6 & 3 query formulations $\times$ 2 retrievers \\
+Structured Attribute Matching & 8 & 5 extractors, 3 of them also with ground-truth template \\
+\hline
+\textbf{Total} & \textbf{142} & \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Lexical Methods: BM25 and TF-IDF}
+\label{subsec:lexical_methods}
+
+\paragraph{BM25 Implementation}
+
+We implement BM25 directly over sparse term--document matrices rather than through an existing retrieval toolkit, so that tokenization and parameter-phrase handling can be controlled explicitly. Term counts are produced with the \texttt{CountVectorizer} of scikit-learn v1.2.2~\citep{pedregosa2011scikit} (accent stripping, lowercasing, token pattern \texttt{\textbackslash b\textbackslash w+\textbackslash b}), and BM25 weights are computed from them following the Okapi formulation~\citep{robertson2009probabilistic}, with Robertson--Sp\"arck Jones inverse document frequency
+\begin{equation}
+\mathrm{idf}(t) = \log\!\left(\frac{N - \mathrm{df}(t) + 0.5}{\mathrm{df}(t) + 0.5} + 1\right)
+\end{equation}
+and the usual term-frequency saturation controlled by $k_1$ and $b$. Scoring is a sparse dot product between the query indicator vector and the weighted document matrix. We evaluate three tokenization variants, each with its own parameter grid:
+\begin{itemize}
+    \item \textbf{BM25-unigram}: Standard word tokenization\\
+    $k_1 \in \{0.6, 0.8, 1.0, 1.2, 1.4\}$, $b \in \{0.20, 0.35, 0.50, 0.65, 0.80\}$ (25 combinations)
+    \item \textbf{BM25-unibigram}: Word unigrams + bigrams\\
+    $k_1 \in \{0.8, 1.0, 1.2, 1.4, 1.6\}$, $b \in \{0.35, 0.50, 0.65, 0.80, 0.95\}$ (25 combinations)
+    \item \textbf{BM25-unigram-params}: Word tokens + parameter tokens\\
+    $k_1 \in \{0.6, 0.8, 1.0, 1.2\}$, $b \in \{0.35, 0.50, 0.65\}$ (12 combinations)
+\end{itemize}
+
+The third variant needs to be described precisely, because it is the strongest system in the study and it is not merely a tokenisation choice. Each item is indexed as its normalised text followed by one token per resolved parameter axis, minted from the axis label and the value: an item on soft terrain with pavement reinstatement and a relevant work volume contributes \texttt{param\_terreno\_blando}, \texttt{param\_pavimento\_con\_reposici\'on} and \texttt{param\_condiciones\_de\_ejecuci\'on\_volumen\_relevante}. These tokens do not occur in the text; they encode the item's position in its template's parameter space, and within a template that encoding is unique for every one of the $47{,}513$ items.
+
+The same representation is applied to the query, whose tokens are read from its own catalog record. This is a property of the task rather than a concession: both sides of a catalog-to-catalog match are catalog records, and a record's parameter values are a declared field of the BC3 source, not something inferred from its prose. Using them is using the data the format provides. What is not obvious is how much they are worth, and whether the result depends on their being read rather than derived; Section~\ref{subsec:structured_results} measures both.
+
+This yields 62 BM25 configurations. Documents and queries undergo identical preprocessing before indexing. No stopword list is applied, because terms such as ``de'' or ``en'' participate in the parameter phrases that distinguish catalog variants.
+
+All 62 configurations are scored on a validation set of $5{,}000$ queries that is disjoint from the test set, and the configuration reported for each family is the one that maximises item-level Acc@1 there. The validation queries are sampled (seed 20260909) from the $30{,}923$ catalog items that are never used as test queries, so the test set remains the same $16{,}590$ queries used by every other system in this study and no comparison in the paper is affected by the split. Section~\ref{subsec:lexical_results} reports what selecting on the test set instead would have been worth.
+
+\paragraph{TF-IDF Implementation}
+TF-IDF baselines use scikit-learn v1.2.2~\citep{pedregosa2011scikit} with the following configurations:
+\begin{itemize}
+    \item \textbf{TF-IDF-unigram}: Word unigrams with standard stopword removal
+    \item \textbf{TF-IDF-unigram-nonstop}: Word unigrams without stopword removal
+    \item \textbf{TF-IDF-char}: Character n-grams ($n \in \{3,4,5\}$) with word boundary markers
+    \item \textbf{TF-IDF-phrases-add}: Word unigrams augmented with parameter-derived phrase tokens (e.g., ``High volume'')
+    \item \textbf{TF-IDF-phrases-replace}: Multi-word parameter phrases replaced by single tokens
+\end{itemize}
+All TF-IDF variants use cosine similarity for ranking with L2-normalized vectors.
+
+\subsubsection{Pseudo-Relevance Feedback Methods}
+
+We evaluate two PRF methods using the same parameter grid: feedback documents $M \in \{5, 10\}$, expansion terms $N \in \{20, 40\}$, and feedback weight ($\lambda$ for RM3, $\beta$ for Rocchio) $\in \{0.5, 0.7\}$, yielding 8 configurations each (the two weakest variants, with weight $0.7$ and $N=40$, are
+omitted for brevity; full results in the repository).
+
+Both are implemented directly over the BM25 retriever described above, and share one procedure: retrieve, take the top $M$ documents as the pseudo-relevant set, score the terms occurring in it, keep the top $N$, and re-query. The two variants differ only in how terms are scored --- RM3 weights them by their frequency in the feedback set against a collection-frequency background, Rocchio by normalised term frequency over the feedback set alone, with no negative feedback ($\gamma = 0$), which the single-relevant-item setting makes meaningless.
+
+The expansion is applied at the level of the query string: each selected term is repeated a number of times proportional to its weight, and the repeated terms are appended to the original query, which is left intact. The feedback weight ($\lambda$ or $\beta$) therefore scales the repetition budget rather than interpolating two score distributions, which is how it functions in the canonical formulations~\citep{abdul2004umass, rocchio1971relevance}. The mechanism is equivalent in effect --- more repetitions give the expansion terms more weight in the BM25 score --- but it is an approximation, and the results in Section~\ref{subsec:prf} should be read as such: they bound what term-based query expansion achieves on this benchmark rather than certifying a particular estimator.
+
+\subsubsection{Neural Dense Retrieval Methods}
+\label{subsec:neural_methods}
+
+All neural models are used in zero-shot mode without fine-tuning on construction text, testing their transfer capabilities to domain-specific Spanish technical language.
+
+\paragraph{E5 Model}
+We evaluate \texttt{intfloat/multilingual-e5-base} (278M parameters, 768 dimensions) using the sentence-transformers library v2.2.2~\citep{reimers2019sentence}. Following the model documentation, queries receive the prefix ``query: '' and documents receive ``passage: '' before encoding. Embeddings are L2-normalized before similarity computation.
+
+\paragraph{Spanish Sentence Similarity}
+We evaluate \texttt{hiiamsid/sentence\_similarity\_spanish\_es}, a model specifically fine-tuned for Spanish semantic similarity tasks, to compare against multilingual alternatives.
+
+\paragraph{GTE Model}
+We evaluate \texttt{Alibaba-NLP/gte-multilingual-base} with two query formats:
+\begin{itemize}
+    \item \textbf{GTE-direct}: Standard ``query:'' prefix
+    \item \textbf{GTE-instruct}: Spanish instruction prefix: ``query: Lookup for the most similar document to this query: [query]''
+\end{itemize}
+
+\paragraph{BGE-M3 Model}
+BGE-M3 (\texttt{BAAI/bge-m3}, 568M parameters) supports three retrieval modes within a unified architecture~\citep{chen2024bge}:
+\begin{itemize}
+    \item \textbf{BGE-M3-dense}: Single 1024-dimensional vector per text
+    \item \textbf{BGE-M3-sparse}: Learned lexical weights over the model's own vocabulary (in the spirit of SPLADE, but produced by the same multilingual encoder)
+    \item \textbf{BGE-M3-colbert}: Token-level embeddings with ColBERT-style late interaction
+\end{itemize}
+The ColBERT mode computes relevance as the sum of maximum token similarities. All BGE-M3 modes use the same encoder with mode-specific output layers.
+
+\subsubsection{Hybrid Fusion and Reranking}
+\label{subsec:hybrid_fusion}
+
+The fusion process consisted of three sequential steps applied to each query independently.
+
+First, retrieval scores from each ranker were normalized using min-max scaling to ensure comparability across heterogeneous scoring functions. For a given query $q$, document $d$ and ranker $r$, each document score $s_{d,r}$ was transformed as:
+
+\begin{equation}
+s'_{d,r} = \frac{s_{d,r} - \min_r(s)}{\max_r(s) - \min_r(s)}
+\end{equation}
+
+Second, we applied numeric parameter bonuses to account for matches between query parameters and document metadata. Each document received an additional weighted reward based on exact parameter matches ($\beta_{\text{exact}}$) and partial parameter overlaps ($\beta_{\text{overlap}}$). These bonuses were added to the normalized scores before fusion.
+
+Third, the adjusted scores from all retrievers were combined using weighted linear combination (COMBSUM):
+
+\begin{equation}
+s_{\text{final}}(d) = \sum_{r \in R} w_r \cdot s'_{d,r}
+\end{equation}
+
+where $w_r$ represents the fusion weight for ranker $r$, and $\sum_{r} w_r = 1$.
+
+To identify optimal fusion configurations, we conducted a systematic parameter sweep over the weight space for several hybrid strategies: (1) three-way fusions combining BM25 with one BGE-M3 variant and character-level TF-IDF, and (2) a five-way fusion incorporating BM25, all three BGE-M3 variants (dense, sparse, ColBERT), and TF-IDF. For each configuration, we evaluated combinations of $\beta_{\text{exact}} \in \{0.0, 0.05, 0.10, 0.15\}$ and $\beta_{\text{overlap}} \in \{0.0, 0.05\}$ across a grid of weight distributions. The optimal configuration for each strategy was selected on item-level Acc@1. Unlike the lexical grids, the fusion sweep is selected on the test set; the validation experiment of Section~\ref{subsec:lexical_results} bounds what that is worth for the lexical families, and the hybrid results should be read as an upper bound on what fusion achieves here rather than as an out-of-sample estimate.
+
+\paragraph{Cross-Encoder Reranking}
+We employ a two-stage cascade: efficient first-stage retrieval followed by expensive cross-encoder reranking of top candidates. Cross-encoder implementation uses:
+
+\begin{itemize}
+    \item Model: \texttt{cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}, a multilingual reranker trained on mMARCO, the machine-translated multilingual version of MS MARCO, whose training languages include Spanish
+    \item Input format: \texttt{[CLS] query [SEP] document [SEP]}, truncated to 320 tokens
+    \item Reranking depth: top 20, 50 and 100 candidates from the first stage
+    \item Base retrievers: BM25-unigram, BGE-M3-ColBERT, and the three-way hybrid
+    \item Score combination: \textit{replace} (cross-encoder scores only) and \textit{blend} (interpolation with the first-stage score, $\lambda = 0.6$)
+\end{itemize}
+
+The cross-encoder produces a relevance score for each query--document pair through joint encoding and a classification head.
+
+\subsubsection{Query Expansion with Generated Documents}
+\label{subsec:hyde_method}
+
+HyDE~\citep{gao2023precise} addresses the opposite problem to the one this benchmark poses: it asks a language model to write the document that would answer the query, and retrieves with that text instead, on the assumption that a generated document shares more vocabulary with real documents than a short query does. Here the query already contains most of its target's vocabulary (Section~\ref{subsec:overlap}), so the expected effect is negative. We evaluate it anyway, because a negative result with a measured mechanism says more about the benchmark than an omission would.
+
+One hypothetical document is generated per query by Phi-4 (14B, greedy decoding, $110$ tokens) from the query alone, with no retrieved context. Three query formulations are compared on the same retrievers and the same queries: the original query, the hypothetical document alone, and the two concatenated. Because generation costs about a second per query, this experiment runs on a subsample of $1{,}976$ test queries stratified by template, and the baselines are recomputed on that subsample so that every comparison is paired.
+
+\subsubsection{Structured Attribute Matching}
+\label{subsec:structured}
+
+Every system described so far treats the catalog as free text. A parametric catalog invites the opposite treatment: if an item is a template plus a tuple of attribute values, the natural tool is not ranking but extraction followed by an exact lookup. We implement that alternative as a baseline family, so that the comparison in Section~\ref{subsec:structured_results} is between methods and not between a method and an assumption.
+
+The pipeline has three stages:
+
+\begin{enumerate}
+    \item \textbf{Template identification.} The query is encoded with multilingual-e5-base and matched against the item-level dense index; the template of the top-ranked item is taken as the query's template.
+    \item \textbf{Parameter extraction.} Given that template, its schema --- the set of axes and the closed list of admissible values for each --- is used to assign a value to every axis from the query text. An axis that cannot be resolved is left unset.
+    \item \textbf{Catalog lookup.} The extracted tuple is matched against the items of that template. A fully resolved tuple identifies exactly one item; an unset axis acts as a wildcard, so a partially resolved tuple identifies the subset consistent with whatever was resolved.
+\end{enumerate}
+
+The output is assembled into a ranking of $K$ items in three tiers: the items returned by the lookup, then the remaining items of the same template, then the dense ranking of stage~1 as filler. Within a tier the order is the catalog's own, because the lookup returns set membership and not a graded score. That property is not incidental --- Section~\ref{subsec:structured_results} shows it governs how these systems fail.
+
+Stages 1 and 3 are held fixed across configurations, which differ only in how stage 2 assigns values:
+
+\begin{itemize}
+    \item \textbf{Rule-based:} normalised string matching of each admissible value against the query, plus a small set of regular expressions for numeric axes written in running text (\textit{``de 2 tubos''}, \textit{``3 T,''}).
+    \item \textbf{Phi-4 classification:} the admissible values of each axis are presented to Phi-4 (14B, served through Ollama) as a closed set, with the instruction to copy one of them verbatim or answer \texttt{null}.
+    \item \textbf{Llama-3.1-8B extraction:} the same schema is shown, but the model is asked to extract the value of each axis from the query rather than to select from the list, so its answers must afterwards be normalised back onto the admissible set.
+    \item \textbf{Fine-tuned classifier:} multilingual-e5-base with one linear classification head per (template, axis) pair --- 97 heads over the 25 parametric templates --- each predicting one admissible value or \texttt{null}.
+    \item \textbf{Fine-tuned BIO tagger:} token-level sequence labelling over the same encoder, tagging value spans that are then normalised against the schema.
+\end{itemize}
+
+The two supervised extractors are trained on the long-form item description and applied to the short form that serves as query. This is deliberate: the query text is never seen in training, so their evaluation here is a cross-distribution test rather than a re-reading of the training distribution. Section~\ref{subsec:structured_results} reports what that costs.
+
+Because stage 1 is a dense retriever, it is being asked for exactly what Section~\ref{sec:results} shows dense retrievers do well --- the family, not the variant. To separate its contribution from the rest, the three strongest configurations are also run with stage 1 replaced by the ground-truth template. Those variants do not grant perfect extraction; stage 2 is unchanged. They bound only what template identification costs.
+
+\subsection{Evaluation Protocol}
+
+\subsubsection{Retrieval Task Definition}
+
+The evaluation task simulates realistic construction catalog search: given a short-form description (\textit{resumen}), retrieve the corresponding detailed specification (\textit{texto}) from 47,513 candidates. Each query has exactly one correct target at the item level, though multiple items may share the same parametric parent.
+
+We construct the evaluation set by:
+\begin{enumerate}
+    \item A random sample of 16,590 from the \textit{resumen} descriptions was selected as query inputs
+    \item All 47,513 \textit{texto} descriptions were used as the retrieval corpus
+    \item Ground truth mappings were defined using shared item identifiers
+    \item The full catalog was retained as distractors-no filtering or candidate pruning was applied
+\end{enumerate}
+
+The sample size (16,590) ensures 99\% confidence with ±1\% margin of error:
+\[
+n = \frac{Z^2 \cdot p(1 - p)}{E^2} = \frac{(2.576)^2 \cdot 0.5 \cdot 0.5}{(0.01)^2} = 16{,}590
+\]
+where $n$ is the required sample size, $Z$ is the Z-score for the confidence level (2.576 for 99\%), $p = 0.5$ assumes maximum variance, and $E$ is the margin of error (0.01). This bounds the uncertainty of each system's accuracy estimate; differences between systems are assessed separately with paired tests (Section~\ref{subsec:significance}).
+
+\subsubsection{Dual-Target Evaluation}
+
+We implement two complementary evaluation perspectives:
+
+\paragraph{Item-Level (Exact Match)}
+Requires retrieving the specific parametric variant. For query with ID ``OEB020aabdcfa'', only the document with identical ID counts as correct. This strict criterion applies to scenarios requiring precise specifications such as material procurement or detailed cost estimation.
+
+\paragraph{Parent-Level (Family Match)}
+Credits retrieval of any variant from the same parametric family, identified through shared 6-character prefixes. For query ``OEB020aabdcfa'', any document with ID starting ``OEB020'' counts as correct. This relaxed criterion acknowledges scenarios where parametric siblings are functionally equivalent, such as preliminary estimation or category identification.
+
+The dual-target approach enables nuanced analysis: methods may excel at family identification while struggling with variant-level disambiguation.
+
+\subsubsection{Evaluation Metrics}
+\label{subsec:metrics}
+
+We employ four complementary metrics to assess retrieval quality. Because each query has exactly one correct target at item level, Acc@1 coincides there with Precision@1 and MRR with Mean Average Precision; at parent level, where every sibling variant is relevant, MAP and MRR differ, and we report MRR at both levels for comparability. MAP is therefore not reported separately:
+
+\begin{enumerate}
+    \item \textbf{Accuracy at rank 1 (Acc@1)}: Proportion of queries where the correct item appears in rank 1. Critical for automated systems where only the top result is used.
+    
+    \item \textbf{Recall@k}: Proportion of queries with correct item in top-$k$ results. We report Recall@5 and Recall@10 as reasonable examination depths for human review.
+    
+    \item \textbf{Mean Reciprocal Rank (MRR)}: Average of reciprocal ranks of first correct result, computed over the top-100 candidates returned by each system (the depth of the released per-query outputs); a query whose target is not among them contributes zero. Some tables label it MRR@10; in every row they share, the two figures coincide to three decimals.
+    
+    \item \textbf{Normalized Discounted Cumulative Gain (nDCG@10)}: Accounts for rank position using logarithmic discount
+\end{enumerate}
+
+Metrics are computed with a purpose-written evaluator rather than a general-purpose library, because the parent-level criterion requires a non-standard ideal ranking: any of the sibling variants under the correct parent counts as relevant, so the nDCG denominator must be normalized against the number of siblings present in the catalog rather than against a single relevant document. The evaluator is released with the code, and per-query outputs are provided so that any metric can be recomputed independently.
+
+\subsubsection{Query Subset Analysis}
+
+Performance analysis across query subsets reveals how methods handle different retrieval challenges. We partition the evaluation set into two categories:
+
+\begin{itemize}
+    \item \textbf{HAS\_NUM} (16,561 queries, 99.83\%): Queries containing at least one numeric parameter (e.g., ``2 tubos'', ``110 mm''). Tests whether methods can match quantitative specifications.
+
+    \item \textbf{NO\_NUM} (29 queries, 0.17\%): Queries without numeric content, containing only textual descriptors. Isolates purely textual matching performance.
+
+\end{itemize}
+
+The split is extremely unbalanced because nearly every catalog description encodes at least one dimension or quantity. The NO\_NUM subset is therefore reported for completeness rather than as a basis for statistical comparison.
+
+Subset analysis identifies method strengths (e.g., neural models may excel on NO\_NUM while lexical methods dominate HAS\_NUM).
+
+\subsubsection{Statistical Significance Testing}
+\label{subsec:significance}
+
+We employ paired bootstrap resampling to determine whether observed performance differences reflect genuine method advantages rather than random variation~\citep{smucker2007comparison}.
+
+For each system pair $(A, B)$, we compute per-query metric differences, generate $B=10{,}000$ bootstrap samples with replacement, and estimate $p$-values from the empirical distribution of mean differences. We apply the Holm--Bonferroni step-down correction for multiple comparisons and report improvements as significant only when $p < 0.05$ after correction.
+
+\subsubsection{Error Analysis}
+\label{subsec:error_taxonomy}
+
+To understand failure modes we classify \emph{every} failed query --- not a sample --- for three representative systems: BM25-unigram, BGE-M3-ColBERT and the three-way hybrid. All three are evaluated on the same 16,590 queries, so their failure sets are directly comparable. A rule-based classifier assigns each failure to exactly one of five categories:
+
+\begin{enumerate}
+    \item \textbf{Numeric Mismatch}: the retrieved item differs from the target in a quantitative parameter (e.g. ``110 mm'' vs ``160 mm'', ``2 tubos'' vs ``4 tubos'').
+
+    \item \textbf{Near-Duplicate Error}: the retrieved item is a parametric sibling that differs only in non-numeric attributes.
+
+    \item \textbf{Lexical Confusion}: high lexical overlap masks a critical distinction, particularly in work-condition modifiers (standard vs exceptional shifts) or scope descriptors (supply-only vs supply-and-installation).
+
+    \item \textbf{Ranking Failure}: the correct item is retrieved but ranks beyond the examination depth considered (position 11 or later).
+
+    \item \textbf{Other}: failures matching none of the above.
+\end{enumerate}
+
+Two of the five --- Near-Duplicate Error and Ranking Failure --- have zero frequency in every method, and are omitted from the results tables rather than reported as rows of zeros.
+
+\subsection{Implementation Details}
+\label{subsec:implementation}
+
+All experiments run under Python 3.11.8 in a single container image. Lexical retrieval (BM25, TF-IDF) and pseudo-relevance feedback (RM3, Rocchio) are implemented directly over sparse matrices built with scikit-learn v1.2.2~\citep{pedregosa2011scikit} and SciPy; neural models are served through sentence-transformers v2.2.2~\citep{reimers2019sentence} with PyTorch 2.2.2, and BGE-M3 through FlagEmbedding. Retrieval metrics are computed by a purpose-written evaluator (Section~\ref{subsec:metrics}). The one exception is \texttt{gte-multilingual-base}, which cannot be loaded by this software stack and is evaluated separately; the reason and its consequences are documented in Section~\ref{subsec:gte}. Experiments run on a workstation with an Intel i9-13900KF CPU and an NVIDIA RTX 4090 GPU.
+
+For reproducibility, the exact set of $16{,}590$ evaluation queries is released as a versioned list of catalog identifiers rather than regenerated by sampling, model versions are pinned, and complete configurations are stored in YAML files. Code, data, per-query outputs and configurations are openly available at~\cite{bc3cat_software,bc3cat_dataset}.
+
+\section{Results}
+\label{sec:results}
+The results across all evaluated configurations converge on a consistent finding: lexical methods, when the query carries the item's parameter values as explicit tokens, outperform neural and hybrid approaches at the item level by a substantial margin. The following subsections detail the performance of each method family, culminating in a cross-method comparison in Section~\ref{sec:4.7_Overall Performance Summary}.
+
+\subsection{Lexical Methods Comparative Analysis}
+\label{subsec:lexical_results}
+
+The performance of all lexical retrieval configurations was evaluated at two hierarchical levels: parent-level and item-level retrieval. Figure~\ref{fig:lexical_performance_parent} presents parent-level results, where the task is to retrieve the correct parent document, while Figure~\ref{fig:lexical_performance_item} shows item-level results for retrieving specific document items. Both evaluations used the same test set of 16,590 queries.
+
+At the parent level (Figure~\ref{fig:lexical_performance_parent}), TF-IDF methods dominated, with TF-IDF-unigram\_phrases\_replace achieving the highest Acc@1 (0.990). BM25 variants showed more modest parent-level performance, ranging from 0.873 to 0.985.
+
+\begin{figure}[htbt]
+\centering
+\includegraphics[width=\textwidth]{lexical_performance_parent.png}
+\caption{Performance comparison of lexical retrieval methods at parent level on the test set (n=16,590 queries). Methods are ranked by Acc@1.}
+\label{fig:lexical_performance_parent}
+\end{figure}
+
+At the item level (Figure~\ref{fig:lexical_performance_item}), the ranking inverted. BM25-unigram\_params achieved the highest Acc@1 (0.974), while TF-IDF methods dropped to $0.558$--$0.708$. The dissociation of Section~\ref{subsec:cross_family} is therefore already visible inside the lexical family, and in its sharpest form: the configuration that is best at finding the family is not the one that is best at finding the variant.
+
+The $26.5$ point gap between the best BM25 and the best TF-IDF has two separable causes, and Section~\ref{subsec:structured_results} measures both. $10.3$ points come from the parameter tokens, which only the BM25-params configuration carries: the same index queried with text alone scores $0.871$. The remaining $16.2$ points separate the two scoring functions. At matched tokenisation the scoring function is worth more still --- BM25-unigram reaches $0.869$ against TF-IDF-unigram's $0.627$, a gap of $24.3$ points --- of which phrase merging returns $8.2$ to TF-IDF. Attributing the whole $26.5$ to length normalisation, as one might from the figure alone, would conflate three effects that pull in different directions.
+
+\begin{figure}[htbt]
+\centering
+\includegraphics[width=\textwidth]{lexical_performance_item.png}
+\caption{Performance comparison of lexical retrieval methods at item level on the test set (n=16,590 queries). Methods are ranked by Acc@1.}
+\label{fig:lexical_performance_item}
+\end{figure}
+
+
+Figure~\ref{fig:bm25_heatmap_panel} shows the sensitivity of item-level Acc@1 to $(k_1, b)$ across the three tokenization variants. Two features matter. The parameter-token variant dominates the entire grid and not only at its optimum, so the advantage does not depend on the hyperparameters being right. And all three variants prefer low $b$ ($\approx 0.35$): aggressive length normalisation is counterproductive here, because the short and long forms of an item differ in length systematically rather than randomly.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{bm25_heatmap_panel.pdf}
+\caption{Acc@1 sensitivity to BM25 hyperparameters ($k_1$, $b$) across three tokenization variants on the item-level retrieval task ($n=16{,}590$ queries). A shared color scale highlights the systematic dominance of the parameter-phrase variant (right panel) across the explored grid. The optimum of each panel is highlighted with a red border.}
+\label{fig:bm25_heatmap_panel}
+\end{figure}
+
+\paragraph{What the grid search was worth.}
+Reporting the best cell of a grid that was scored on the test set makes the reported figure optimistic by an unknown amount. Table~\ref{tab:validation_selection} replaces the unknown with a measurement: the same 62 configurations were scored on the disjoint validation set of $5{,}000$ queries, the winning cell of each family was taken from there, and only then was it scored on the test set.
+
+\input{tables/validation.tex}
+
+For the two families that carry the paper's claims the two splits choose the same cell, so the optimism is exactly zero: BM25 with parameter tokens is $(k_1{=}0.60, b{=}0.35)$ under either criterion, and its $0.9737$ is an out-of-sample figure. For BM25-unigram the validation set prefers $(1.00, 0.35)$ where the test set prefers $(0.60, 0.35)$, a difference of $0.14$ points --- smaller than the gap between any two systems compared in this paper. The reported BM25-unigram runs keep $(0.80, 0.35)$, the configuration on which the hybrid fusions and the reranking cascades of Sections~\ref{subsec:hybrid_results} and~\ref{subsec:reranking} were built; on the test set it scores $0.8691$, between the two.
+
+Two properties of the grid explain why selection turns out to be so cheap here. First, the two splits order the configurations almost identically: Spearman's $\rho$ between validation and test scores is $0.995$ for the uni+bigram grid, $0.993$ for the unigram grid and $0.972$ for the parameter-phrase grid. Where the two splits do disagree it is among cells that are already tied for practical purposes: the five best uni+bigram cells appear in the same order on both, and the three best parameter-phrase cells do, while the unigram grid --- whose top four cells span $0.17$ points on the test set --- is the one that reorders. Second, the validation split is uniformly easier --- every one of the 62 configurations scores higher on it than on the test set, by between $0.10$ and $1.16$ points --- so the offset shifts all cells together instead of reordering them. This is what makes the split usable for selection and unusable as an estimate of absolute performance, and it is why the test figures are reported separately rather than being read off the validation column.
+
+Table~\ref{tab:statistical_significance} reports every pairwise comparison among the eight lexical configurations, without selection: $28$ pairs, all significant after correcting across the whole family. The narrowest gap in the table is $0.8$ points, between the two weakest TF-IDF variants, and it is the only comparison whose corrected $p$ exceeds $0.001$. With $16{,}590$ paired observations, differences of this size are resolvable; the substantive question is which of them matter, not which of them are detectable. BM25 with parameter tokens leads the next best configuration, BM25-unigram, by $10.5$ points, and the best TF-IDF variant by $26.5$; BM25-unigram in turn exceeds the TF-IDF family by $16.1$ to $31.1$ points and BM25-unibigram by $4.2$.
+
+\input{tables/significance.tex}
+
+Every lexical configuration is more accurate on the $29$ queries that contain no numeric value than on the $16{,}561$ that do, and for the five TF-IDF variants the difference is the difference between $1.000$ and $0.558$--$0.708$. The subset is too small to carry a claim on its own; it is consistent with the numeric mismatches that Section~\ref{subsec:error_analysis} finds to be almost the only failure mode of every system here. Per-subset metrics for all configurations are in the released artefacts.
+
+
+
+Based on item-level results, BM25 with parameter tokens ($k_1=0.60$, $b=0.35$) is the best-performing lexical configuration, ahead of every other lexical variant on all evaluation metrics with statistical significance. It is used as the strong base for the pseudo-relevance feedback experiments of Section~\ref{subsec:prf}.
+
+\FloatBarrier
+\subsection{Pseudo-Relevance Feedback Methods}
+\label{subsec:prf}
+
+Pseudo-relevance feedback (PRF) was evaluated to assess whether query expansion can improve on a lexical retriever in this domain. Two approaches were tested, RM3 and Rocchio, over two base retrievers: BM25-unigram ($k_1=0.80$, $b=0.35$; Acc@1 $=0.869$), and the best lexical configuration of Section~\ref{subsec:lexical_results}, BM25 with parameter tokens ($k_1=0.60$, $b=0.35$; Acc@1 $=0.974$). Expanding only the weaker base would leave open whether the null result is a property of PRF or of the headroom left by a mediocre first stage.
+
+Over the strong base, neither method helps. The best RM3 configuration reaches $0.9732$ against a baseline of $0.9737$, a difference of $-0.04$ percentage points; the best Rocchio configuration reaches $0.9672$, a degradation of $0.64$ points. The result over the weak base, reported in detail below, is the same in direction: RM3 neutral, Rocchio harmful.
+
+Table~\ref{tab:prf_comparison} reports the best RM3 and the best Rocchio configuration over each base, from grids of eight configurations each ($M \in \{5, 10\}$, $N \in \{20, 40\}$, two interpolation weights).
+
+\input{tables/prf.tex}
+
+The result is the same on both bases and in both directions. RM3 is neutral: it moves the weak base by $+0.08$ points and the strong one by $-0.05$, neither of them significant. Rocchio degrades both, by $1.3$ and $0.7$ points respectively. Within each grid the configurations are almost indistinguishable --- the six reported RM3 runs over the weak base span $0.8693$ to $0.8699$ --- with one exception worth noting: Rocchio loses about two points whenever $N=40$, which is the only place in these grids where a hyperparameter matters, and it matters by making things worse.
+
+Reporting both bases is what makes the null result interpretable. Over a mediocre first stage one could argue that expansion had nothing to work with; over a first stage at $0.974$ one could argue there was no headroom. Getting the same answer over both leaves neither explanation standing. In a collection where the target already contains $94.1\%$ of the query's terms, adding more terms to the query cannot help, and adding the wrong ones hurts.
+
+\subsection{Neural Dense Retrieval Methods}
+
+This subsection presents the comparative performance of neural dense retrieval models across three model families: E5, GTE, and BGE-M3. All models were evaluated in zero-shot mode on the same test set of 16,590 queries at both item-level and parent-level retrieval tasks.
+
+\subsubsection{E5 Model Family Performance}
+
+Multilingual-e5-base retrieves the correct item first for $0.136$ of queries --- roughly one in seven --- and the correct family for $0.982$.
+
+The two levels differ by a factor of $7.2$: from $13.6\%$ at item level to $98.2\%$ at parent level, a gap of $84.5$ percentage points. The embeddings capture enough of the domain to place a query under the right template, and almost none of what separates the variants within it.
+
+Stratification by query type points to where the loss occurs: on the 29 queries with no numeric parameters, Acc@1 is $0.897$, against $0.135$ on the 16,561 numeric ones. The non-numeric subset is far too small to carry a statistical claim, but the direction is consistent across every neural family evaluated here.
+
+\subsubsection{GTE Model Family Performance}
+\label{subsec:gte}
+
+Two GTE runs isolate the effect of query formulation: both use \texttt{Alibaba-NLP/gte-multilingual-base} with identical document encoding, and differ only in whether the query carries a natural-language instruction prefix. Their five metrics at both levels are in Table~\ref{tab:dissociation} and in the released artefacts.
+
+The two formulations are indistinguishable: $0.070$ versus $0.073$ at item level and $0.998$ versus $0.997$ at parent level. Adding a natural-language instruction to the query neither helps nor hurts on this task, which is consistent with queries that consist almost entirely of technical terms and numeric values, where an instruction prefix adds no disambiguating signal.
+
+The pair also exhibits the largest item-to-parent gap of any system evaluated here: GTE places the correct parametric family first for $99.8\%$ of queries while placing the correct variant first for only $7.0\%$. The model has learned the domain well enough to localise a query within the catalog almost perfectly, and is nonetheless unable to choose among the variants that template generates --- $144$ of them for the median template, $6{,}336$ for the largest.
+
+The same model reaches $0.586$ on the $29$ queries that contain no numeric value, against $0.069$ on the $16{,}561$ that do. The subset is far too small ($0.17\%$ of the test set) to carry a quantitative claim, and is reported only because the direction is unambiguous and identical for every neural system evaluated here: what these models fail to represent is the numbers.
+
+\paragraph{A note on configuration} These figures differ substantially from those we initially obtained. \texttt{gte-multilingual-base} requires \texttt{trust\_remote\_code}, which the sentence-transformers version used for the other models does not support; the fallback encoder applied mean pooling, whereas this model is trained for CLS pooling, and the E5-style \texttt{query:}/\texttt{passage:} prefixes were applied to a model never trained with them. Under that configuration the model retrieves the correct item for essentially no query at all. We therefore evaluate GTE with CLS pooling, without prefixes, and with a newer \texttt{transformers} release; all other models use the environment described in Section~\ref{subsec:implementation}. We report this explicitly because the failure was silent: the encoder fell back without raising an error, and the index metadata did not record which encoding path had been taken.
+
+
+\subsubsection{BGE-M3 Multi-Representation Architecture}
+
+Table~\ref{tab:bgem3_performance} presents performance across three retrieval modes of the BGE-M3 unified architecture: dense single-vector, learned sparse representations, and multi-vector ColBERT-style interactions. The multi-vector mode demonstrated substantially superior item-level performance compared to both single-vector approaches.
+
+\begin{table}[htbp]
+\centering
+\caption{Performance comparison of BGE-M3 retrieval modes. All modes use the same base encoder (568M parameters) with mode-specific output layers.}
+\label{tab:bgem3_performance}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\hline
+\textbf{Mode} & \textbf{Acc@1} & \textbf{Recall@5} & \textbf{Recall@10} & \textbf{MRR} & \textbf{nDCG@10} \\
+\hline
+\multicolumn{6}{c}{\textit{Item-Level Retrieval}} \\
+\hline
+BGE-M3-dense & 0.127 & 0.349 & 0.464 & 0.233 & 0.278 \\
+BGE-M3-sparse & 0.125 & 0.401 & 0.535 & 0.252 & 0.309 \\
+BGE-M3-colbert & \textbf{0.448} & \textbf{0.753} & \textbf{0.785} & \textbf{0.580} & \textbf{0.630} \\
+\hline
+\multicolumn{6}{c}{\textit{Parent-Level Retrieval}} \\
+\hline
+BGE-M3-dense & 0.960 & 0.984 & 0.993 & 0.971 & 0.906 \\
+BGE-M3-sparse & 0.994 & \textbf{0.999} & \textbf{1.000} & 0.996 & \textbf{0.983} \\
+BGE-M3-colbert & \textbf{0.997} & \textbf{0.999} & \textbf{1.000} & \textbf{0.998} & 0.958 \\
+\hline
+\end{tabular}
+}
+\end{table}
+
+The three modes share one $568$M-parameter encoder and differ only in how its output is used. That makes the comparison unusually clean, and the result is the dissociation in its purest form. At item level late interaction is worth a factor of $3.5$ over either single-vector mode, while the two single-vector modes --- one dense, one learned-sparse, built on entirely different principles --- land within $0.2$ points of each other. At parent level all three exceed $0.96$ and the ordering ceases to matter.
+
+Single-vector compression, then, is what costs the variant, and it costs the same whether the vector is dense or sparse: pooling a document into one representation preserves what family it belongs to and discards which member of it. Late interaction, by keeping one vector per token, recovers about a third of what is lost --- and still leaves BGE-M3-ColBERT $52.6$ points behind the best lexical configuration. It is nonetheless the strongest neural system in this study by a wide margin, ahead of multilingual-e5-base ($0.136$) and of both GTE variants ($0.070$ and $0.073$).
+
+On the 29 non-numeric queries all three modes improved markedly --- ColBERT and dense reach Acc@1 $=0.759$ and sparse $0.655$, with Recall@5 of $1.000$ in every case --- while on numeric queries accuracy dropped substantially (ColBERT: $44.7\%$, sparse and dense: ${\sim}12.5\%$), confirming ColBERT's relative robustness to numeric constraints. This subset is too small ($0.17\%$ of the test set) to support a quantitative claim, and is reported only to show the direction of the effect.
+
+\subsubsection{Cross-Family Performance Comparisons}
+\label{subsec:cross_family}
+
+Table~\ref{tab:dissociation} places every method evaluated in this study side by side at both levels of the catalog hierarchy. It is the central result of this work.
+
+\input{tables/item_parent_dissociation.tex}
+
+Three observations follow. First, the ordering at item level is almost exactly reversed at parent level: the systems that discriminate variants worst are among those that identify families best. Second, the gap widens almost monotonically as item-level accuracy falls, from $1.2$ percentage points for BM25 with parameter tokens to $92.9$ for GTE; the only inversion, between BGE-M3 dense and multilingual-e5-base, amounts to $1.1$ points. Third, the one clear exception --- \texttt{sentence\_similarity\_spanish\_es}, with a gap of only $37.1$ points --- is the exception that confirms the pattern: it is a monolingual sentence-similarity model rather than a retriever, and it is weak at both levels, so it never reaches the regime in which the dissociation appears.
+
+The dissociation is not an artefact of any single architecture, and it is not confined to neural retrieval. It holds for single-vector dense encoders, for learned sparse representations and, attenuated, for late interaction --- but it also holds for the lexical family, which is where it is easiest to overlook because the item-level numbers there are high enough to look like success. TF-IDF with parameter phrases places the correct family first for $99.0\%$ of queries and the correct variant for $70.8\%$: a gap of $28.1$ points, larger than that of BGE-M3 ColBERT relative to its own item-level score. BM25-unigram gives up $10.4$ points the same way. Section~\ref{subsec:error_analysis} shows the phenomenon at the level of the representation itself: for $6.94\%$ of queries, BM25-unigram assigns the target and at least one sibling variant \emph{identical} vectors, so no ranking function operating on that representation can separate them.
+
+What separates the methods, then, is not whether they understand the domain --- at parent level almost all of them are close to ceiling --- but how much of the parameter values their representation preserves. Dense encoders discard nearly all of it, lexical models most of the time keep enough, and the difference is one of degree.
+
+BGE-M3-ColBERT is therefore the neural system carried forward into the fusion and reranking experiments: at $0.448$ it is $3.3$ times more accurate than multilingual-e5-base and $6.4$ times more accurate than GTE, and it is still wrong on more than half of the queries.
+
+\subsection{Hybrid Fusion Results}
+\label{subsec:hybrid_results}
+
+Table~\ref{tab:hybrid_fusion} presents the best configuration found by the parameter sweep for each fusion strategy.
+
+The numeric bonuses behave in a way worth reporting. Three of the four fusions select $\beta_{\text{exact}}=0$ --- that is, they discard the exact-containment bonus entirely --- and all four select $\beta_{\text{overlap}}=0.05$. The reason is visible in the candidate pool: exact containment holds for the correct document in $99.8\%$ of queries, but also for $32.1\%$ of the retrieved distractors. A binary bonus that fires for roughly a third of the candidate list raises them all equally and cannot separate the correct variant from its siblings. Partial numeric overlap, being graded, does discriminate, though its contribution is small: it improves Acc@1 by between $0.3$ and $1.9$ percentage points depending on the fusion.
+
+This is a negative result about a design element we expected to help. In a catalog where almost every target already contains all of the query's numeric values, the presence of those values carries little information; what would carry information is their \emph{absence} from the competing variants, which a containment bonus does not measure.
+
+\begin{table}[h]
+\centering
+\caption{Best configuration of each fusion strategy, selected on item-level Acc@1 over the weight grid and the two numeric bonuses. The three-way fusions select $\beta_{\text{exact}}=0$ with $\beta_{\text{overlap}}=0.05$; the five-way fusion selects $\beta_{\text{exact}}=0.15$ with $\beta_{\text{overlap}}=0.05$.}
+\label{tab:hybrid_fusion}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+\textbf{Fusion Strategy} & \textbf{Weight Distribution} & \textbf{Acc@1} & \textbf{R@5} & \textbf{R@10} & \textbf{MRR} \\
+\midrule
+\multicolumn{6}{l}{\textit{Three-way fusions (BM25 + BGE-M3 variant + TF-IDF)}} \\
+\midrule
+BM25 + ColBERT + TF-IDF & 
+\begin{tabular}[t]{@{}l@{}}
+BM25: 0.879\\
+ColBERT: 0.012\\
+TF-IDF: 0.110
+\end{tabular} & 0.893 & 0.944 & 0.955 & 0.910 \\
+\addlinespace
+BM25 + Dense + TF-IDF & 
+\begin{tabular}[t]{@{}l@{}}
+BM25: 0.879\\
+Dense: 0.012\\
+TF-IDF: 0.110
+\end{tabular} & 0.892 & 0.942 & 0.954 & 0.909 \\
+\addlinespace
+BM25 + Sparse + TF-IDF & 
+\begin{tabular}[t]{@{}l@{}}
+BM25: 0.879\\
+Sparse: 0.012\\
+TF-IDF: 0.110
+\end{tabular} & 0.885 & 0.942 & 0.955 & 0.906 \\
+\midrule
+\multicolumn{6}{l}{\textit{Five-way fusion (BM25 + all BGE-M3 variants + TF-IDF)}} \\
+\midrule
+BM25 + Multi-BGE + TF-IDF & 
+\begin{tabular}[t]{@{}l@{}}
+BM25: 0.450\\
+ColBERT: 0.033\\
+Dense: 0.033\\
+Sparse: 0.033\\
+TF-IDF: 0.450
+\end{tabular} & 0.608 & 0.947 & 0.971 & 0.756 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+What the sweep does with the weights is more informative than the scores it reaches. In every three-way fusion the optimiser assigns BM25 $87.9\%$ of the weight, character-level TF-IDF $11.0\%$, and the neural ranker $1.2\%$ --- whichever of the three BGE-M3 modes it is. Given free rein over the weight space, the procedure turns the neural signal off. The five-way fusion is the exception that shows why: forced to accommodate all three BGE-M3 modes, it gives them $9.9\%$ between them and splits the remainder evenly between BM25 and TF-IDF, and it loses $28.5$ points of Acc@1 against the best three-way configuration ($0.608$ against $0.893$). It does, however, reach the highest Recall@10 of any fusion ($0.971$). The neural signal is not worthless here; it is worth something at depth and negative at rank one, which is the same dissociation seen from the fusion side.
+
+None of the four fusions reaches the best lexical configuration alone ($0.974$). Fusion buys about two points over BM25-unigram ($0.893$ against $0.869$) and costs a second ranker, an embedding index and a weight sweep to do it.
+
+\subsection{Cross-Encoder Reranking}
+\label{subsec:reranking}
+
+Cross-encoder reranking was applied to the top $K'$ candidates of three first-stage systems --- BM25 (unigram), BGE-M3-ColBERT, and the three-way hybrid --- at three depths, $K' \in \{20, 50, 100\}$. Two strategies were evaluated: \textit{replace}, which ranks by cross-encoder score alone, and \textit{blend}, which interpolates the cross-encoder score with the first-stage score ($\lambda = 0.6$).
+
+Table~\ref{tab:reranking_results} presents all eighteen combinations together with the unreranked baseline of each system.
+\input{tables/reranking.tex}
+
+Three patterns emerge, and none of them is the one usually expected of a reranking cascade.
+
+First, \textbf{reranking does not improve the systems that are already strong}. BM25-unigram falls from $0.869$ to $0.766$ under the best blend configuration, and the hybrid from $0.893$ to $0.706$. The only system that benefits is the weakest, BGE-M3-ColBERT, which rises from $0.448$ to $0.475$. A cross-encoder trained on topical relevance can repair a ranking that has the right family in the wrong order; it cannot improve one that is already discriminating variants correctly, because it does not represent the distinction being made.
+
+Second, \textbf{blend always beats replace, by a wide margin}: $+0.17$ to $+0.34$ in Acc@1, the gap being largest for BM25 and smallest for BGE-M3-ColBERT. Ranking by cross-encoder score alone discards precisely the lexical evidence that resolves parametric variants. The gap is a direct measure of how much of the useful signal lives in the first stage.
+
+Third, \textbf{depth barely matters, and what effect it has runs in opposite directions for the two strategies}. Under replace, accuracy degrades monotonically as $K'$ grows --- BM25 falls from $0.451$ at $K'=20$ to $0.427$ at $K'=100$, the hybrid from $0.451$ to $0.426$ --- because each additional candidate is another opportunity for the cross-encoder to promote a topically plausible but parametrically wrong item. Under blend the three depths are within $0.004$ of each other for every system, with a slight preference for the deepest. The declared choice of depth, in other words, was never the decision it appeared to be: what determines the outcome is whether the first-stage score is kept, not how many candidates are rescored.
+
+The practical reading is that a general-purpose reranker has nothing to add here. Its training objective --- is this passage about this question --- is satisfied equally by every variant of a template, which is precisely the distinction the task requires. Reranking would only help if the reranker were trained to compare parameter values, and no off-the-shelf model is.
+
+\subsection{Query Expansion with Generated Documents}
+\label{subsec:hyde_results}
+
+Table~\ref{tab:hyde} reports HyDE on both families. The prediction was that it would hurt. It does, by more than expected, and the two retrievers fail in different ways --- which is what makes the result worth reporting.
+
+\input{tables/hyde.tex}
+
+\paragraph{The generated document does not contain the parameters.}
+Applying the rule-based extractor of Section~\ref{subsec:structured} to the hypothetical documents instead of to the queries measures directly what survives generation. From the query it recovers $97.3\%$ of axes correctly and a complete tuple for $87.5\%$ of queries. From the hypothetical document it recovers $35.9\%$ of axes, leaves $61.3\%$ unmentioned, and produces a complete tuple for \emph{none} of the $1{,}976$ queries. The model reliably paraphrases the opening of the query --- concept, material, diameter --- and reliably drops the parenthetical block that carries work shift, maintenance window and execution volume. It writes a plausible specification for the family and discards the variant.
+
+\paragraph{For the dense retriever, that is exactly the dissociation again.}
+BGE-M3-ColBERT keeps $0.963$ at parent level with the hypothetical document alone, barely below its $0.988$ on the real query, while item-level accuracy falls from $0.493$ to $0.085$. HyDE preserves precisely what dense retrieval on this catalog already does well and destroys precisely what it already does badly. As an intervention it is not neutral-to-harmful; it is aimed at the wrong half of the problem.
+
+\paragraph{For BM25 the failure is of a different kind, and it is instructive.}
+BM25 loses the family as well: parent accuracy falls from $0.955$ to $0.092$. The cause is not dilution but inverse document frequency, and the numbers are worth spelling out because they invert the usual intuition. This catalog's vocabulary is $337$ word types, and its content words are in almost every record: \textit{canalización} occurs in $46{,}117$ of the $47{,}513$ items and therefore carries an idf of $0.03$; \textit{tubos} occurs in $45{,}739$ and carries $0.04$. Meanwhile the Spanish clitic \textit{se} occurs in exactly one item, and carries the maximum idf in the index, $10.36$. Generated prose is full of such words. Summed over its terms the average query carries $17.9$ of idf mass; the average hypothetical document carries $56.1$, adding $14.4$ in-vocabulary terms the query did not have, and \textit{se} alone --- present in $76\%$ of the generated documents --- outweighs half of the original query on its own. BM25 then ranks by which documents happen to contain those words, which is close to arbitrary with respect to what was asked.
+
+This is worth stating as a general caution rather than a curiosity. Generated text is fluent, and fluency in a collection of terse technical records is anomalous. A retrieval model that weights terms by their rarity in the collection will read fluency as evidence. Concatenating the query with the hypothetical document does not repair it for BM25 ($0.048$), and only partly for ColBERT ($0.331$ against $0.493$), because the added mass does not go away by adding the original query back.
+
+\subsection{Structured Attribute Matching}
+\label{subsec:structured_results}
+
+If the catalog is generated from templates and attribute tuples, the obvious objection to everything above is that retrieval is the wrong tool: extract the attributes and look the item up. Table~\ref{tab:structured_baselines} reports that alternative, built as described in Section~\ref{subsec:structured} and measured on the same queries as every other system in this study.
+
+\input{tables/structured_baselines.tex}
+
+The answer to the objection is that structured matching is competitive but does not win. The best configuration --- rule-based extraction --- reaches $0.903$ at item level, above every neural system and above the best hybrid ($0.893$), and still $7.0$ points below BM25 with parameter tokens ($0.974$; paired bootstrap $95\%$ CI $[6.6, 7.5]$ points, $p < 0.0001$). Replacing stage 1 with the ground-truth template adds only $1.0$ point, to $0.914$: even told which template the query belongs to, structured matching does not close the gap. Why it does not is the subject of the last part of this section, and the answer is not the one the framing of the objection suggests.
+
+\paragraph{The pipeline is the dissociation, made mechanical.}
+This family separates the two levels of the task by construction: stage 1 decides the family, stages 2 and 3 decide the variant. The measurements follow exactly. All five configurations share stage 1, and all five score \emph{identically} at parent level, $0.9848$; the three variants given the ground-truth template score $1.0000$ by construction. At item level the same five span $0.031$ to $0.903$. Nothing about the family-level task distinguishes these systems, and everything about the variant-level task does.
+
+The comparison with the dense retriever they all contain makes the point sharper. Multilingual-e5-base alone scores $0.982$ at parent level and $0.136$ at item level. Attaching an exact lookup over extracted attributes to that same retriever leaves the parent level where it was and moves the item level to $0.903$. The dense encoder was never the part that was failing to find the family.
+
+The residual difference between those two parent-level figures --- $0.9848$ against $0.9817$ --- is the one respect in which this family is not run exactly like the rest of the study: the structured pipelines feed stage 1 the normalised query text, while the dense index they call was built on the raw form. Re-running the rule-based pipeline on raw text reproduces $0.9817$ exactly and moves item-level accuracy from $0.9033$ to $0.9004$, and under the ground-truth template the two runs are identical to four decimals. The choice is therefore worth $0.3$ points, all of it in stage 1, and is reported rather than absorbed.
+
+\paragraph{Where the variants differ is stage 2, and how they fail differs more than how often.}
+Table~\ref{tab:stage2} decomposes it. The rule-based extractor resolves $98.0\%$ of axes correctly, leaves $1.4\%$ unresolved and is outright wrong on $0.5\%$. The fine-tuned classifier is never uncertain --- it abstains on no axis at all --- and is wrong on $23.9\%$. The BIO tagger is almost never wrong ($0.4\%$) but leaves $54.1\%$ of axes unresolved.
+
+\input{tables/stage2.tex}
+
+Those two failure modes have opposite consequences, because stage 3 is a filter and not a scorer. An unresolved axis is a wildcard: the target stays in the candidate set, which merely grows. A wrong value removes the target from the set, and no reranking depth recovers it. The table of results shows this directly: the classifier's Recall@10 ($0.213$) is indistinguishable from its Acc@1 ($0.209$), while the BIO tagger's Recall@10 ($0.258$) is eight times its Acc@1 ($0.031$). One system fails by committing, the other by declining to.
+
+\paragraph{Supervised extraction does not survive the change of text.}
+The two fine-tuned extractors are trained on the long-form item description and applied to the short form used as query. Their own training logs report $0.996$ query-level accuracy and $0.974$ span $F_1$ on held-out data from the long form. Applied to the query text, the classifier produces a fully correct tuple for $22.4\%$ of queries. The drop is not a defect of the models but the result of the test they were set: the two texts describe the same item, and Section~\ref{subsec:overlap} shows the long form contains $94.1\%$ of the short form's tokens, yet a model that reads parameter values reliably in one does not read them in the other. The rule-based matcher, which learns nothing and only looks for the admissible values as literal strings, transfers without loss.
+
+\paragraph{A filter is not a ranking.}
+One further cost is visible only by comparing columns. For the rule-based pipeline the candidate set contains the target for $96.7\%$ of queries, but Acc@1 is $0.903$. The missing $6.4$ points are queries where the target is in the set and not at the top: with several items consistent with a partially resolved tuple, the pipeline has no basis for ordering them and falls back on catalog order. A retrieval model would use the rest of the query text to break that tie; this pipeline has thrown that text away by stage 3. It is the mirror image of the neural failure documented above --- a system with perfect family-level behaviour and no way to discriminate inside the family --- arrived at from the opposite direction.
+
+\paragraph{The two approaches are the same system up to the last step.}
+The comparison above is easy to read as textual retrieval beating structured matching. It is not, and the difference matters. The best lexical configuration in this study, BM25 with parameter tokens, indexes each item as its text plus one token per parameter axis (Section~\ref{subsec:lexical_methods}), and applies the same representation to the query. That representation \emph{is} a parameter tuple. Both systems therefore work from the same structured information; they differ only in what they do with it. The structured pipeline uses the tuple as an exact filter over the template's items. BM25 adds it to the query as ordinary terms and lets the ranking function weigh it against the text.
+
+Table~\ref{tab:param_tokens} isolates the two variables --- how much the tuple contributes, and whether it matters where the tuple comes from --- by holding the index fixed and varying only how the query is formed.
+
+\input{tables/param_tokens.tex}
+
+The tuple is worth $10.3$ points: without it the same index and the same query text reach $0.871$, which is where every other lexical configuration in this study also sits. It is not worth anything on its own, either: querying with the tuple and no text gives $0.219$, because the axis vocabulary is shared across templates and the same tuple describes items in several of them. The two signals are complementary --- the text locates the template, the tuple locates the variant within it --- which is the item-to-parent dissociation of Section~\ref{subsec:cross_family} appearing inside a single system.
+
+Where the tuple comes from turns out not to matter. Replacing the record's own values with values extracted from the query text --- template proposed by multilingual-e5-base, values assigned by the rule-based extractor, exactly the stages 1 and 2 of Section~\ref{subsec:structured} --- gives $0.9744$ against $0.9737$. The two agree for $93.5\%$ of queries and the disagreements cancel in aggregate. This is the control that makes the next comparison clean: it removes the source of the tuple as a variable, so what remains between the two systems is only what each does with it. It also says something about the benchmark, since a rule-based extractor is sufficient here only because the parameter values appear almost verbatim in the query text (Section~\ref{subsec:overlap}).
+
+Given the same tuple, extracted the same way, using it as query evidence reaches $0.974$ and using it as an exact filter reaches $0.903$. The seven-point difference is the cost of the filter's rigidity, and Table~\ref{tab:stage2} has already shown its mechanism: the extractor is wrong on $0.5\%$ of axes and unsure on $1.4\%$, and under an exact filter each of those either removes the target from the candidate set or leaves it in an unordered blob, while under BM25 a wrong parameter token merely subtracts its idf from one document's score and the text decides the rest. The recommendation that follows is not ``use lexical retrieval instead of structured matching'' but the narrower and more useful one: extract the attributes, and then rank with them rather than filter on them.
+
+\paragraph{What this costs to build.}
+Both approaches need the same two artefacts: a machine-readable schema for every template, and something that assigns values to axes. They exist here because the catalog is generated from that schema. What separates them is robustness to their own errors, not the effort of construction --- which is why the failure of the two supervised extractors is a cost borne by both, and why the softer combination absorbs it better.
+
+\subsection{Error Analysis}
+\label{subsec:error_analysis}
+
+To understand the failure modes of each retrieval approach we classified \emph{every} failed query for three representative methods, using the five-category taxonomy of Section~\ref{subsec:error_taxonomy}. All three are evaluated on the same 16,590 queries, so their failure counts are directly comparable: 2,172 for BM25-unigram, 1,781 for the hybrid and 9,158 for BGE-M3-ColBERT.
+
+\subsubsection{Error Type Distribution}
+
+Table~\ref{tab:error_distribution} presents the distribution of error types across the three representative methods. The three profiles are almost indistinguishable: numeric mismatches account for $97.97\%$, $98.21\%$ and $97.53\%$ of failures for BM25-unigram, BGE-M3-ColBERT and the hybrid respectively, even though the three differ by up to $44$ percentage points in accuracy and share little architecture. What separates these systems is how often they fail, not how. Whatever the representation --- sparse term weights, late-interaction token embeddings, or a weighted combination of both --- the residual errors are the same errors: a parameter value read wrong.
+
+\begin{table}[htbp]
+\centering
+\caption{Error type distribution across retrieval methods, as a percentage of \emph{all} failed queries for each method (no sampling). The two categories with zero frequency in every method --- Near-Duplicate Error and Ranking Failure --- are omitted.}
+\label{tab:error_distribution}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+\textbf{Error Type} & \textbf{BM25 Unigram} & \textbf{BGE-M3 ColBERT} & \textbf{Hybrid} \\
+\midrule
+Numeric Mismatch     & 97.97\% & 98.21\% & 97.53\% \\
+Lexical Confusion    & 0.55\%  & 0.37\%  & 0.22\%  \\
+Other                & 1.47\%  & 1.42\%  & 2.25\%  \\
+\midrule
+Failed queries ($n$) & 2,172   & 9,158   & 1,781   \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Figure~\ref{fig:error_distribution} shows the same distribution. The hybrid removes about a fifth of BM25's errors and none of their character.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{error_distribution.pdf}
+\caption{Error type distribution across the three representative retrieval methods, over \emph{all} failed queries of each (no sampling). Numeric mismatches account for ${\sim}98\%$ of failures in all three, whether the ranker is lexical, neural or a fusion of both: the blind spot is shared, and fusion does not change its nature.}
+\label{fig:error_distribution}
+\end{figure}
+
+\subsubsection{Hierarchical Error Classification}
+
+Beyond categorical error types, we analyzed outcomes according to the hierarchical structure of the catalog, where items are organized under parents (e.g. OEB280\$ for 40\,mm polyethylene conduits). Table~\ref{tab:hierarchical_errors} partitions \emph{all} queries into four mutually exclusive outcomes: correct at rank 1; correct parent but wrong variant; wrong parent; and correct parent absent from the top 10. The four columns therefore sum to $100\%$ for each method, and the complement of the first row is that method's error rate.
+
+Read this way the table makes the dissociation concrete at the level of individual failures. For BGE-M3-ColBERT, $54.86\%$ of all queries land on a wrong variant of the \emph{right} parent, against $0.34\%$ that land on a wrong parent altogether: when this model fails, it has almost always found the right family and picked the wrong member of it. BM25-unigram shows the same asymmetry in miniature ($10.38\%$ against $2.71\%$), and the hybrid sits between them.
+
+\begin{table}[htbp]
+\centering
+\caption{Hierarchical outcome patterns, as a percentage of \emph{all} queries ($n=16{,}590$, identical for the three methods). The four categories are mutually exclusive and sum to 100\%; the complement of the first row is the method's error rate.}
+\label{tab:hierarchical_errors}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Error Pattern} & \textbf{BM25} & \textbf{BGE-M3} & \textbf{Hybrid} \\
+ & \textbf{Unigram} & \textbf{ColBERT} & \\
+\midrule
+Correct at rank 1        & 86.91\% & 44.80\% & 89.26\% \\
+\midrule
+Right parent, wrong item & 10.38\% & 54.86\% & 8.13\%  \\
+Wrong parent             & 2.71\%  & 0.34\%  & 2.60\%  \\
+Parent not in top-10     & 0.10\%  & 0.00\%  & 0.00\%  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Representative Error Examples}
+
+Table~\ref{tab:error_examples} presents representative examples. Numeric mismatches occurred when systems retrieved variants with different specifications (e.g., ``3 tubos'' vs ``5 tubos'') despite matching other attributes. Lexical confusion involved semantically related but distinct terms. ``Other'' errors primarily involved mismatched action verbs or scope modifiers.
+
+\begin{table*}[htbp]
+\centering
+\caption{Representative error examples by category (translated from Spanish; $i$ denotes the maintenance window).}
+\label{tab:error_examples}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{0.15\textwidth}p{0.36\textwidth}p{0.36\textwidth}p{0.08\textwidth}}
+\toprule
+\textbf{Category / Query ID} & \textbf{Query} & \textbf{Retrieved (Incorrect)} & \textbf{Method} \\
+\midrule
+\multicolumn{4}{l}{\textit{Numeric Mismatch}} \\
+\midrule
+\texttt{\small OEB290cbebb} & Concrete-encased \textbf{3 pipes} polyethylene 50mm under tracks, any shift, $3 \leq i<5$h, low volume & Concrete-encased \textbf{5 pipes} polyethylene 50mm under tracks, any shift, $3 \leq i<5$h, low volume & BM25 \\
+\addlinespace
+\texttt{\small OEB280egecb} & Concrete-encased \textbf{5 pipes} polyethylene 40mm in ballast, any shift, \textbf{$i<3$h}, low volume & Concrete-encased \textbf{5 pipes} polyethylene 40mm in ballast, any shift, \textbf{$3 \leq i<5$h}, low volume & BGE-M3 \\
+\midrule
+\multicolumn{4}{l}{\textit{Lexical Confusion}} \\
+\midrule
+\texttt{\small OEB250abaec} & Supply conduit 4 pipes galv.\ steel 100mm CMS transitions, \textbf{exceptional daytime}, N/A, any condition & Supply conduit 4 pipes galv.\ steel 100mm CMS transitions, \textbf{shift: N/A}, maintenance: N/A, any condition & BM25 \\
+\addlinespace
+\texttt{\small OEB120aedc} & Conduit entry 1--2 pipes in chamber, \textbf{any shift}, no interval needed, any condition & Conduit entry 1--2 pipes in chamber, \textbf{any exceptional shift}, no interval needed, any condition & BGE-M3 \\
+\midrule
+\multicolumn{4}{l}{\textit{Other}} \\
+\midrule
+\texttt{\small OEB250bbbcc} & \textbf{Supply and installation} conduit 4 pipes steel 100mm CMS, exceptional night, $i<3$h, any condition & \textbf{Supply} conduit 4 pipes steel 100mm CMS, exceptional night, $i<3$h, any condition & BM25 \\
+\addlinespace
+\texttt{\small OEB110bda} & PVC pipe 110mm chamber drainage, \textbf{night shift}, no interval needed, high volume & PVC pipe 110mm chamber drainage, \textbf{exceptional night}, no interval needed, high volume & BGE-M3 \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
+
+\subsubsection{Method-Specific Error Patterns}
+
+One limit is imposed by the representation before any scoring happens. After normalisation the whole catalog uses only $337$ distinct word types, and $47{,}513$ items are built from them. Under BM25-unigram's weighting, $3{,}276$ documents in $1{,}602$ groups end up with \emph{identical} sparse vectors: for those items the index cannot tell one from another at all. They cover $6.94\%$ of the test queries, which caps BM25-unigram's attainable Acc@1 at $0.9645$ --- against a measured $0.8691$, so collisions account for about a third of the headroom it leaves.
+
+Adding the $61$ parameter tokens raises the vocabulary to $398$ types and removes every collision: the parameter-token index has no duplicate vectors at all. Part of the $10.3$ points those tokens are worth is therefore not better weighting but a representation that can distinguish the items in the first place. Injectivity alone does not explain the gain, though: the uni+bigram index has $1{,}142$ types and no duplicates either, and scores $0.8267$, below plain unigram. What the parameter tokens add is not vocabulary but the specific $61$ distinctions the catalog is organised around.
+
+The hybrid has the lowest right-parent-wrong-item rate of the three ($8.13\%$ against $10.38\%$ for BM25 and $54.86\%$ for ColBERT), which is where its advantage over BM25 comes from: the character n-gram and neural signals resolve a subset of the within-template confusions that BM25 alone gets wrong. Its wrong-parent rate, however, is essentially BM25's ($2.60\%$ against $2.71\%$), so the fusion helps inside the template and not outside it.
+
+\subsection{Overall Performance Summary}
+\label{sec:4.7_Overall Performance Summary}
+
+Figure~\ref{fig:acc1_by_family} consolidates the central finding visually: the best configuration of each method family is plotted at both evaluation levels. Lexical retrieval (BM25-unigram-params) leads at item level by a wide margin, while neural retrieval (BGE-M3-ColBERT) collapses on the same task --- yet recovers to near-perfect performance at parent level. Seen across all six families at once, the result is sharper than the neural-versus-lexical comparison suggests. At parent level the six span a range of just $2.3$ percentage points, from $0.974$ to $0.997$: every approach tested, from term weighting to late interaction to rule-based attribute matching, identifies the parametric family essentially perfectly. At item level the same six span $52.6$ points. \emph{Locating the family is not a discriminating task in this catalog; choosing the variant is the whole problem.} The hybrid and reranking families are instructive here because they mix both kinds of signal: reranking reaches the second-highest parent-level score of the study ($0.992$) while dropping to $0.766$ at item level, which is the dissociation reproduced inside a single system.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{acc1_by_family.pdf}
+\caption{Best Acc@1 per method family at item and parent level on the canonical test set ($n=16{,}590$). For each family, the configuration with the highest item-level Acc@1 is plotted at both levels. Item-level accuracy spans $0.448$ to $0.974$ across the six families; parent-level accuracy spans $0.974$ to $0.997$. Identifying the parametric family is solved by every approach tested; identifying the variant within it is what separates them.}
+\label{fig:acc1_by_family}
+\end{figure}
+
+Table~\ref{tab:overall_performance} presents the top-performing configurations across all evaluated retrieval methods, ranked by Acc@1. The table encompasses lexical methods, pseudo-relevance feedback approaches, neural retrievers, hybrid fusion strategies, and reranked systems.
+
+\input{tables/overall.tex}
+
+The evaluation produced four findings: (1) BM25 over the catalog text plus the query's parameter tokens achieves the highest item-level accuracy ($97.4\%$); (2) the best neural retriever trails it by $52.6$ percentage points, while matching it at parent level; (3) fusing a lexical and a neural ranker roughly doubles neural-only accuracy ($89.3\%$ against $44.8\%$) without reaching the lexical baseline; and (4) neither query expansion nor cross-encoder reranking improves on that baseline --- reranking actively degrades it.
+
+These rankings are based on Acc@1, which reflects automated deployment, where only the top result is used. It is worth checking whether a semi-automated workflow --- a human reviewer examining the first few candidates --- would reorder them, and it would not: BM25 with parameter tokens also has the highest Recall@5 of any system evaluated here ($0.985$, against $0.944$ for the best hybrid and $0.949$, the highest of any reranked configuration). The choice of metric does not rescue the neural and hybrid systems on this benchmark.
+
+
+\section{Discussion}
+\label{sec:discussion}
+
+The result that organises the rest is the dissociation. On this catalog, identifying the parametric family is close to solved by anything --- nine of the ten systems in Table~\ref{tab:dissociation} place the correct family first for at least $96\%$ of queries, the exception being a monolingual sentence-similarity model that is weak at both levels --- and identifying the variant is not solved by most of them. That the same query, the same corpus and the same ranking produce $99.8\%$ and $7.0\%$ depending only on which level is scored means that a single accuracy figure on a parametric catalog says almost nothing until the level is stated. Studies that report family-level or category-level accuracy on such catalogs, as much of the prior work in this domain does, are measuring the part of the task that is already easy.
+
+That a well-tuned lexical configuration ends up on top is consistent with prior findings that optimized lexical models surpass neural approaches in domain-specific settings with consistent terminology~\cite{thakur2021beir}, and with work showing that term dictionaries improve AEC search precision~\cite{fan2015project}. But the reading a practitioner should take from it is narrower than ``use BM25''. The configuration that reaches $97.4\%$ is BM25 plus a step that resolves the query's parameter values against the template schema; without that step the same index reaches $87.1\%$, in line with every other lexical configuration here. What is doing the work is making the parameter values explicit, and that is available to any ranker.
+
+Neural retrievers, by contrast, excel at high-level semantic categorization but struggle with fine-grained item matching. At the parent level, models like BGE-M3-ColBERT achieved approximately 99.7\% accuracy, rivaling lexical methods; however, at the item level, their performance lagged far behind. Vocabulary mismatch cannot be the cause, since the query shares $94.1\%$ of its tokens with its target (Section~\ref{subsec:overlap}); what the single-vector representations lose is the parameter values that separate siblings. This is consistent with evidence that general-purpose embeddings handle rare and numeric terms poorly~\cite{tang2024we} and that dense retrievers generalize poorly without domain adaptation~\cite{li2022domain}. Construction catalogs combine technical jargon, codes, and measurements infrequent in general corpora—terms BM25 handles well via inverse document frequency. One aspect of the comparison should be stated plainly, because it is a design choice and not an oversight. The best lexical configuration consumes the parameter values that the BC3 format declares for every item, on both the document and the query side; the neural models were run zero-shot on text alone. Nothing prevents the same tokens from being given to a dense retriever, and the obvious next experiment is to do exactly that. What the present comparison establishes is narrower and still useful: a term-weighting model that is handed the parametric structure resolves the variant, and a sentence encoder that is handed the same prose does not.
+
+Hybrid methods improved performance but did not outperform standalone BM25, diverging from general-domain findings where convex combination fusion often outperforms reciprocal rank fusion with minimal training data ~\cite{bruch2023analysis}. In our setting, BM25's near-optimal accuracy left little headroom for neural signals to contribute meaningfully, suggesting that hybridization may introduce noise in highly technical domains. Learned sparse methods like SPLADE offer a compromise by combining semantic understanding with sparse term expansions ~\cite{formal2021splade}; our BGE-sparse variant rivaled ColBERT at parent level, though SPLADE's complexity remains a deployment barrier.
+
+Cross-encoder reranking did not help any system that was already strong. Ranking by cross-encoder score alone degraded BM25 from $0.869$ to $0.434$, and blending it with the first-stage score ($\lambda=0.6$) recovered most but not all of the loss, to $0.766$. The hybrid behaved the same way, falling from $0.893$ to $0.706$ under the best blend. Only BGE-M3-ColBERT, the weakest of the three, improved at all ($0.448 \to 0.475$). A reranker trained on topical relevance can reorder a list that has the right family in the wrong order; it has no representation of the distinction between one parametric variant and another, so it cannot improve a ranking that is already making that distinction correctly~\cite{nogueiraDocumentRankingPretrained2020, zhuang2023rankt5}.
+
+The error analysis constrains the available explanations more than it might appear. Subword tokenization is the standard account of why neural encoders mishandle numbers: it breaks a value into fragments and impairs magnitude representation~\cite{wallace2019nlp}. That account cannot be the whole story here, because the failure profile is shared. Numeric mismatches make up $98.2\%$ of BGE-M3-ColBERT's errors, $97.5\%$ of the hybrid's --- and $98.0\%$ of BM25's, which has no subword tokenizer and no notion of magnitude at all. What the three systems have in common is not an encoder but a task: distinguishing documents whose only difference is a number, in a catalog where the whole vocabulary is $337$ word types. The residual errors are the same errors regardless of representation, and the systems differ in how often they make them, not in what they are.
+
+Construction documents combine structured codes with technical free text, and NLP tools tailored to construction achieve high precision by leveraging both cues~\cite{AKANBI2021}, while specifications encode procedural logic that generic retrievers ignore~\cite{LI2023}. Our results point the same way from a different direction: what closed the gap here was not a better encoder but making the structured half of the document explicit to the ranker. In the terms of engineering informatics, the decisive component is a knowledge representation --- the template, its parameter axes and their admissible values, declared by the BC3 format --- and the retrieval model matters chiefly through how robustly it can use that representation: as ranking evidence it tolerates extraction errors, as an exact filter it does not (Section~\ref{subsec:structured_results}).
+
+Prior work focused on classification using rule-based and ML approaches ~\cite{caldasAutomatingHierarchicalDocument2003, wuNaturalLanguageProcessing2022, martinez-rojasApproachAutomaticClassification2015, role_martnezrojas_2016, martinez-rojasUsingClassificationTechniques2018}, but these studies use small datasets and do not benchmark retrieval across method families. Recent work has noted persistent challenges with construction-specific jargon ~\cite{wuNaturalLanguageProcessing2022} and domain adaptation for language models ~\cite{chungComparingNaturalLanguage2023}. Our study fills this gap by systematically evaluating retrieval on a large-scale catalog, where fine-grained matching reveals effectiveness differences invisible at the category level.
+
+For industry applications, the measured recommendation is therefore not a particular ranker but a particular input: make the catalog's parameter values explicit to whatever ranker is used, evaluate at the level of the hierarchy the application needs, and add neural components only where the failure analysis shows a semantic gap rather than a parametric one. Domain adaptation of dense retrievers, for instance through pseudo-label fine-tuning~\cite{li2022domain}, was not evaluated here and remains the natural way to test whether that gap can be closed on the neural side.
+
+Deployment also involves efficiency, which this study did not measure; benchmarks should report it alongside effectiveness~\cite{santhanam-etal-2023-moving}. Qualitatively, a sparse lexical index runs on CPU, accommodates catalog updates without retraining, and exposes term-level evidence that an estimator can inspect, whereas dense retrieval requires an encoder at query time --- learned sparse retrievers offer a middle ground~\cite{bruch2023analysis}.
+
+This study has several limitations that should be considered when interpreting the results, and one of them is fundamental.
+
+\paragraph{Queries are not written by practitioners} The queries are the catalog's own \textit{resumen} field, paired with the \textit{texto} field of the same record, so the target contains $94.1\%$ of the query's tokens and $99.96\%$ of its numeric values verbatim. This is the control described in Section~\ref{sec:introduction} and it bounds what the results mean: they establish how these methods rank when the query is already expressed in catalog vocabulary, and say nothing about how they rank when it is not. A system that discriminates variants well here might still fail on a site engineer's phrasing, and one that fails here will not be rescued by better phrasing. Extending the benchmark with queries collected from estimators would let the two capabilities be measured against each other rather than one at a time, and is the most useful thing that could be added to this work.
+
+\paragraph{A single, homogeneous subcategory} The dataset covers one subcategory of the ADIF catalog, the subcategory dedicated to platform conduit systems (`OEB'): $47{,}513$ items generated from $30$ templates, all following the same structural pattern and drawing on the same attribute vocabulary. This homogeneity is what makes the benchmark a demanding test of variant discrimination, and it is also what limits generalisation: chapters with greater lexical diversity, such as track infrastructure or electrification, would place a different balance of demands on lexical and semantic matching. Whether the item-to-parent dissociation persists, narrows or widens across such chapters is an open question.
+Additional limitations include the zero-shot evaluation of neural models. While this setup reflects realistic deployment constraints where annotated domain-specific data is unavailable, it leaves open the question of how much domain-adapted fine-tuning could narrow the performance gap with lexical methods. The cross-encoder employed (mmarco-mMiniLMv2-L12-H384-v1) was trained on mMARCO, which includes Spanish, so its underperformance cannot be attributed to a cross-lingual gap. A more plausible explanation is that its notion of relevance is topical: mMARCO pairs a question with a passage that answers it, a criterion under which every variant of a parametric template is equally relevant to a query naming that template. The reranker is therefore being asked to make a distinction it was never trained to make, which is consistent with the numeric mismatches that dominate its errors. Finally, SPLADE itself was not evaluated because its released checkpoints are English-only (BGE-M3-sparse is the multilingual learned-sparse representative), and the single-correct-item assumption may oversimplify practical deployment scenarios where multiple catalog entries represent acceptable substitutes.
+
+
+
+\section{Conclusions and Future Work}
+
+We evaluated lexical, neural, hybrid and structured retrieval on $47{,}513$ items of a Spanish railway catalog, $47{,}508$ of them generated from $25$ parametric templates, scoring every system both on the exact variant and on its parent family.
+
+The central finding is a dissociation between those two levels. Every zero-shot multilingual dense retriever we tested identifies the correct parametric family almost perfectly --- between $96.0\%$ and $99.8\%$ --- while identifying the correct variant between $7.0\%$ and $13.6\%$ of the time. The gap reaches $92.9$ percentage points. These models have clearly learned enough about the domain to place a query in the right region of the catalog; what they do not preserve is the parameter values that separate one variant from its siblings, and those values are precisely what determines the unit price. A tuned BM25 whose queries carry the item's parameter values as explicit tokens shows almost no such gap ($97.4\%$ against $98.5\%$), and an exact structured lookup over the same extracted values reaches $90.3\%$. The comparison between those two is the second finding of this work, and it is not the one the retrieval-versus-structured framing predicts: both need the same parameter tuple, and extracting it from the query text rather than reading it from the catalog costs nothing measurable ($0.9744$ against $0.9737$). What separates them is only what they do with it. Used as query evidence the tuple yields $97.4\%$; used as an exact filter, $90.3\%$. The seven points are the price of a hard constraint in a pipeline whose extractor is wrong about one axis in two hundred.
+
+Two things bound these conclusions, both of them by design. The queries are the catalog's own short descriptions, which removes the vocabulary gap in order to isolate the parametric one; results here transfer to catalog-to-catalog matching and say nothing about a practitioner's phrasing. And the lexical systems consume the parameter values the BC3 format declares, while the neural ones were run zero-shot on text alone; giving a dense retriever the same structured input is the experiment this study sets up rather than performs. Within those bounds the dissociation is robust: it holds across single-vector, learned-sparse and late-interaction architectures, it holds in attenuated form in the lexical family too, and it is the property to test for before deploying any retriever over a parametric catalog.
+
+
+Four recommendations follow directly from what was measured here, and one thing that is often recommended does not. Report accuracy at the level the application needs: on a parametric catalog, a family-level figure can be near-ceiling while the variant-level figure that determines the unit price is in single digits. Make the attribute values explicit to the ranker rather than hoping the encoder preserves them --- appending resolved parameter tokens to text was worth $10.3$ points here, more than any change of model. Extract those attributes, but rank with them instead of filtering on them: the same tuple used as a hard constraint costs seven points, because an extractor that is wrong once in two hundred axes removes the target from the candidate set altogether. And check for representational collisions before blaming the ranking function: $6.9\%$ of the queries in this benchmark have a target that some indexes cannot distinguish from another document at all.
+
+What we cannot recommend, on this evidence, is a general-purpose cross-encoder as a precision stage. It degraded every system here that was already strong, and helped only the weakest.
+
+Future work follows from the two design bounds. The first is to give dense retrievers the same parameter tokens, or to adapt them to the domain, and test whether the dissociation closes on the neural side. The second is to replace the catalog's own short descriptions with queries written by estimators and site engineers, so that vocabulary bridging and variant discrimination can be measured together; extending BC3CAT to other ADIF chapters and to other national catalogs~\cite{royanoAnalysisClassificationSystems2023a} would test whether the dissociation persists where lexical diversity is greater. In deployment, high-stakes selections should remain under human review until such evidence exists.
+
+\appendix
+
+\section{Formulations Used}
+\label{app:technical-background}
+
+This appendix collects the canonical formulations of the methods evaluated; implementation details and departures from them are given in Section~\ref{subsec:lexical_methods} onwards.
+
+\paragraph{BM25} Following~\cite{robertson2009probabilistic},
+\begin{equation}
+\text{BM25}(q,d) = \sum_{t \in q} \text{IDF}(t) \cdot \frac{f(t,d) \cdot (k_1 + 1)}{f(t,d) + k_1 \cdot (1 - b + b \cdot \frac{|d|}{\text{avgdl}})}
+\end{equation}
+where $f(t,d)$ is the frequency of term $t$ in document $d$, $|d|$ the document length and $\text{avgdl}$ the average document length; $k_1$ controls term-frequency saturation and $b$ length normalization~\cite{trotmanImprovementsBM25Language2014}.
+
+\paragraph{RM3} The canonical formulation~\cite{abdul2004umass} interpolates the original query model with a relevance model estimated from the set $R$ of top-ranked documents:
+\begin{equation}
+P(t|q') = \lambda P(t|q) + (1-\lambda) \sum_{d \in R} P(t|d) P(d|q)
+\end{equation}
+In our implementation (Section~\ref{subsec:prf}) $\lambda$ is the same feedback weight reported in the tables, applied as a repetition budget for the expansion terms rather than as an interpolation of the two models; $\beta$ plays the same role for Rocchio.
+
+\paragraph{Rocchio} With original query $\vec{q}$ and pseudo-relevant set $R$~\cite{rocchio1971relevance},
+\begin{equation}
+\vec{q'} = \alpha \vec{q} + \beta \frac{1}{|R|} \sum_{d \in R} \vec{d} - \gamma \frac{1}{|N|} \sum_{d \in N} \vec{d}
+\end{equation}
+with $\gamma = 0$ in this study, since no non-relevant set $N$ is available.
+
+\paragraph{Late interaction} ColBERT-style scoring~\cite{khattab2020colbert}, used by BGE-M3 in its multi-vector mode~\cite{chen2024bge}, sums for each query token the maximum similarity to any document token:
+\begin{equation}
+\text{Score}(q,d) = \sum_{t_q \in q} \max_{t_d \in d} \text{sim}(E_q(t_q), E_d(t_d))
+\end{equation}
+
+\paragraph{Score fusion} Weighted linear combination of min-max-normalised scores (COMBSUM) is defined in Section~\ref{subsec:hybrid_fusion}; rank-level alternatives such as Reciprocal Rank Fusion~\cite{cormack2009reciprocal} avoid score calibration.
+
+\paragraph{Ranking metrics} With $\text{rank}_q$ the position of the first relevant document, $\text{MRR} = \frac{1}{|Q|} \sum_{q \in Q} 1/\text{rank}_q$~\cite{craswell2009mean}; nDCG@$k$ normalises $\text{DCG@}k = \sum_{i=1}^k (2^{\text{rel}_i} - 1)/\log_2(i+1)$ by its ideal value~\cite{jarvelin2002cumulated}. At parent level the ideal ranking places all sibling variants first (Section~\ref{subsec:metrics}).
+
+\section*{Acknowledgments}
+\addcontentsline{toc}{section}{Acknowledgments}
+
+The authors gratefully acknowledge the support of Telice S.A., which provided time, computing resources, data access and software licenses for this research, and ADIF for making its price catalog publicly available.
+
+\section*{CRediT authorship contribution statement} %las letras van así en mayúsculas 
+\addcontentsline{toc}{section}{CRediT authorship contribution statement}
+
+\textbf{Cesáreo González-Alvarez}: Conceptualization, Methodology, Software, Validation, Formal analysis, Investigation, Data curation, Writing -- original draft, Visualization.
+\textbf{Laura Fernández-Robles}: Conceptualization, Methodology, Validation, Supervision, Writing -- review \& editing, Project administration.
+\textbf{Enrique Alegre}: Conceptualization, Methodology, Validation, Supervision, Writing -- review \& editing.
+\textbf{Manuel Castejón-Limas}: Conceptualization, Methodology, Validation, Supervision, Writing -- review \& editing.
+
+\section*{Funding}
+\addcontentsline{toc}{section}{Funding}
+
+This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors. It was supported in kind by Telice S.A., the employer of the first author, through working time, computing resources and software licenses.
+
+\section*{Declaration of competing interests}
+\addcontentsline{toc}{section}{Declaration of competing interests}
+
+Cesáreo González-Alvarez is an employee of Telice S.A., which supported this work in kind as stated under Funding. Telice S.A. had no role in the study design, the analysis or interpretation of the results, or the decision to publish. The other authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\section*{Data availability statement}
+\addcontentsline{toc}{section}{Data availability}
+
+The BC3CAT benchmark is openly available in two archived repositories: the dataset and BC3/FIEBDC processing pipeline at \url{https://github.com/cga-telice/bc3cat-dataset} (archived on Zenodo, DOI: \href{https://doi.org/10.5281/zenodo.20277801}{10.5281/zenodo.20277801}), and the retrieval and evaluation code at \url{https://github.com/cga-telice/bc3cat-retrieval} (archived on Zenodo, DOI: \href{https://doi.org/10.5281/zenodo.20277824}{10.5281/zenodo.20277824}). The release contains the full parametric catalog with parsed parameter values; the exact query set as a versioned list of identifiers with a checksum; per-query outputs (top-100 candidates with scores) for every configuration; and the evaluation code, including the dual item/parent scorer, with the YAML configuration of every run. The raw catalog derives from ADIF's publicly available \textit{Base de Precios} (\url{https://bpa.adif.es}).
+
+\section*{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
+\addcontentsline{toc}{section}{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
+
+During the preparation of this work the authors used OpenAI ChatGPT and Anthropic
+Claude in order to improve language and readability and to assist with code examples.
+After using these tools/services, the authors reviewed and edited the content as
+needed and take full responsibility for the content of the published article.
+%%
+%% References
+%% Uncomment and use if you have a .bib file for references
+\bibliographystyle{elsarticle-num} 
+\bibliography{references}
+
+\end{document}
+

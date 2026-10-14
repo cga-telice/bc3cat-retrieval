@@ -91,6 +91,7 @@ paper/*.fls
 .cache/
 docs/reviews/*.log
 paper/paper_28.pdf
+paper/paper_rev_AEI.pdf
 paper/*.log
 paper/*.spl
 docker-compose.override.yml

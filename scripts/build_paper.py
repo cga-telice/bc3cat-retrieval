@@ -9,7 +9,7 @@ Se ejecutan tres pasadas de pdflatex con bibtex en medio, que es lo que exige
 elsarticle con `elsarticle-num` para resolver referencias cruzadas y citas.
 
 Uso:
-    python scripts/build_paper.py             # compila paper/paper_28.tex
+    python scripts/build_paper.py             # compila paper/paper_rev_AEI.tex
     python scripts/build_paper.py --clean     # borra subproductos y compila
 """
 from __future__ import annotations
@@ -63,7 +63,7 @@ def run_in_container(workdir: Path, command: list[str]) -> subprocess.CompletedP
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--stem", default="paper_28", help="nombre del .tex sin extension")
+    parser.add_argument("--stem", default="paper_rev_AEI", help="nombre del .tex sin extension")
     parser.add_argument("--clean", action="store_true", help="borra subproductos antes")
     args = parser.parse_args()
 

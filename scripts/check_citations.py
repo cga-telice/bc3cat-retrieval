@@ -75,6 +75,6 @@ def main(tex_path: Path, bib_path: Path) -> int:
 
 
 if __name__ == "__main__":
-    tex = Path(sys.argv[1] if len(sys.argv) > 1 else "paper/paper_28.tex")
+    tex = Path(sys.argv[1] if len(sys.argv) > 1 else "paper/paper_rev_AEI.tex")
     bib = Path(sys.argv[2] if len(sys.argv) > 2 else "paper/references.bib")
     raise SystemExit(main(tex, bib))
