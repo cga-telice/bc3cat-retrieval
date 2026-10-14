@@ -2048,15 +2048,13 @@
   abstract = {This paper describes the patents retrieval prototype developed within the MOLTO project. The prototype aims to provide a multilingual natural language interface for querying the content of patent documents. The developed system is focused on the biomedical and pharmaceutical domain and includes the translation of the patent claims and abstracts into English, French and German. Aiming at the best retrieval results of the patent information and text content, patent documents are preprocessed and semantically annotated. Then, the annotations are stored and indexed in an OWLIM semantic repository, which contains a patent specific ontology and others from different domains. The prototype, accessible online at http://molto-patents.ontotext.com, presents a multilingual natural language interface to query the retrieval system. In MOLTO, the multilingualism of the queries is addressed by means of the GF Tool, which provides an easy way to build and maintain controlled language grammars for interlingual translation in limited domains. The abstract representation obtained from the GF is used to retrieve both the matched RDF instances and the list of patents semantically related to the user's search criteria. The online interface allows to browse the retrieved patents and shows on the text the semantic annotations that explain the reason why any particular patent has matched the user's criteria.}
 }
 
-@techreport{abdul2004umass,
-  title = {{{UMass}} at {{TREC}} 2004: {{Novelty}} and {{HARD}}},
-  author = {{Abdul-Jaleel}, Nasreen and Allan, James and Croft, W Bruce and Diaz, Fernando and Larkey, Leah and Li, Xiaoyan and Smucker, Mark D and Wade, Courtney},
-  abstract = {For the TREC 2004 Novelty track, UMass participated in all four tasks. Although finding relevant sentences was harder this year than last, we continue to show marked improvements over the baseline of calling all sentences relevant, with a variant of tfidf being the most successful approach. We achieve 5--9\% improvements over the baseline in locating novel sentences, primarily by looking at the similarity of a sentence to earlier sentences and focusing on named entities.}, 
-  institution ={Center for Intelligent Information Retrieval,Department of Computer
-Science,University of Massachusetts},
-  year = {2004},
-  langid = {english},
-  file = {C:\Users\cesar\Zotero\storage\RMMHNGC9\Abdul-Jaleel et al. - UMass at TREC 2004 Novelty and HARD.pdf}
+@inproceedings{abdul2004umass,
+  author    = {{Abdul-Jaleel}, Nasreen and Allan, James and Croft, W. Bruce and Diaz, Fernando and Larkey, Leah and Li, Xiaoyan and Smucker, Mark D. and Wade, Courtney},
+  title     = {{UMass} at {TREC} 2004: Novelty and {HARD}},
+  booktitle = {Proceedings of the Thirteenth Text REtrieval Conference (TREC 2004)},
+  series    = {NIST Special Publication 500-261},
+  publisher = {National Institute of Standards and Technology},
+  year      = {2004}
 }
 
 @article{adanzadopazoMethodEnableAutomatic2023,
@@ -2784,22 +2782,14 @@ Science,University of Massachusetts},
   file = {C:\Users\cesar\Zotero\storage\FAX7P697\Cha, You-Na et al. - 2014 - An Accuracy Analysis on Quantity Take-off Using BIM-based Spatial Object.pdf}
 }
 
-@misc{chen2024bge,
-  title = {{{BGE M3-Embedding}}: {{Multi-Lingual}}, {{Multi-Functionality}}, {{Multi-Granularity Text Embeddings Through Self-Knowledge Distillation}}},
-  shorttitle = {{{BGE M3-Embedding}}},
-  author = {Chen, Jianlv and Xiao, Shitao and Zhang, Peitian and Luo, Kun and Lian, Defu and Liu, Zheng},
-  year = {2024},
-  month = jun,
-  number = {arXiv:2402.03216},
-  eprint = {2402.03216},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2402.03216},
-  urldate = {2025-10-02},
-  abstract = {In this paper, we present a new embedding model, called M3-Embedding, which is distinguished for its versatility in Multi-Linguality, Multi-Functionality, and Multi-Granularity. It can support more than 100 working languages, leading to new state-of-the-art performances on multi-lingual and cross-lingual retrieval tasks. It can simultaneously perform the three common retrieval functionalities of embedding model: dense retrieval, multi-vector retrieval, and sparse retrieval, which provides a unified model foundation for real-world IR applications. It is able to process inputs of different granularities, spanning from short sentences to long documents of up to 8192 tokens. The effective training of M3-Embedding involves the following technical contributions. We propose a novel self-knowledge distillation approach, where the relevance scores from different retrieval functionalities can be integrated as the teacher signal to enhance the training quality. We also optimize the batching strategy, enabling a large batch size and high training throughput to ensure the discriminativeness of embeddings. To the best of our knowledge, M3-Embedding is the first embedding model which realizes such a strong versatility. The model and code will be publicly available at https://github.com/FlagOpen/FlagEmbedding.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Artificial Intelligence,Computer Science - Computation and Language,Computer Science - Machine Learning},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\AAXNSD9T\\Chen et al. - 2024 - BGE M3-Embedding Multi-Lingual, Multi-Functionality, Multi-Granularity Text Embeddings Through Self.pdf;C\:\\Users\\cesar\\Zotero\\storage\\XLVRDUPV\\2402.html}
+@inproceedings{chen2024bge,
+  author    = {Chen, Jianlyu and Xiao, Shitao and Zhang, Peitian and Luo, Kun and Lian, Defu and Liu, Zheng},
+  title     = {{M3-Embedding}: Multi-Linguality, Multi-Functionality, Multi-Granularity Text Embeddings Through Self-Knowledge Distillation},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2024},
+  pages     = {2318--2335},
+  year      = {2024},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/2024.findings-acl.137}
 }
 
 @article{chenConversationBasedInformationDelivery2021,
@@ -3121,18 +3111,11 @@ Science,University of Massachusetts},
 }
 
 @misc{dezaMachineLearningApproach2022,
-  title = {A {{Machine Learning Approach}} to {{Classifying Construction Cost Documents}} into the {{International Construction Measurement Standard}}},
-  author = {Deza, J. Ignacio and Ihshaish, Hisham and Mahdjoubi, Lamine},
-  year = {2022},
-  month = oct,
-  number = {arXiv:2211.07705},
-  eprint = {2211.07705},
-  publisher = {arXiv},
-  urldate = {2024-11-17},
-  abstract = {We introduce the first automated models for classifying natural language descriptions provided in cost documents called "Bills of Quantities" (BoQs) popular in the infrastructure construction industry, into the International Construction Measurement Standard (ICMS). The models we deployed and systematically evaluated for multi-class text classification are learnt from a dataset of more than 50 thousand descriptions of items retrieved from 24 large infrastructure construction projects across the United Kingdom. We describe our approach to language representation and subsequent modelling to examine the strength of contextual semantics and temporal dependency of language used in construction project documentation. To do that we evaluate two experimental pipelines to inferring ICMS codes from text, on the basis of two different language representation models and a range of state-of-the-art sequence-based classification methods, including recurrent and convolutional neural network architectures. The findings indicate a highly effective and accurate ICMS automation model is within reach, with reported accuracy results above 90\% F1 score on average, on 32 ICMS categories. Furthermore, due to the specific nature of language use in the BoQs text; short, largely descriptive and technical, we find that simpler models compare favourably to achieving higher accuracy results. Our analysis suggest that information is more likely embedded in local key features in the descriptive text, which explains why a simpler generic temporal convolutional network (TCN) exhibits comparable memory to recurrent architectures with the same capacity, and subsequently outperforms these at this task.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Computation and Language,Computer Science - Machine Learning,Item clasificado,VIP},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\S44SPUY4\\Deza et al. - 2022 - A Machine Learning Approach to Classifying Construction Cost Documents into the International Constr.pdf;C\:\\Users\\cesar\\Zotero\\storage\\2UCHCSTB\\2211.html}
+  author       = {Deza, J. Ignacio and Ihshaish, Hisham and Mahdjoubi, Lamine},
+  title        = {A Machine Learning Approach to Classifying Construction Cost Documents into the {International Construction Measurement Standard}},
+  howpublished = {arXiv preprint},
+  year         = {2022},
+  doi          = {10.48550/arXiv.2211.07705}
 }
 
 @article{dff0083a61f735b84a30a9cf52ba054022c02b22,
@@ -3675,22 +3658,14 @@ Science,University of Massachusetts},
   keywords = {Item clasificado}
 }
 
-@misc{formal2021splade,
-  title = {{{SPLADE}}: {{Sparse Lexical}} and {{Expansion Model}} for {{First Stage Ranking}}},
-  shorttitle = {{{SPLADE}}},
-  author = {Formal, Thibault and Piwowarski, Benjamin and Clinchant, St{\'e}phane},
-  year = {2021},
-  month = jul,
-  number = {arXiv:2107.05720},
-  eprint = {2107.05720},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2107.05720},
-  urldate = {2025-10-02},
-  abstract = {In neural Information Retrieval, ongoing research is directed towards improving the first retriever in ranking pipelines. Learning dense embeddings to conduct retrieval using efficient approximate nearest neighbors methods has proven to work well. Meanwhile, there has been a growing interest in learning sparse representations for documents and queries, that could inherit from the desirable properties of bag-of-words models such as the exact matching of terms and the efficiency of inverted indexes. In this work, we present a new first-stage ranker based on explicit sparsity regularization and a log-saturation effect on term weights, leading to highly sparse representations and competitive results with respect to state-of-the-art dense and sparse methods. Our approach is simple, trained end-to-end in a single stage. We also explore the trade-off between effectiveness and efficiency, by controlling the contribution of the sparsity regularization.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Information Retrieval},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\FLGH6U6H\\Formal et al. - 2021 - SPLADE Sparse Lexical and Expansion Model for First Stage Ranking.pdf;C\:\\Users\\cesar\\Zotero\\storage\\DNPTVJU9\\2107.html}
+@inproceedings{formal2021splade,
+  author    = {Formal, Thibault and Piwowarski, Benjamin and Clinchant, St{\'e}phane},
+  title     = {{SPLADE}: Sparse Lexical and Expansion Model for First Stage Ranking},
+  booktitle = {Proceedings of the 44th International ACM SIGIR Conference on Research and Development in Information Retrieval},
+  pages     = {2288--2292},
+  year      = {2021},
+  publisher = {ACM},
+  doi       = {10.1145/3404835.3463098}
 }
 
 @article{framework_chen_2011,
@@ -3965,22 +3940,14 @@ Science,University of Massachusetts},
   file = {C:\Users\cesar\Zotero\storage\ZFNC98TQ\Katsogiannis-Meimarakis y Koutrika - 2023 - A survey on deep learning approaches for text-to-SQL.pdf}
 }
 
-@misc{khattab2020colbert,
-  title = {{{ColBERT}}: {{Efficient}} and {{Effective Passage Search}} via {{Contextualized Late Interaction}} over {{BERT}}},
-  shorttitle = {{{ColBERT}}},
-  author = {Khattab, Omar and Zaharia, Matei},
-  year = {2020},
-  month = jun,
-  number = {arXiv:2004.12832},
-  eprint = {2004.12832},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2004.12832},
-  urldate = {2025-10-02},
-  abstract = {Recent progress in Natural Language Understanding (NLU) is driving fast-paced advances in Information Retrieval (IR), largely owed to fine-tuning deep language models (LMs) for document ranking. While remarkably effective, the ranking models based on these LMs increase computational cost by orders of magnitude over prior approaches, particularly as they must feed each query-document pair through a massive neural network to compute a single relevance score. To tackle this, we present ColBERT, a novel ranking model that adapts deep LMs (in particular, BERT) for efficient retrieval. ColBERT introduces a late interaction architecture that independently encodes the query and the document using BERT and then employs a cheap yet powerful interaction step that models their fine-grained similarity. By delaying and yet retaining this fine-granular interaction, ColBERT can leverage the expressiveness of deep LMs while simultaneously gaining the ability to pre-compute document representations offline, considerably speeding up query processing. Beyond reducing the cost of re-ranking the documents retrieved by a traditional model, ColBERT's pruning-friendly interaction mechanism enables leveraging vector-similarity indexes for end-to-end retrieval directly from a large document collection. We extensively evaluate ColBERT using two recent passage search datasets. Results show that ColBERT's effectiveness is competitive with existing BERT-based models (and outperforms every non-BERT baseline), while executing two orders-of-magnitude faster and requiring four orders-of-magnitude fewer FLOPs per query.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Computation and Language,Computer Science - Information Retrieval},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\U4LUL4HS\\Khattab y Zaharia - 2020 - ColBERT Efficient and Effective Passage Search via Contextualized Late Interaction over BERT.pdf;C\:\\Users\\cesar\\Zotero\\storage\\4MYTVIQF\\2004.html}
+@inproceedings{khattab2020colbert,
+  author    = {Khattab, Omar and Zaharia, Matei},
+  title     = {{ColBERT}: Efficient and Effective Passage Search via Contextualized Late Interaction over {BERT}},
+  booktitle = {Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information Retrieval},
+  pages     = {39--48},
+  year      = {2020},
+  publisher = {ACM},
+  doi       = {10.1145/3397271.3401075}
 }
 
 @article{khosakitchalertDevelopmentBIMbasedQuantity2020,
@@ -4608,21 +4575,14 @@ Science,University of Massachusetts},
   file = {C:\Users\cesar\Zotero\storage\66E6SCHP\Nepal - 2011 - Automated extraction and querying of construction-specific design features from a building informati.pdf}
 }
 
-@misc{nogueiraDocumentRankingPretrained2020,
-  title = {Document {{Ranking}} with a {{Pretrained Sequence-to-Sequence Model}}},
-  author = {Nogueira, Rodrigo and Jiang, Zhiying and Lin, Jimmy},
-  year = {2020},
-  month = mar,
-  number = {arXiv:2003.06713},
-  eprint = {2003.06713},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2003.06713},
-  urldate = {2025-10-02},
-  abstract = {This work proposes a novel adaptation of a pretrained sequence-to-sequence model to the task of document ranking. Our approach is fundamentally different from a commonly-adopted classification-based formulation of ranking, based on encoder-only pretrained transformer architectures such as BERT. We show how a sequence-to-sequence model can be trained to generate relevance labels as "target words", and how the underlying logits of these target words can be interpreted as relevance probabilities for ranking. On the popular MS MARCO passage ranking task, experimental results show that our approach is at least on par with previous classification-based models and can surpass them with larger, more-recent models. On the test collection from the TREC 2004 Robust Track, we demonstrate a zero-shot transfer-based approach that outperforms previous state-of-the-art models requiring in-dataset cross-validation. Furthermore, we find that our approach significantly outperforms an encoder-only model in a data-poor regime (i.e., with few training examples). We investigate this observation further by varying target words to probe the model's use of latent knowledge.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Information Retrieval,Computer Science - Machine Learning},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\FIZ65MJW\\Nogueira et al. - 2020 - Document Ranking with a Pretrained Sequence-to-Sequence Model.pdf;C\:\\Users\\cesar\\Zotero\\storage\\NSCA2QKF\\2003.html}
+@inproceedings{nogueiraDocumentRankingPretrained2020,
+  author    = {Nogueira, Rodrigo and Jiang, Zhiying and Pradeep, Ronak and Lin, Jimmy},
+  title     = {Document Ranking with a Pretrained Sequence-to-Sequence Model},
+  booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2020},
+  pages     = {708--718},
+  year      = {2020},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/2020.findings-emnlp.63}
 }
 
 @misc{nogueira2020passage,
@@ -4885,22 +4845,14 @@ Science,University of Massachusetts},
   file = {C:\Users\cesar\Zotero\storage\VUEXJICM\Rampini y Cecconi - 2022 - Artificial intelligence in construction asset management a review of present status, challenges and.pdf}
 }
 
-@misc{reimers2019sentence,
-  title = {Sentence-{{BERT}}: {{Sentence Embeddings}} Using {{Siamese BERT-Networks}}},
-  shorttitle = {Sentence-{{BERT}}},
-  author = {Reimers, Nils and Gurevych, Iryna},
-  year = {2019},
-  month = aug,
-  number = {arXiv:1908.10084},
-  eprint = {1908.10084},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.1908.10084},
-  urldate = {2025-10-02},
-  abstract = {BERT (Devlin et al., 2018) and RoBERTa (Liu et al., 2019) has set a new state-of-the-art performance on sentence-pair regression tasks like semantic textual similarity (STS). However, it requires that both sentences are fed into the network, which causes a massive computational overhead: Finding the most similar pair in a collection of 10,000 sentences requires about 50 million inference computations ({\textasciitilde}65 hours) with BERT. The construction of BERT makes it unsuitable for semantic similarity search as well as for unsupervised tasks like clustering. In this publication, we present Sentence-BERT (SBERT), a modification of the pretrained BERT network that use siamese and triplet network structures to derive semantically meaningful sentence embeddings that can be compared using cosine-similarity. This reduces the effort for finding the most similar pair from 65 hours with BERT / RoBERTa to about 5 seconds with SBERT, while maintaining the accuracy from BERT. We evaluate SBERT and SRoBERTa on common STS tasks and transfer learning tasks, where it outperforms other state-of-the-art sentence embeddings methods.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Computation and Language},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\B9MZII74\\Reimers y Gurevych - 2019 - Sentence-BERT Sentence Embeddings using Siamese BERT-Networks.pdf;C\:\\Users\\cesar\\Zotero\\storage\\CDKAYCSL\\1908.html}
+@inproceedings{reimers2019sentence,
+  author    = {Reimers, Nils and Gurevych, Iryna},
+  title     = {{Sentence-BERT}: Sentence Embeddings using {Siamese BERT}-Networks},
+  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)},
+  pages     = {3980--3990},
+  year      = {2019},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/D19-1410}
 }
 
 @inproceedings{renConstructionProceduralInformation2022,
@@ -4950,14 +4902,14 @@ Science,University of Massachusetts},
 }
 
 @article{robertson2009probabilistic,
-  title={The probabilistic relevance framework: BM25 and beyond},
-  author={Robertson, Stephen and Zaragoza, Hugo and others},
-  journal={Foundations and Trends{\textregistered} in Information Retrieval},
-  volume={3},
-  number={4},
-  pages={333--389},
-  year={2009},
-  publisher={Now Publishers, Inc.}
+  author  = {Robertson, Stephen and Zaragoza, Hugo},
+  title   = {The Probabilistic Relevance Framework: {BM25} and Beyond},
+  journal = {Foundations and Trends in Information Retrieval},
+  volume  = {3},
+  number  = {4},
+  pages   = {333--389},
+  year    = {2009},
+  doi     = {10.1561/1500000019}
 }
 
 @conference{simpson2014,
@@ -5292,22 +5244,13 @@ booktitle = "23rd Text REtrieval Conference, TREC 2014 ; Conference date: 19-11-
   file = {C:\Users\cesar\Zotero\storage\LTD8KM6Y\Tang et al. - 2019 - A review of building information modeling (BIM) and the internet of things (IoT) devices integration.pdf}
 }
 
-@misc{thakur2021beir,
-  title = {{{BEIR}}: {{A Heterogenous Benchmark}} for {{Zero-shot Evaluation}} of {{Information Retrieval Models}}},
-  shorttitle = {{{BEIR}}},
-  author = {Thakur, Nandan and Reimers, Nils and R{\"u}ckl{\'e}, Andreas and Srivastava, Abhishek and Gurevych, Iryna},
-  year = {2021},
-  month = oct,
-  number = {arXiv:2104.08663},
-  eprint = {2104.08663},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2104.08663},
-  urldate = {2025-10-02},
-  abstract = {Existing neural information retrieval (IR) models have often been studied in homogeneous and narrow settings, which has considerably limited insights into their out-of-distribution (OOD) generalization capabilities. To address this, and to facilitate researchers to broadly evaluate the effectiveness of their models, we introduce Benchmarking-IR (BEIR), a robust and heterogeneous evaluation benchmark for information retrieval. We leverage a careful selection of 18 publicly available datasets from diverse text retrieval tasks and domains and evaluate 10 state-of-the-art retrieval systems including lexical, sparse, dense, late-interaction and re-ranking architectures on the BEIR benchmark. Our results show BM25 is a robust baseline and re-ranking and late-interaction-based models on average achieve the best zero-shot performances, however, at high computational costs. In contrast, dense and sparse-retrieval models are computationally more efficient but often underperform other approaches, highlighting the considerable room for improvement in their generalization capabilities. We hope this framework allows us to better evaluate and understand existing retrieval systems, and contributes to accelerating progress towards better robust and generalizable systems in the future. BEIR is publicly available at https://github.com/UKPLab/beir.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Artificial Intelligence,Computer Science - Computation and Language,Computer Science - Information Retrieval},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\EYVX8827\\Thakur et al. - 2021 - BEIR A Heterogenous Benchmark for Zero-shot Evaluation of Information Retrieval Models.pdf;C\:\\Users\\cesar\\Zotero\\storage\\HGBUVKZN\\2104.html}
+@inproceedings{thakur2021beir,
+  author    = {Thakur, Nandan and Reimers, Nils and R{\"u}ckl{\'e}, Andreas and Srivastava, Abhishek and Gurevych, Iryna},
+  title     = {{BEIR}: A Heterogeneous Benchmark for Zero-shot Evaluation of Information Retrieval Models},
+  booktitle = {Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks},
+  volume    = {1},
+  year      = {2021},
+  url       = {https://datasets-benchmarks-proceedings.neurips.cc/paper/2021/file/65b9eea6e1cc6bb9f0cd2a47751a186f-Paper-round2.pdf}
 }
 
 @phdthesis{tong3DModelingDetailed2005,
@@ -5860,25 +5803,30 @@ booktitle = "23rd Text REtrieval Conference, TREC 2014 ; Conference date: 19-11-
   file = {C:\Users\cesar\Zotero\storage\WF2ZSPNR\Zhuang et al. - 2023 - RankT5 Fine-Tuning T5 for Text Ranking with Ranking Losses.pdf}
 }
 
-@article{wallace2019nlp,
-  title={Do {NLP} models know numbers? {Probing} numeracy in embeddings},
-  author={Wallace, Eric and Wang, Yizhong and Li, Sujian and Singh, Sameer and Gardner, Matt},
-  journal={arXiv preprint arXiv:1909.07940},
-  year={2019}
+@inproceedings{wallace2019nlp,
+  author    = {Wallace, Eric and Wang, Yizhong and Li, Sujian and Singh, Sameer and Gardner, Matt},
+  title     = {Do {NLP} Models Know Numbers? {Probing} Numeracy in Embeddings},
+  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)},
+  pages     = {5306--5314},
+  year      = {2019},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/D19-1534}
 }
 
-@article{tang2024we,
-  title={Do we need domain-specific embedding models? An empirical investigation},
-  author={Tang, Yixuan and Yang, Yi},
-  journal={arXiv preprint arXiv:2409.18511},
-  year={2024}
+@misc{tang2024we,
+  author       = {Tang, Yixuan and Yang, Yi},
+  title        = {Do We Need Domain-Specific Embedding Models? {An} Empirical Investigation},
+  howpublished = {arXiv preprint},
+  year         = {2024},
+  doi          = {10.48550/arXiv.2409.18511}
 }
 
-@article{li2022domain,
-  title={Domain Adaptation for Dense Retrieval through Self-Supervision by Pseudo-Relevance Labeling},
-  author={Li, Minghan and Gaussier, Eric},
-  journal={arXiv preprint arXiv:2212.06552},
-  year={2022}
+@misc{li2022domain,
+  author       = {Li, Minghan and Gaussier, Eric},
+  title        = {Domain Adaptation for Dense Retrieval through Self-Supervision by Pseudo-Relevance Labeling},
+  howpublished = {arXiv preprint},
+  year         = {2022},
+  doi          = {10.48550/arXiv.2212.06552}
 }
 
 @article{bruch2023analysis,
@@ -5891,11 +5839,9 @@ address = {New York, NY, USA},
 volume = {42},
 number = {1},
 issn = {1046-8188},
-url = {https://doi.org/10.1145/3596512},
 doi = {10.1145/3596512},
 abstract = {We study hybrid search in text retrieval where lexical and semantic search are fused together with the intuition that the two are complementary in how they model relevance. In particular, we examine fusion by a convex combination of lexical and semantic scores, as well as the reciprocal rank fusion (RRF) method, and identify their advantages and potential pitfalls. Contrary to existing studies, we find RRF to be sensitive to its parameters; that the learning of a convex combination fusion is generally agnostic to the choice of score normalization; that convex combination outperforms RRF in in-domain and out-of-domain settings; and finally, that convex combination is sample efficient, requiring only a small set of training examples to tune its only parameter to a target domain.},
 journal = {ACM Transactions on Information Systems},
-month = aug,
 articleno = {20},
 numpages = {35},
 keywords = {fusion functions, lexical and semantic search, Hybrid retrieval}
@@ -5927,17 +5873,13 @@ keywords = {fusion functions, lexical and semantic search, Hybrid retrieval}
 }
 
 @article{LI2023,
-title = {Knowledge graph-enabled adaptive work packaging approach in modular construction},
-journal = {Knowledge-Based Systems},
-volume = {260},
-pages = {110115},
-year = {2023},
-issn = {0950-7051},
-doi = {https://doi.org/10.1016/j.knosys.2022.110115},
-url = {https://www.sciencedirect.com/science/article/pii/S0950705122012114},
-author = {Xiao Li and Chengke Wu and Zhile Yang and Yuanjun Guo and Rui Jiang},
-keywords = {Work packaging, Industralized construction, Construction management, Knowledge graph, Deep learning},
-abstract = {Adaptive work packaging is paramount in helping reduce dynamic gaps between design and manufacturing in modular construction (MC), particularly in mass customization. However, current work packaging methods fail to automatically extract complex semantic relations among work package elements (e.g., products, tasks, and their dependencies) and dynamically reason the implicit semantic knowledge (e.g., the different granularity of semantics) as the project progresses. To address these issues, this study proposes a knowledge graph-enabled adaptive work packaging (K-GAWP) approach to dynamically form semantic-enriched work packages with different granularities. Thus far, this study first models the data of tasks, products, and their spatial relationships for MC production as graphs. Second, a novel multi-granularity knowledge reasoning method (product2task) is developed to map products to tasks in an adaptive manner. Third, a dedicated hierarchical clustering method (task2package) involving multiple features from the dependency structure matrix is proposed for work-package generation (i.e., task knowledge fusion). Finally, the K-GAWP’s performance is evaluated through controlled experiments in a real MC project. The results indicate that the K-GAWP approach performs work packaging in an adaptive, accurate, and efficient manner, thereby improving the distributed planning and control of MC projects.}
+  author  = {Li, Xiao and Wu, Chengke and Yang, Zhile and Guo, Yuanjun and Jiang, Rui},
+  title   = {Knowledge Graph-Enabled Adaptive Work Packaging Approach in Modular Construction},
+  journal = {Knowledge-Based Systems},
+  volume  = {260},
+  pages   = {110115},
+  year    = {2023},
+  doi     = {10.1016/j.knosys.2022.110115}
 }
 
 @inproceedings{santhanam-etal-2023-moving,
@@ -5960,7 +5902,6 @@ abstract = {Adaptive work packaging is paramount in helping reduce dynamic gaps 
     year = "2023",
     address = "Toronto, Canada",
     publisher = "Association for Computational Linguistics",
-    url = "https://aclanthology.org/2023.findings-acl.738/",
     doi = "10.18653/v1/2023.findings-acl.738",
     pages = "11613--11628",
     abstract = "Neural information retrieval (IR) systems have progressed rapidly in recent years, in large part due to the release of publicly available benchmarking tasks. Unfortunately, some dimensions of this progress are illusory: the majority of the popular IR benchmarks today focus exclusively on downstream task accuracy and thus conceal the costs incurred by systems that trade away efficiency for quality. Latency, hardware cost, and other efficiency considerations are paramount to the deployment of IR systems in user-facing settings. We propose that IR benchmarks structure their evaluation methodology to include not only metrics of accuracy, but also efficiency considerations such as a query latency and the corresponding cost budget for a reproducible hardware setting. For the popular IR benchmarks MS MARCO and XOR-TyDi, we show how the best choice of IR system varies according to how these efficiency considerations are chosen and weighed. We hope that future benchmarks will adopt these guidelines toward more holistic IR evaluation."
@@ -6035,13 +5976,13 @@ eprint = {https://ascelibrary.org/doi/pdf/10.1061/JCEMD4.COENG-14273}
 }
 
 @article{pedregosa2011scikit,
-  title={Scikit-learn: Machine learning in Python},
-  author={Pedregosa, Fabian and Varoquaux, Ga{\"e}l and Gramfort, Alexandre and Michel, Vincent and Thirion, Bertrand and Grisel, Olivier and Blondel, Mathieu and Prettenhofer, Peter and Weiss, Ron and Dubourg, Vincent and others},
-  journal={the Journal of machine Learning research},
-  volume={12},
-  pages={2825--2830},
-  year={2011},
-  publisher={JMLR. org}
+  author  = {Pedregosa, Fabian and Varoquaux, Ga{\"e}l and Gramfort, Alexandre and Michel, Vincent and Thirion, Bertrand and Grisel, Olivier and Blondel, Mathieu and Prettenhofer, Peter and Weiss, Ron and Dubourg, Vincent and Vanderplas, Jake and Passos, Alexandre and Cournapeau, David and Brucher, Matthieu and Perrot, Matthieu and Duchesnay, {\'E}douard},
+  title   = {Scikit-learn: Machine Learning in {Python}},
+  journal = {Journal of Machine Learning Research},
+  volume  = {12},
+  pages   = {2825--2830},
+  year    = {2011},
+  url     = {https://jmlr.org/papers/v12/pedregosa11a.html}
 }
 
 @inproceedings{mendesComparativeStudyLexical2025,
@@ -6078,20 +6019,11 @@ eprint = {https://ascelibrary.org/doi/pdf/10.1061/JCEMD4.COENG-14273}
 }
 
 @misc{ubrangalaSearchingFastSlow2024,
-  title = {Searching, Fast and Slow, through Product Catalogs},
-  author = {Ubrangala, Dayananda and Sharma, Juhi and Rangappa, Sharath Kumar and R, Kiran and Kondapalli, Ravi Prasad and Bou{\'e}, Laurent},
-  year = 2024,
-  month = jan,
-  number = {arXiv:2401.00737},
-  eprint = {2401.00737},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2401.00737},
-  urldate = {2025-12-01},
-  abstract = {String matching algorithms in the presence of abbreviations, such as in Stock Keeping Unit (SKU) product catalogs, remains a relatively unexplored topic. In this paper, we present a unified architecture for SKU search that provides both a real-time suggestion system (based on a Trie data structure) as well as a lower latency search system (making use of character level TF-IDF in combination with language model vector embeddings) where users initiate the search process explicitly. We carry out ablation studies that justify designing a complex search system composed of multiple components to address the delicate trade-off between speed and accuracy. Using SKU search in the Dynamics CRM as an example, we show how our system vastly outperforms, in all aspects, the results provided by the default search engine. Finally, we show how SKU descriptions may be enhanced via generative text models (using gpt-3.5-turbo) so that the consumers of the search results may get more context and a generally better experience when presented with the results of their SKU search.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Artificial Intelligence,Computer Science - Information Retrieval,Computer Science - Machine Learning,Computer Science - Software Engineering},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\AEC5RX55\\Ubrangala et al. - 2024 - Searching, fast and slow, through product catalogs.pdf;C\:\\Users\\cesar\\Zotero\\storage\\T2IVXK2K\\2401.html}
+  author       = {Ubrangala, Dayananda and Sharma, Juhi and Rangappa, Sharath Kumar and R, Kiran and Kondapalli, Ravi Prasad and Bou{\'e}, Laurent},
+  title        = {Searching, Fast and Slow, through Product Catalogs},
+  howpublished = {arXiv preprint},
+  year         = {2024},
+  doi          = {10.48550/arXiv.2401.00737}
 }
 
 @inproceedings{nigamSemanticProductSearch2019a,
@@ -6111,72 +6043,37 @@ eprint = {https://ascelibrary.org/doi/pdf/10.1061/JCEMD4.COENG-14273}
 }
 
 @misc{choiSemanticProductSearch2020,
-  title = {Semantic {{Product Search}} for {{Matching Structured Product Catalogs}} in {{E-Commerce}}},
-  author = {Choi, Jason Ingyu and Kallumadi, Surya and Mitra, Bhaskar and Agichtein, Eugene and Javed, Faizan},
-  year = 2020,
-  month = aug,
-  number = {arXiv:2008.08180},
-  eprint = {2008.08180},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2008.08180},
-  urldate = {2025-12-01},
-  abstract = {Retrieving all semantically relevant products from the product catalog is an important problem in E-commerce. Compared to web documents, product catalogs are more structured and sparse due to multi-instance fields that encode heterogeneous aspects of products (e.g. brand name and product dimensions). In this paper, we propose a new semantic product search algorithm that learns to represent and aggregate multi-instance fields into a document representation using state of the art transformers as encoders. Our experiments investigate two aspects of the proposed approach: (1) effectiveness of field representations and structured matching; (2) effectiveness of adding lexical features to semantic search. After training our models using user click logs from a well-known E-commerce platform, we show that our results provide useful insights for improving product search. Lastly, we present a detailed error analysis to show which types of queries benefited the most by fielded representations and structured matching.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Information Retrieval},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\ZJ8KY5EA\\Choi et al. - 2020 - Semantic Product Search for Matching Structured Product Catalogs in E-Commerce.pdf;C\:\\Users\\cesar\\Zotero\\storage\\8ZDQB9FW\\2008.html}
+  author       = {Choi, Jason Ingyu and Kallumadi, Surya and Mitra, Bhaskar and Agichtein, Eugene and Javed, Faizan},
+  title        = {Semantic Product Search for Matching Structured Product Catalogs in {E-Commerce}},
+  howpublished = {arXiv preprint},
+  year         = {2020},
+  doi          = {10.48550/arXiv.2008.08180}
 }
 
 @misc{freymuthHierarchicalMultifieldRepresentations2025,
-  title = {Hierarchical {{Multi-field Representations}} for {{Two-Stage E-commerce Retrieval}}},
-  author = {Freymuth, Niklas and Liu, Dong and Ricatte, Thomas and Mansour, Saab},
-  year = 2025,
-  month = jan,
-  number = {arXiv:2501.18707},
-  eprint = {2501.18707},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2501.18707},
-  urldate = {2025-12-01},
-  abstract = {Dense retrieval methods typically target unstructured text data represented as flat strings. However, e-commerce catalogs often include structured information across multiple fields, such as brand, title, and description, which contain important information potential for retrieval systems. We present Cascading Hierarchical Attention Retrieval Model (CHARM), a novel framework designed to encode structured product data into hierarchical field-level representations with progressively finer detail. Utilizing a novel block-triangular attention mechanism, our method captures the interdependencies between product fields in a specified hierarchy, yielding field-level representations and aggregated vectors suitable for fast and efficient retrieval. Combining both representations enables a two-stage retrieval pipeline, in which the aggregated vectors support initial candidate selection, while more expressive field-level representations facilitate precise fine-tuning for downstream ranking. Experiments on publicly available large-scale e-commerce datasets demonstrate that CHARM matches or outperforms state-of-the-art baselines. Our analysis highlights the framework's ability to align different queries with appropriate product fields, enhancing retrieval accuracy and explainability.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Information Retrieval},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\VALKGM8P\\Freymuth et al. - 2025 - Hierarchical Multi-field Representations for Two-Stage E-commerce Retrieval.pdf;C\:\\Users\\cesar\\Zotero\\storage\\LLFDRG64\\2501.html}
+  author       = {Freymuth, Niklas and Liu, Dong and Ricatte, Thomas and Mansour, Saab},
+  title        = {Hierarchical Multi-field Representations for Two-Stage {E-commerce} Retrieval},
+  howpublished = {arXiv preprint},
+  year         = {2025},
+  doi          = {10.48550/arXiv.2501.18707}
 }
 
-@misc{biswasEfficientInterpretableInformation2024,
-  title = {Efficient and {{Interpretable Information Retrieval}} for {{Product Question Answering}} with {{Heterogeneous Data}}},
-  author = {Biswas, Biplob and Ramnath, Rajiv},
-  year = 2024,
-  month = may,
-  number = {arXiv:2405.13173},
-  eprint = {2405.13173},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2405.13173},
-  urldate = {2025-12-01},
-  abstract = {Expansion-enhanced sparse lexical representation improves information retrieval (IR) by minimizing vocabulary mismatch problems during lexical matching. In this paper, we explore the potential of jointly learning dense semantic representation and combining it with the lexical one for ranking candidate information. We present a hybrid information retrieval mechanism that maximizes lexical and semantic matching while minimizing their shortcomings. Our architecture consists of dual hybrid encoders that independently encode queries and information elements. Each encoder jointly learns a dense semantic representation and a sparse lexical representation augmented by a learnable term expansion of the corresponding text through contrastive learning. We demonstrate the efficacy of our model in single-stage ranking of a benchmark product question-answering dataset containing the typical heterogeneous information available on online product pages. Our evaluation demonstrates that our hybrid approach outperforms independently trained retrievers by 10.95\% (sparse) and 2.7\% (dense) in MRR@5 score. Moreover, our model offers better interpretability and performs comparably to state-of-the-art cross encoders while reducing response time by 30\% (latency) and cutting computational load by approximately 38\% (FLOPs).},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Machine Learning},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\M8DQ8T7K\\Biswas y Ramnath - 2024 - Efficient and Interpretable Information Retrieval for Product Question Answering with Heterogeneous.pdf;C\:\\Users\\cesar\\Zotero\\storage\\XBB9YAGQ\\2405.html}
+@inproceedings{biswasEfficientInterpretableInformation2024,
+  author    = {Biswas, Biplob and Ramnath, Rajiv},
+  title     = {Efficient and Interpretable Information Retrieval for Product Question Answering with Heterogeneous Data},
+  booktitle = {Proceedings of the Seventh Workshop on e-Commerce and NLP @ LREC-COLING 2024},
+  pages     = {19--28},
+  year      = {2024},
+  publisher = {ELRA and ICCL},
+  doi       = {10.63317/39iywyys266p}
 }
 
 @misc{cunhaTPDRNovelTwoStep2023,
-  title = {{{TPDR}}: {{A Novel Two-Step Transformer-based Product}} and {{Class Description Match}} and {{Retrieval Method}}},
-  shorttitle = {{{TPDR}}},
-  author = {Cunha, Washington and Fran{\c c}a, Celso and Rocha, Leonardo and Gon{\c c}alves, Marcos Andr{\'e}},
-  year = 2023,
-  month = oct,
-  number = {arXiv:2310.03491},
-  eprint = {2310.03491},
-  primaryclass = {cs},
-  publisher = {arXiv},
-  doi = {10.48550/arXiv.2310.03491},
-  urldate = {2025-12-01},
-  abstract = {There is a niche of companies responsible for intermediating the purchase of large batches of varied products for other companies, for which the main challenge is to perform product description standardization, i.e., matching an item described by a client with a product described in a catalog. The problem is complex since the client's product description may be: (1) potentially noisy; (2) short and uninformative (e.g., missing information about model and size); and (3) cross-language. In this paper, we formalize this problem as a ranking task: given an initial client product specification (query), return the most appropriate standardized descriptions (response). In this paper, we propose TPDR, a two-step Transformer-based Product and Class Description Retrieval method that is able to explore the semantic correspondence between IS and SD, by exploiting attention mechanisms and contrastive learning. First, TPDR employs the transformers as two encoders sharing the embedding vector space: one for encoding the IS and another for the SD, in which corresponding pairs (IS, SD) must be close in the vector space. Closeness is further enforced by a contrastive learning mechanism leveraging a specialized loss function. TPDR also exploits a (second) re-ranking step based on syntactic features that are very important for the exact matching (model, dimension) of certain products that may have been neglected by the transformers. To evaluate our proposal, we consider 11 datasets from a real company, covering different application contexts. Our solution was able to retrieve the correct standardized product before the 5th ranking position in 71\% of the cases and its correct category in the first position in 80\% of the situations. Moreover, the effectiveness gains over purely syntactic or semantic baselines reach up to 3.7 times, solving cases that none of the approaches in isolation can do by themselves.},
-  archiveprefix = {arXiv},
-  keywords = {Computer Science - Information Retrieval,Computer Science - Machine Learning,Computer Science - Software Engineering},
-  file = {C\:\\Users\\cesar\\Zotero\\storage\\YEPED59Q\\Cunha et al. - 2023 - TPDR A Novel Two-Step Transformer-based Product and Class Description Match and Retrieval Method.pdf;C\:\\Users\\cesar\\Zotero\\storage\\V3NF62UL\\2310.html}
+  author       = {Cunha, Washington and Fran{\c c}a, Celso and Rocha, Leonardo and Gon{\c c}alves, Marcos Andr{\'e}},
+  title        = {{TPDR}: A Novel Two-Step Transformer-based Product and Class Description Match and Retrieval Method},
+  howpublished = {arXiv preprint},
+  year         = {2023},
+  doi          = {10.48550/arXiv.2310.03491}
 }
 
 @inproceedings{kooDeepMetricLearning2023,
@@ -6203,7 +6100,6 @@ eprint = {https://ascelibrary.org/doi/pdf/10.1061/JCEMD4.COENG-14273}
   howpublished = {Zenodo},
   year         = {2025},
   doi          = {10.5281/zenodo.20277801},
-  url          = {https://doi.org/10.5281/zenodo.20277801}
 }
 
 @misc{bc3cat_software,
@@ -6214,7 +6110,6 @@ eprint = {https://ascelibrary.org/doi/pdf/10.1061/JCEMD4.COENG-14273}
   howpublished = {Zenodo},
   year         = {2025},
   doi          = {10.5281/zenodo.20277824},
-  url          = {https://doi.org/10.5281/zenodo.20277824}
 }
 
 @inproceedings{gao2023precise,
