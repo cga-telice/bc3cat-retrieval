@@ -25,7 +25,16 @@ all of the top-100 has an unknown size and is counted (`truncated`), its size ta
 parent level scores every query. **Every number in the prose is interpolated**
 (`tests/test_generated_prose.py`).
 
-    python src/utils/build_results_s5.py
+**A4 (D-061).** `--v2` re-points the single set to `single_texto_v2` (the same records in the same order, `text`
+repaired on part of the `template_paraphrase` cell; the reference arms' v2 runs are S4 A6's) and writes T1–T7
+under `results/S5/v2/`, the identity side unchanged. It also computes the v1 results in the same process (the
+same functions and bootstrap labels, one `Stages` instance re-deriving both) and writes
+`results/S5/v2/comparison.md`: Q1–Q3 per cell and G2, and every structured arm's profile cell, on v1 and on v2
+side by side with v2 − v1 from the paired draws (`utils.v2_variant`). A sensitivity table, not a test. The base
+mode (no flag) is untouched: it regenerates `results/S5/` byte for byte.
+
+    python src/utils/build_results_s5.py          # v1, results/S5/
+    python src/utils/build_results_s5.py --v2     # v2, results/S5/v2/, plus comparison.md
 """
 
 from __future__ import annotations
@@ -48,8 +57,9 @@ from pipeline.param_extractor_rules import RuleBasedParamExtractor  # noqa: E402
 from utils.build_results_s2 import (  # noqa: E402
     ALPHA, B, SEED, bh, boot_cluster, boot_p, boot_query, ci, f4, fci, fd, fp, holm, write,
 )
+from utils import v2_variant as v2v  # noqa: E402
 from utils.build_results_s4 import (  # noqa: E402
-    _DECIMAL, AMENDMENT_EXCLUDED as S4_EXCLUDED, FEW_CLUSTERS, LAYERS, TYPES, cell, collapse, reading,
+    _DECIMAL, AMENDMENT_EXCLUDED as S4_EXCLUDED, FEW_CLUSTERS, LAYERS, TYPES, cell, collapse, reading, require_runs,
 )
 from utils.provenance import sha256_file  # noqa: E402
 
@@ -58,11 +68,29 @@ DATA = REPO / "data" / "processed"
 SIDECAR = DATA / "OE_duplicate_texto_groups.json"
 SCHEMA = DATA / "OE_concept_schema.json"
 LONG_NORM = DATA / "OE_long_norm.parquet"
-QUERY_TABLES = {"texto": DATA / "OE_long_feats.parquet", "single_texto": DATA / "OE_single_texto_feats.parquet"}
+#: The feature table the oracle's stage re-derivation reads per query set. Both single sets are listed so that one
+#: `Stages` instance can re-derive v1 and v2 in the same process (A4); `_records` loads a table only when asked.
+QUERY_TABLES = {"texto": DATA / "OE_long_feats.parquet", "single_texto": DATA / "OE_single_texto_feats.parquet",
+                "single_texto_v2": DATA / "OE_single_texto_v2_feats.parquet"}
+#: The single query set the tables read; `configure` re-points these four (A4). S4's `SINGLE` is separate: this
+#: module imports S4's functions, not its query-set name.
+SINGLE = "single_texto"
 SINGLE_JSON = DATA / "OE_single_texto.json"
 CORPUS_JSON = DATA / "OE_texto.json"
-OUT = REPO / "docs" / "synthetic-oe" / "results" / "S5"
+RESULTS_S5 = REPO / "docs" / "synthetic-oe" / "results" / "S5"
+OUT = RESULTS_S5
 GENERATOR = "src/utils/build_results_s5.py"
+V2_MODE = False
+
+
+def configure(v2: bool) -> None:
+    """A4: point the module at `single_texto_v2` and `results/S5/v2/`, or back at the base mode (identity)."""
+    global V2_MODE, SINGLE, SINGLE_JSON, OUT, GENERATOR
+    V2_MODE = v2
+    SINGLE = v2v.mapped("single_texto", v2)
+    SINGLE_JSON = DATA / f"OE_{SINGLE}.json"
+    OUT = v2v.out_dir(RESULTS_S5, v2)
+    GENERATOR = v2v.generator_label("src/utils/build_results_s5.py", v2)
 
 #: (run directory, short name, oracle, structured)
 ARMS = [
@@ -195,13 +223,17 @@ def score_ties(queryset: str, method: str) -> pd.DataFrame:
 # --------------------------------------------------------------------------- pairing
 
 
-def paired(short: str, dup: set[str], stages: Stages) -> tuple[pd.DataFrame, dict]:
-    """One row per dev single query: modified and identity hits, as run and tie-free, and its type."""
-    mod = perquery("single_texto", DIR[short])
+def paired(short: str, dup: set[str], stages: Stages, queryset: str | None = None) -> tuple[pd.DataFrame, dict]:
+    """One row per dev single query: modified and identity hits, as run and tie-free, and its type.
+
+    `queryset` defaults to the configured single set; the comparison (A4) passes v1's explicitly.
+    """
+    queryset = SINGLE if queryset is None else queryset
+    mod = perquery(queryset, DIR[short])
     ident = perquery("texto", DIR[short]).set_index("query_item_key")
     types = mod["modification_types"].map(lambda t: list(t))
     if (types.map(len) != 1).any():
-        raise ValueError(f"{short}: a single_texto query carries other than one type")
+        raise ValueError(f"{short}: a {queryset} query carries other than one type")
     frame = pd.DataFrame({
         "q": mod["query_item_key"].astype(str),
         "gold": mod["gold_item_key"].astype(str),
@@ -220,14 +252,14 @@ def paired(short: str, dup: set[str], stages: Stages) -> tuple[pd.DataFrame, dic
     frame["parent_scored"] = ~frame["q"].map(lambda k: "parent" in EXCLUDED.get(k, {}).get("levels", ()))
 
     if short in STRUCTURED:
-        mod_s, id_s = stages.run("single_texto", DIR[short]), stages.run("texto", DIR[short])
+        mod_s, id_s = stages.run(queryset, DIR[short]), stages.run("texto", DIR[short])
         for side, s in (("mod", mod_s), ("id", id_s)):
             if not s["consistent"].all():
                 raise ValueError(f"{short}/{side}: re-derivation does not reproduce rank 1 on "
                                  f"{int((~s['consistent']).sum())} queries")
         extra = {"stages_mod": mod_s, "stages_id": id_s, "truncated": 0}
     else:
-        mod_s, id_s = score_ties("single_texto", DIR[short]), score_ties("texto", DIR[short])
+        mod_s, id_s = score_ties(queryset, DIR[short]), score_ties("texto", DIR[short])
         extra = {"truncated": int(mod_s.loc[frame["q"], "truncated"].sum())
                  + int(id_s.loc[frame["gold"], "truncated"].sum())}
     frame["item_mod_tf"] = frame["q"].map(mod_s["tie_free"]).astype(float)
@@ -274,7 +306,9 @@ def contrast(a: pd.DataFrame, b: pd.DataFrame, label: str) -> dict:
     if list(fa.index) != list(fb.index):
         raise ValueError(f"{label}: the two arms scored different queries")
     clusters = fa["concept"].to_numpy()
-    out = {"n": len(fa), "excluded": len(a) - len(fa), "concepts": int(fa["concept"].nunique())}
+    out = {"n": len(fa), "excluded": len(a) - len(fa), "concepts": int(fa["concept"].nunique()),
+           # The label seeds the concept weights, so two contrasts with equal keys have paired draws (A4).
+           "clusters_key": tuple(sorted(set(clusters)))}
     for tag, sfx in (("tf", "_tf"), ("run", "")):
         d_id = (fa[f"item_id{sfx}"] - fb[f"item_id{sfx}"]).to_numpy(float)
         d_mod = (fa[f"item_mod{sfx}"] - fb[f"item_mod{sfx}"]).to_numpy(float)
@@ -286,6 +320,7 @@ def contrast(a: pd.DataFrame, b: pd.DataFrame, label: str) -> dict:
             out[f"{tag}_{name}_q"] = ci(q[:, j])
             out[f"{tag}_{name}_c"] = ci(c[:, j])
             out[f"{tag}_{name}_p"] = boot_p(c[:, j])
+            out[f"{tag}_{name}_draws"] = c[:, j]
     return out
 
 
@@ -302,7 +337,7 @@ def header(title: str, how: list[str]) -> list[str]:
 
 def population_note(pops: dict) -> list[str]:
     lines = [
-        f"**Population.** {pops['n']:,} dev `single_texto` queries over {pops['concepts']} concepts. "
+        f"**Population.** {pops['n']:,} dev `{SINGLE}` queries over {pops['concepts']} concepts. "
         f"Item level scores {pops['item']:,}: {pops['dup']:,} excluded because the gold shares its `texto` "
         f"(D-033) and {pops['amend_item']:,} by amendment. Parent level scores {pops['parent']:,}. "
         f"`{NO_P8}` drops the {len(P8_DEV)} case-only queries of P8 (D-044). Layers and types reach different "
@@ -393,12 +428,12 @@ def write_profile(level: str, stats: dict, pops: dict) -> None:
                     f"{f4(k['D_mod'])} | {f4(k['gap_id'])} | {f4(k['gap_mod'])} | {fd(k['d_gap'])} | "
                     f"{fci(k['d_gap_q'], True)} | {fci(k['d_gap_c'], True)} |")
             lines.append("")
-    lines += sources_block(["texto", "single_texto"], only=STRUCTURED)
+    lines += sources_block(["texto", SINGLE], only=STRUCTURED)
     write(OUT / ("profile_item.md" if level == "item" else "profile_parent.md"), lines)
 
 
 def write_stages(frames: dict, extras: dict, qtext: dict, ctext: dict) -> None:
-    lines = header("T4: stage decomposition (dev `single_texto`)", [
+    lines = header(f"T4: stage decomposition (dev `{SINGLE}`)", [
         "Re-derived from each run's own rank 1 and deterministic code, as S2's `structured_stages.md`: Stage 1 is",
         "the rank-1 leaf's concept; Stage 2 the arm's extractor on that concept (the oracle reads the query",
         "record); Stage 3 the catalogue lookup. Re-derivation reproduces every run's rank 1 (checked on load).",
@@ -439,7 +474,7 @@ def write_stages(frames: dict, extras: dict, qtext: dict, ctext: dict) -> None:
         absent = [k for k, g in zip(f["q"], f["gold"])
                   if _DECIMAL.search(qtext[k]) and not set(_DECIMAL.findall(qtext[k])) <= set(_DECIMAL.findall(ctext[g]))]
         lines.append(f"| {t} | {len(f):,} | {n_excl:,} | {len(inq):,} | {len(absent):,} |")
-    lines += sources_block(["single_texto"], only=STRUCTURED, inputs=(SCHEMA, LONG_NORM, QUERY_TABLES["single_texto"]))
+    lines += sources_block([SINGLE], only=STRUCTURED, inputs=(SCHEMA, LONG_NORM, QUERY_TABLES[SINGLE]))
     write(OUT / "stages.md", lines)
 
 
@@ -471,7 +506,7 @@ def write_contrasts(cons: dict, extras: dict) -> None:
                         for key in ("tf_id", "tf_mod", "tf_did", "run_mod", "run_did"))
                     + " |")
             lines.append("")
-    lines += sources_block(["texto", "single_texto"])
+    lines += sources_block(["texto", SINGLE])
     write(OUT / "contrasts.md", lines)
 
 
@@ -499,7 +534,7 @@ def write_predictions(results: list[dict], g2: dict) -> None:
               f"{fci(g2['c'], True)}. **G2 reads: {g2['g2']}.** Q2's pooled L1 (the bound) is printed beside it: "
               f"{g2['q2_reading']}, estimate {fd(g2['q2_est'])} {fci(g2['q2_c'], True)}. The plan's consequence is "
               "César's to confirm in the report."]
-    lines += sources_block(["texto", "single_texto"], only=["rules_valuenorm", "oracleparams", "bm25_unigram"])
+    lines += sources_block(["texto", SINGLE], only=["rules_valuenorm", "oracleparams", "bm25_unigram"])
     write(OUT / "predictions.md", lines)
 
 
@@ -529,7 +564,7 @@ def git(*args: str) -> str:
 
 
 def write_provenance() -> None:
-    s5 = meta("single_texto", DIR["oracleparams"])["code_commit"]
+    s5 = meta(SINGLE, DIR["oracleparams"])["code_commit"]
     lines = header("T7: run provenance (dev)", [
         "Every run the S5 tables read. The structured runs are S5's own, at one commit (A1: the rules arms",
         "re-run; S2's copies archived under `runs/_archive/S2`). The reference runs are S4's and S3's, read",
@@ -537,7 +572,7 @@ def write_provenance() -> None:
     ])
     lines += ["| run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 | split | S5 |",
               "|---|---:|---|---|---|---|---|---|"]
-    for queryset in ("texto", "single_texto"):
+    for queryset in ("texto", SINGLE):
         for d, short, _, _ in ARMS:
             m = meta(queryset, d)
             lines.append(
@@ -559,19 +594,21 @@ def texts() -> tuple[dict[str, str], dict[str, str]]:
     return queries, corpus
 
 
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    dup = duplicated()
-    stages = Stages()
+def assemble(queryset: str, dup: set[str], stages: Stages) -> dict:
+    """Frames, stage re-derivations, population counts, cells, contrasts, Q1–Q3 and G2 of one single set.
+
+    The bootstrap labels carry no query-set name, so the v1 and v2 assemblies of the same cell draw the same
+    concept weights and their draws pair (A4, `v2_variant.paired_diff`).
+    """
     frames, extras = {}, {}
     for _, short, _, _ in ARMS:
-        frames[short], extras[short] = paired(short, dup, stages)
-        print(f"paired {short}")
+        frames[short], extras[short] = paired(short, dup, stages, queryset)
+        print(f"paired {short} ({queryset})")
 
     first = frames[ARMS[0][1]]
     for short, frame in frames.items():
         if list(frame["q"]) != list(first["q"]):
-            raise ValueError(f"{short}: single_texto queries differ from {ARMS[0][1]}'s")
+            raise ValueError(f"{short}: {queryset} queries differ from {ARMS[0][1]}'s")
     pops = {
         "n": len(first), "concepts": int(first["concept"].nunique()),
         "item": int(first["item_scored"].sum()), "parent": int(first["parent_scored"].sum()),
@@ -591,13 +628,6 @@ def main() -> None:
     cons = {(s, r, sc): contrast(scope(frames[s], sc), scope(frames[r], sc), f"{s}|{r}|{sc}")
             for s in STRUCTURED for r in REFERENCE for sc in SCOPES}
 
-    write_ceilings(dup, extras)
-    write_profile("item", stats, pops)
-    write_profile("parent", stats, pops)
-    qtext, ctext = texts()
-    write_stages(frames, extras, qtext, ctext)
-    write_contrasts(cons, extras)
-
     results = []
     for pid, hyp, kind, arm, ref, cells in PREDICTIONS:
         for sc in cells:
@@ -607,7 +637,8 @@ def main() -> None:
                     else f"DiD {name(arm)} vs `{ref}` > 0")
             results.append({"id": pid, "hyp": hyp, "what": what, "cell": sc, "concepts": k["concepts"],
                             "n": k["n"], "excluded": k["excluded"],
-                            "est": k[key], "c": k[f"{key}_c"], "p": k[f"{key}_p"], "side": "positive"})
+                            "est": k[key], "c": k[f"{key}_c"], "p": k[f"{key}_p"], "side": "positive",
+                            "draws": k[f"{key}_draws"], "clusters_key": k["clusters_key"]})
     p = [r["p"] for r in results]
     for r, h, q in zip(results, holm(p), bh(p)):
         r.update(holm=h, bh=q)
@@ -616,9 +647,116 @@ def main() -> None:
     q2 = next(r for r in results if r["id"] == "Q2" and r["cell"] == "L1")
     g2 = ("yes" if q1["reading"] == "supported" else
           "no" if q1["reading"] == "contradicted" or q1["est"] <= 0 else "ambiguous")
-    write_predictions(results, {"reading": q1["reading"], "est": q1["est"], "c": q1["c"], "g2": g2,
-                                "q2_reading": q2["reading"], "q2_est": q2["est"], "q2_c": q2["c"]})
+    return {"queryset": queryset, "frames": frames, "extras": extras, "first": first, "pops": pops, "stats": stats,
+            "cons": cons, "results": results,
+            "g2": {"reading": q1["reading"], "est": q1["est"], "c": q1["c"], "g2": g2,
+                   "q2_reading": q2["reading"], "q2_est": q2["est"], "q2_c": q2["c"]}}
+
+
+def paired_cell_diff(fa: pd.DataFrame, fb: pd.DataFrame, col: str, scored: str, label: str) -> tuple[float, tuple, int]:
+    """Per-query b − a of one modified column on the cell's scored queries, bootstrapped by concept, and the count
+    of queries whose value moved. The identity side is the same run on both, so this is also the δ difference."""
+    g = fb[fb[scored]].set_index("q")
+    h = fa.set_index("q").loc[g.index]
+    dv = (g[col] - h[col]).to_numpy(float)
+    if not len(dv):
+        return float("nan"), (float("nan"), float("nan")), 0
+    draws = boot_cluster(dv[:, None], g["concept"].to_numpy(), label)[:, 0]
+    return float(dv.mean()), ci(draws), int((dv != 0).sum())
+
+
+def write_comparison(ref: dict, this: dict) -> None:
+    """A4: Q1–Q3, G2 and every structured arm's profile cell on v1 beside v2, with the paired-draw difference."""
+    if list(ref["first"]["q"]) != list(this["first"]["q"]):
+        raise ValueError(f"{ref['queryset']} and {this['queryset']} do not hold the same dev queries in the same order")
+    first = this["first"]
+    n_changed = int(first["q"].isin(v2v.changed_keys("single_texto")).sum())
+    lines = header("Comparison: v2 against v1 (dev)", ["Written in the `--v2` mode (A4, D-061)."])
+    lines += v2v.intro("S5", f"`{ref['queryset']}`", f"`{this['queryset']}`",
+                       f"The two sets hold the same {len(first):,} dev queries in the same order; `text` differs on "
+                       f"{n_changed:,}, all in the `template_paraphrase` cell. The structured arms' v2 runs are S5's "
+                       "own and the reference arms' are S4 A6's; the identity side is the same run on both. L1 and its "
+                       "types hold no repaired query, so a Q1 / Q2 difference there is the H8 batch floor of the "
+                       "reference arm, not the repair.")
+    # (A) Q1–Q3 and G2
+    lines += ["## Q1–Q3 (tie-free)", "",
+              "| prediction | test | cell | n scored | concepts | estimate, v1 | CI (concept), v1 | Holm p, v1 | "
+              "reading, v1 | estimate, v2 | CI (concept), v2 | Holm p, v2 | reading, v2 | v2 − v1 | "
+              "CI (paired draws) | reading moved |",
+              "|---|---|---|---:|---:|---:|---|---:|---|---:|---|---:|---|---:|---|---|"]
+    by_key = {(r["id"], r["what"], r["cell"]): r for r in ref["results"]}
+    for b in this["results"]:
+        a = by_key[(b["id"], b["what"], b["cell"])]
+        d = v2v.paired_diff(a, b)
+        lines.append(f"| {b['id']} | {b['what']} | {b['cell']} | {b['n']:,} | "
+                     f"{b['concepts']}{' ‡' if b['concepts'] < FEW_CLUSTERS else ''} | {fd(a['est'])} | "
+                     f"{fci(a['c'], True)} | {fp(a['holm'])} | {a['reading']} | {fd(b['est'])} | {fci(b['c'], True)} | "
+                     f"{fp(b['holm'])} | **{b['reading']}** | {v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | "
+                     f"{v2v.moved(a['reading'], b['reading'])} |")
+    ga, gb = ref["g2"], this["g2"]
+    lines += ["", f"**G2** (read from Q1's pooled L1, which the repair does not touch): v1 **{ga['g2']}** "
+              f"(Q1 L1 {ga['reading']}, estimate {fd(ga['est'])} {fci(ga['c'], True)}); v2 **{gb['g2']}** "
+              f"(Q1 L1 {gb['reading']}, estimate {fd(gb['est'])} {fci(gb['c'], True)}); moved: "
+              f"{v2v.moved(ga['g2'], gb['g2'])}."]
+    # (B) the profile cells of the structured arms
+    lines += ["", "## The profile cells of the structured arms (T2 item level, tie-free; T3 parent level, as run)", "",
+              "S5's tie-free reading exists at item level; parent level is as run (S4's columns). **δ v2 − v1** is the "
+              "mean per-query difference of the modified value on the cell's scored queries, with its concept-clustered "
+              "interval, and **moved** the number of those queries whose value changed. n scored and the concept count "
+              "are the same on both by construction.", "",
+              "| arm | scope | level | n scored | concepts | modified, v1 | δ, v1 | CI (concept), v1 | modified, v2 | "
+              "δ, v2 | CI (concept), v2 | δ v2 − v1 | CI (concept, paired) | moved |",
+              "|---|---|---|---:|---:|---:|---:|---|---:|---:|---|---:|---|---:|"]
+    for short in STRUCTURED:
+        for sc in SCOPES:
+            fa, fb = scope(ref["frames"][short], sc), scope(this["frames"][short], sc)
+            for level, key, col, scored in (("item, tie-free", "tf", "item_mod_tf", "item_scored"),
+                                            ("parent, as run", "parent", "parent_mod", "parent_scored")):
+                a, b = ref["stats"][short][(sc, key)], this["stats"][short][(sc, key)]
+                diff, dci, movedn = paired_cell_diff(fa, fb, col, scored, f"s5|cmp|{short}|{sc}|{key}")
+                n_sc, conc = int(fb[scored].sum()), int(fb[fb[scored]]["concept"].nunique())
+                lines.append(f"| {name(short)} | {sc} | {level} | {n_sc:,} | {conc} | {f4(a['mod'])} | {fd(a['delta'])} | "
+                             f"{fci(a['c'], True)} | {f4(b['mod'])} | {fd(b['delta'])} | {fci(b['c'], True)} | "
+                             f"{v2v.fsd(diff)} | {v2v.fci(dci)} | {movedn:,} |")
+    # stamps
+    lines += ["", "## Sources", "",
+              "| which | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 |",
+              "|---|---|---:|---|---|---|---|"]
+    for which, src in (("v1", ref), ("v2", this)):
+        for d, _, _, _ in ARMS:
+            m = meta(src["queryset"], d)
+            lines.append(f"| {which} | `{m['run_id']}` | {m['queries']:,} | `{m['config_sha256'][:16]}` | "
+                         f"`{m['code_commit'][:7]}` | {str(bool(m.get('code_dirty'))).lower()} | `{m['query_set_sha256'][:16]}` |")
+    lines += ["", "| input | SHA-256 |", "|---|---|",
+              *(f"| `{p.name}` | `{sha256_file(p)[:16]}` |"
+                for p in (SIDECAR, DATA / f"OE_{ref['queryset']}.json", DATA / f"OE_{this['queryset']}.json",
+                          QUERY_TABLES[ref["queryset"]], QUERY_TABLES[this["queryset"]], v2v.CHANGES)),
+              "", f"Bootstrap: B = {B:,}, seed = {SEED}, percentile 95 % intervals. Split `dev`."]
+    write(OUT / "comparison.md", lines)
+
+
+def main(argv=None) -> None:
+    args = v2v.parse(argv)
+    configure(args.v2)
+    if V2_MODE:
+        require_runs(SINGLE, [d for d, _, _, _ in ARMS])
+    OUT.mkdir(parents=True, exist_ok=True)
+    dup = duplicated()
+    stages = Stages()
+    this = assemble(SINGLE, dup, stages)
+    frames, extras, stats, cons = this["frames"], this["extras"], this["stats"], this["cons"]
+
+    write_ceilings(dup, extras)
+    write_profile("item", stats, this["pops"])
+    write_profile("parent", stats, this["pops"])
+    qtext, ctext = texts()
+    write_stages(frames, extras, qtext, ctext)
+    write_contrasts(cons, extras)
+    write_predictions(this["results"], this["g2"])
     write_provenance()
+    if V2_MODE:
+        # v1 in the same process: the same functions and `Stages` instance on the base set.
+        write_comparison(assemble("single_texto", dup, stages), this)
     print(f"wrote {OUT.relative_to(REPO)}")
 
 

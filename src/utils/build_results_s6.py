@@ -15,8 +15,20 @@ What is new here, and where the design fixes it:
   weighted sum and not a refit.
 - **Registered tests** R1–R6 (21), each tie-free (primary), as run, and on the D-004 clean subset.
 - The **L2w** population is `single_l2_texto` (D-043), read blind; L2s (S4's) and L2∪ are printed only.
+- **A8 (D-061):** `--v2` reads S4 A6's runs on `single_texto_v2` in place of `single_texto` (the same records in
+  the same order, `text` repaired on part of the `template_paraphrase` cell) and writes T1–T8 and Figs. 1–3 under
+  `results/S6/v2/`, refitting M0–M2 (one BLAS thread, A6) and recomputing the covariates, the D-004 flags and the
+  drift flags on the v2 texts. `single_l2_texto` is untouched by the delivery and is read as today. The SINGLE
+  modifications sidecar (`OE_single_modifications.jsonl`) stays v1's: its keys are the same records, and the
+  repaired strings are L3 template rewrites, which the sidecar returns as undecidable whatever the text. The v1
+  results are computed in the same process (same functions, same bootstrap labels, `_PM_CACHE` cleared between
+  the two) and `results/S6/v2/comparison.md` sets R1–R6, every fixed effect of M0–M2 and PM on v1 beside v2, with
+  v2 − v1 from the paired draws where they align (`utils.v2_variant`). A sensitivity table, not a test. The base
+  mode (no flag) regenerates `results/S6/` byte for byte.
 
 The analysis stack is pinned (`analysis_stack.py`, A1): the script refuses to run on another.
+
+    python src/utils/build_results_s6.py --v2   # v2, results/S6/v2/, plus comparison.md
 """
 
 from __future__ import annotations
@@ -43,6 +55,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
 from utils import analysis_stack  # noqa: E402
+from utils import v2_variant as v2v  # noqa: E402
 from utils.build_overlap import lexical_coverage, numbers_in, numeric_coverage  # noqa: E402
 from utils.build_results_s2 import (  # noqa: E402
     ALPHA, B, SEED, _rng, bh, boot_cluster, boot_p, boot_query, ci, f4, fci, fd, fp, holm, write,
@@ -50,7 +63,7 @@ from utils.build_results_s2 import (  # noqa: E402
 from utils.build_results_s4 import (  # noqa: E402
     AMENDMENT_EXCLUDED as S4_EXCLUDED, ARMS, CORPUS_JSON, DIR, FEW_CLUSTERS, FLOOR, LAYERS, MARGIN, ORACLE,
     RUNS, SIDECAR, SINGLE_JSON, TWIN, TYPES, _evaluate_prediction, duplicated, meta, perquery,
-    reading as s4_reading, token_distance,
+    reading as s4_reading, require_runs, token_distance,
 )
 from utils.build_results_s5 import P8_DEV, iter_top100  # noqa: E402
 from utils.pantry_flags import load_sidecar, sidecar_doubling, sidecar_topo, text_flags  # noqa: E402
@@ -60,12 +73,29 @@ DATA = REPO / "data" / "processed"
 L2_JSON = DATA / "OE_single_l2_texto.json"
 SINGLE_SIDECAR = DATA / "OE_single_modifications.jsonl"
 L2_SIDECAR = DATA / "OE_single_l2_modifications.jsonl"
-OUT = REPO / "docs" / "synthetic-oe" / "results" / "S6"
+RESULTS_S6 = REPO / "docs" / "synthetic-oe" / "results" / "S6"
+OUT = RESULTS_S6
 FIGS = OUT / "figures"
 GENERATOR = "src/utils/build_results_s6.py"
 
 SINGLE, L2W = "single_texto", "single_l2_texto"
 L2_TYPES = LAYERS["L2"]
+V2_MODE = False
+
+
+def configure(v2: bool) -> None:
+    """A8: point the module at `single_texto_v2` and `results/S6/v2/`, or back at the base mode (identity).
+
+    `SINGLE_JSON` is this module's own global (imported from S4 by value), so it is re-pointed here; S4's stays
+    whatever S4's own `configure` set. The SINGLE sidecar is not re-pointed (module docstring).
+    """
+    global V2_MODE, SINGLE, SINGLE_JSON, OUT, FIGS, GENERATOR
+    V2_MODE = v2
+    SINGLE = v2v.mapped("single_texto", v2)
+    SINGLE_JSON = DATA / f"OE_{SINGLE}.json"
+    OUT = v2v.out_dir(RESULTS_S6, v2)
+    FIGS = OUT / "figures"
+    GENERATOR = v2v.generator_label("src/utils/build_results_s6.py", v2)
 
 #: The seven non-floor base arms the design names (constraint "Arms").
 BASE7 = ["bm25_unigram", "bm25_unigram_params", "tfidf_phrases_replace", "bge_m3_colbert", "bge_m3_dense",
@@ -129,9 +159,13 @@ def tie_table(queryset: str, method: str, keep: set[str], parents: dict[str, str
 
 
 def query_features(queryset: str, dev_keys: set[str]) -> pd.DataFrame:
-    """Arm-independent per-query covariates and flags, on dev queries only (text is read on dev only)."""
-    path = SINGLE_JSON if queryset == SINGLE else L2_JSON
-    sidecar = load_sidecar(SINGLE_SIDECAR if queryset == SINGLE else L2_SIDECAR)
+    """Arm-independent per-query covariates and flags, on dev queries only (text is read on dev only).
+
+    The text comes from the query set named, so v1 and v2 can be featurised in one process (A8); the single
+    sidecar is the same for both.
+    """
+    path = L2_JSON if queryset == L2W else DATA / f"OE_{queryset}.json"
+    sidecar = load_sidecar(L2_SIDECAR if queryset == L2W else SINGLE_SIDECAR)
     corpus = {r["item_key"]: r["text"] for r in json.loads(CORPUS_JSON.read_text(encoding="utf-8"))}
     rows = []
     for r in json.loads(path.read_text(encoding="utf-8")):
@@ -353,7 +387,9 @@ def ols_within(f: pd.DataFrame, xcols: list[str], label: str) -> dict:
 
     point = {k_: v[0] for k_, v in solve(np.ones((1, G))).items()}
     draws = solve(W)
-    return {"types": types, "xcols": xcols, "n": len(f), "concepts": G, "point": point, "draws": draws}
+    return {"types": types, "xcols": xcols, "n": len(f), "concepts": G, "point": point, "draws": draws,
+            # The concepts behind the weights: two fits under the same label with equal keys have paired draws (A8).
+            "clusters_key": tuple(labels.tolist())}
 
 
 def fit_mixed(f: pd.DataFrame, xcols: list[str]) -> dict:
@@ -530,7 +566,11 @@ def evaluate(S: dict, W: dict) -> tuple[list[dict], dict]:
                 row[v] = {"est": r["est"], "c": ci(d), "side": r["side"], "null": r.get("null", 0.0),
                           "forced": r.get("forced", False), "clusters": r["clusters"], "dropped": len(r["draws"]) - len(d),
                           "counts": {p: (len(item(f)), nexcl(f)) for p, f in r["counts"].items()},
-                          "p": 1.0 if r.get("forced") else test_p(r["draws"], r.get("null", 0.0))}
+                          "p": 1.0 if r.get("forced") else test_p(r["draws"], r.get("null", 0.0)),
+                          # The unfiltered draws and the concepts behind each pool, so that two evaluations under
+                          # the same label pair draw by draw (A8, `v2_variant.paired_diff`).
+                          "draws": r["draws"],
+                          "clusters_key": tuple(tuple(sorted(set(item(f)["concept"]))) for f in r["counts"].values())}
                 rq = run_test(kind, short, S, W, v, unit="query")["draws"]
                 row[v]["q"] = ci(rq[np.isfinite(rq)])
             results.append(row)
@@ -610,7 +650,7 @@ def population_lines(S: dict, W: dict, dup: set[str]) -> list[str]:
 def write_l2_profile(stats: dict, trunc: dict, S: dict, W: dict, dup: set[str]) -> None:
     lines = header("T1: the L2 profile on `single_l2_texto` (L2w), item and parent level (dev)", [
         "S4's columns, for the fifteen arms. Each query is paired with the same arm's `texto` result on its",
-        "own gold. **L2w** is the registered L2 population (blind). **L2s** is S4's L2 pool on `single_texto`",
+        f"own gold. **L2w** is the registered L2 population (blind). **L2s** is S4's L2 pool on `{SINGLE}`",
         "and **L2∪** the union of both: printed for reference, never read (design).",
     ])
     lines += population_lines(S, W, dup)
@@ -637,7 +677,7 @@ def write_l2_profile(stats: dict, trunc: dict, S: dict, W: dict, dup: set[str]) 
     lines += ["## Rank-1 tied sets that fill the whole top-100 (A2 a)", "",
               "The tied set is read from the top-100, so a set this large is truncated and its tie-free value is an "
               "upper bound. Counted over every query each arm's S6 readings use.", "",
-              "| arm | `single_texto` modified | L2w modified | identity (golds of both) |", "|---|---:|---:|---:|"]
+              f"| arm | `{SINGLE}` modified | L2w modified | identity (golds of both) |", "|---|---:|---:|---:|"]
     for short, (a, b, c) in trunc.items():
         lines.append(f"| {name(short)} | {a:,} | {b:,} | {c:,} |")
     lines += sources_block([SINGLE, L2W, "texto"])
@@ -647,7 +687,7 @@ def write_l2_profile(stats: dict, trunc: dict, S: dict, W: dict, dup: set[str]) 
 def write_adjusted(models: dict, raw: dict, S: dict) -> None:
     lines = header("T2: the adjusted profile, M0 (dev, item level)", [
         "M0: δ ~ 0 + type + (1 | concept) + (1 | leaf ∈ concept), a linear mixed model on the tie-free δ of",
-        "`single_texto`'s item-scored queries, REML. δ is a within-leaf difference, so the leaf's own difficulty",
+        f"`{SINGLE}`'s item-scored queries, REML. δ is a within-leaf difference, so the leaf's own difficulty",
         "is already differenced out; the random intercepts absorb what concept and leaf share across renderings.",
         "Coefficients are in Acc@1 units, beside the raw mean δ (S4's, as run, and tie-free).",
     ])
@@ -702,7 +742,7 @@ def write_mediation(models: dict, pms: dict, S: dict, corr: pd.DataFrame, feats_
               "The mixed PM weights *average-concept* effects (T2's β) by query shares, so it is not on the OLS PM's "
               "scale and is not a check of it; it is printed \"—\" when either fit did not converge. T2's û column "
               "shows how far the two scales are apart, type by type.", ""]
-    lines += ["## Covariates", "", f"Correlations over the {feats_n:,} item-scored `single_texto` dev queries "
+    lines += ["## Covariates", "", f"Correlations over the {feats_n:,} item-scored `{SINGLE}` dev queries "
               "(arm-independent). Deficits are collinear with type by construction (L1 rewrites exactly the numbers): "
               "no claim rests on one deficit's coefficient (design, Risks).", "",
               "| | " + " | ".join(DEFICIT_LABEL[c] for c in corr.columns) + " |", "|---|" + "---:|" * len(corr.columns)]
@@ -969,7 +1009,7 @@ def write_figures(S: dict, W: dict, stats: dict, models: dict, pms: dict) -> Non
     fig.savefig(FIGS / "fig1_collapse.png", dpi=150, metadata={"Software": None})
     plt.close(fig)
     lines += ["## Fig. 1 — the collapse (`fig1_collapse.png`)", "",
-              "Item-scored `single_texto` queries, all nine types.", "",
+              f"Item-scored `{SINGLE}` queries, all nine types.", "",
               "| arm | item, identity | parent, identity | item, modified | parent, modified |", "|---|---:|---:|---:|---:|"]
     lines += [f"| {name(s)} | {f4(a)} | {f4(b)} | {f4(c)} | {f4(d)} |" for s, a, b, c, d in fig1]
 
@@ -1001,7 +1041,7 @@ def write_figures(S: dict, W: dict, stats: dict, models: dict, pms: dict) -> Non
     fig.savefig(FIGS / "fig2_profile.png", dpi=150, metadata={"Software": None})
     plt.close(fig)
     lines += ["", "## Fig. 2 — the profile (`fig2_profile.png`)", "",
-              "2a: tie-free retention, item level (`single_texto` types; L2w pooled). 2b: M0 β as in T2. The last "
+              f"2a: tie-free retention, item level (`{SINGLE}` types; L2w pooled). 2b: M0 β as in T2. The last "
               "column, `synonym_label` without the P8 queries (D-044), is printed and not plotted.", "",
               "| arm | " + " | ".join(cols) + f" | {NO_P8} |", "|---|" + "---:|" * (len(cols) + 1)]
     lines += [f"| {name(s)} | " + " | ".join(f4(v) for v in row) + f" | {f4(stats[s][(NO_P8, 'item', 'tf_ret')])} |"
@@ -1039,7 +1079,7 @@ def write_figures(S: dict, W: dict, stats: dict, models: dict, pms: dict) -> Non
     fig.savefig(FIGS / "fig3_mediation.png", dpi=150, metadata={"Software": None})
     plt.close(fig)
     lines += ["", "## Fig. 3 — mediation (`fig3_mediation.png`)", "",
-              "3a: item-scored `single_texto` queries binned by lexical deficit at `bm25_unigram`'s quintiles "
+              f"3a: item-scored `{SINGLE}` queries binned by lexical deficit at `bm25_unigram`'s quintiles "
               "(the same queries for every arm).", "",
               "| arm | bin | n | mean deficit | mean δ |", "|---|---:|---:|---:|---:|"]
     for short, centres, means, ns in fig3:
@@ -1082,8 +1122,8 @@ def git(*args: str) -> str:
 
 def write_provenance() -> None:
     lines = header("T8: run provenance (dev)", [
-        "Every run the S6 tables read. The `single_l2_texto` runs are S6's (work item 3); the `texto` and",
-        "`single_texto` runs are S4's and S3's, read, not re-run, so no earlier sprint's run is superseded (D-047).",
+        f"Every run the S6 tables read. The `{L2W}` runs are S6's (work item 3); the `texto` and",
+        f"`{SINGLE}` runs are S4's and S3's, read, not re-run, so no earlier sprint's run is superseded (D-047).",
     ])
     lines += ["| query set | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 | derived from |",
               "|---|---|---:|---|---|---|---|---|"]
@@ -1104,21 +1144,21 @@ def write_provenance() -> None:
 # --------------------------------------------------------------------------- main
 
 
-def main() -> None:
-    analysis_stack.require()
-    OUT.mkdir(parents=True, exist_ok=True)
-    dup = duplicated()
-    parents = parent_of()
+def assemble(single: str, dup: set[str], parents: dict[str, str], W: dict) -> dict:
+    """Everything T1–T8 read for one single set, beside the L2w frames `W` (unchanged by the delivery).
 
-    keys = {qs: set(perquery(qs, DIR["bm25_unigram"])["query_item_key"].astype(str)) for qs in (SINGLE, L2W)}
-    feats = {qs: query_features(qs, keys[qs]) for qs in (SINGLE, L2W)}
-    S = {short: paired(short, SINGLE, dup, parents, feats[SINGLE]) for _, short, _, _ in ARMS}
-    W = {short: paired(short, L2W, dup, parents, feats[L2W]) for _, short, _, _ in ARMS}
-    for group in (S, W):
-        first = next(iter(group.values()))
-        for short, frame in group.items():
-            if list(frame["q"]) != list(first["q"]):
-                raise ValueError(f"{short}: query order differs between arms")
+    The bootstrap labels carry no query-set name, so the v1 and v2 assemblies of the same cell draw the same
+    concept weights and their draws pair (A8, `v2_variant.paired_diff`). `_PM_CACHE` is keyed by arm and not by
+    query set, so it is cleared here: the two assemblies of a `--v2` run must not share M1 fits.
+    """
+    _PM_CACHE.clear()
+    keys = set(perquery(single, DIR["bm25_unigram"])["query_item_key"].astype(str))
+    feats = query_features(single, keys)
+    S = {short: paired(short, single, dup, parents, feats) for _, short, _, _ in ARMS}
+    first = next(iter(S.values()))
+    for short, frame in S.items():
+        if list(frame["q"]) != list(first["q"]):
+            raise ValueError(f"{short}: query order differs between arms")
 
     trunc = {short: (int(S[short]["trunc_mod"].sum()), int(W[short]["trunc_mod"].sum()),
                      int(S[short]["trunc_id"].sum() + W[short]["trunc_id"].sum())) for short in S}
@@ -1174,16 +1214,212 @@ def main() -> None:
 
     results, extra = evaluate(S, W)
     rereads = s4_rereads(S)
+    return {"single": single, "S": S, "W": W, "trunc": trunc, "stats": stats, "floors": floors, "models": models,
+            "pms": pms, "raw": raw, "base": base, "corr": corr, "results": results, "extra": extra, "rereads": rereads}
 
-    write_l2_profile(stats, trunc, S, W, dup)
-    write_adjusted(models, raw, S)
-    write_mediation(models, pms, S, corr, len(base))
+
+def ols_diff(a: dict, b: dict, a_draws: np.ndarray, b_draws: np.ndarray, a_est: float, b_est: float) -> dict:
+    """b − a of one OLS coefficient from two `ols_within` fits (A8): paired when both rest on the same concepts."""
+    return v2v.paired_diff({"est": a_est, "draws": a_draws, "clusters_key": a["clusters_key"]},
+                           {"est": b_est, "draws": b_draws, "clusters_key": b["clusters_key"]})
+
+
+def ols_cells(a: dict, b: dict, coef: str, ia: int, ib: int) -> list[str]:
+    """The four comparison columns of one OLS coefficient: v1 with its interval, v2 with its, v2 − v1, paired CI."""
+    da, db = a["draws"][coef][:, ia], b["draws"][coef][:, ib]
+    d = ols_diff(a, b, da, db, a["point"][coef][ia], b["point"][coef][ib])
+    return [f"{fd(a['point'][coef][ia])} {fci(ci(da[np.isfinite(da)]), True)}",
+            f"{fd(b['point'][coef][ib])} {fci(ci(db[np.isfinite(db)]), True)}", v2v.fsd(d["est"]), v2v.fci(d["c"])]
+
+
+def row(cells: list[str]) -> str:
+    return "| " + " | ".join(cells) + " |"
+
+
+def mixed_diff(ma: dict, mb: dict, term: str) -> str:
+    """b − a of a mixed-model fixed effect: a point difference, no interval (the fits share no draws)."""
+    if ma.get("ok") and mb.get("ok") and term in ma["fe"] and term in mb["fe"]:
+        return v2v.fsd(mb["fe"][term] - ma["fe"][term])
+    return "—"
+
+
+def fit_status(m: dict) -> str:
+    return (f"leaf {'yes' if m['leaf'] else '**no**'}, converged {'yes' if m['converged'] else '**no**'}"
+            if m.get("ok") else f"failed ({m.get('why')})")
+
+
+def write_comparison(ref: dict, this: dict, dup: set[str]) -> None:
+    """A8: R1–R6, every fixed effect of M0–M2, PM and the L1 / L3 pools on v1 beside v2, with the paired-draw
+    difference where the draws align, and the stamps of both."""
+    S1, S2 = ref["S"], this["S"]
+    if list(next(iter(S1.values()))["q"]) != list(next(iter(S2.values()))["q"]):
+        raise ValueError(f"{ref['single']} and {this['single']} do not hold the same dev queries in the same order")
+    first = next(iter(S2.values()))
+    n_changed = int(first["q"].isin(v2v.changed_keys("single_texto")).sum())
+    lines = header("Comparison: v2 against v1 (dev, tie-free)", ["Written in the `--v2` mode (A8, D-061)."])
+    lines += v2v.intro("S6", f"`{ref['single']}`", f"`{this['single']}`",
+                       f"The two single sets hold the same {len(first):,} dev queries in the same order; `text` differs "
+                       f"on {n_changed:,}, all in the `template_paraphrase` cell, so L1, L2s and `{L2W}` are the same "
+                       "queries on both and a difference there is the H8 batch floor (ColBERT and the arms built on "
+                       "it), not the repair. The identity side is the same run on both. The mixed models are refitted "
+                       "on each set (one BLAS thread, A6) and their fixed effects differ without an interval.")
+    # (A) R1–R6, tie-free
+    lines += ["## R1–R6 (tie-free, the registered reading)", "",
+              "| test | arm | concepts | n scored (excluded) | estimate, v1 | CI (concept), v1 | Holm p, v1 | "
+              "reading, v1 | estimate, v2 | CI (concept), v2 | Holm p, v2 | reading, v2 | v2 − v1 | "
+              "CI (paired draws) | reading moved |",
+              "|---|---|---|---|---:|---|---:|---|---:|---|---:|---|---:|---|---|"]
+    by_key = {(r["id"], r["arm"]): r for r in ref["results"]}
+    for r in this["results"]:
+        a, b = by_key[(r["id"], r["arm"])]["tf"], r["tf"]
+        d = v2v.paired_diff(a, b)
+        lines.append(f"| {r['id']} | {name(r['arm'])} | {ccount(b['clusters'])} | {ncount(b['counts'])} | {fd(a['est'])} | "
+                     f"{fci(a['c'], True)} | {fp(a['holm'])} | {a['reading']}{' (forced)' if a['forced'] else ''} | "
+                     f"{fd(b['est'])} | {fci(b['c'], True)} | {fp(b['holm'])} | **{b['reading']}**"
+                     f"{' (forced)' if b['forced'] else ''} | {v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | "
+                     f"{v2v.moved(a['reading'], b['reading'])} |")
+    for which, src in (("v1", ref), ("v2", this)):
+        reopen = src["extra"]["reopen"]
+        lines += ["", f"**D-043 ruling 3, {which}:** "
+                  + ("**yes** — " + ", ".join(f"{r['id']} {name(r['arm'])}" for r in reopen) if reopen else "**no**") + "."]
+    # (B) the fixed effects of M0–M2 per base arm
+    lines += ["", "## The fixed effects of M0–M2, per base arm (item level, tie-free)", "",
+              "Per type: the raw tie-free δ on both, its per-query paired difference (bootstrapped by concept under its "
+              "own label) and the count of queries whose tie-free value moved; then each model's β by OLS with its "
+              "concept-clustered interval on both and v2 − v1 from the paired draws, and the mixed model's β on both "
+              "with the point difference. The covariate rows follow. A cell is `—` where the term is absent.", ""]
+    head = ["term", "n scored", "raw δ, v1", "raw δ, v2", "δ v2 − v1", "CI (concept, paired)", "moved",
+            "M0 β (OLS), v1", "M0 β (OLS), v2", "v2 − v1", "CI (paired)",
+            "M1 β (OLS), v1", "M1 β (OLS), v2", "v2 − v1", "CI (paired)",
+            "M2 β (OLS), v1", "M2 β (OLS), v2", "v2 − v1", "CI (paired)",
+            "M0 β (mixed), v1", "v2", "v2 − v1", "M1 β (mixed), v1", "v2", "v2 − v1"]
+    blank = [""] * 4
+    for short in BASE7:
+        pa, pb = ref["pms"][(short, "tf", "all")], this["pms"][(short, "tf", "all")]
+        qa, qb = ref["pms"][(short, "tf", "m2")], this["pms"][(short, "tf", "m2")]
+        ma1, mb1 = ref["models"][short][("M1", "all")], this["models"][short][("M1", "all")]
+        ma0, mb0 = ref["models"][short][("M0", "all")], this["models"][short][("M0", "all")]
+        fa, fb = item(columns(S1[short], "tf")).set_index("q"), item(columns(S2[short], "tf")).set_index("q")
+        lines += [f"### {name(short)}", "", row(head), "|" + "---|" * len(head)]
+        for t in TYPES:
+            if t not in pb["types"] or t not in pa["types"]:
+                continue
+            ja, jb = pa["types"].index(t), pb["types"].index(t)
+            ka, kb = qa["types"].index(t), qb["types"].index(t)
+            g = fb[fb["type"] == t]
+            h = fa.loc[g.index]
+            dv = (g["item_mod"] - h["item_mod"]).to_numpy(float)
+            dci = ci(boot_cluster(dv[:, None], g["concept"].to_numpy(), f"s6|cmp|{short}|{t}")[:, 0])
+            cells = [t, f"{len(g):,}", fd(delta(h).mean()), fd(delta(g).mean()), v2v.fsd(float(dv.mean())), v2v.fci(dci),
+                     f"{int((dv != 0).sum()):,}"]
+            for fit_a, fit_b, coef, ia, ib in ((pa, pb, "beta0", ja, jb), (pa, pb, "beta1", ja, jb), (qa, qb, "beta1", ka, kb)):
+                cells += ols_cells(fit_a, fit_b, coef, ia, ib)
+            cells += [mixed_cell(ma0, t), mixed_cell(mb0, t), mixed_diff(ma0, mb0, t),
+                      mixed_cell(ma1, t), mixed_cell(mb1, t), mixed_diff(ma1, mb1, t)]
+            lines.append(row(cells))
+        for j, x in enumerate(DEFICITS):
+            lines.append(row([DEFICIT_LABEL[x], "", "", "", "", "", ""] + blank + ols_cells(pa, pb, "gamma", j, j) + blank
+                             + ["", "", ""] + [mixed_cell(ma1, x), mixed_cell(mb1, x), mixed_diff(ma1, mb1, x)]))
+        lines.append(row(["d_tok", "", "", "", "", "", ""] + blank + blank + ols_cells(qa, qb, "gamma", 0, 0)
+                         + ["", "", ""] + ["", "", ""]))
+        lines += ["", "Mixed fits: " + "; ".join(
+            f"{mname} v1 {fit_status(ref['models'][short][(mname, 'all')])}, v2 {fit_status(this['models'][short][(mname, 'all')])}"
+            for mname in ("M0", "M1", "M2")) + ".", ""]
+    # (C) PM per arm
+    lines += ["## Proportion mediated, per base arm", "",
+              "PM (OLS) with its concept-clustered interval on both and v2 − v1 from the paired draws; `—` where the "
+              "pool's mean δ has an interval containing 0 (A2 d) on that version. PM (mixed) as in T3.", "",
+              "| arm | mean δ, v1 | CI (concept), v1 | mean δ, v2 | CI (concept), v2 | PM (OLS), v1 | CI (concept), v1 | "
+              "PM (OLS), v2 | CI (concept), v2 | v2 − v1 | CI (paired) | PM (mixed), v1 | PM (mixed), v2 | v2 − v1 |",
+              "|---|---:|---|---:|---|---:|---|---:|---|---:|---|---:|---:|---:|"]
+    for short in BASE7:
+        pa, pb = ref["pms"][(short, "tf", "all")], this["pms"][(short, "tf", "all")]
+        ua, ub = interval_contains_zero(pa["draws"]["mean_d"]), interval_contains_zero(pb["draws"]["mean_d"])
+        d = ols_diff(pa, pb, pa["draws"]["pm"], pb["draws"]["pm"], pa["point"]["pm"], pb["point"]["pm"])
+        ma = mixed_pm(ref["models"][short][("M0", "all")], ref["models"][short][("M1", "all")], item(columns(S1[short], "tf")))
+        mb = mixed_pm(this["models"][short][("M0", "all")], this["models"][short][("M1", "all")], item(columns(S2[short], "tf")))
+        cells = [name(short), fd(pa["point"]["mean_d"]), fci(ci(pa["draws"]["mean_d"]), True),
+                 fd(pb["point"]["mean_d"]), fci(ci(pb["draws"]["mean_d"]), True)]
+        for p, und in ((pa, ua), (pb, ub)):
+            finite = p["draws"]["pm"][np.isfinite(p["draws"]["pm"])]
+            cells += ["—", "—"] if und else [fd(p["point"]["pm"]), fci(ci(finite), True)]
+        cells += ["—", "—"] if ua or ub else [v2v.fsd(d["est"]), v2v.fci(d["c"])]
+        cells += [fd(ma) if np.isfinite(ma) else "—", fd(mb) if np.isfinite(mb) else "—",
+                  v2v.fsd(mb - ma) if np.isfinite(ma) and np.isfinite(mb) else "—"]
+        lines.append(row(cells))
+    # (D) the L1 and L3 pools R5 reads: δ, d_tok and δ / d_tok
+    lines += ["", "## The L1 and L3 pools (T4): δ, mean d_tok and δ / d_tok", "",
+              "R5 reads the L1 : L3 ratio of δ / d̄_tok. L1 holds no repaired query; L3's `template_paraphrase` half "
+              "does, and its d_tok is recomputed on the v2 texts.", "",
+              "| arm | pool | n scored | mean δ, v1 | mean δ, v2 | δ v2 − v1 | CI (concept, paired) | moved | "
+              "mean d_tok, v1 | mean d_tok, v2 | δ / d_tok, v1 | CI (concept), v1 | δ / d_tok, v2 | CI (concept), v2 | "
+              "v2 − v1 | CI (paired) |",
+              "|---|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---|---:|---|---:|---|"]
+    for short in BASE7:
+        for pool in ("L1", "L3"):
+            fa = item(scope(columns(S1[short], "tf"), pool)).set_index("q")
+            fb = item(scope(columns(S2[short], "tf"), pool)).set_index("q")
+            ea, ra, _, ta = sensitivity_draws(fa, f"s6|sens|{short}|{pool}")
+            eb, rb, _, tb = sensitivity_draws(fb, f"s6|sens|{short}|{pool}")
+            key_a, key_b = tuple(sorted(set(fa["concept"]))), tuple(sorted(set(fb["concept"])))
+            d = v2v.paired_diff({"est": ea, "draws": ra, "clusters_key": key_a},
+                                {"est": eb, "draws": rb, "clusters_key": key_b})
+            dv = (fb["item_mod"] - fa.loc[fb.index, "item_mod"]).to_numpy(float)
+            dci = ci(boot_cluster(dv[:, None], fb["concept"].to_numpy(), f"s6|cmp|{short}|{pool}")[:, 0])
+            lines.append(f"| {name(short)} | {pool} | {len(fb):,} | {fd(delta(fa).mean())} | {fd(delta(fb).mean())} | "
+                         f"{v2v.fsd(float(dv.mean()))} | {v2v.fci(dci)} | {int((dv != 0).sum()):,} | {f4(ta)} | {f4(tb)} | "
+                         f"{fd(ea)} | {fci(ci(ra[np.isfinite(ra)]), True)} | {fd(eb)} | {fci(ci(rb[np.isfinite(rb)]), True)} | "
+                         f"{v2v.fsd(d['est'])} | {v2v.fci(d['c'])} |")
+    # stamps
+    lines += ["", "## Sources", "",
+              "| which | query set | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 |",
+              "|---|---|---|---:|---|---|---|---|"]
+    for which, queryset in (("v1", ref["single"]), ("v2", this["single"]), ("both", L2W), ("both", "texto")):
+        for d, _, _, _ in ARMS:
+            m = meta(queryset, d)
+            lines.append(f"| {which} | `{queryset}` | `{m['run_id']}` | {m['queries']:,} | `{m['config_sha256'][:16]}` | "
+                         f"`{m['code_commit'][:7]}` | {str(bool(m.get('code_dirty'))).lower()} | `{m['query_set_sha256'][:16]}` |")
+    lines += ["", "| input | SHA-256 |", "|---|---|",
+              *(f"| `{p.name}` | `{sha256_file(p)[:16]}` |"
+                for p in (SIDECAR, DATA / f"OE_{ref['single']}.json", DATA / f"OE_{this['single']}.json", L2_JSON,
+                          CORPUS_JSON, SINGLE_SIDECAR, L2_SIDECAR, v2v.CHANGES)),
+              "", f"Bootstrap: B = {B:,}, seed = {SEED}, percentile 95 % intervals. Split `dev`.", stack_stamp()]
+    write(OUT / "comparison.md", lines)
+
+
+def main(argv=None) -> None:
+    args = v2v.parse(argv)
+    configure(args.v2)
+    analysis_stack.require()
+    if V2_MODE:
+        require_runs(SINGLE, [d for d, _, _, _ in ARMS])
+    OUT.mkdir(parents=True, exist_ok=True)
+    dup = duplicated()
+    parents = parent_of()
+
+    # L2w is untouched by the delivery: featurised and paired once, shared by both assemblies.
+    w_keys = set(perquery(L2W, DIR["bm25_unigram"])["query_item_key"].astype(str))
+    W = {short: paired(short, L2W, dup, parents, query_features(L2W, w_keys)) for _, short, _, _ in ARMS}
+    first = next(iter(W.values()))
+    for short, frame in W.items():
+        if list(frame["q"]) != list(first["q"]):
+            raise ValueError(f"{short}: query order differs between arms")
+
+    this = assemble(SINGLE, dup, parents, W)
+    S, stats, models, pms, results = this["S"], this["stats"], this["models"], this["pms"], this["results"]
+
+    write_l2_profile(stats, this["trunc"], S, W, dup)
+    write_adjusted(models, this["raw"], S)
+    write_mediation(models, pms, S, this["corr"], len(this["base"]))
     write_sensitivity(S, W)
     write_d004({SINGLE: S["bm25_unigram"].drop_duplicates("q"), L2W: W["bm25_unigram"].drop_duplicates("q")}, results)
     write_power(S, W)
-    write_predictions(results, extra, rereads, floors)
+    write_predictions(results, this["extra"], this["rereads"], this["floors"])
     write_figures(S, W, stats, models, pms)
     write_provenance()
+    if V2_MODE:
+        # v1 in the same process: the same functions on the base set, the same L2w frames and identity runs.
+        write_comparison(assemble("single_texto", dup, parents, W), this, dup)
     print(f"wrote {OUT.relative_to(REPO)}")
 
 

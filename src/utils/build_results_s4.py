@@ -20,7 +20,16 @@ treated). Ten arms are the indexed ones S3 measured; five are derived from their
 
 **Every number in the prose is interpolated** (`tests/test_generated_prose.py`).
 
-    python src/utils/build_results_s4.py
+**A6 (D-061).** `--v2` re-points the single set to `single_texto_v2` (the 2026-10-16 delivery: the same records in
+the same order, `text` repaired on part of the `template_paraphrase` cell) and writes T1–T7 under
+`results/S4/v2/`, the identity side unchanged. It also computes the v1 tables in the same process (the same
+functions, the same bootstrap labels) and writes `results/S4/v2/comparison.md`: P1–P5 and every T2 / T3 cell on
+v1 and on v2 side by side, v2 − v1 with an interval from the paired draws (`utils.v2_variant`), the per-query
+paired difference per cell, and the unchanged cells apart as the H8 batch-noise floor. A sensitivity table, not a
+test. The base mode (no flag) is untouched: it regenerates `results/S4/` byte for byte.
+
+    python src/utils/build_results_s4.py          # v1, results/S4/
+    python src/utils/build_results_s4.py --v2     # v2, results/S4/v2/, plus comparison.md
 """
 
 from __future__ import annotations
@@ -41,16 +50,40 @@ sys.path.insert(0, str(REPO / "src"))
 from utils.build_results_s2 import (  # noqa: E402
     ALPHA, B, SEED, bh, boot_cluster, boot_p, boot_query, ci, f4, fci, fd, fp, holm, write,
 )
+from utils import v2_variant as v2v  # noqa: E402
 from utils.corpus_prep import extract_numbers, normalize_text, tokenize_words  # noqa: E402
 from utils.provenance import sha256_file  # noqa: E402
 
 RUNS = REPO / "runs" / "OE"
 DATA = REPO / "data" / "processed"
 SIDECAR = DATA / "OE_duplicate_texto_groups.json"
+#: The single query set the tables read. `configure` re-points these four (A6); every other module that imports
+#: them (S5, S6, S7, S8, S9, S11) sees the base-mode values, because it imports them by value at load time.
+SINGLE = "single_texto"
 SINGLE_JSON = DATA / "OE_single_texto.json"
 CORPUS_JSON = DATA / "OE_texto.json"
-OUT = REPO / "docs" / "synthetic-oe" / "results" / "S4"
+RESULTS_S4 = REPO / "docs" / "synthetic-oe" / "results" / "S4"
+OUT = RESULTS_S4
 GENERATOR = "src/utils/build_results_s4.py"
+V2_MODE = False
+
+
+def configure(v2: bool) -> None:
+    """A6: point the module at `single_texto_v2` and `results/S4/v2/`, or back at the base mode (identity)."""
+    global V2_MODE, SINGLE, SINGLE_JSON, OUT, GENERATOR
+    V2_MODE = v2
+    SINGLE = v2v.mapped("single_texto", v2)
+    SINGLE_JSON = DATA / f"OE_{SINGLE}.json"
+    OUT = v2v.out_dir(RESULTS_S4, v2)
+    GENERATOR = v2v.generator_label("src/utils/build_results_s4.py", v2)
+
+
+def require_runs(queryset: str, dirs: list[str]) -> None:
+    """Fail before any table is written when a run the mode needs has not landed (A6: the v2 runs arrive late)."""
+    missing = [d for d in dirs if not (RUNS / queryset / d / "run_meta.json").is_file()]
+    if missing:
+        raise FileNotFoundError(f"{queryset}: {len(missing)} of {len(dirs)} runs missing under {RUNS / queryset}: "
+                                + ", ".join(missing))
 
 #: (run directory, short name, oracle, derived)
 ARMS = [
@@ -159,13 +192,17 @@ def texts() -> tuple[dict[str, str], dict[str, str]]:
 # --------------------------------------------------------------------------- pairing
 
 
-def paired(short: str, dup: set[str]) -> pd.DataFrame:
-    """One row per dev single query: modified and identity hits at both levels, and its type."""
-    mod = perquery("single_texto", DIR[short])
+def paired(short: str, dup: set[str], queryset: str | None = None) -> pd.DataFrame:
+    """One row per dev single query: modified and identity hits at both levels, and its type.
+
+    `queryset` defaults to the configured single set; the comparison (A6) passes v1's explicitly.
+    """
+    queryset = SINGLE if queryset is None else queryset
+    mod = perquery(queryset, DIR[short])
     ident = perquery("texto", DIR[short]).set_index("query_item_key")
     types = mod["modification_types"].map(lambda t: list(t))
     if (types.map(len) != 1).any():
-        raise ValueError(f"{short}: a single_texto query carries other than one type")
+        raise ValueError(f"{short}: a {queryset} query carries other than one type")
     frame = pd.DataFrame({
         "q": mod["query_item_key"].astype(str),
         "gold": mod["gold_item_key"].astype(str),
@@ -282,34 +319,50 @@ def evaluate_prediction(kind: str, short: str, frame: pd.DataFrame) -> dict:
     return r
 
 
+def clusters_key(frame: pd.DataFrame, *pools: str) -> tuple:
+    """The concepts behind each pool a test reads, at item level, as a hashable key (A6).
+
+    The bootstrap seeds derive from the label, so the same label on the same clusters gives the same multinomial
+    weights: two evaluations whose keys are equal have paired draws (`v2_variant.paired_diff`).
+    """
+    return tuple(tuple(sorted(set(level_frame(scope(frame, p), "item")["concept"]))) for p in pools)
+
+
 def _evaluate_prediction(kind: str, short: str, frame: pd.DataFrame) -> dict:
+    """est, c, p and side of one test, with its draws and clusters key (A6). `draws` are returned unfiltered, in
+    draw order, so two evaluations under the same label pair draw by draw; c and p drop the non-finite ones."""
     label = f"s4|pred|{kind}|{short}"
     if kind == "gap":
         est, draws = pool_draws(frame, "item",
                                 lambda f: ((f["parent_mod"] - f["item_mod"]) - (f["parent_id"] - f["item_id"])).to_numpy(float),
                                 label)
-        return {"est": est, "c": ci(draws), "p": boot_p(draws), "side": "positive"}
+        return {"est": est, "c": ci(draws), "p": boot_p(draws), "side": "positive",
+                "draws": draws, "clusters_key": clusters_key(frame, "all")}
     if kind in ("l1_vs_l2", "l1_vs_l3"):
         other = "L2" if kind == "l1_vs_l2" else "L3"
         a, da = pool_draws(scope(frame, "L1"), "item", delta_item, label + "|L1")
         b, db = pool_draws(scope(frame, other), "item", delta_item, label + "|" + other)
         draws = da - db
-        return {"est": a - b, "c": ci(draws), "p": boot_p(draws), "side": "negative"}
+        return {"est": a - b, "c": ci(draws), "p": boot_p(draws), "side": "negative",
+                "draws": draws, "clusters_key": clusters_key(frame, "L1", other)}
     if kind == "reorder_equiv":
         est, draws = pool_draws(scope(frame, "reorder"), "item", delta_item, label)
         p = max((1 + int((draws <= -MARGIN).sum())) / (B + 1), (1 + int((draws >= MARGIN).sum())) / (B + 1))
-        return {"est": est, "c": ci(draws), "p": min(1.0, p), "side": "equivalent"}
+        return {"est": est, "c": ci(draws), "p": min(1.0, p), "side": "equivalent",
+                "draws": draws, "clusters_key": clusters_key(frame, "reorder")}
     if kind == "reorder_neg":
         est, draws = pool_draws(scope(frame, "reorder"), "item", delta_item, label)
-        return {"est": est, "c": ci(draws), "p": boot_p(draws), "side": "negative"}
+        return {"est": est, "c": ci(draws), "p": boot_p(draws), "side": "negative",
+                "draws": draws, "clusters_key": clusters_key(frame, "reorder")}
     if kind == "l2_concept":
         loss = lambda f: ((f["item_id"] == 1) & (f["item_mod"] == 0)).to_numpy(float)  # noqa: E731
         wrong = lambda f: (((f["item_id"] == 1) & (f["item_mod"] == 0)) & (f["parent_mod"] == 0)).to_numpy(float)  # noqa: E731
         a, da = ratio_draws(scope(frame, "L2"), wrong, loss, label + "|L2")
         b, db = ratio_draws(scope(frame, "L1"), wrong, loss, label + "|L1")
-        draws = da - db
-        draws = draws[np.isfinite(draws)]
-        return {"est": a - b, "c": ci(draws), "p": boot_p(draws), "side": "positive"}
+        raw = da - db
+        draws = raw[np.isfinite(raw)]
+        return {"est": a - b, "c": ci(draws), "p": boot_p(draws), "side": "positive",
+                "draws": raw, "clusters_key": clusters_key(frame, "L2", "L1")}
     raise ValueError(kind)
 
 
@@ -342,7 +395,7 @@ def header(title: str, how: list[str]) -> list[str]:
 
 def population_note(pops: dict) -> list[str]:
     lines = [
-        f"**Population.** {pops['n']:,} dev `single_texto` queries over {pops['concepts']} concepts. "
+        f"**Population.** {pops['n']:,} dev `{SINGLE}` queries over {pops['concepts']} concepts. "
         f"Item level scores {pops['item']:,}: {pops['dup']:,} excluded because the gold shares its "
         f"`texto` (D-033)" + (f" and {pops['amend_item']:,} by design amendment" if pops['amend_item'] else "")
         + f". Parent level scores {pops['parent']:,}"
@@ -410,7 +463,7 @@ def write_profile(level: str, stats: dict, floors: dict, pops: dict) -> None:
                     f"{fci(k['d_gap_q'], True)} | {fci(k['d_gap_c'], True)} |"
                 )
             lines.append("")
-    lines += sources_block(["texto", "single_texto"])
+    lines += sources_block(["texto", SINGLE])
     write(OUT / ("profile_item.md" if level == "item" else "profile_parent.md"), lines)
 
 
@@ -489,7 +542,7 @@ def write_token_distance(stats: dict, frames: dict, frame0: pd.DataFrame, qtext:
             lines.append(f"| {name(short)} | {sc} | {int((inside['item_mod'] == inside['item_id']).sum())} of {len(inside)} | "
                          f"{fd(d_all.mean())} | {len(cellf):,} | {cellf['concept'].nunique()} | {fd(d_rest.mean())} | {len(rest):,} | "
                          f"{rest['concept'].nunique()} | {fci(ci(draws_q), True)} | {fci(ci(draws), True)} |")
-    lines += sources_block(["single_texto"], inputs=(SINGLE_JSON, CORPUS_JSON))
+    lines += sources_block([SINGLE], inputs=(SINGLE_JSON, CORPUS_JSON))
     write(OUT / "token_distance.md", lines)
 
 
@@ -505,7 +558,7 @@ def write_ties(frames: dict, dup: set[str]) -> None:
     decisive = []
     for short, frame in frames.items():
         frame = level_frame(frame, "item")
-        mod = top2("single_texto", DIR[short], keep=set(frame["q"]))
+        mod = top2(SINGLE, DIR[short], keep=set(frame["q"]))
         ident = top2("texto", DIR[short], keep=set(frame["gold"]))
         is_tie = lambda v: v[1] is not None and v[0] == v[1]  # noqa: E731
         cells = []
@@ -541,7 +594,7 @@ def write_ties(frames: dict, dup: set[str]) -> None:
         lines.append(f"| {name(short)} | {sc} | {n:,} | {hits:,} | {t:,} | {wg:,} | {int(won):,} | "
                      f"{f4(won / wg) if wg else '—'} | {f4(chance) if wg else '—'} | "
                      f"{fd(exc) if wg else '—'} | {fci(exc_ci, True) if wg else '—'} |")
-    lines += sources_block(["texto", "single_texto"])
+    lines += sources_block(["texto", SINGLE])
     write(OUT / "ties.md", lines)
 
 
@@ -595,7 +648,7 @@ def write_predictions(results: list[dict], excluded: list[str]) -> None:
             + f" | {fd(r['est'])} | {fci(r['c'], True)} | "
             f"{fp(r['p'])} | {fp(r['holm'])} | {fp(r['bh'])} | **{r['reading']}** |"
         )
-    lines += sources_block(["texto", "single_texto"], only=sorted({r["arm"] for r in results}))
+    lines += sources_block(["texto", SINGLE], only=sorted({r["arm"] for r in results}))
     write(OUT / "predictions.md", lines)
 
 
@@ -631,7 +684,7 @@ def git(*args: str) -> str:
 
 
 def write_provenance() -> None:
-    new_commits = {meta("single_texto", d)["code_commit"] for d, s, _, dv in ARMS if dv}
+    new_commits = {meta(SINGLE, d)["code_commit"] for d, s, _, dv in ARMS if dv}
     lines = header("T7: run provenance and reuse (dev)", [
         "Every run the S4 tables read. A run made before S4 is reused only if nothing on its retrieval path",
         "changed between its commit and S4's: its retriever module (and what it imports), `retrieve.ipynb`,",
@@ -640,7 +693,7 @@ def write_provenance() -> None:
     lines += ["| run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 | derived from | S4 |",
               "|---|---:|---|---|---|---|---|---|"]
     reused = []
-    for queryset in ("texto", "single_texto"):
+    for queryset in ("texto", SINGLE):
         for d, short, _, dv in ARMS:
             m = meta(queryset, d)
             comps = ", ".join(f"`{c['run_id']}` @ `{c['code_commit'][:7]}`" for c in m.get("components", [])) or "—"
@@ -678,15 +731,17 @@ def write_provenance() -> None:
 # --------------------------------------------------------------------------- main
 
 
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    dup = duplicated()
-    frames = {short: paired(short, dup) for _, short, _, _ in ARMS}
+def assemble(queryset: str, dup: set[str]) -> dict:
+    """Frames, population counts, T2 / T3 cells, floors and the P1–P5 results of one single set.
 
+    The bootstrap labels carry no query-set name, so the v1 and v2 assemblies of the same cell draw the same
+    concept weights and their draws pair (A6, `v2_variant.paired_diff`).
+    """
+    frames = {short: paired(short, dup, queryset) for _, short, _, _ in ARMS}
     first = next(iter(frames.values()))
     for short, frame in frames.items():
         if list(frame["q"]) != list(first["q"]):
-            raise ValueError(f"{short}: single_texto queries differ from {ARMS[0][1]}'s")
+            raise ValueError(f"{short}: {queryset} queries differ from {ARMS[0][1]}'s")
     pops = {
         "n": len(first), "concepts": int(first["concept"].nunique()),
         "item": int(first["item_scored"].sum()), "parent": int(first["parent_scored"].sum()),
@@ -705,13 +760,6 @@ def main() -> None:
             stats[short][(sc, "collapse")] = collapse(s, f"{short}|{sc}")
     floors = {short: stats[short][("all", "item")]["id"] for short in stats}
 
-    write_ceilings(dup)
-    write_profile("item", stats, floors, pops)
-    write_profile("parent", stats, floors, pops)
-    qtext, ctext = texts()
-    write_token_distance(stats, frames, first, qtext, ctext)
-    write_ties(frames, dup)
-
     results, excluded = [], []
     for pid, hyp, what, kind, arms in PREDICTIONS:
         for short in arms:
@@ -724,8 +772,137 @@ def main() -> None:
     for r, h, q in zip(results, holm(p), bh(p)):
         r.update(holm=h, bh=q)
         r["reading"] = reading(r)
-    write_predictions(results, excluded)
+    return {"queryset": queryset, "frames": frames, "first": first, "pops": pops, "stats": stats,
+            "floors": floors, "results": results, "excluded": excluded}
+
+
+def paired_cell_diff(fa: pd.DataFrame, fb: pd.DataFrame, level: str, label: str) -> tuple[float, tuple, int]:
+    """Per-query b − a of the modified hit on one cell's scored queries, bootstrapped by concept, and how many
+    queries' hit moved. The identity side is the same run on both, so this is also the δ difference."""
+    g = level_frame(fb, level).set_index("q")
+    h = fa.set_index("q").loc[g.index]
+    dv = (g[f"{level}_mod"] - h[f"{level}_mod"]).to_numpy(float)
+    if not len(dv):
+        return float("nan"), (float("nan"), float("nan")), 0
+    draws = boot_cluster(dv[:, None], g["concept"].to_numpy(), label)[:, 0]
+    return float(dv.mean()), ci(draws), int((dv != 0).sum())
+
+
+def write_comparison(ref: dict, this: dict) -> None:
+    """A6: P1–P5 and every T2 / T3 cell on v1 beside v2, with the paired-draw difference, and the H8 floor."""
+    if list(ref["first"]["q"]) != list(this["first"]["q"]):
+        raise ValueError(f"{ref['queryset']} and {this['queryset']} do not hold the same dev queries in the same order")
+    changed = v2v.changed_keys("single_texto")
+    first = this["first"]
+    n_changed = int(first["q"].isin(changed).sum())
+    lines = header("Comparison: v2 against v1 (dev)", [
+        "Written in the `--v2` mode (A6, D-061).",
+    ])
+    lines += v2v.intro("S4", f"`{ref['queryset']}`", f"`{this['queryset']}`",
+                       f"The two sets hold the same {len(first):,} dev queries in the same order; `text` differs on "
+                       f"{n_changed:,}, all in the `template_paraphrase` cell, so every per-cell difference below is a "
+                       "per-query paired difference of the modified hit (the identity side is the same run), "
+                       "bootstrapped by concept under its own label.")
+    # (A) P1–P5
+    lines += ["## P1–P5", "",
+              "| prediction | test | arm | concepts | estimate, v1 | CI (concept), v1 | Holm p, v1 | reading, v1 | "
+              "estimate, v2 | CI (concept), v2 | Holm p, v2 | reading, v2 | v2 − v1 | CI (paired draws) | reading moved |",
+              "|---|---|---|---|---:|---|---:|---|---:|---|---:|---|---:|---|---|"]
+    by_key = {(r["id"], r["what"], r["arm"]): r for r in ref["results"]}
+    for b in this["results"]:
+        a = by_key[(b["id"], b["what"], b["arm"])]
+        d = v2v.paired_diff(a, b)
+        lines.append(f"| {b['id']} | {b['what']} | {name(b['arm'])} | "
+                     + " / ".join(f"{p} {n}" + (" ‡" if n < FEW_CLUSTERS else "") for p, n in b["clusters"].items())
+                     + f" | {fd(a['est'])} | {fci(a['c'], True)} | {fp(a['holm'])} | {a['reading']} | "
+                     f"{fd(b['est'])} | {fci(b['c'], True)} | {fp(b['holm'])} | **{b['reading']}** | "
+                     f"{v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | {v2v.moved(a['reading'], b['reading'])} |")
+    dropped = sorted(set(ref["excluded"]) | set(this["excluded"]))
+    if dropped:
+        lines += ["", "Tests dropped because the arm is a floor arm (the identity side, the same on both): "
+                  + ", ".join(dropped) + "."]
+    # (B) T2 / T3 cells
+    lines += ["", "## T2 / T3: every cell, item and parent level", "",
+              "δ is the cell's mean modified − identity (as run, S4's columns). **δ v2 − v1** is the mean per-query "
+              "difference of the modified hit on the cell's scored queries, with its concept-clustered interval, and "
+              "**moved** the number of those queries whose hit changed. n scored, n excluded and the concept count are "
+              "the same on both by construction (the records and their golds are v1's).", "",
+              "| arm | scope | level | n scored | n excluded | concepts | modified, v1 | δ, v1 | CI (concept), v1 | "
+              "modified, v2 | δ, v2 | CI (concept), v2 | δ v2 − v1 | CI (concept, paired) | moved |",
+              "|---|---|---|---:|---:|---:|---:|---:|---|---:|---:|---|---:|---|---:|"]
+    for _, short, _, _ in ARMS:
+        for sc in SCOPES:
+            for level in LEVELS:
+                a, b = ref["stats"][short][(sc, level)], this["stats"][short][(sc, level)]
+                diff, dci, movedn = paired_cell_diff(scope(ref["frames"][short], sc), scope(this["frames"][short], sc),
+                                                     level, f"s4|cmp|{short}|{sc}|{level}")
+                lines.append(f"| {name(short)} | {sc} | {level} | {b['n']:,} | {b['excluded']:,} | {b['concepts']} | "
+                             f"{f4(a['mod'])} | {fd(a['delta'])} | {fci(a['c'], True)} | {f4(b['mod'])} | {fd(b['delta'])} | "
+                             f"{fci(b['c'], True)} | {v2v.fsd(diff)} | {v2v.fci(dci)} | {movedn:,} |")
+    # (C) the H8 floor: the cells v2 did not touch
+    unchanged_types = [t for t in TYPES if t != "template_paraphrase"]
+    lines += ["", "## The unchanged queries (the H8 floor)", "",
+              f"{len(first) - n_changed:,} of the {len(first):,} dev queries keep their v1 text: every query of the "
+              f"{len(unchanged_types)} types other than `template_paraphrase`, and the `template_paraphrase` queries the "
+              "repair did not reach. A hit that moves on an unchanged query is not the repair: it is a batch-dependent "
+              "near-tie (H8: ColBERT's query vectors depend on the request batch, so the arms built on it can move a "
+              "few hits) or an exact-tie break, and is the floor against which the repaired queries' movement is read. "
+              "Item level, scored queries.", "",
+              "| arm | cell | n scored | item Acc@1, v1 | item Acc@1, v2 | item hit moved | parent Acc@1, v1 | "
+              "parent Acc@1, v2 | parent hit moved |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---:|"]
+    for _, short, _, _ in ARMS:
+        fa = ref["frames"][short].set_index("q")
+        fb = this["frames"][short].set_index("q")
+        cells = [(t, fb["type"] == t) for t in unchanged_types]
+        tp = fb["type"] == "template_paraphrase"
+        cells += [("template_paraphrase, text unchanged", tp & ~fb.index.isin(changed)),
+                  ("template_paraphrase, text repaired", tp & fb.index.isin(changed))]
+        for label, sel in cells:
+            g = fb[sel & fb["item_scored"]]
+            h = fa.loc[g.index]
+            gp = fb[sel & fb["parent_scored"]]
+            hp = fa.loc[gp.index]
+            lines.append(f"| {name(short)} | {label} | {len(g):,} | {f4(h['item_mod'].mean())} | {f4(g['item_mod'].mean())} | "
+                         f"{int((g['item_mod'] != h['item_mod']).sum()):,} | {f4(hp['parent_mod'].mean())} | "
+                         f"{f4(gp['parent_mod'].mean())} | {int((gp['parent_mod'] != hp['parent_mod']).sum()):,} |")
+    # stamps
+    lines += ["", "## Sources", "",
+              "| which | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 |",
+              "|---|---|---:|---|---|---|---|"]
+    for which, src in (("v1", ref), ("v2", this)):
+        for d, _, _, _ in ARMS:
+            m = meta(src["queryset"], d)
+            lines.append(f"| {which} | `{m['run_id']}` | {m['queries']:,} | `{m['config_sha256'][:16]}` | "
+                         f"`{m['code_commit'][:7]}` | {str(bool(m.get('code_dirty'))).lower()} | `{m['query_set_sha256'][:16]}` |")
+    lines += ["", "| input | SHA-256 |", "|---|---|",
+              *(f"| `{p.name}` | `{sha256_file(p)[:16]}` |"
+                for p in (SIDECAR, DATA / f"OE_{ref['queryset']}.json", DATA / f"OE_{this['queryset']}.json", v2v.CHANGES)),
+              "", f"Bootstrap: B = {B:,}, seed = {SEED}, percentile 95 % intervals. Split `dev`."]
+    write(OUT / "comparison.md", lines)
+
+
+def main(argv=None) -> None:
+    args = v2v.parse(argv)
+    configure(args.v2)
+    if V2_MODE:
+        require_runs(SINGLE, [d for d, _, _, _ in ARMS])
+    OUT.mkdir(parents=True, exist_ok=True)
+    dup = duplicated()
+    this = assemble(SINGLE, dup)
+    frames, first, stats, floors = this["frames"], this["first"], this["stats"], this["floors"]
+
+    write_ceilings(dup)
+    write_profile("item", stats, floors, this["pops"])
+    write_profile("parent", stats, floors, this["pops"])
+    qtext, ctext = texts()
+    write_token_distance(stats, frames, first, qtext, ctext)
+    write_ties(frames, dup)
+    write_predictions(this["results"], this["excluded"])
     write_provenance()
+    if V2_MODE:
+        # v1 in the same process: the same functions on the base set, with the identity side the same runs.
+        write_comparison(assemble("single_texto", dup), this)
     print(f"wrote {OUT.relative_to(REPO)}")
 
 
