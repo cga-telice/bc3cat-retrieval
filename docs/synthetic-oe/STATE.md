@@ -3,7 +3,7 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-18 (**2026-10-16 delivery taken in**: v2 sets, BT queries, STACKED-P; re-runs on v2 pending as amendments) · **Updated by:** Claude
+**Last updated:** 2026-10-18 (**2026-10-16 delivery taken in**; v2 amendments recorded, generators ready, batch 1 of the v2 runs in progress; S14 BT design proposed) · **Updated by:** Claude
 
 ---
 
@@ -19,11 +19,23 @@ resolves; tables by `build_v2_query_tables.py` on the proven path, equal to v1's
 **`bt_texto`**, 4,670 back-translated gold `texto`s (OPUS-MT, no LLM), one per STACKED-P leaf, 79 concepts (40 dev /
 39 test), paired leaf for leaf to STACKED; and the **STACKED-P filter** (`exclusions.stacked_p`: 324 STACKED keys
 excluded, 321 for the 14 known drift rewrites; 4,674 queries kept, the same on v1 and v2). **D-061 proposed:** v2 is
-the reference for S12 and the re-runs; v1 results stay beside v2 as sensitivity. **Next:** the re-runs on v2 as
-amendments to the closed sprints, in order of impact — S11 (35 runs), S8 (36), S7 (18, plus STACKED-P), S4/S5/S6
-(the `template_paraphrase` cell and L3), S9 (HyDE / rewrite / canon regenerated for the 2,039 changed STACKED
-queries) — each with its report section and a fresh-session audit; then the BT sprint design for César; S12's
-registration names v2, STACKED-P and `bt_texto`; S10's request is amended to the repaired menus.
+the reference for S12 and the re-runs; v1 results stay beside v2 as sensitivity. **Amendments recorded before any
+run** (S4 A6, S5 A4, S6 A8, S7 A8, S8 A8, S9 A13, S11 A7); every generator has a `--v2` mode that writes
+`results/Sx/v2/` and a `comparison.md` (v1 beside v2, paired-draw differences; S7 also `--population stacked_p`),
+each base mode verified to regenerate byte-identically. The LLM arms now stamp model digest, prompt SHA and caches
+in `run_meta.json` (S11 A8). **Runs:** batch 1 (`logs/v2/run_v2_base.sh`, 18 arms × 4 v2 sets) restarted at
+`022ff2a` after two runs were stamped dirty (S7 A9: `src/` edited during a batch — **never again while a batch
+runs**; the pair is archived under `runs/_archive/dirty/2026-10-18/`, not deleted). Then `gen_s9_v2.sh` +
+`run_v2_s9.sh` (25 runs) and `run_v2_s11.sh caches|A|B|det` (20 runs). **S14 (BT) is proposed, not frozen**
+(`sprints/SPRINT_S14_DESIGN.md`): ID S14 / S92 and the oracle-arm handling are César's; BT `parameters` hold the
+gold's values, not the text's variants (`DELIVERIES.md`). S12's registration list is in `RESEARCH_PLAN.md` §S12;
+S10's request is amended. **Next:** tables `--v2` for S7 (and STACKED-P), S8, S4/S5/S6, S9, S11 as the runs land;
+report sections; a fresh-session audit per amendment; César's rulings on D-061 and S14.
+
+**Known drifts found 2026-10-18 (H5, not fixed):** `docs/synthetic-oe/SPLITS.md` is CRLF in the working copy and LF
+in git, so `sha256_file` prints `abac65f7…` where S11's T9 recorded `8d520eb4…`; and `runs/_archive/S2/SHA256SUMS`
+(git-ignored) was rewritten on 2026-10-01 after S5's tables were committed, so S5's `run_provenance.md` last line
+changes on any regeneration (`f5705d08…` → `cb599ae3…`). Neither moves a number; both are César's to re-commit.
 
 **S11 is done** (2026-10-04; Track E, two-stage; [design](sprints/SPRINT_S11_DESIGN.md) frozen at `931ee0c`, [amendments](sprints/SPRINT_S11_AMENDMENTS.md) A1–A6, [report](sprints/SPRINT_S11_REPORT.md), [audit](sprints/SPRINT_S11_AUDIT.md), [results](results/S11)). Audit **PASS WITH FINDINGS**, 3 major and 7 minor, resolved in the report (`results/S11/` at `8e60502`). 35 runs clean; 6 of 7 exit criteria met; EC3 accepted as not met by César (no run stamps model digest or prompt SHA; S12 stamps both). K2 (E5 concept → `phi4` values → ColBERT order inside the family) beats ColBERT on stacked and on the blind E3 ladder; the method contribution reads **established on dev**. Soft matching adds nothing detectable; ordering by ColBERT adds to K0, but most of the gain is reading values and filtering on them; R2 (no LLM) wins on one edit and breaks under stacking. D-059 accepted: K2 is Track E's method on dev, S12 registers K2 and R2. ColBERT scores are batch-dependent: logged re-measurement reproduces it, smaller than A2 stated (D-060 accepted, `DATASET_DEFECTS.md` H8). **Next: S12 registration (K2/R2 admission, run stamps, ColBERT batching).**
 

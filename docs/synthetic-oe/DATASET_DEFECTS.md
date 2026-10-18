@@ -317,6 +317,16 @@ guard lives in a **git-ignored** directory, as S2's did: it protects this sprint
 vanish if `logs/` were cleaned. The durable place for it is `utils/provenance.py`, where it would
 cover every run and index rather than the ones this script drives.
 
+**Two more faces of it, 2026-10-18.** (a) A generator digests `docs/synthetic-oe/SPLITS.md` as an input; the
+working copy is CRLF (`git ls-files --eol`: `i/lf w/crlf`) and the blob LF, so the recorded digest `8d520eb4…`
+(S11 T9) reprints as `abac65f7…` from this checkout. (b) **A run stamped while the tree changes.** `provenance_stamp`
+reads git status when the run is *saved*; batch 1 of the v2 runs started clean at `4f56a39`, generator files under
+`src/` were edited while `bge_m3_colbert` and `bge_m3_dense` ran on `stacked_texto_v2`, and both came out
+`code_dirty: true` (S7 A9; archived under `runs/_archive/dirty/2026-10-18/`, not deleted, D-019). The dirty-tree
+guard refuses to *start* dirty; nothing stops the tree going dirty afterwards. Rule: no edit under `src/` or
+`configs/` while a batch runs. A durable fix would stamp the commit at start and refuse to save if the tree
+differs from it at the end.
+
 ## H6 — Five retrievers scored every query in one block, so ten arms could not run at scale · **fixed** (S3)
 
 **Found in S3 work items 6–7**: the first E0 pass lost **12 of 17 runs** to `DeadKernelError`.
