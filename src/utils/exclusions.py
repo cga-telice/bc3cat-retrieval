@@ -80,6 +80,28 @@ def item_excluded(queryset: str, gold_keys, split_concepts: frozenset[str]) -> f
     return frozenset(excluded)
 
 
+STACKED_P_EXCLUSION = DATA / "OE_stacked_P_exclusion.json"
+
+
+@lru_cache(maxsize=1)
+def stacked_p_excluded() -> frozenset[str]:
+    """The 324 STACKED `item_key`s outside STACKED-P (2026-10-16 delivery, `DELIVERIES.md`): 321 carry one
+    of the 14 known drift rewrites (`OE_known_drift_rewrites.json`), 2 duplicate a delivered query, 1 is
+    degenerate. Keyed on `item_key`, which v1 and v2 share, so one list serves both stacked sets."""
+    payload = json.loads(STACKED_P_EXCLUSION.read_text(encoding="utf-8"))
+    keys = frozenset(str(k) for k in payload["item_keys"])
+    if len(keys) != len(payload["item_keys"]):
+        raise ValueError(f"{STACKED_P_EXCLUSION.name}: repeated item_key")
+    return keys
+
+
+def stacked_p(item_keys) -> list[bool]:
+    """STACKED-P membership, per query, for a stacked set's `item_key`s (a filter, not an exclusion from
+    scoring: a stacked result is reported on all its queries and on STACKED-P, D-061)."""
+    excluded = stacked_p_excluded()
+    return [str(k) not in excluded for k in item_keys]
+
+
 def text_collisions(records) -> int:
     """Queries whose collapsed text equals that of a query with a different gold. Counted, never excluded."""
     golds_by_text: dict[str, set[str]] = defaultdict(set)

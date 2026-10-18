@@ -3,11 +3,27 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-04 (**S11 done**; S10 blocked on upstream) · **Updated by:** Claude
+**Last updated:** 2026-10-18 (**2026-10-16 delivery taken in**: v2 sets, BT queries, STACKED-P; re-runs on v2 pending as amendments) · **Updated by:** Claude
 
 ---
 
 ## Where we are
+
+**The 2026-10-16 delivery is taken in** (2026-10-18; [`DELIVERIES.md`](DELIVERIES.md), `tests/test_intake_20261016.py`,
+27 tests). Upstream repaired 163 broken template paraphrases — a value in the wrong slot, or a value presented as a
+reference document (**P10**, `DATASET_DEFECTS.md`) — and delivered **v2** of STACKED, SINGLE, dose and isolated: same
+records in the same order, only `text` changed, on 2,039 / 241 / 547 / 348 queries (dev 1,183 / 145 / 337 / 214),
+all carrying `template_paraphrase`, concentrated in the seven E3 concepts. Registered as `stacked_texto_v2`,
+`single_texto_v2`, `dose_texto_v2`, `isolated_texto_v2`; v1 stays registered and unchanged, so every earlier run
+resolves; tables by `build_v2_query_tables.py` on the proven path, equal to v1's on every unchanged row. Also taken:
+**`bt_texto`**, 4,670 back-translated gold `texto`s (OPUS-MT, no LLM), one per STACKED-P leaf, 79 concepts (40 dev /
+39 test), paired leaf for leaf to STACKED; and the **STACKED-P filter** (`exclusions.stacked_p`: 324 STACKED keys
+excluded, 321 for the 14 known drift rewrites; 4,674 queries kept, the same on v1 and v2). **D-061 proposed:** v2 is
+the reference for S12 and the re-runs; v1 results stay beside v2 as sensitivity. **Next:** the re-runs on v2 as
+amendments to the closed sprints, in order of impact — S11 (35 runs), S8 (36), S7 (18, plus STACKED-P), S4/S5/S6
+(the `template_paraphrase` cell and L3), S9 (HyDE / rewrite / canon regenerated for the 2,039 changed STACKED
+queries) — each with its report section and a fresh-session audit; then the BT sprint design for César; S12's
+registration names v2, STACKED-P and `bt_texto`; S10's request is amended to the repaired menus.
 
 **S11 is done** (2026-10-04; Track E, two-stage; [design](sprints/SPRINT_S11_DESIGN.md) frozen at `931ee0c`, [amendments](sprints/SPRINT_S11_AMENDMENTS.md) A1–A6, [report](sprints/SPRINT_S11_REPORT.md), [audit](sprints/SPRINT_S11_AUDIT.md), [results](results/S11)). Audit **PASS WITH FINDINGS**, 3 major and 7 minor, resolved in the report (`results/S11/` at `8e60502`). 35 runs clean; 6 of 7 exit criteria met; EC3 accepted as not met by César (no run stamps model digest or prompt SHA; S12 stamps both). K2 (E5 concept → `phi4` values → ColBERT order inside the family) beats ColBERT on stacked and on the blind E3 ladder; the method contribution reads **established on dev**. Soft matching adds nothing detectable; ordering by ColBERT adds to K0, but most of the gain is reading values and filtering on them; R2 (no LLM) wins on one edit and breaks under stacking. D-059 accepted: K2 is Track E's method on dev, S12 registers K2 and R2. ColBERT scores are batch-dependent: logged re-measurement reproduces it, smaller than A2 stated (D-060 accepted, `DATASET_DEFECTS.md` H8). **Next: S12 registration (K2/R2 admission, run stamps, ColBERT batching).**
 

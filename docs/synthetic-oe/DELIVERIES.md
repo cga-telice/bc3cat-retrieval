@@ -15,6 +15,97 @@ Newest first.
 
 ---
 
+## 2026-10-16 — v2 of the four query sets, and the back-translated queries · **taken** (intake 2026-10-18)
+
+Delivered at `bc3cat-dataset` `synthetic` `2677ced6` (handoff note
+`docs/synthetic/HANDOFF_retrieval_2026-10-16.md`); the v2 files were packaged at `d43a30e8` by
+`scripts/repair_broken_paraphrases.py`, the BT files at `045fb8c1` by `scripts/build_bt_sentences.py --assemble`
+(seed 42). Every digest below was re-hashed here against the handoff note and upstream's `MANIFEST.md`; the
+corpus files and every v1 file are unchanged (`tests/test_intake_20261016.py`, 27 tests).
+
+| File | Records | SHA-256 prefix | Taken |
+|---|---:|---|---|
+| `OE_stacked_texto_v2.json` | 4,998 | `bc1ed968f60933d9` | yes, as `stacked_texto_v2` |
+| `OE_single_texto_v2.json` | 4,439 | `b3c58fcb38fd294f` | yes, as `single_texto_v2` |
+| `OE_dose_texto_v2.json` | 3,000 | `8becd49ad0fd1f37` | yes, as `dose_texto_v2` |
+| `OE_isolated_texto_v2.json` | 5,400 | `95c0c2edaef0c7dc` | yes, as `isolated_texto_v2` |
+| `OE_v2_changes.jsonl` | 3,175 | `981896771092f6a9` | yes (the change list: `set`, `item_key`, `paraphrase_id`, `old`, `new`) |
+| `OE_v2_provenance.json` | — | `1c9e4d6db1a7569b` | yes |
+| `OE_bt_texto.json` | 4,670 | `421b3ca3a3d3f61f` | yes, as `bt_texto` |
+| `OE_bt_modifications.jsonl` | 4,670 | `c1ffe3bfafa2736d` | yes (sidecar) |
+| `OE_bt_provenance.json` | — | `d17653030a0b0cc3` | yes |
+| `OE_stacked_P_exclusion.json` | 324 keys | `bbe36522fdccb4fa` | yes, as the STACKED-P filter (`utils.exclusions.stacked_p`) |
+| `OE_known_drift_rewrites.json` | 14 | `1431f19dfb4791f2` | yes |
+
+**v2: 163 broken template paraphrases repaired.** An upstream audit of the 828 TEXTO template paraphrases in
+use found 163 that put a value in a slot that is not its own («de 200 mm y diámetro *en cruce bajo vías*»;
+134) or present a value as a reference document («se detallan en *Nocturno*»; 29). César had only those two
+kinds repaired (2026-10-16); doubled units («40 mm mm»), clumsy grammar and meaning shifts stay on purpose.
+Each paraphrase was corrected with the smallest change and the same slots, and every affected query
+re-rendered with its own values. Recorded as **P10** in `DATASET_DEFECTS.md`.
+
+**Checked here, every claim re-derived from the files:**
+- **Same records, same order, only `text`.** In each v2 set n is v1's, `id` / `item_key` / `gold_item_key` /
+  `parent_key` are identical row for row, and no field other than `text` differs in any record. `text` differs
+  on exactly the queries `OE_v2_changes.jsonl` lists — **STACKED 2,039 of 4,998, SINGLE 241 of 4,439, dose 547
+  of 3,000, isolated 348 of 5,400** (3,175 lines, 163 distinct `paraphrase_id`) — where `old` is v1's text and
+  `new` is v2's. Every changed query carries `template_paraphrase`.
+- **Where the changes fall** (dev / test): STACKED 1,183 / 856 over 46 concepts (21 dev); SINGLE 145 / 96 over 31
+  (18 dev); dose 337 / 210 and isolated 214 / 134, both over all seven E3 concepts (`OEB020$ 030$ 230$ 290$` dev,
+  `OEB040$ 280$ 300$` test). The SINGLE changes are all in the `template_paraphrase` cell: **241 of its 600
+  queries, 145 of 302 on dev**; the other eight cells are byte for byte v1's. The isolated changes are all
+  `template_paraphrase` too: 348 of 600, **214 of the 328 dev leaves (65 %)**. In dose the changed queries per
+  rung 1–5 are 34 / 69 / 114 / 158 / 172 against 70 / 140 / 211 / 279 / 300 queries carrying the type (dev:
+  23 / 46 / 72 / 95 / 101 of 328 per rung).
+- **No v2 dev query is undecidable**, by S4 work item 4's test: none equals a leaf's `texto` except P7's
+  `reorder` query, which carries no paraphrase and is untouched; none shares its text with a query of another
+  gold; no U+FFFD.
+- **The derived tables inherit this exactly.** `build_v2_query_tables.py` proves the v1 path on all four v1 sets
+  (each re-derives to its stored norm and feats tables), then derives the v2 tables, which equal the v1 tables
+  on every unchanged row, column for column, and on the changed rows move only the columns derived from
+  `text` (digests in `MANIFEST.md`).
+
+**BT: 4,670 back-translated queries, one per STACKED-P leaf.** Each is the gold `texto` of its leaf translated
+sentence by sentence with OPUS-MT (ES→EN→ES and ES→EN→{FR, IT, DE}→ES, beam 4, no sampling; the first approved
+translation per sentence, else the original), values masked during translation and then replaced by audited
+variants (`value_back_translation`, 3,787 queries, half the time with the axis label in front), and half the
+trade terms replaced by audited synonyms (`glossary_synonym`, 2,898). No LLM touched it. Schema: STACKED's plus
+`condition` (`bt_origv_en`), `source_item_key`, `source_text_sha256`, `bt`, `bt_sentences`,
+`characterization_check`, `texto_modification_types_post_bt`, `reverted_types`; `item_key` is the gold's plus
+`_btorigv_en`.
+- **Paired to STACKED-P leaf for leaf.** All 4,670 golds resolve in the corpus with the stated parent; each is a
+  STACKED-P leaf, and `item_key` = gold + `_btorigv_en`. Four STACKED-P leaves have no BT query (`OEB160a`,
+  `OEE020bca`, `OEE020bda`, `OEE020cab`). 79 concepts, **40 dev / 39 test; 2,331 dev / 2,339 test queries**.
+  Absent from the corpus's 83: `OEB160$`, `OEB310$`, `OEC140$`, `OEE020$` (`OEC140$` has no stacked query;
+  `OEB310$`'s one is outside STACKED-P).
+- **The source text is this tree's corpus.** `source_text_sha256` equals the SHA-256 of our `OE_texto.json`
+  text for all 4,670. Upstream's provenance stamps `OE_texto.json` `54c83faa…`, which is the corpus file with
+  `duplicate_texto_group` inside, refused here under D-033 (2026-09-27); the per-record digests show its texts
+  are ours.
+- **New and decidable.** No BT text equals a leaf's `texto` or any delivered query (v1, v2, L2); all 4,670 are
+  distinct; no U+FFFD. `modification_types` ⊆ {`back_translation`, `value_back_translation`,
+  `glossary_synonym`}, always with `back_translation`; count equals the type count; the sidecar names the same
+  types per query, in the same order of records.
+- **Gentler than STACKED.** Mean fraction of translated sentences 0.48 (label sentences such as «Trabajo: X.»
+  usually come back identical); mean length 67.0 words against 75.9 for STACKED-P v2 and 69.6 for the gold.
+- **55 BT golds are D-033 duplicates** (the same 55 as in STACKED-P), excluded at item level as everywhere. No
+  P7 / P8 key.
+- **F-BT-1, closed upstream, carried as a caveat:** 3,153 BT queries say «de hormigón»; for 2,718 of them the
+  gold says «hormigonada» (substring counts here; upstream counts 2,713 by its own rule).
+
+**STACKED-P.** 324 STACKED `item_key`s outside STACKED-P: 321 carry one of the 14 known drift rewrites of
+`OE_known_drift_rewrites.json` (8 `paraphrase`, 6 `expansion`; the 321 queries are exactly the file's lists, and
+each rewrite's `new` string is in its v1 and its v2 query), 2 duplicate a delivered query, 1 is degenerate
+(gate G1). 189 dev / 135 test, over 10 concepts. STACKED-P is **4,674 queries, one per leaf, 81 concepts**. It
+applies by `item_key`, so it is the same population on v1 and v2 (César: the drift audit is not repeated on
+v2). Implemented as a filter, not a query set: a stacked result is reported on all its queries and on STACKED-P.
+
+**Registered.** `run_context.V2_QUERY_SETS`, `BT_QUERY_SETS`, `STACKED_P_SETS`; `exclusions.stacked_p`;
+tables by `build_v2_query_tables.py` (`BT_FIELDS` adds `condition` and `source_item_key` to the projection).
+The v1 names stay registered and their files unchanged, so every earlier run resolves. **Decision raised:**
+D-061 — v2 replaces v1 as the reference for S12 and for the re-run amendments; v1 results stay as a sensitivity
+analysis beside v2.
+
 ## 2026-09-30 — the SINGLE modifications sidecar, taken from the release · **taken** (S6 work item 1)
 
 Not a new delivery. It is the release's own sidecar, which `RESEARCH_PLAN.md` §5 lists as requested in S1

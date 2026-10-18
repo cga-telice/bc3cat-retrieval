@@ -1572,3 +1572,31 @@ queries: encoded in their own run batch, all 2,000 stored scores reproduce, twic
 0.125) and the top 10 changes for 3 queries; encoded with the other sampled queries, 533 move (up to 0.1875) and
 rank 1 changes for 1. Smaller than A2 stated; the logged figures replace A2's (H8).
 
+### D-061 — v2 is the reference query set; v1 results are kept beside it as a sensitivity analysis
+**Status:** Proposed · **Date:** 2026-10-18 · **Owner:** César · **Raised in:** the 2026-10-16 intake (`DELIVERIES.md`)
+**Context.** Upstream repaired 163 template paraphrases that put a value in the wrong slot or presented it as a
+reference document (`DATASET_DEFECTS.md` P10) and delivered v2 of STACKED, SINGLE, dose and isolated: same
+records in the same order, only `text` changed, on 2,039 / 241 / 547 / 348 queries. Every stacked figure and
+the `template_paraphrase` cell of S4–S6, S7, S8, S9 and S11 were measured with a third to a half of their
+paraphrased queries of that kind, concentrated in the E3 concepts. A broken paraphrase is not a rendering of the
+same referent, so a miss on it says nothing about robustness; the v1 figures are not wrong about their inputs,
+but their inputs are not what the study means by `template_paraphrase`.
+**Proposal.**
+1. **v2 is the reference** from this intake on: `stacked_texto_v2`, `single_texto_v2`, `dose_texto_v2`,
+   `isolated_texto_v2` are the sets S12 evaluates and the sets the re-run amendments report. S12 also evaluates
+   STACKED-P (filter) and `bt_texto`.
+2. **v1 is not deleted and its runs are not archived.** The v1 names stay registered, their files and derived
+   tables unchanged, so every S2–S11 run still resolves. Each re-run amendment prints v1 and v2 side by side,
+   each with its n, concepts and stamps, and reads the difference as the sensitivity of the sprint's claim to
+   P10; the sprint's recorded readings are restated on v2 where they move.
+3. **The closed sprints are not reopened.** Each re-run is an amendment to the closed sprint (D-045): its own
+   runs, generated tables under `results/Sx/v2/`, a report section, and an audit in a fresh session. Order of
+   impact on the paper's claims: S11, S8, S7, then S4 / S5 / S6 (the `template_paraphrase` cell and the L3
+   aggregate; the other eight cells are byte for byte v1's and are reused), then S9 (its STACKED-dependent
+   parts, with HyDE / rewrite / canon regenerated for the 2,039 changed queries).
+4. **STACKED-P** is a filter by `item_key` (324 keys, the same on v1 and v2), not a query set: every stacked
+   result from these amendments on is given on all queries and on STACKED-P. The drift audit is not repeated on
+   v2 (César, 2026-10-16).
+**Consequence.** S12's registration names the v2 digests, STACKED-P and `bt_texto`; S10's training request is
+amended so training renders with the repaired menus, never v1 paraphrases against v2 evaluation.
+

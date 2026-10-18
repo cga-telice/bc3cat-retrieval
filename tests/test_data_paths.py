@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.run_context import S9_QUERY_SETS, data_paths
+from utils.run_context import BT_QUERY_SETS, S9_QUERY_SETS, V2_QUERY_SETS, data_paths
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -82,6 +82,7 @@ def test_the_real_collections_resolve():
         "single_texto", "stacked_texto", "resumen_decoded", "resumen_stripped", "single_l2_texto",
         "dose_texto", "isolated_texto",  # S8, D-052
         *S9_QUERY_SETS,  # S9 work item 1
+        *V2_QUERY_SETS, *BT_QUERY_SETS,  # 2026-10-16 delivery
     }
     assert oeb.query_json == {}
 

@@ -54,7 +54,7 @@ NTFS junctions to the main checkout, not copies.
 
 ### 2.1 Later deliveries
 
-Upstream has shipped twice more since the founding delivery above. Each one — its digests, what was
+Upstream has shipped several times since the founding delivery above. Each one — its digests, what was
 verified, and the limitations it binds on which sprint — is recorded in
 [`DELIVERIES.md`](DELIVERIES.md), which is a record rather than part of this contract:
 
@@ -62,6 +62,8 @@ verified, and the limitations it binds on which sprint — is recorded in
 |---|---|---|
 | 2026-09-17 | S3 work item 2 | **E3 balanced dose set** (D-009): dose ladder, isolated effects, per-leaf applicability |
 | 2026-09-27 | S3 work item 1 | **Duplicate-`texto` sidecar** (D-031) and the **corrected stacked set** (D-025) |
+| 2026-09-29 / 09-30 | S4, S6 work item 1 | P7 / P8 test key lists (D-043, D-044); the **wider L2 slices** `single_l2_texto` (D-043 amended); the SINGLE modifications sidecar |
+| 2026-10-16 | intake 2026-10-18 | **v2 of the four query sets** (163 broken template paraphrases repaired; P10) registered as `*_v2`, v1 kept; the **back-translated set** `bt_texto` (4,670 STACKED-P leaves, OPUS-MT); the **STACKED-P filter** (324 keys) and the 14 known drift rewrites (D-061 proposed) |
 
 ## 3. Schema as observed
 

@@ -88,11 +88,30 @@ S9_QUERY_SETS = ("texto_u", "resumen_u") + tuple(
     f"{base}__{transform}" for base in S9_BASES for transform in S9_TRANSFORMS
 )
 
+#: The 2026-10-16 delivery (`DELIVERIES.md`). `{set}_v2` is the same query set with 163 broken
+#: template paraphrases repaired upstream: same `id` / `item_key` / `gold_item_key` in the same order,
+#: only `text` changed, and only on the queries `OE_v2_changes.jsonl` lists (STACKED 2,039 of 4,998,
+#: SINGLE 241 of 4,439, dose 547 of 3,000, isolated 348 of 5,400). The v1 names stay registered so
+#: every earlier run still resolves; v1 results are kept as a sensitivity analysis beside v2 (D-061).
+#: `bt_texto` is the back-translated rendering (OPUS-MT, no LLM) of the gold `texto` of 4,670
+#: STACKED-P leaves, one query per leaf, `item_key` suffix `_btorigv_en`.
+V2_QUERY_SETS = ("stacked_texto_v2", "single_texto_v2", "dose_texto_v2", "isolated_texto_v2")
+BT_QUERY_SETS = ("bt_texto",)
+
 QUERY_SETS = (
     "texto", "resumen", "single_texto", "stacked_texto",
     "resumen_decoded", "resumen_stripped", "single_l2_texto",
     "dose_texto", "isolated_texto",
-) + S9_QUERY_SETS
+) + S9_QUERY_SETS + V2_QUERY_SETS + BT_QUERY_SETS
+
+#: STACKED-P is not a query set but a **filter** on the stacked sets: the 4,674 STACKED queries
+#: (4,998 minus the 324 `OE_stacked_P_exclusion.json` lists: 321 with a known drift rewrite, 2
+#: duplicates of delivered queries, 1 degenerate) whose gold is not left in doubt by a rewrite. It
+#: applies by `item_key`, so it is the same population on `stacked_texto` and `stacked_texto_v2`, and
+#: the 4,670 `bt_texto` queries are each paired to one STACKED-P leaf. `utils.exclusions.stacked_p`
+#: implements it; results on a stacked set are reported on all queries and on STACKED-P.
+STACKED_P_EXCLUSION = "OE_stacked_P_exclusion.json"
+STACKED_P_SETS = ("stacked_texto", "stacked_texto_v2")
 
 #: The three shapes `inputs` takes across the 77 configs, in the order they are looked for.
 #: `feats` is the lexical family (70 configs), `text` the neural one (5), `norm` the hybrid

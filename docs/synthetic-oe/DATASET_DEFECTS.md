@@ -126,6 +126,17 @@ stress and are traceable per item through the modifications sidecar. D-004 requi
 analysis excluding them **before any per-type claim**; S2 recorded 10 of 30 sampled `num_to_text`
 misses as carrying doubling, and the exclusion analysis is deferred to S6. Until it runs, the
 `num_to_text` figure is provisional.
+**Updated 2026-10-18 (the 2026-10-16 delivery).** Token doubling and the clumsy grammar stay in v2 on purpose
+(César, 2026-10-16: they occur in real documents); only P10's two kinds were repaired. **"One documented semantic
+drift" is no longer the description.** Upstream's STACKED-P audit lists **14 known drift rewrites**
+(`OE_known_drift_rewrites.json`: 8 `paraphrase`, 6 `expansion`, among them the `con topo` → `con topografía`
+family and `adosada` → `empotrada / a ras`), which change a value and leave the gold in doubt, and the **321
+STACKED queries** that carry one are outside STACKED-P (`OE_stacked_P_exclusion.json`, 324 keys with 2
+duplicates and 1 degenerate query; `utils.exclusions.stacked_p`). The S4 / S6 sensitivity analyses (D-004,
+`pantry_flags.py`) flagged the drift on 19 `single_texto` and 17 L2 dev queries; those lists are not replaced,
+and the STACKED-P filter is the stacked sets' counterpart. Stacked results are reported on all queries and on
+STACKED-P from the v2 amendments on.
+
 
 ## P6 — E3 dose set: structural limitations · **verified here** (S3, 2026-09-27)
 
@@ -214,6 +225,34 @@ axis is spelled both ways across concepts (`'Nº TUBOS'` and `' Nº TUBOS '`).
   the 16,401 axes the registered arm loses are this case (`results/S9/extraction.md`, post hoc, A7–A8).
 - **Handling.** The registered S9 result stands as published. Proposed (D-056): the harness strips axis labels
   wherever it compares them; reported upstream for information.
+
+## P10 — 163 template paraphrases put a value in the wrong slot, or present it as a reference document · **resolved upstream by v2** (delivered 2026-10-16, taken 2026-10-18)
+
+Some approved `template_paraphrase` menu entries put a value in a role that is not its own — «de 200 mm y
+diámetro **en cruce bajo vías**», «con un diámetro de **en terreno rocoso** mm», dimensions read as a location,
+an operation read as a quantity (134 paraphrases) — or present a value as a document to consult («las
+condiciones de ejecución se detallan en **Nocturno**»; 29). Found by upstream's audit of the 828 TEXTO
+paraphrases in use (8 agents with clean context, `data/synthetic/broken_OE/` there), 2026-10-15.
+- **Class.** P: the rewrite is upstream's and the query no longer says what the template meant. It is not a
+  rendering variation of the same referent but a mislabelled one, so a miss on it is not evidence about
+  robustness. The reach is confined to `template_paraphrase`, which is in every stacked query and in one SINGLE
+  cell.
+- **Reach, measured here** (`tests/test_intake_20261016.py`): STACKED 2,039 of 4,998 queries (dev 1,183), SINGLE
+  241 of 4,439 (all `template_paraphrase`: 241 of 600, 145 of 302 on dev), dose 547 of 3,000 (dev 337; per rung
+  34 / 69 / 114 / 158 / 172 of the 70 / 140 / 211 / 279 / 300 queries carrying the type, so about half at every
+  rung and a weight that grows with the dose), isolated 348 of 5,400 (all `template_paraphrase`: **58 % of the
+  type's 600 isolated queries, 214 of the 328 dev leaves**). It concentrates in the OEB canalizations, which are
+  exactly E3's seven concepts: dev `OEB020$ 030$ 230$ 290$`, test `OEB040$ 280$ 300$`.
+- **Consequence.** The `template_paraphrase` cell of S4 (T4: K2 − ColBERT was largest there in S11), the stacked
+  figures of S7, S9 and S11, and S8's isolated effect and dose slope were measured on queries of which a third
+  to a half were of this kind. A broken paraphrase sinks a lexical or a bi-encoder arm but not necessarily an
+  LLM extractor, so the arms are not hit alike. Those sprints are re-run on v2 as amendments, v1 beside v2.
+- **Resolution.** v2 of the four sets (`DELIVERIES.md`, 2026-10-16): each paraphrase corrected with the smallest
+  change and the same slots, every affected query re-rendered with its own values, whitespace normalised in the
+  changed queries («An6 ,» → «An6,»), everything else byte for byte v1. 11 repaired paraphrases keep a meaning
+  defect that was decided to leave (P5). Verified upstream: 163 repaired, 0 new errors; verified here: only
+  `text` changed, exactly on the listed queries, every derived table equal to v1's on the unchanged rows.
+- **Not repaired, on purpose** (César, 2026-10-16): doubled units, clumsy grammar and meaning changes (P5).
 
 ## H1 — `normalize_text` reads a synthetic decimal as a thousands group · **open** (D-010 note)
 

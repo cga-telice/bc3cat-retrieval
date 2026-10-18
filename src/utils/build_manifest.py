@@ -116,6 +116,37 @@ OE_S9 += [f for t in S9_GENERATED for f in _s9_transformed(t)]
 # Work item 5: the LLM extractor's generations, cached by the structured pipeline while its five runs ran
 # (`retrievers.structured_pipeline.LLM_CACHE`), shared by all of them.
 OE_S9 += ["llm_cache/structured_llm_extract.jsonl"]
+# The 2026-10-16 delivery (`DELIVERIES.md`; `tests/test_intake_20261016.py`). v2 of the four query sets:
+# 163 broken template paraphrases repaired upstream, same records in the same order, only `text` changed on
+# the queries `OE_v2_changes.jsonl` lists. The v1 files above stay, unchanged, so every earlier run resolves.
+# `bt_texto`: the back-translated gold `texto` of 4,670 STACKED-P leaves (OPUS-MT, no LLM), with its sidecar.
+# `OE_stacked_P_exclusion.json` is the STACKED-P filter (324 `item_key`s, the same on v1 and v2);
+# `OE_known_drift_rewrites.json` the 14 drift rewrites behind 321 of them. Tables by `build_v2_query_tables.py`.
+OE_V2 = [
+    "OE_stacked_texto_v2.json",
+    "OE_single_texto_v2.json",
+    "OE_dose_texto_v2.json",
+    "OE_isolated_texto_v2.json",
+    "OE_v2_changes.jsonl",
+    "OE_v2_provenance.json",
+    "OE_stacked_texto_v2_norm.parquet",
+    "OE_stacked_texto_v2_feats.parquet",
+    "OE_single_texto_v2_norm.parquet",
+    "OE_single_texto_v2_feats.parquet",
+    "OE_dose_texto_v2_norm.parquet",
+    "OE_dose_texto_v2_feats.parquet",
+    "OE_isolated_texto_v2_norm.parquet",
+    "OE_isolated_texto_v2_feats.parquet",
+]
+OE_BT = [
+    "OE_bt_texto.json",
+    "OE_bt_modifications.jsonl",
+    "OE_bt_provenance.json",
+    "OE_stacked_P_exclusion.json",
+    "OE_known_drift_rewrites.json",
+    "OE_bt_texto_norm.parquet",
+    "OE_bt_texto_feats.parquet",
+]
 OEB = [
     "OEB_texto.json",
     "OEB_resumen.json",
@@ -156,6 +187,18 @@ INTAKE_PREFIXES = {
     "OE_stacked_texto__1bde2115.json": "1bde21157ef97421",
     "OE_stacked_texto_norm__81cd501b.parquet": "81cd501b305b17db",
     "OE_stacked_texto_feats__7b0894e6.parquet": "7b0894e6bc5c82d3",
+    # The 2026-10-16 delivery, from the handoff note §1 and upstream's `MANIFEST.md`, re-hashed at copy time.
+    "OE_stacked_texto_v2.json": "bc1ed968f60933d9",
+    "OE_single_texto_v2.json": "b3c58fcb38fd294f",
+    "OE_dose_texto_v2.json": "8becd49ad0fd1f37",
+    "OE_isolated_texto_v2.json": "95c0c2edaef0c7dc",
+    "OE_v2_changes.jsonl": "981896771092f6a9",
+    "OE_v2_provenance.json": "1c9e4d6db1a7569b",
+    "OE_bt_texto.json": "421b3ca3a3d3f61f",
+    "OE_bt_modifications.jsonl": "c1ffe3bfafa2736d",
+    "OE_bt_provenance.json": "d17653030a0b0cc3",
+    "OE_stacked_P_exclusion.json": "bbe36522fdccb4fa",
+    "OE_known_drift_rewrites.json": "1431f19dfb4791f2",
 }
 
 # Counts INTAKE.md claims, asserted here against what the files actually hold.
@@ -190,6 +233,9 @@ def record_count(path: Path) -> int | str:
         # call it four records. Report the grouping it actually carries.
         if "groups" in obj and isinstance(obj["groups"], dict):
             return len(obj["groups"])
+        # The exclusion lists (P7, P8, STACKED-P) are wrappers around `item_keys`: report the keys.
+        if "item_keys" in obj and isinstance(obj["item_keys"], list):
+            return len(obj["item_keys"])
         return len(obj)
     return "n/a"
 
@@ -200,7 +246,7 @@ def main() -> None:
     ).strip()
 
     rows: list[tuple[str, int, int | str, str, str]] = []
-    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_L2 + OE_SIDECARS + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OE_S9 + OEB:
+    for name in OE_CORPUS + OE_QUERIES + OE_OTHER + OE_S12 + OE_L2 + OE_SIDECARS + OE_E3 + OE_DERIVED + OE_SUPERSEDED + OE_S91 + OE_S9 + OE_V2 + OE_BT + OEB:
         p = DATA / name
         digest = sha256(p)
         expected = INTAKE_PREFIXES.get(name)
