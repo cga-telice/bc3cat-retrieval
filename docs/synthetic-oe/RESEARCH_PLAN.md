@@ -55,6 +55,7 @@ baseline taken from a different system — all provenance failures, none of them
 | S11 | Track E — two-stage architecture | O4 | 3 w | S6 |
 | S12 | Frozen test evaluation and artefact release | O5 | 1 w | S8–S11 |
 | S13 | Manuscript | — | 3 w | S12 |
+| S14 | External rendering: back-translated queries (**proposed** 2026-10-18; S92 if César rules it a probe) | validity, O4, H1 | 1 w | S7 A8, S11 A7 + upstream BT |
 | S✻ | Real-query anchor (parallel, gated) | validity | 2 w | external |
 
 ---
@@ -340,6 +341,19 @@ code tag, DOI. MIT / CC-BY 4.0 dual licence, AI-assistance disclosure.
 **Gate G4.** The split freezes here. Any later change to a method requires a documented
 re-run of the whole test evaluation, reported as such.
 
+*Added 2026-10-18 (the 2026-10-16 intake; D-061 proposed).* **What S12 evaluates and what it registers before it
+opens.** The query sets are the **v2** sets — `single_texto_v2` `b3c58fcb…`, `stacked_texto_v2` `bc1ed968…`,
+`dose_texto_v2` `8becd49a…`, `isolated_texto_v2` `95c0c2ed…` (feature-table digests in `MANIFEST.md`) — plus
+`single_l2_texto`, `resumen` coded and decoded, and `texto`; every stacked result is given on all queries and on
+**STACKED-P** (`exclusions.stacked_p`, 135 test keys excluded); and **`bt_texto`** on its test side (2,339 queries,
+39 concepts; S14's design and its B1–B4 read once there). v1 is not evaluated on test. Registered in S12's design
+before any test run, in one place: (a) S8's X2 signed draw reference matched on type, and whether X1 is read
+(D-054); (b) whether the IDF-capped BM25 arms are admitted (D-057); (c) K2 and R2's admission with their cost
+(D-059), their family caches built from the test ColBERT runs' own batches with S11's exact check (D-060, H8), and
+`phi4` extraction generated for test with its regeneration rate; (d) **every LLM run stamps the model digest and
+the prompt SHA-256 in `run_meta.json`** (S11 exit criterion 3, accepted as not met on dev); (e) the P7 and P8
+test key lists (D-043, D-044) and D-040's `resumen` exclusions; (f) the B1 pair list of S14 as fixed on dev.
+
 ---
 
 ### S13 — Manuscript
@@ -348,6 +362,27 @@ Figures, tables, writing, internal review, submission. Budgeted at three weeks b
 previous cycle showed that manuscript-level consistency (counts, model names, table
 provenance) is where this project loses points, and it is cheaper to spend the time here
 than to spend a review round on it.
+
+---
+
+### S14 — External rendering: back-translated queries (proposed 2026-10-18)
+
+**Goal.** Whether the arm ordering measured on STACKED-P is reproduced when the same 2,331 dev leaves are rendered
+by an independent generator: sentence-level back-translation with OPUS-MT (no LLM, no rewrite menu beyond audited
+value variants and trade-term synonyms), delivered 2026-10-16 as `bt_texto`. It answers the proposal's first
+threat to validity with data rather than framing, and gives the method contribution (S11) its first reading on a
+rendering no LLM saw.
+
+**Work.** 21 first-time runs on dev `bt_texto` (the 15 S4 arms, the 3 S5 structured arms, S11's K2, R2 and F1);
+four registered hypotheses — B1 the pairwise ordering of the base arms fixed from `results/S7/v2/stacked_p/`
+before any BT run is read, B2 K2 − ColBERT > 0, B3 H1 on BT, B4 BT gentler than STACKED-P (calibration) — paired
+leaf for leaf against STACKED-P v2 and the identity; secondary strata by translated fraction, value / glossary
+variation, subchapter and S9's coverage bins; sensitivity without the 1,498 F-BT-1 queries. Design:
+[`sprints/SPRINT_S14_DESIGN.md`](sprints/SPRINT_S14_DESIGN.md), proposed, not frozen; **S92 (probe, with the
+stopping criterion the design states) if César rules that it validates and carries no claim**.
+
+**Exit.** The B1 verdict (preserved / partly / contradicted), B2–B4, and, for the manuscript, which of S4–S11's
+readings the BT rendering reproduces. The test-side BT is evaluated once in S12.
 
 ---
 
@@ -396,7 +431,9 @@ Off the critical path, and parallelisable given compute:
 | Balanced dose set (counts 1–5, randomised mixes, `reorder` admitted) | `bc3cat-dataset` | S0 | S8 |
 | Per-item modification sidecar for artefact sensitivity analysis | `bc3cat-dataset` | S1 | S6 |
 | Wider `paraphrase` / `expansion` slices (n≈206–211 today) — issued 2026-09-29 as [`requests/WIDER_THIN_SLICES.md`](requests/WIDER_THIN_SLICES.md), widened to all three L2 types, which reach 5 dev concepts; answered the same day, build approved, then corrected: waits for an upstream engine fix, at most 9 / 9 / 8 dev concepts (D-043 amended) | `bc3cat-dataset` | S4 | S6 |
-| S10 training set: dev concepts only, menu entries disjoint from every delivered query, all nine types single and stacked, menu-entry IDs in the sidecar — issued 2026-10-04 as [`requests/S10_TRAINING_SET.md`](requests/S10_TRAINING_SET.md) (D-058) | `bc3cat-dataset` | S10 | S10 |
+| S10 training set: dev concepts only, menu entries disjoint from every delivered query, all nine types single and stacked, menu-entry IDs in the sidecar — issued 2026-10-04 as [`requests/S10_TRAINING_SET.md`](requests/S10_TRAINING_SET.md) (D-058); **amended 2026-10-18**: rendered with the repaired menus (v2, P10) and disjoint from BT's value and glossary lists too | `bc3cat-dataset` | S10 | S10 |
+| **v2 of STACKED, SINGLE, dose and isolated** (163 broken template paraphrases repaired, P10) — delivered 2026-10-16, taken in 2026-10-18 ([`DELIVERIES.md`](DELIVERIES.md)); v1 kept beside it (D-061) | `bc3cat-dataset` | — (upstream audit) | the v2 amendments of S4–S9 and S11; S12 |
+| **Back-translated queries** `bt_texto` (4,670 STACKED-P leaves, OPUS-MT) with the STACKED-P filter and the 14 known drift rewrites — delivered 2026-10-16, taken in 2026-10-18 | `bc3cat-dataset` | handoff 2026-10-04 (upstream) | S14 (proposed) on dev; S12 on test |
 
 ## 6. Risk register
 

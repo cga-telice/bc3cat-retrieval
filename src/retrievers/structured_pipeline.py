@@ -128,6 +128,37 @@ class StructuredPipelineSearcher:
     #: The query field the pipeline reads; `index_builders.structured_pipeline_rules.TEXT_FIELD`.
     TEXT_FIELD = "text_norm"
 
+    def provenance(self) -> dict:
+        """What this run's second and third stages depended on beyond the config, index and query set (S11 exit
+        criterion 3; S12's requirement): the LLM's model digest, server version, options, prompt mode, key match
+        and the SHA-256 of the prompt template's source and of `pipeline/prompts.py`; the ColBERT family file the
+        bound queries selected and its digest; the corpus the canonicaliser was built from. `retrieve.ipynb` writes
+        it into `run_meta.json` as `retriever_provenance`. Everything here is read from the objects the run used,
+        never typed."""
+        import inspect
+        from pipeline import prompts as _prompts
+        from query_rewrite.llm import sha256_text
+        from utils.provenance import sha256_file
+        out: dict = {}
+        ex = self._extractor
+        if isinstance(ex, LLMParamExtractor):
+            client = ex._client
+            out["llm"] = {
+                "model": client.model, "model_digest": client.digest, "ollama_version": client.version,
+                "options": dict(client.options), "prompt_mode": ex._prompt_mode, "key_match": ex._key_match,
+                "prompt_template": "pipeline.prompts.build_extraction_prompt",
+                "prompt_template_sha256": sha256_text(inspect.getsource(_prompts.build_extraction_prompt)),
+                "prompts_py_sha256": sha256_file(Path(_prompts.__file__)),
+                "cache": str(ex._cache.path),
+            }
+        if self._family_scores is not None and getattr(self._family_scores, "selected", None):
+            path = Path(self._family_scores.dir) / self._family_scores.selected
+            out["colbert_family"] = {"file": self._family_scores.selected, "sha256": sha256_file(path)}
+        if self._canon is not None:
+            from query_rewrite.canon import CORPUS as _canon_corpus
+            out["canon"] = {"corpus": _canon_corpus.name, "corpus_sha256": sha256_file(_canon_corpus)}
+        return out
+
     def bind_queries(self, queries_df: pd.DataFrame) -> None:
         """Receive the scored query rows, in scoring order. Oracle Stage 2 keeps the records; the ColBERT family
         order (S11) selects the one family-score file that holds every bound query text. Otherwise a no-op."""

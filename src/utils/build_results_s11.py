@@ -1,6 +1,7 @@
-"""S11 — Track E, two-stage architecture: T1–T9 and Fig. 8 (design `931ee0c`, amendments A1–A4).
+"""S11 — Track E, two-stage architecture: T1–T9 and Fig. 8 (design `931ee0c`, amendments A1–A7).
 
     python src/utils/build_results_s11.py        # in the sprint container, bc3cat-s3
+    python src/utils/build_results_s11.py --v2   # A7: the four repaired query sets, under results/S11/v2/
 
 Reads, and never writes, S11's 35 runs — K0 (A4), K1, K2, R2 and F1 on seven dev bases — and their references,
 the earlier sprints' runs on the same queries: `bge_m3_colbert`, `dense_e5`, `bm25_unigram`, `rules_valuenorm`,
@@ -13,6 +14,14 @@ catalogue position, which is not a score, so its tie-free hit treats that tier a
 `utils.s11_stages`); the other S11 arms order by ColBERT score, and exact ties are read from the scores as every
 earlier sprint does. The registered tests are the design's eleven (A1–A7), read tie-free (primary), as run and on
 the D-004 clean subset; Holm and BH across all eleven per column. A7 is read on the E3 ladder under D-053.
+
+**A7 (D-061):** `--v2` keeps every logical base name and re-points `stacked_texto`, `single_texto`, `dose_texto`
+and `isolated_texto` to their `_v2` query sets (`PHYS`, the one logical → physical mapping every file access goes
+through); `texto_u`, `resumen_u` and `single_l2_texto` are untouched by the delivery and their runs are read as they
+are. It writes T1–T9 and Fig. 8 under `results/S11/v2/`, then recomputes the v1 results with the identity mapping
+and writes `results/S11/v2/comparison.md`: the registered tests, T1 and T4 on v1 beside v2 with v2 − v1 on paired
+draws (`utils.v2_variant`), the H8 floor on the unchanged queries, and the stamps of both. A4's K0-versus-S9
+comparison and the S9 reference arms exist only on v1 bases and are printed as absent on the v2 ones.
 
 The analysis stack is pinned (`analysis_stack.py`): the script refuses to run on another.
 """
@@ -45,6 +54,7 @@ from utils.build_results_s6 import test_p  # noqa: E402
 from utils.build_results_s7 import tie_table  # noqa: E402
 from utils.build_results_s8 import SIGN_MIN, strat_weights, cluster_leaf_weights  # noqa: E402
 from utils.build_results_s9 import query_table as s9_query_table  # noqa: E402
+from utils import v2_variant as v2v  # noqa: E402
 from utils.exclusions import item_excluded  # noqa: E402
 from utils.pantry_flags import text_flags  # noqa: E402
 from utils.provenance import sha256_file  # noqa: E402
@@ -54,7 +64,9 @@ from utils.splits import load_split  # noqa: E402
 DATA = REPO / "data" / "processed"
 RUNS = REPO / "runs" / "OE"
 INDEX = REPO / "index" / "OE"
-OUT = REPO / "docs" / "synthetic-oe" / "results" / "S11"
+RESULTS_S11 = REPO / "docs" / "synthetic-oe" / "results" / "S11"
+#: Set by `configure`: the base mode writes `results/S11/`, `--v2` writes `results/S11/v2/` (A7).
+OUT = RESULTS_S11
 FIGS = OUT / "figures"
 GENERATOR = "src/utils/build_results_s11.py"
 LLM_CACHE = DATA / "llm_cache" / "structured_llm_extract.jsonl"
@@ -95,13 +107,68 @@ VARIANTS = ("tf", "run", "clean")
 EQUIV = 0.02
 LADDER_RUNG = 5
 
+#: A7 (D-061): the logical base names above are what the tables print and the tests are registered on; `PHYS`
+#: maps each to the query set actually read — the identity in the base mode, the four changed sets to their `_v2`
+#: names under `--v2`. Every path to a run, a query-set JSON or a family cache goes through `phys`, so the
+#: module-level caches (`_HITS`, `run_meta`, `_perquery`, `Stages`) are keyed on physical names and the v1 and v2
+#: passes of one `--v2` invocation never collide; `_CELLS` and `_LADDERS` are keyed on the data itself.
+V2_MODE = False
+PHYS: dict[str, str] = {b: b for b in BASES}
+#: Reference arms that every base must carry (T5 and T6 read them without an `available` check).
+REQUIRED_REFS = ("bge_m3_colbert", "dense_e5", "bm25_unigram")
+#: Reference arms that exist on v1 bases only: S9 ran them, and S9's v2 re-run (A13) does not repeat them.
+V1_ONLY_REFS = ("llm_exact (S9)", "K0 as S9 ran it")
+
+
+def set_mapping(v2: bool) -> None:
+    """Point the logical bases at their physical query sets: the identity, or the four changed sets to v2."""
+    global PHYS
+    PHYS = {b: v2v.mapped(b, v2) for b in BASES}
+
+
+def phys(name: str) -> str:
+    """The physical query set of a logical base (or of a reference set such as `texto`, which has no v2)."""
+    return PHYS.get(name, name)
+
+
+def configure(v2: bool) -> None:
+    """`--v2`: the mapping, the output directory and the generator label (A7). Called before anything else."""
+    global V2_MODE, OUT, FIGS, GENERATOR
+    V2_MODE = v2
+    set_mapping(v2)
+    OUT = v2v.out_dir(RESULTS_S11, v2)
+    FIGS = OUT / "figures"
+    GENERATOR = v2v.generator_label("src/utils/build_results_s11.py", v2)
+
 
 def run_qs(base: str, method: str) -> str:
-    return base if method in ON_SUBSET else REF_QS.get(base, base)
+    return phys(base) if method in ON_SUBSET else phys(REF_QS.get(base, base))
+
+
+def run_dir(base: str, method: str) -> Path:
+    return RUNS / run_qs(base, method) / method
 
 
 def available(base: str, method: str) -> bool:
-    return (RUNS / run_qs(base, method) / method / "results_top100.jsonl.gz").exists()
+    return (run_dir(base, method) / "results_top100.jsonl.gz").exists()
+
+
+def require_inputs() -> None:
+    """Refuse to start on a missing query set, family cache or run, naming every one (A7: loud, never silent).
+    Every base needs its JSON, its family cache and the S11 arms plus `REQUIRED_REFS`; a v2 base also needs every
+    reference arm its v1 base has, except the S9 arms, because S4 A6 / S5 A4 / S7 A8 / S8 A8 re-ran them all."""
+    missing: list[Path] = []
+    for base in BASES:
+        missing += [p for p in (DATA / f"OE_{phys(base)}.json", INDEX / "_colbert_family" / f"{phys(base)}.npz",
+                                INDEX / "_colbert_family" / f"{phys(base)}.meta.json") if not p.is_file()]
+        wanted = list(S11_ARMS) + list(REQUIRED_REFS)
+        if phys(base) != base:
+            wanted += [a for a in REFS if a not in V1_ONLY_REFS and a not in REQUIRED_REFS
+                       and (RUNS / base / REFS[a] / "results_top100.jsonl.gz").is_file()]
+        missing += [run_dir(base, ARM_DIR[a]) / "results_top100.jsonl.gz" for a in wanted
+                    if not available(base, ARM_DIR[a])]
+    if missing:
+        raise FileNotFoundError("inputs absent: " + ", ".join(p.relative_to(REPO).as_posix() for p in missing))
 
 
 # --------------------------------------------------------------------------- inputs
@@ -121,7 +188,7 @@ def e3_table(base: str, dev: frozenset[str]) -> pd.DataFrame:
     """One row per dev query of an E3 set: gold, concept, rung, type, D-004 flag, scoring masks."""
     gold_text = corpus_text()
     rows = []
-    for r in json.loads((DATA / f"OE_{base}.json").read_text(encoding="utf-8")):
+    for r in json.loads((DATA / f"OE_{phys(base)}.json").read_text(encoding="utf-8")):
         if r["parent_key"] not in dev:
             continue
         types = r["modification_types"]
@@ -139,10 +206,12 @@ def e3_table(base: str, dev: frozenset[str]) -> pd.DataFrame:
 
 
 def query_table(base: str, dev: frozenset[str]) -> pd.DataFrame:
+    """S9's table reads `OE_{name}.json` by name, so it takes the physical set; the frame keeps the logical base."""
     if base in E3_BASES:
         return e3_table(base, dev)
-    q = s9_query_table(base, dev)
+    q = s9_query_table(phys(base), dev)
     q["rung"] = 0
+    q["base"] = base
     return q
 
 
@@ -154,6 +223,11 @@ def run_meta(qs: str, method: str) -> dict:
 @lru_cache(maxsize=None)
 def _perquery(qs: str, method: str) -> pd.DataFrame:
     return pd.read_parquet(RUNS / qs / method / "results_perquery.parquet").set_index("query_item_key")
+
+
+def family_meta(base: str) -> dict:
+    """The within-family ColBERT cache's `meta.json` of a base's physical query set (A2; v2 bases have their own)."""
+    return json.loads((INDEX / "_colbert_family" / f"{phys(base)}.meta.json").read_text(encoding="utf-8"))
 
 
 class Stages:
@@ -168,7 +242,7 @@ class Stages:
         self._d: dict = {}
 
     def get(self, short: str, base: str) -> pd.DataFrame:
-        k = (short, base)
+        k = (short, phys(base))  # physical: the v1 and v2 passes of `--v2` must not share a decomposition
         if k not in self._d:
             method = S11_ARMS[short]
             params = json.loads((INDEX / method / "meta.json").read_text(encoding="utf-8"))["params"]
@@ -177,7 +251,7 @@ class Stages:
                 self._cat[vm] = CatalogLookup(SCHEMA_JSON, DATA / "OE_long_norm.parquet", value_match=vm)
             if short not in self._ex:
                 self._ex[short] = extractor_for(params, SCHEMA_JSON, LLM_CACHE)
-            d = decompose(RUNS / base / method, params, self.schema, corpus_parents(), self.gold_axes,
+            d = decompose(RUNS / phys(base) / method, params, self.schema, corpus_parents(), self.gold_axes,
                           self._ex[short], self._cat[vm])
             if not d["consistent"].all():
                 raise ValueError(f"{short}/{base}: re-derived top tier misses the run's rank 1 for "
@@ -252,15 +326,17 @@ def delta_cell(frame: pd.DataFrame, level: str, label: str) -> dict:
     if len(f) == 0:
         nan2 = (float("nan"),) * 2
         return {"n_all": n_all, "n": 0, "excluded": n_all, "concepts": 0, "est": float("nan"), "ref": float("nan"),
-                "mod": float("nan"), "c": nan2, "q": nan2, "draws": np.array([])}
+                "mod": float("nan"), "c": nan2, "q": nan2, "draws": np.array([]), "clusters_key": ()}
     ref, mod = f[f"ref_{level}"].to_numpy(float), f[f"mod_{level}"].to_numpy(float)
     key = (level, tuple(f.index), tuple(f["concept"]), ref.tobytes(), mod.tobytes())
     if key not in _CELLS:
         d = mod - ref
         c = boot_cluster(d[:, None], f["concept"].to_numpy(), f"s11|{label}|{level}")[:, 0]
         q = boot_query(d[:, None], f"s11|{label}|{level}")[:, 0]
+        # `clusters_key`: the comparison pairs two cells' draws only on the same clusters (`v2_variant.paired_diff`).
         _CELLS[key] = {"n": len(f), "concepts": int(f["concept"].nunique()), "est": float(d.mean()),
-                       "ref": float(ref.mean()), "mod": float(mod.mean()), "c": ci(c), "q": ci(q), "draws": c}
+                       "ref": float(ref.mean()), "mod": float(mod.mean()), "c": ci(c), "q": ci(q), "draws": c,
+                       "clusters_key": tuple(sorted(set(f["concept"])))}
     return {"n_all": n_all, "excluded": n_all - len(f), **_CELLS[key]}
 
 
@@ -301,7 +377,9 @@ def _ladder_draws(f: pd.DataFrame, d: np.ndarray, label: str) -> dict:
     s, c = s[np.isfinite(s)], c[np.isfinite(c)]
     per = {k: float(num[conc == k].sum() / den[conc == k].sum()) for k in sorted(set(conc))}
     return {"n": len(f), "concepts": len(per), "leaves": len(leaf), "est": float(num.sum() / den.sum()), "ref": float(f["ref_item"].mean()),
-            "mod": float(f["mod_item"].mean()), "c": ci(s), "q": ci(c), "draws": s, "per": per}
+            "mod": float(f["mod_item"].mean()), "c": ci(s), "q": ci(c), "draws": s, "per": per,
+            # the stratified weights are per leaf within concept, so pairing needs the same leaves too
+            "clusters_key": (tuple(sorted(set(conc))), tuple(leaf.index))}
 
 
 def read_mean(c: dict, holm_p: float, side: int) -> str:
@@ -432,8 +510,19 @@ def resolution(results: list[dict]) -> str:
 # --------------------------------------------------------------------------- tables
 
 
+def v2_note() -> list[str]:
+    """Under `--v2`, one sentence every table carries: which logical bases are read on their v2 sets (A7)."""
+    if not V2_MODE:
+        return []
+    mapped = [f"`{b}` → `{p}`" for b, p in PHYS.items() if b != p]
+    return [f"**A7 (D-061):** {', '.join(mapped)} are read on their repaired v2 query sets; the rows keep the logical "
+            "names. The other bases are untouched by the delivery and their runs are read as they are. A4's "
+            "K0-versus-S9 comparison and the S9 reference arms exist on v1 bases only and are printed as absent on "
+            "the v2 ones."]
+
+
 def header(title: str, how: list[str]) -> list[str]:
-    return [f"# S11 — {title}", "", f"Generated by `{GENERATOR}`. " + " ".join(how), ""]
+    return [f"# S11 — {title}", "", f"Generated by `{GENERATOR}`. " + " ".join(how + v2_note()), ""]
 
 
 def footer() -> list[str]:
@@ -530,22 +619,35 @@ def write_stages(F: Frames) -> None:
     write(OUT / "stages.md", lines + footer())
 
 
+TYPE_ARMS = list(S11_ARMS) + ["bge_m3_colbert", "bm25_unigram", "rules_valuenorm"]
+
+
+def type_cells(F: Frames) -> list[dict]:
+    """T4's cells, one computation for the table and for the comparison (A7): per single type and per layer, each
+    arm's item Acc@1 tie-free and K2 − ColBERT / R2 − ColBERT paired."""
+    Q = F.Q["single_texto"]
+    groups = [(t, Q[Q["type"] == t]) for t in sorted(Q["type"].unique())]
+    groups += [(lay, Q[Q["layer"] == lay]) for lay in LAYERS]
+    out = []
+    for scope, sub in groups:
+        accs = {a: acc_cell(sub, "single_texto", a, "item", "tf") for a in TYPE_ARMS}
+        k2 = delta_cell(variant(pair(sub, "single_texto", "K2", "bge_m3_colbert"), "tf"), "item", f"T4|K2|{scope}")
+        r2 = delta_cell(variant(pair(sub, "single_texto", "R2", "bge_m3_colbert"), "tf"), "item", f"T4|R2|{scope}")
+        out.append({"scope": scope, "accs": accs, "k2": k2, "r2": r2})
+    return out
+
+
 def write_types(F: Frames) -> None:
     lines = header("T4: by type and layer, `single_texto`", [
         "Item Acc@1 tie-free per arm and single type, and each S11 arm − ColBERT, paired. Types and layers differ in "
         "which leaves admit them, so rows are between-population and never compared with one another (design). "
         f"‡ fewer than {FEW_CLUSTERS} concepts: not read."])
-    Q = F.Q["single_texto"]
-    groups = [(t, Q[Q["type"] == t]) for t in sorted(Q["type"].unique())]
-    groups += [(lay, Q[Q["layer"] == lay]) for lay in LAYERS]
-    arms = list(S11_ARMS) + ["bge_m3_colbert", "bm25_unigram", "rules_valuenorm"]
+    arms = TYPE_ARMS
     lines += ["| scope | n | n scored | concepts | " + " | ".join(name(a) for a in arms) + " | K2 − ColBERT | CI | "
               "R2 − ColBERT | CI | |", "|---|---:|---:|---:|" + "---:|" * len(arms) + "---:|---|---:|---|---|"]
-    for scope, sub in groups:
-        accs = [acc_cell(sub, "single_texto", a, "item", "tf") for a in arms]
-        k2 = delta_cell(variant(pair(sub, "single_texto", "K2", "bge_m3_colbert"), "tf"), "item", f"T4|K2|{scope}")
-        r2 = delta_cell(variant(pair(sub, "single_texto", "R2", "bge_m3_colbert"), "tf"), "item", f"T4|R2|{scope}")
-        lines.append(f"| {scope} | {accs[0]['n_all']:,} | {accs[0]['n']:,} | {accs[0]['concepts']} | "
+    for row in type_cells(F):
+        accs, k2, r2 = [row["accs"][a] for a in arms], row["k2"], row["r2"]
+        lines.append(f"| {row['scope']} | {accs[0]['n_all']:,} | {accs[0]['n']:,} | {accs[0]['concepts']} | "
                      + " | ".join(f4(c["acc"]) for c in accs)
                      + f" | {fd(k2['est'])} | {fci(k2['c'], True)} | {fd(r2['est'])} | {fci(r2['c'], True)} | {thin(accs[0])} |")
     write(OUT / "types.md", lines + footer())
@@ -591,7 +693,7 @@ def extraction_seconds(base: str) -> list[float]:
             by_key[r["cache_key"]] = float(r.get("seconds", float("nan")))
     client, schema, parents = OfflineClient(), STAGES.schema, corpus_parents()
     out = []
-    with gzip.open(RUNS / base / S11_ARMS["K0"] / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
+    with gzip.open(run_dir(base, S11_ARMS["K0"]) / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
         for r in map(json.loads, fh):
             g = schema[parents[r["candidates"][0]["index_item_key"]]]
             k = client.key(build_extraction_prompt(g["concept"], g["axes"], r["query_text"]))
@@ -619,7 +721,7 @@ def write_cost(F: Frames) -> None:
               "s / query |", "|---|---:|---:|---:|---:|---:|"]
     for base in BASES:
         secs = extraction_seconds(base)
-        cm = json.loads((INDEX / "_colbert_family" / f"{base}.meta.json").read_text(encoding="utf-8"))
+        cm = family_meta(base)
         lines.append(f"| `{base}` | {len(secs):,} | {np.median(secs):.2f} | "
                      f"{cm['seconds']:,.0f} | {cm['queries']:,} | {cm['seconds'] / cm['queries']:.3f} |")
     write(OUT / "cost.md", lines + footer())
@@ -672,6 +774,10 @@ def k0_comparison() -> list[str]:
     out = ["", "## A4: K0 against S9's key-tolerant runs", "", "| base | queries | identical top 100 |", "|---|---:|---:|"]
     import gzip
     for base in S9_BASES:
+        if phys(base) != base:
+            # A7: S9 never ran on a v2 base, so there is nothing for K0's v2 run to be compared with.
+            out.append(f"| `{base}` (`{phys(base)}`) | — | not applicable: S9's run is on v1 only |")
+            continue
         def load(m):
             with gzip.open(RUNS / base / m / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
                 return [(r["query_item_key"], [(c["index_item_key"], c["score"]) for c in r["candidates"]])
@@ -698,6 +804,24 @@ def prompt_source() -> list[str]:
             "`run_meta.json`, which carry neither the prompt SHA nor the model digest."]
 
 
+def determinism_lines() -> list[str]:
+    """Work item 2's regeneration check; under `--v2` also A7's repeat on the changed v2 queries, when its log exists
+    (the log is written by the extraction pass, which may run after this generator)."""
+    def line(path: Path, what: str) -> str:
+        det = json.loads(path.read_text(encoding="utf-8"))
+        return (f"{what}: {det['identical']} of {det['n']} identical, {len(det['unparsed'])} unparsed, "
+                f"{det['truncated']} truncated; model `{det['model_digest'][:16]}`, ollama {det['ollama_version']}, "
+                f"options `{json.dumps(det['options'], sort_keys=True)}`.")
+    logs = REPO / "logs" / "S11"
+    out = ["", line(logs / "determinism_extract.json", "Extractor regeneration (work item 2)")]
+    if V2_MODE:
+        v2_log = logs / "determinism_extract_v2.json"
+        out.append(line(v2_log, "Extractor regeneration on the changed v2 queries (A7)") if v2_log.is_file() else
+                   f"Extractor regeneration on the changed v2 queries (A7): `{v2_log.relative_to(REPO).as_posix()}` "
+                   "absent at generation.")
+    return out
+
+
 def write_provenance() -> None:
     lines = header("T9: provenance", [
         "Every run these tables read, with its stamp; then the data files, the ColBERT family caches and their "
@@ -713,22 +837,19 @@ def write_provenance() -> None:
                      f"{str(m['code_dirty']).lower()} | `{m['query_set_sha256'][:16]}` |")
     lines += ["", "| input | SHA-256 |", "|---|---|"]
     inputs = [CORPUS_JSON, SCHEMA_JSON, DATA / "OE_duplicate_texto_groups.json", REPO / "docs" / "synthetic-oe" / "SPLITS.md",
-              LLM_CACHE] + [DATA / f"OE_{b}.json" for b in BASES]
+              LLM_CACHE] + [DATA / f"OE_{phys(b)}.json" for b in BASES]
     for p in inputs:
         lines.append(f"| `{p.relative_to(REPO).as_posix()}` | `{sha256_file(p)[:16]}` |")
     lines += ["", "| ColBERT family cache | file SHA-256 | reference run | queries | pairs | compared | mismatched | "
               "built at |", "|---|---|---|---:|---:|---:|---:|---|"]
     for base in BASES:
-        cm = json.loads((INDEX / "_colbert_family" / f"{base}.meta.json").read_text(encoding="utf-8"))
-        if sha256_file(INDEX / "_colbert_family" / f"{base}.npz") != cm["npz_sha256"]:
-            raise ValueError(f"{base}: the family cache differs from the one its meta.json records")
+        cm = family_meta(base)
+        if sha256_file(INDEX / "_colbert_family" / f"{phys(base)}.npz") != cm["npz_sha256"]:
+            raise ValueError(f"{phys(base)}: the family cache differs from the one its meta.json records")
         ch = cm["check"]
-        lines.append(f"| `{base}` | `{cm['npz_sha256'][:16]}` | `{cm['reference_run']}` | {cm['queries']:,} | "
+        lines.append(f"| `{phys(base)}` | `{cm['npz_sha256'][:16]}` | `{cm['reference_run']}` | {cm['queries']:,} | "
                      f"{cm['query_concept_pairs']:,} | {ch['compared']:,} | {ch['mismatched']} | `{cm['code_commit'][:7]}` |")
-    det = json.loads((REPO / "logs" / "S11" / "determinism_extract.json").read_text(encoding="utf-8"))
-    lines += ["", f"Extractor regeneration (work item 2): {det['identical']} of {det['n']} identical, "
-              f"{len(det['unparsed'])} unparsed, {det['truncated']} truncated; model `{det['model_digest'][:16]}`, ollama "
-              f"{det['ollama_version']}, options `{json.dumps(det['options'], sort_keys=True)}`."]
+    lines += determinism_lines()
     lines += prompt_source()
     lines += k0_comparison()
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
@@ -768,12 +889,155 @@ def write_figure(F: Frames) -> None:
     plt.close(fig)
 
 
-def main() -> None:
+# --------------------------------------------------------------------------- A7: v1 beside v2
+
+
+def snapshot(F: Frames, results: list[dict]) -> dict:
+    """What `write_comparison` needs from one version, taken while that version's mapping is active (A7): the
+    registered results, T4's cells, every arm's item hits per base, and the runs and family caches read."""
+    profile: dict = {}
+    for base in BASES:
+        Q = F.Q[base]
+        for arm in list(S11_ARMS) + list(REFS):
+            if not available(base, ARM_DIR[arm]):
+                continue
+            h = hits(base, ARM_DIR[arm], tuple(Q.index))
+            profile[(arm, base)] = {"acc": acc_cell(Q, base, arm, "item", "tf"),
+                                    "hits": h[["item_tf", "item_run"]].join(Q[["concept", "item_scored"]])}
+    runs = sorted({(run_qs(b, m), m) for b in BASES for m in ARM_DIR.values() if available(b, m)})
+    return {"phys": dict(PHYS), "results": results, "types": type_cells(F), "profile": profile, "runs": runs,
+            "caches": {b: family_meta(b) for b in BASES}, "keys": {b: tuple(F.Q[b].index) for b in BASES}}
+
+
+def write_comparison(ref: dict, this: dict) -> None:
+    """A7: the registered tests, T1 and T4 on v1 beside v2, with v2 − v1 on paired draws (`utils.v2_variant`); the
+    H8 floor on the unchanged queries; the stamps of both. A sensitivity table, not a test (D-061)."""
+    changed_bases = [b for b in BASES if this["phys"][b] != ref["phys"][b]]
+    untouched = [b for b in BASES if b not in changed_bases]
+    for b in BASES:
+        if ref["keys"][b] != this["keys"][b]:
+            raise ValueError(f"{b}: v1 and v2 do not hold the same dev queries in the same order")
+    ref_label = "v1 (" + ", ".join(f"`{ref['phys'][b]}`" for b in changed_bases) + ")"
+    this_label = "v2 (" + ", ".join(f"`{this['phys'][b]}`" for b in changed_bases) + ")"
+    what = ("The two versions hold the same dev queries in the same order and score the same population, so every "
+            "difference below is per query, bootstrapped by concept under the cell's own label. "
+            + ", ".join(f"`{b}`" for b in untouched) + " are untouched by the delivery: their runs are read once for "
+            "both versions and their rows show a zero difference.")
+    lines = header("Comparison: v2 against v1 (dev, tie-free)", ["Written in the `--v2` mode (A7)."])
+    lines += v2v.intro("S11", ref_label, this_label, what)
+    # (a) the registered tests, in `evaluate`'s order; the reading interval is the concept one, or D-053's on the ladder
+    lines += ["## The registered tests (T8), tie-free", "",
+              "| test | contrast | population | n scored | concepts | estimate, v1 | CI (reading), v1 | reading, v1 | "
+              "estimate, v2 | CI (reading), v2 | reading, v2 | v2 − v1 | CI (paired draws) | reading moved |",
+              "|---|---|---|---:|---:|---:|---|---|---:|---|---|---:|---|---|"]
+    for r1, r2 in zip(ref["results"], this["results"]):
+        if (r1["id"], r1["pop"]) != (r2["id"], r2["pop"]):
+            raise ValueError("the registered tests differ between the two versions")
+        a, b = r1["tf"], r2["tf"]
+        if a["n"] != b["n"]:
+            raise ValueError(f"{r2['id']} {r2['pop']}: the scored population differs between v1 and v2")
+        d = v2v.paired_diff(a, b)
+        lines.append(f"| {r2['id']} | {r2['what']} | {r2['pop']} | {b['n']:,} | {b['concepts']} | {fd(a['est'])} | "
+                     f"{fci(a['c'], True)} | {a['reading']} | {fd(b['est'])} | {fci(b['c'], True)} | **{b['reading']}** | "
+                     f"{v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | {v2v.moved(a['reading'], b['reading'])} |")
+    lines += ["", f"The method contribution, by the design's rule: v1 **{resolution(ref['results'])}**, v2 "
+              f"**{resolution(this['results'])}**."]
+    # (b) T1: every arm on every base; on a changed base the per-query paired difference of the tie-free item hit
+    lines += ["", "## T1: item Acc@1, tie-free, per arm and base", "",
+              "| base | arm | n scored | concepts | item Acc@1, v1 | item Acc@1, v2 | v2 − v1 | "
+              "CI (concept, paired per query) | queries whose tie-free hit moved |",
+              "|---|---|---:|---:|---:|---:|---:|---|---:|"]
+    for base in BASES:
+        for arm in list(S11_ARMS) + list(REFS):
+            a, b = ref["profile"].get((arm, base)), this["profile"].get((arm, base))
+            if a is None and b is None:
+                continue
+            if a is None or b is None:
+                have = (a or b)["acc"]
+                lines.append(f"| `{base}` | {name(arm)} | {have['n']:,} | {have['concepts']} | "
+                             f"{f4(a['acc']['acc']) if a else '—'} | {f4(b['acc']['acc']) if b else '—'} | — | "
+                             "— (run on one version only) | — |")
+                continue
+            if base not in changed_bases:
+                lines.append(f"| `{base}` | {name(arm)} | {b['acc']['n']:,} | {b['acc']['concepts']} | {f4(a['acc']['acc'])} | "
+                             f"{f4(b['acc']['acc'])} | {v2v.fsd(b['acc']['acc'] - a['acc']['acc'])} | — (same run) | — |")
+                continue
+            g = b["hits"][b["hits"]["item_scored"]]
+            h = a["hits"].loc[g.index]
+            dv = (g["item_tf"] - h["item_tf"]).to_numpy(float)
+            draws = boot_cluster(dv[:, None], g["concept"].to_numpy(), f"s11|cmp|{arm}|{base}")[:, 0]
+            lines.append(f"| `{base}` | {name(arm)} | {len(g):,} | {b['acc']['concepts']} | {f4(a['acc']['acc'])} | "
+                         f"{f4(b['acc']['acc'])} | {v2v.fsd(float(dv.mean()))} | {v2v.fci(ci(draws))} | {int((dv != 0).sum()):,} |")
+    # (c) T4 by type: K2 − ColBERT per type and layer on `single_texto`
+    lines += ["", "## T4: K2 − ColBERT by type and layer, `single_texto`", "",
+              "| scope | n scored | concepts | K2, v1 | ColBERT, v1 | K2 − ColBERT, v1 | CI, v1 | K2, v2 | ColBERT, v2 | "
+              "K2 − ColBERT, v2 | CI, v2 | v2 − v1 | CI (paired draws) | |",
+              "|---|---:|---:|---:|---:|---:|---|---:|---:|---:|---|---:|---|---|"]
+    for t1, t2 in zip(ref["types"], this["types"]):
+        if t1["scope"] != t2["scope"]:
+            raise ValueError("T4's scopes differ between the two versions")
+        a, b = t1["k2"], t2["k2"]
+        d = v2v.paired_diff(a, b)
+        lines.append(f"| {t2['scope']} | {b['n']:,} | {b['concepts']} | {f4(t1['accs']['K2']['acc'])} | "
+                     f"{f4(t1['accs']['bge_m3_colbert']['acc'])} | {fd(a['est'])} | {fci(a['c'], True)} | "
+                     f"{f4(t2['accs']['K2']['acc'])} | {f4(t2['accs']['bge_m3_colbert']['acc'])} | {fd(b['est'])} | "
+                     f"{fci(b['c'], True)} | {v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | {thin(t2['accs']['K2'])} |")
+    # (d) the H8 floor: on each changed base, the queries whose text v2 did not change
+    lines += ["", "## The unchanged queries (the H8 floor)", "",
+              "On each changed base, the dev queries whose text v2 did not change (`OE_v2_changes.jsonl`). A tie-free hit "
+              "that moves on one of them is not the repair: it is a batch-dependent near-tie (H8: every ColBERT run, and "
+              "every arm built on it) or an exact-tie break, and is the floor against which the changed queries' movement "
+              "is read. Item-scored queries.", "",
+              "| base | dev queries | unchanged | changed | arm | n scored, unchanged | item Acc@1 v1 | item Acc@1 v2 | "
+              "tie-free hit moved | as-run hit moved | n scored, changed | item Acc@1 v1 | item Acc@1 v2 | tie-free hit moved |",
+              "|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for base in changed_bases:
+        changed = v2v.changed_keys(base)
+        keys = pd.Index(this["keys"][base])
+        n_changed = int(keys.isin(changed).sum())
+        for arm in S11_ARMS:
+            a, b = ref["profile"][(arm, base)]["hits"], this["profile"][(arm, base)]["hits"]
+            cells = []
+            for sel in (~b.index.isin(changed), b.index.isin(changed)):
+                g = b[sel & b["item_scored"].to_numpy()]
+                h = a.loc[g.index]
+                cells.append((len(g), float(h["item_tf"].mean()), float(g["item_tf"].mean()),
+                              int((g["item_tf"] != h["item_tf"]).sum()), int((g["item_run"] != h["item_run"]).sum())))
+            u, c = cells
+            lines.append(f"| `{base}` | {len(keys):,} | {len(keys) - n_changed:,} | {n_changed:,} | {name(arm)} | {u[0]:,} | "
+                         f"{f4(u[1])} | {f4(u[2])} | {u[3]:,} | {u[4]:,} | {c[0]:,} | {f4(c[1])} | {f4(c[2])} | {c[3]:,} |")
+    # (e) sources: every run read for either version, the family caches of both, the query sets and the change list
+    lines += ["", "## Sources", "",
+              "| version | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 |",
+              "|---|---|---:|---|---|---|---|"]
+    for which, src in (("v1", ref), ("v2", this)):
+        for qs, method in src["runs"]:
+            m = run_meta(qs, method)
+            lines.append(f"| {which} | `{m['run_id']}` | {m['queries']:,} | `{m['config_sha256'][:16]}` | "
+                         f"`{m['code_commit'][:7]}` | {str(m['code_dirty']).lower()} | `{m['query_set_sha256'][:16]}` |")
+    lines += ["", "| version | base | ColBERT family cache | file SHA-256 | reference run | queries | compared | mismatched |",
+              "|---|---|---|---|---|---:|---:|---:|"]
+    for which, src in (("v1", ref), ("v2", this)):
+        for base in BASES:
+            cm = src["caches"][base]
+            lines.append(f"| {which} | `{base}` | `{src['phys'][base]}` | `{cm['npz_sha256'][:16]}` | `{cm['reference_run']}` | "
+                         f"{cm['queries']:,} | {cm['check']['compared']:,} | {cm['check']['mismatched']} |")
+    lines += ["", "| input | SHA-256 |", "|---|---|"]
+    for p in ([DATA / f"OE_{ref['phys'][b]}.json" for b in changed_bases]
+              + [DATA / f"OE_{this['phys'][b]}.json" for b in changed_bases] + [v2v.CHANGES]):
+        lines.append(f"| `{p.relative_to(REPO).as_posix()}` | `{sha256_file(p)[:16]}` |")
+    write(OUT / "comparison.md", lines + footer())
+
+
+def main(argv=None) -> None:
     global STAGES
+    configure(v2v.parse(argv).v2)
     analysis_stack.require()
+    require_inputs()
     OUT.mkdir(parents=True, exist_ok=True)
     STAGES = Stages()
-    F = Frames(load_split("dev"))
+    dev = load_split("dev")
+    F = Frames(dev)
     results = evaluate(F)
     parent_lines = check_parent_identity(F)
     write_profile(F)
@@ -786,6 +1050,18 @@ def main() -> None:
     write_predictions(results, parent_lines)
     write_figure(F)
     write_provenance()
+    if V2_MODE:
+        # The reference is v1, computed by the same code under the identity mapping; T9 above lists only the v2 pass's
+        # runs because it was written before this one. `evaluate` runs before `type_cells`, as in the base mode, so
+        # the shared cells (`_CELLS`) are drawn under the same labels as `results/S11/` and the draws pair.
+        this = snapshot(F, results)
+        set_mapping(False)
+        try:
+            F1 = Frames(dev)
+            ref = snapshot(F1, evaluate(F1))
+        finally:
+            set_mapping(True)
+        write_comparison(ref, this)
     print(f"written: {OUT.relative_to(REPO)}")
 
 

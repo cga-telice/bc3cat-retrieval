@@ -60,3 +60,30 @@ Train on it mixed with the catalogue's decoded `resumen` of the same dev leaves 
 already in our tree). We will then verify, from the sidecar IDs, that no training entry occurs in any evaluation
 query, and fail the intake if one does. The delivery and its digests go into `DELIVERIES.md` and `MANIFEST.md`
 before any training run.
+
+## Amendment 2026-10-18 — render with the repaired menus; stay disjoint from the BT lists too
+
+The 2026-10-16 delivery repaired 163 approved `template_paraphrase` entries that put a value in a slot that is
+not its own, or presented it as a reference document (our `DATASET_DEFECTS.md` P10), and shipped v2 of the four
+evaluation sets. D-061 (proposed) makes v2 the reference for S12 and for the re-run amendments. The request above
+is amended so that training and evaluation do not straddle the repair:
+
+7. **Render the training set with the repaired menus** — the `template_paraphrase` menu as repaired for v2
+   (`data/synthetic/broken_OE/OE_template_paraphrase_repairs.json`, 163 entries), never a v1 broken entry. A model
+   trained on a broken paraphrase would learn a value in the wrong slot and be evaluated on the repaired one; a
+   model trained on the repaired one and evaluated on v1 would be penalised for the defect. Condition 2
+   (disjointness) is unchanged and now reads over the **v2** files as well as v1: no menu entry used in any query
+   of `OE_single_texto{,_v2}`, `OE_stacked_texto{,_v2}`, `OE_single_l2_texto`, `OE_dose_texto{,_v2}` or
+   `OE_isolated_texto{,_v2}` is used in a training item. Since v2 changed only `text` and only through the
+   repaired paraphrases, the entries in use are the v1 entries plus the 163 repaired ones.
+8. **Stay disjoint from the back-translation lists.** `bt_texto` (delivered 2026-10-16) replaces values by
+   entries of `data/synthetic/bt_OE/OE_bt_value_approved.json` and trade terms by entries of
+   `data/synthetic/bt_OE/OE_glossary_approved.json`. Those entries are evaluation material now (S14 on dev, S12
+   on test): no training item uses an entry of either list, and the sidecar's menu-entry IDs cover them so we can
+   verify it. If that empties a type, tell us the count, as in condition 3.
+9. **No BT in training.** Back-translation of training leaves is not requested; if upstream wants to offer it, it
+   must use chains and models disjoint from `bt_texto`'s (`OE_bt_provenance.json`) and be delivered as a separate
+   file, so that it can be declined without touching the rest.
+
+Everything else stands. The intake will verify 7–9 from the sidecar before any training run, as it verifies 2.
+

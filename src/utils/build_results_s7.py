@@ -15,6 +15,11 @@ values, cells, discrimination and the clustered bootstrap are S6's, imported, no
 - The dose field is `texto_modification_count` (D-025 note); `modification_count` is printed beside it.
 - T2–T7 print n excluded, the concept count and the query-level interval beside every item-level δ and slope
   (A5, A6, audit F2); T2's stacked cell shares T1's draws (A6, audit F7).
+- **A8 (D-061):** `--v2` reads `stacked_texto_v2` (and `single_texto_v2` for T2) and writes `results/S7/v2/`;
+  `--population stacked_p` restricts the stacked set to STACKED-P (`exclusions.stacked_p`) and writes under
+  `stacked_p/`. Either mode also writes `comparison.md`: the registered statistics on the reference (v1, or the
+  whole set) beside this run's, with the paired-draw difference (`utils.v2_variant`). Work item 4's S2 regression
+  is v1's and is written in the base mode only.
 
 The analysis stack is pinned (`analysis_stack.py`): the script refuses to run on another.
 """
@@ -48,6 +53,8 @@ from utils.build_results_s4 import (  # noqa: E402
 )
 from utils.build_results_s5 import ARMS as S5_ARMS  # noqa: E402
 from utils.build_results_s6 import BASE7, cell, cluster_weights, discrimination, mean_draws, test_p  # noqa: E402
+from utils import v2_variant as v2v  # noqa: E402
+from utils.exclusions import stacked_p  # noqa: E402
 from utils.pantry_flags import text_flags  # noqa: E402
 from utils.provenance import sha256_file  # noqa: E402
 
@@ -100,6 +107,31 @@ TESTS = [
     ("W3", "E5 sibling density", "slope of the item loss ℓ on log₂ family size > 0", "w3"),
 ]
 CONFIRMATORY = {"bm25_unigram", "bm25_unigram_params", "bge_m3_colbert"}
+
+#: A8: `--v2` and `--population`. `configure` re-points this module's query sets and output directory; the S8
+#: generator calls it too, because it imports `stacked_features` (which reads `STACKED_JSON`) from here.
+V2_MODE = False
+POPULATION = "all"
+RESULTS_S7 = REPO / "docs" / "synthetic-oe" / "results" / "S7"
+
+
+def configure(v2: bool, population: str = "all") -> None:
+    global V2_MODE, POPULATION, STACKED, SINGLE, STACKED_JSON, OUT, FIGS, GENERATOR
+    V2_MODE, POPULATION = v2, population
+    STACKED = v2v.mapped("stacked_texto", v2)
+    SINGLE = v2v.mapped("single_texto", v2)
+    STACKED_JSON = DATA / f"OE_{STACKED}.json"
+    OUT = v2v.out_dir(RESULTS_S7, v2, population)
+    FIGS = OUT / "figures"
+    GENERATOR = v2v.generator_label("src/utils/build_results_s7.py", v2, population)
+
+
+def population_keys(queryset: str, population: str) -> set[str]:
+    """The dev queries of a stacked run, restricted to STACKED-P when asked (A8)."""
+    keys = list(perquery(queryset, "bm25_unigram")["query_item_key"].astype(str))
+    if population == "stacked_p":
+        keys = [k for k, keep in zip(keys, stacked_p(keys)) if keep]
+    return set(keys)
 
 
 # --------------------------------------------------------------------------- inputs
@@ -177,10 +209,11 @@ def leaf_density() -> tuple[dict[str, int], dict[str, int]]:
     return size, one_apart
 
 
-def stacked_features(dev_keys: set[str], size: dict[str, int], one_apart: dict[str, int]) -> pd.DataFrame:
+def stacked_features(dev_keys: set[str], size: dict[str, int], one_apart: dict[str, int],
+                     path: Path | None = None) -> pd.DataFrame:
     corpus = {r["item_key"]: r["text"] for r in json.loads(CORPUS_JSON.read_text(encoding="utf-8"))}
     rows = []
-    for r in json.loads(STACKED_JSON.read_text(encoding="utf-8")):
+    for r in json.loads((path or STACKED_JSON).read_text(encoding="utf-8")):
         key = r["item_key"]
         if key not in dev_keys:
             continue
@@ -333,7 +366,8 @@ def run_test(kind: str, short: str, F: dict, variant: str, unit: str = "concept"
     else:
         raise ValueError(kind)
     return {"est": est, "draws": draws, "concepts": nconc(item(columns(F[short], variant))),
-            "n": len(g), "excluded": nexcl(f)}
+            "n": len(g), "excluded": nexcl(f),
+            "clusters_key": tuple(sorted(item(columns(F[short], variant))["concept"].unique()))}
 
 
 def read(r: dict) -> str:
@@ -358,7 +392,8 @@ def evaluate(F: dict, floors: dict) -> list[dict]:
                 rq = run_test(kind, short, F, vv if kind != "w3" else v, unit="query")["draws"]
                 row[v] = {"est": r["est"], "c": ci(d), "q": ci(rq[np.isfinite(rq)]), "p": test_p(r["draws"]),
                           "concepts": r["concepts"], "n": r["n"], "excluded": r["excluded"],
-                          "dropped": len(r["draws"]) - len(d)}
+                          "dropped": len(r["draws"]) - len(d),
+                          "draws": r["draws"], "clusters_key": r["clusters_key"]}
             results.append(row)
     for v in VARIANTS:
         ps = [r[v]["p"] for r in results]
@@ -392,7 +427,10 @@ def population_lines(F: dict, dup: set[str]) -> list[str]:
         f"{int(f['item_scored'].sum()):,} ({int(f['gold'].isin(dup).sum()):,} D-033 golds excluded) over "
         f"{nconc(item(f))} concepts; parent level scores all {len(f):,}. Each query is paired with the same arm's "
         f"`{IDENT}` result on its own gold (treatment effect on the treated). ‡ marks fewer than {FEW_CLUSTERS} "
-        "concepts behind a cell, whose percentile interval under-covers. δ = stacked − identity.", "",
+        "concepts behind a cell, whose percentile interval under-covers. δ = stacked − identity."
+        + (" **Population STACKED-P** (A8): the stacked queries outside `OE_stacked_P_exclusion.json` "
+           "(`exclusions.stacked_p`); the excluded dev queries are counted in the sources below." if POPULATION == "stacked_p" else ""),
+        "",
     ]
 
 
@@ -882,32 +920,132 @@ def write_provenance() -> None:
 # --------------------------------------------------------------------------- main
 
 
-def main() -> None:
+def assemble(stacked: str, population: str, dup: set[str], parents: dict[str, str], size: dict, one_apart: dict) -> dict:
+    """Frames, headline statistics, floors and the W1–W3 results of one stacked set on one population."""
+    keys = population_keys(stacked, population)
+    feats = stacked_features(keys, size, one_apart, DATA / f"OE_{stacked}.json")
+    F = {}
+    for _, short, _, _ in ARMS:
+        frame = paired(short, stacked, dup, parents)
+        frame = frame[frame["q"].isin(keys)].join(feats, on="q")
+        if frame["dose"].isna().any():
+            raise ValueError(f"{short}: stacked queries without features")
+        F[short] = frame.assign(queryset=stacked)
+    first = next(iter(F.values()))
+    for short, frame in F.items():
+        if list(frame["q"]) != list(first["q"]):
+            raise ValueError(f"{short}: query order differs between arms")
+    floors = {s: float(item(columns(F[s], "tf"))["item_id"].mean()) for s in F}
+    return {"stacked": stacked, "population": population, "F": F, "floors": floors,
+            "stats": headline_stats(F), "results": evaluate(F, floors)}
+
+
+def write_comparison(ref: dict, this: dict, dup: set[str]) -> None:
+    """A8: the registered statistics on the reference beside this run's, with the paired-draw difference."""
+    ref_label = f"`{ref['stacked']}`, population {ref['population']}"
+    this_label = f"`{this['stacked']}`, population {this['population']}"
+    same_queries = list(next(iter(ref["F"].values()))["q"]) == list(next(iter(this["F"].values()))["q"])
+    what = ("The two sets hold the same dev queries in the same order, so T1's δ difference is a per-query paired "
+            "difference (v2 − v1 of the stacked hit, the identity side being the same run), bootstrapped by concept."
+            if same_queries else
+            "The two populations differ, so T1's δ difference is a difference of two estimates, without an interval.")
+    lines = header("Comparison: this run against its reference (dev, tie-free)", [
+        "Written in the `--v2` and `--population` modes (A8).",
+    ])
+    lines += v2v.intro("S7", ref_label, this_label, what)
+    # (A) W1–W3
+    lines += ["## W1–W3", "",
+              "| test | arm | n scored, ref | concepts, ref | estimate, ref | CI (concept), ref | reading, ref | "
+              "n scored | concepts | estimate | CI (concept) | reading | this − ref | CI (paired draws) | reading moved |",
+              "|---|---|---:|---:|---:|---|---|---:|---:|---:|---|---|---:|---|---|"]
+    by_key = {(r["id"], r["arm"]): r for r in ref["results"]}
+    for r in this["results"]:
+        a = by_key[(r["id"], r["arm"])]["tf"]
+        b = r["tf"]
+        d = v2v.paired_diff(a, b)
+        lines.append(f"| {r['id']} | {name(r['arm'])} | {a['n']:,} | {conc(a['concepts'])} | {fd(a['est'])} | "
+                     f"{fci(a['c'], True)} | {a['reading']} | {b['n']:,} | {conc(b['concepts'])} | {fd(b['est'])} | "
+                     f"{fci(b['c'], True)} | **{b['reading']}** | {v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | "
+                     f"{v2v.moved(a['reading'], b['reading'])} |")
+    # (B) T1 cells
+    lines += ["", "## T1: Acc@1 at both levels", "",
+              "| arm | level | n scored, ref | stacked, ref | δ, ref | CI (concept), ref | n scored | stacked | δ | "
+              "CI (concept) | δ this − ref | CI (concept, paired) | queries whose tie-free hit moved |",
+              "|---|---|---:|---:|---:|---|---:|---:|---:|---|---:|---|---:|"]
+    for _, short, _, _ in ARMS:
+        for level in ("item", "parent"):
+            a, b = ref["stats"][short][(level, "tf")], this["stats"][short][(level, "tf")]
+            if same_queries:
+                fa = ref["F"][short].set_index("q")
+                fb = this["F"][short].set_index("q")
+                g = fb if level == "parent" else fb[fb["item_scored"]]
+                dv = (g[f"{level}_mod_tf"] - fa.loc[g.index, f"{level}_mod_tf"]).to_numpy(float)
+                draws = boot_cluster(dv[:, None], g["concept"].to_numpy(), f"s7|cmp|{short}|{level}")[:, 0]
+                diff, dci, movedn = float(dv.mean()), ci(draws), int((dv != 0).sum())
+                lines.append(f"| {name(short)} | {level} | {a['n']:,} | {f4(a['mod'])} | {fd(a['delta'])} | "
+                             f"{fci(a['c'], True)} | {b['n']:,} | {f4(b['mod'])} | {fd(b['delta'])} | {fci(b['c'], True)} | "
+                             f"{v2v.fsd(diff)} | {v2v.fci(dci)} | {movedn:,} |")
+            else:
+                lines.append(f"| {name(short)} | {level} | {a['n']:,} | {f4(a['mod'])} | {fd(a['delta'])} | "
+                             f"{fci(a['c'], True)} | {b['n']:,} | {f4(b['mod'])} | {fd(b['delta'])} | {fci(b['c'], True)} | "
+                             f"{v2v.fsd(b['delta'] - a['delta'])} | — (not paired) | — |")
+    # (C) the H8 floor: the unchanged queries
+    if same_queries and ref["stacked"] != this["stacked"]:
+        changed = v2v.changed_keys("stacked_texto")
+        f0 = next(iter(this["F"].values()))
+        unchanged = f0[~f0["q"].isin(changed)]
+        lines += ["", "## The unchanged queries (the H8 floor)", "",
+                  f"{len(unchanged):,} of the {len(f0):,} dev queries keep their v1 text ({int(f0['q'].isin(changed).sum()):,} changed). "
+                  "A hit that moves on an unchanged query is not the repair: it is a batch-dependent near-tie (H8, ColBERT "
+                  "and arms built on it) or an exact-tie break, and is the floor against which the changed queries' "
+                  "movement is read.", "",
+                  "| arm | n scored, unchanged | item Acc@1 ref | item Acc@1 this | tie-free hit moved | as-run hit moved | "
+                  "n scored, changed | item Acc@1 ref | item Acc@1 this | tie-free hit moved |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        for _, short, _, _ in ARMS:
+            fa = ref["F"][short].set_index("q")
+            fb = this["F"][short].set_index("q")
+            cells = []
+            for sel in (~fb.index.isin(changed), fb.index.isin(changed)):
+                g = fb[sel & fb["item_scored"]]
+                h = fa.loc[g.index]
+                tf_moved = int((g["item_mod_tf"] != h["item_mod_tf"]).sum())
+                run_moved = int((g["item_mod"] != h["item_mod"]).sum())
+                cells.append((len(g), float(h["item_mod_tf"].mean()), float(g["item_mod_tf"].mean()), tf_moved, run_moved))
+            u, c = cells
+            lines.append(f"| {name(short)} | {u[0]:,} | {f4(u[1])} | {f4(u[2])} | {u[3]:,} | {u[4]:,} | "
+                         f"{c[0]:,} | {f4(c[1])} | {f4(c[2])} | {c[3]:,} |")
+    # stamps
+    lines += ["", "## Sources", "", "| which | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 |",
+              "|---|---|---:|---|---|---|---|"]
+    for which, src in (("reference", ref), ("this", this)):
+        for _, short, _, _ in ARMS:
+            m = meta(src["stacked"], short)
+            lines.append(f"| {which} | `{m['run_id']}` | {m['queries']:,} | `{m['config_sha256'][:16]}` | "
+                         f"`{m['code_commit'][:7]}` | {str(bool(m.get('code_dirty'))).lower()} | `{m['query_set_sha256'][:16]}` |")
+    lines += ["", "| input | SHA-256 |", "|---|---|",
+              *(f"| `{p.name}` | `{sha256_file(p)[:16]}` |"
+                for p in (SIDECAR, DATA / f"OE_{ref['stacked']}.json", DATA / f"OE_{this['stacked']}.json", v2v.CHANGES,
+                          DATA / "OE_stacked_P_exclusion.json")),
+              "", f"Bootstrap: B = {B:,}, seed = {SEED}, percentile 95 % intervals. Split `dev`.", stack_stamp()]
+    write(OUT / "comparison.md", lines)
+
+
+def main(argv=None) -> None:
+    args = v2v.parse(argv, population=True)
+    configure(args.v2, args.population)
     analysis_stack.require()
     OUT.mkdir(parents=True, exist_ok=True)
     dup = duplicated()
     parents = parent_of()
     size, one_apart = leaf_density()
 
-    keys = set(perquery(STACKED, "bm25_unigram")["query_item_key"].astype(str))
-    feats = stacked_features(keys, size, one_apart)
-    F = {}
-    for _, short, _, _ in ARMS:
-        frame = paired(short, STACKED, dup, parents).join(feats, on="q")
-        if frame["dose"].isna().any():
-            raise ValueError(f"{short}: stacked queries without features")
-        F[short] = frame.assign(queryset=STACKED)
+    this = assemble(STACKED, POPULATION, dup, parents, size, one_apart)
+    F, floors, stats, results = this["F"], this["floors"], this["stats"], this["results"]
     first = next(iter(F.values()))
-    for short, frame in F.items():
-        if list(frame["q"]) != list(first["q"]):
-            raise ValueError(f"{short}: query order differs between arms")
     S = {s: paired(s, SINGLE, dup, parents, S4_EXCLUDED).assign(queryset=SINGLE) for _, s, _, _ in ARMS}
     W = {s: paired(s, L2W, dup, parents).assign(queryset=L2W) for _, s, _, _ in ARMS
          if (run_dir(L2W, s) / "run_meta.json").is_file()}
-
-    floors = {s: float(item(columns(F[s], "tf"))["item_id"].mean()) for s in F}
-    stats = headline_stats(F)
-    results = evaluate(F, floors)
 
     write_headline(F, stats, floors, dup)
     write_single_reference(F, S, W, dup)
@@ -922,9 +1060,15 @@ def main() -> None:
     write_presence(F, dup)
     write_d004(F, results)
     write_predictions(results, floors)
-    write_regression(parents)
+    if not V2_MODE and POPULATION == "all":
+        write_regression(parents)
     write_figures(F, stats)
     write_provenance()
+    if V2_MODE or POPULATION != "all":
+        # The reference: v1 on the same population when this is v2; otherwise the same set on all queries.
+        ref_stacked = "stacked_texto" if (V2_MODE and POPULATION == "all") else STACKED
+        ref = assemble(ref_stacked, "all", dup, parents, size, one_apart)
+        write_comparison(ref, this, dup)
     print(f"wrote {OUT.relative_to(REPO)}")
 
 

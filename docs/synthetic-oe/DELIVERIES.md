@@ -92,6 +92,13 @@ trade terms replaced by audited synonyms (`glossary_synonym`, 2,898). No LLM tou
   P7 / P8 key.
 - **F-BT-1, closed upstream, carried as a caveat:** 3,153 BT queries say «de hormigón»; for 2,718 of them the
   gold says «hormigonada» (substring counts here; upstream counts 2,713 by its own rule).
+- **`parameters` hold the gold's own values, not the variants the text carries** (found by the S14 design's
+  builder check, re-measured 2026-10-18): for every `value_back_translation` in the sidecar whose placeholder
+  names an axis, the record's `parameters[axis]` equals the modification's `original` (5,268 of 5,268 located;
+  0 equal `new`), while the `new` string is in the text (6,057 of 6,057). STACKED's `parameters` carry the
+  rewritten values. So on BT the oracle arms (D-010) read the catalogue's exact values while the text says the
+  variant: a stronger oracle than on any other set. Not a defect of the delivery (the schema says values *may* be
+  rewritten); it binds S14 and S12: oracle arms on BT are upper bounds, out of every registered test.
 
 **STACKED-P.** 324 STACKED `item_key`s outside STACKED-P: 321 carry one of the 14 known drift rewrites of
 `OE_known_drift_rewrites.json` (8 `paraphrase`, 6 `expansion`; the 321 queries are exactly the file's lists, and

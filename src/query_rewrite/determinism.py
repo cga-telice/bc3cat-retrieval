@@ -21,6 +21,14 @@ parser returns an object.
 to see, 50 queries from each with the same seed, and writes `logs/S11/determinism_extract.json`.
 
     python src/query_rewrite/determinism.py extract --s11
+
+`--v2` (S9 A13, S11 A7) repeats the checks on the queries the 2026-10-16 repair changed: for `hyde` / `rewrite`,
+100 changed dev queries of `stacked_texto_v2` (`logs/S9/determinism_<transform>_v2.json`); for `extract`, 25
+changed dev queries from each of the four v2 sets (`logs/S11/determinism_extract_v2.json`). Same seed, same
+procedure; the changed keys come from `OE_v2_changes.jsonl` (`utils.v2_variant.changed_keys`).
+
+    python src/query_rewrite/determinism.py hyde rewrite --v2
+    python src/query_rewrite/determinism.py extract --v2
 """
 
 from __future__ import annotations
@@ -51,15 +59,25 @@ S11_BASES = ("dose_texto", "isolated_texto")
 S11_PER_BASE = 50
 
 
-def sample(bases=S9_BASES, per_base: int = PER_BASE) -> list[dict]:
+def sample(bases=S9_BASES, per_base: int = PER_BASE, changed_only: bool = False) -> list[dict]:
     dev = load_split("dev")
     rng = random.Random(SEED)
     out = []
     for base in bases:
         records = json.loads((REPO / "data" / "processed" / f"OE_{base}.json").read_text(encoding="utf-8"))
+        pool = [r for r in records if r["parent_key"] in dev]
+        if changed_only:
+            from utils.v2_variant import changed_keys
+            keep = changed_keys(base.removesuffix("_v2"))
+            pool = [r for r in pool if r["item_key"] in keep]
         out += [{"base": base, "key": r["item_key"], "text": r["text"], "parent_key": r["parent_key"]}
-                for r in rng.sample([r for r in records if r["parent_key"] in dev], per_base)]
+                for r in rng.sample(pool, per_base)]
     return out
+
+
+#: S9 A13 / S11 A7: the v2 samples, changed queries only.
+V2_S9_BASES = ("stacked_texto_v2",)
+V2_S11_BASES = ("stacked_texto_v2", "single_texto_v2", "dose_texto_v2", "isolated_texto_v2")
 
 
 SCHEMA = REPO / "data" / "processed" / "OE_concept_schema.json"
@@ -111,19 +129,26 @@ def run(transform: str, queries: list[dict]) -> dict:
     }
 
 
-def main(transforms: list[str], s11: bool = False) -> None:
+def main(transforms: list[str], s11: bool = False, v2: bool = False) -> None:
     if s11 and transforms != ["extract"]:
         raise SystemExit("--s11 checks the extractor only")
-    queries = sample(S11_BASES, S11_PER_BASE) if s11 else sample()
-    out_dir = REPO / "logs" / ("S11" if s11 else "S9")
+    if v2 and transforms == ["extract"]:
+        queries, out_dir = sample(V2_S11_BASES, 25, changed_only=True), REPO / "logs" / "S11"
+    elif v2:
+        queries, out_dir = sample(V2_S9_BASES, 100, changed_only=True), REPO / "logs" / "S9"
+    elif s11:
+        queries, out_dir = sample(S11_BASES, S11_PER_BASE), REPO / "logs" / "S11"
+    else:
+        queries, out_dir = sample(), REPO / "logs" / "S9"
     out_dir.mkdir(parents=True, exist_ok=True)
     for transform in transforms:
         result = run(transform, queries)
-        (out_dir / f"determinism_{transform}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        name = f"determinism_{transform}" + ("_v2" if v2 else "") + ".json"
+        (out_dir / name).write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"{transform}: {result['identical']}/{result['n']} identical, {len(result['unparsed'])} unparsed, "
               f"{result['truncated']} truncated, {result['seconds_pass1']} s per pass")
 
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if a != "--s11"]
-    main(args or ["hyde", "rewrite"], s11="--s11" in sys.argv[1:])
+    args = [a for a in sys.argv[1:] if a not in ("--s11", "--v2")]
+    main(args or ["hyde", "rewrite"], s11="--s11" in sys.argv[1:], v2="--v2" in sys.argv[1:])
