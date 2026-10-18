@@ -1,10 +1,19 @@
 """S8 — E3 balanced dose design: T1–T11 and Fig. 6 (design `4f62d5a`, A1–A2).
 
     python src/utils/build_results_s8.py        # in the sprint container, bc3cat-s3
+    python src/utils/build_results_s8.py --v2   # A8: the v2 sets, written under results/S8/v2/
 
 Reads, and never writes, `runs/OE/dose_texto/<arm>` and `runs/OE/isolated_texto/<arm>` (S8's 36 runs), each
 arm's `texto` run for the identity side, `single_texto` for T2's reference and `stacked_texto` for T8's. Writes
 `docs/synthetic-oe/results/S8/`.
+
+**A8 (D-061):** `--v2` re-points the four query sets to `dose_texto_v2`, `isolated_texto_v2`, `single_texto_v2`
+and `stacked_texto_v2` (the 2026-10-16 delivery: the same records in the same order, `text` repaired on the
+queries `OE_v2_changes.jsonl` lists) and writes T1–T13 and Fig. 6, unchanged in method, under `results/S8/v2/`.
+It also computes the v1 ladder once more and writes `v2/comparison.md`: X1–X3, T1, T2, T3 and the H4 label on
+v1 beside v2, with v2 − v1 on paired stratified draws (same leaves, same labels, hence the same weights), and
+the hits that moved on the queries whose text did not change (the H8 batch-noise floor). A sensitivity table,
+not a test: no Holm family is widened and v2 − v1 carries no reading. The base mode is untouched.
 
 Every effect is within leaf (design): a dev ladder leaf carries its identity result, its five nested rungs and
 its nine isolated queries, and every contrast is computed on one leaf before it is averaged. What is new here:
@@ -39,6 +48,8 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
 from utils import analysis_stack  # noqa: E402
+from utils import build_results_s7 as s7  # noqa: E402
+from utils import v2_variant as v2v  # noqa: E402
 from utils.build_results_s2 import ALPHA, B, SEED, _rng, bh, boot_p, ci, f4, fci, fd, fp, holm, write  # noqa: E402
 from utils.build_results_s4 import AMENDMENT_EXCLUDED as S4_EXCLUDED, CORPUS_JSON, FLOOR, LAYERS, duplicated  # noqa: E402
 from utils.build_results_s6 import BASE7, cell  # noqa: E402
@@ -59,6 +70,35 @@ FIGS = OUT / "figures"
 GENERATOR = "src/utils/build_results_s8.py"
 
 DOSE, ISO, IDENT, SINGLE, STACKED = "dose_texto", "isolated_texto", "texto", "single_texto", "stacked_texto"
+
+#: A8: `--v2`. `configure` re-points this module's query sets, JSON files and output directory, and S7's too,
+#: because `stacked_features` (T8) reads S7's `STACKED_JSON`. The identity set is one run, read by both versions.
+V2_MODE = False
+RESULTS_S8 = REPO / "docs" / "synthetic-oe" / "results" / "S8"
+
+
+def configure(v2: bool) -> None:
+    global V2_MODE, DOSE, ISO, SINGLE, STACKED, DOSE_JSON, ISO_JSON, SINGLE_JSON, OUT, FIGS, GENERATOR
+    V2_MODE = v2
+    DOSE, ISO = v2v.mapped("dose_texto", v2), v2v.mapped("isolated_texto", v2)
+    SINGLE, STACKED = v2v.mapped("single_texto", v2), v2v.mapped("stacked_texto", v2)
+    DOSE_JSON, ISO_JSON, SINGLE_JSON = (DATA / f"OE_{s}.json" for s in (DOSE, ISO, SINGLE))
+    OUT = v2v.out_dir(RESULTS_S8, v2)
+    FIGS = OUT / "figures"
+    GENERATOR = v2v.generator_label("src/utils/build_results_s8.py", v2)
+    s7.configure(v2)
+
+
+def require_runs() -> None:
+    """Every run a table below reads must exist before anything is written: the v2 runs land one arm at a time,
+    and a half-written `results/S8/v2/` would look complete."""
+    need = [(q, s) for q in (DOSE, ISO, IDENT, SINGLE) for _, s, _, _ in ARMS] + [(STACKED, s) for s in BASE7]
+    missing = sorted({str(run_dir(q, s).relative_to(REPO)) for q, s in need
+                      if not (run_dir(q, s) / "run_meta.json").is_file()})
+    if missing:
+        raise FileNotFoundError(f"{len(missing)} run directories this generator reads are absent: " + ", ".join(missing))
+
+
 TYPES = LAYERS["L1"] + LAYERS["L2"] + LAYERS["L3"]
 TI = {t: i for i, t in enumerate(TYPES)}
 RUNGS = [1, 2, 3, 4, 5]
@@ -91,7 +131,10 @@ TESTS = [
 class Ladder:
     """One arm's dev ladder: per leaf, identity, five rungs and nine isolated hits, both levels, both readings."""
 
-    def __init__(self, short: str, design: dict, parents: dict[str, str]):
+    def __init__(self, short: str, design: dict, parents: dict[str, str],
+                 dose: str | None = None, iso: str | None = None):
+        # A8: the sets default to the configured ones; the comparison builds the v1 ladder beside them.
+        dose, iso = dose or DOSE, iso or ISO
         self.short = short
         golds = design["golds"]
         self.golds, self.concept = golds, design["concept"]
@@ -100,11 +143,11 @@ class Ladder:
         self.iso = {}  # (level, variant) -> n × 9
         id_pq = perquery(IDENT, short).set_index("query_item_key")
         t_id = tie_table(run_dir(IDENT, short), set(golds), parents)
-        dose_pq = perquery(DOSE, short).set_index("query_item_key")
-        iso_pq = perquery(ISO, short).set_index("query_item_key")
+        dose_pq = perquery(dose, short).set_index("query_item_key")
+        iso_pq = perquery(iso, short).set_index("query_item_key")
         dkeys, ikeys = design["dose_key"], design["iso_key"]
-        t_dose = tie_table(run_dir(DOSE, short), set(dkeys.ravel()), parents)
-        t_iso = tie_table(run_dir(ISO, short), set(ikeys.ravel()), parents)
+        t_dose = tie_table(run_dir(dose, short), set(dkeys.ravel()), parents)
+        t_iso = tie_table(run_dir(iso, short), set(ikeys.ravel()), parents)
         if set(dose_pq.index) != set(dkeys.ravel()) or set(iso_pq.index) != set(ikeys.ravel()):
             raise ValueError(f"{short}: run queries differ from the dev ladder")
         for level in ("item", "parent"):
@@ -135,11 +178,11 @@ class Ladder:
         return self.h[(level, variant)], self.iso[(level, variant)]
 
 
-def ladder_design(dev: frozenset[str]) -> dict:
+def ladder_design(dev: frozenset[str], dose_json: Path | None = None, iso_json: Path | None = None) -> dict:
     """The dev ladder's structure, read from the two JSON files: arms read it, never re-derive it."""
     corpus = {r["item_key"]: r["text"] for r in json.loads(CORPUS_JSON.read_text(encoding="utf-8"))}
-    dose = [r for r in json.loads(DOSE_JSON.read_text(encoding="utf-8")) if r["parent_key"] in dev]
-    iso = [r for r in json.loads(ISO_JSON.read_text(encoding="utf-8")) if r["parent_key"] in dev]
+    dose = [r for r in json.loads((dose_json or DOSE_JSON).read_text(encoding="utf-8")) if r["parent_key"] in dev]
+    iso = [r for r in json.loads((iso_json or ISO_JSON).read_text(encoding="utf-8")) if r["parent_key"] in dev]
     golds = sorted({r["gold_item_key"] for r in dose})
     pos = {g: i for i, g in enumerate(golds)}
     n = len(golds)
@@ -255,12 +298,15 @@ def stat(num: np.ndarray, den: np.ndarray) -> float:
 
 
 def summarise(num: np.ndarray, den: np.ndarray, concepts: np.ndarray, label: str) -> dict:
-    s = ratio_draws(num, den, strat_weights(concepts, label))
+    s_all = ratio_draws(num, den, strat_weights(concepts, label))
     c = ratio_draws(num, den, cluster_leaf_weights(concepts, label))
-    s, c = s[np.isfinite(s)], c[np.isfinite(c)]
+    s, c = s_all[np.isfinite(s_all)], c[np.isfinite(c)]
     per = {k: stat(num[concepts == k], den[concepts == k]) for k in sorted(set(concepts))}
+    # A8: `draws_all` keeps every stratified draw in weight order, so two cells with the same label on the same
+    # leaves subtract draw by draw (a paired bootstrap); `draws` drops the non-finite ones and would misalign.
     return {"est": stat(num, den), "s": ci(s), "c": ci(c), "p": boot_p(s) if len(s) else 1.0,
-            "draws": s, "per": per, "den": float(den.sum()), "leaves": int((den > 0).sum())}
+            "draws": s, "per": per, "den": float(den.sum()), "leaves": int((den > 0).sum()),
+            "draws_all": s_all, "clusters_key": tuple(sorted(set(concepts)))}
 
 
 # --------------------------------------------------------------------------- tests
@@ -772,7 +818,8 @@ def write_s7_reference(LL: dict, D: dict, dup: set[str], parents: dict[str, str]
     ])
     size, one_apart = leaf_density()
     keys = set(perquery(STACKED, "bm25_unigram")["query_item_key"].astype(str))
-    feats = stacked_features(keys, size, one_apart)
+    # the stacked JSON is named here, not left to S7's module global, so T8 reads the version `--v2` selects
+    feats = stacked_features(keys, size, one_apart, DATA / f"OE_{STACKED}.json")
     lines += ["| arm | dose | S7 n scored | S7 n excluded | S7 concepts | S7 δ | S7 CI (concept) | ladder leaves | "
               "ladder δ | ladder CI (stratified) | ladder CI (concept, A4) | ladder per concept (A4) | S7 CI (query, A4) | ladder n excluded (A4) |",
               "|---|---:|---:|---:|---:|---:|---|---:|---:|---|---|---|---|---:|"]
@@ -935,18 +982,214 @@ def write_provenance() -> None:
 # --------------------------------------------------------------------------- main
 
 
-def main() -> None:
+def assemble(dose: str, iso: str, dev: frozenset[str], dup: set[str], parents: dict[str, str]) -> dict:
+    """One version's dev ladder: design, the arms' ladders, floors, X1–X3, draw noise and the H4 label (A8)."""
+    D = ladder_design(dev, DATA / f"OE_{dose}.json", DATA / f"OE_{iso}.json")
+    if set(D["golds"]) & dup:
+        raise ValueError("a dev ladder gold is a duplicate-texto leaf; the design assumed none")
+    LL = {short: Ladder(short, D, parents, dose, iso) for _, short, _, _ in ARMS}
+    floors = {s: float(LL[s].hits("tf")[0][:, 0].mean()) for s in LL}
+    results = evaluate(LL, D, floors)
+    return {"dose": dose, "iso": iso, "D": D, "LL": LL, "floors": floors, "results": results,
+            "noise": draw_noise(LL, D), "h4": h4_resolution(results)}
+
+
+# --------------------------------------------------------------------------- A8: v1 beside v2
+
+
+def same_design(a: dict, b: dict) -> None:
+    """The paired comparison assumes v2 is v1 with `text` changed: same leaves, concepts, keys and rung structure.
+    The text-derived parts (D-004 flags, the rung-1 text-equal set) may differ and are printed, not compared."""
+    for key in ("golds", "concept", "dose_key", "iso_key", "member", "added"):
+        if not np.array_equal(np.asarray(a[key]), np.asarray(b[key])):
+            raise ValueError(f"the v1 and v2 dev ladders differ in `{key}`; the paired comparison assumes they agree")
+
+
+def in_set(keys: np.ndarray, members: frozenset[str]) -> np.ndarray:
+    """Boolean mask, the shape of `keys`, of the keys in `members`."""
+    return np.array([k in members for k in keys.ravel()], dtype=bool).reshape(keys.shape)
+
+
+def pairable(r: dict) -> dict:
+    """A `summarise` cell as `v2_variant.paired_diff` reads it: every stratified draw, in weight order."""
+    return {"est": r["est"], "draws": r["draws_all"], "clusters_key": r["clusters_key"]}
+
+
+def write_comparison(ref: dict, this: dict) -> None:
+    """A8: the registered statistics on v1 beside v2, with v2 − v1 on paired stratified draws (D-061)."""
+    same_design(ref["D"], this["D"])
+    D1, D = ref["D"], this["D"]
+    n, concepts = len(D["golds"]), D["concept"]
+    rung_changed = in_set(D["dose_key"], v2v.changed_keys("dose_texto"))  # n × 5, rung k at column k − 1
+    iso_changed = in_set(D["iso_key"], v2v.changed_keys("isolated_texto"))  # n × 9, type t at column TI[t]
+    carries_tp = D["member"][:, 1:, TI["template_paraphrase"]]  # n × 5
+    ref_label = f"`{ref['dose']}` / `{ref['iso']}` (v1, the sprint's recorded tables)"
+    this_label = f"`{this['dose']}` / `{this['iso']}` (v2, D-061's reference)"
+    what = (f"Both versions hold the same {n:,} leaves in the same {len(set(concepts))} concepts, with the same "
+            f"rung and isolated keys, the same rung structure and one identity run (`{IDENT}`), so every per-leaf "
+            "difference below is v2 − v1 of a single query's hit, and the stratified leaf draws (D-053) pair by leaf.")
+    lines = header("Comparison: v2 against v1 (dev, tie-free) — A8", [
+        "Written in the `--v2` mode only; the v1 tables under `results/S8/` are untouched and remain the sprint's",
+        "recorded readings. Each statistic is T10's, T1's, T2's or T3's, computed by the same code and the same",
+        "bootstrap labels on each version.",
+    ])
+    lines += v2v.intro("S8", ref_label, this_label, what)
+    lines += population_lines(D)
+    # what v2 changed on the dev ladder
+    lines += ["## What changed between v1 and v2", "",
+              f"`{v2v.CHANGES.name}` lists {len(v2v.changed_keys('dose_texto')):,} `dose_texto` and "
+              f"{len(v2v.changed_keys('isolated_texto')):,} `isolated_texto` queries whose `text` v2 repaired (P10). On the "
+              f"dev ladder, {int(rung_changed.sum()):,} of {rung_changed.size:,} rung queries changed ("
+              + ", ".join(f"rung {k}: {int(rung_changed[:, k - 1].sum()):,}" for k in RUNGS)
+              + f"; {int((rung_changed & ~carries_tp).sum()):,} of them without `template_paraphrase` among their "
+              f"types) and {int((~rung_changed).sum()):,} are unchanged; {int(iso_changed.sum()):,} of "
+              f"{iso_changed.size:,} isolated queries changed ("
+              + (", ".join(f"`{t}`: {int(iso_changed[:, TI[t]].sum()):,}" for t in TYPES if iso_changed[:, TI[t]].any())
+                 or "none")
+              + f") and {int((~iso_changed).sum()):,} are unchanged. The text-derived parts of the design are re-read "
+              f"from each version: D-004 flags {int(D1['rung_flag'].sum()):,} rung and {int(D1['iso_flag'].sum()):,} "
+              f"isolated queries on v1, {int(D['rung_flag'].sum()):,} and {int(D['iso_flag'].sum()):,} on v2; the "
+              f"text-equal rung-1 leaves of T3 number {int(D1['same_draw'].sum()):,} on v1 and "
+              f"{int(D['same_draw'].sum()):,} on v2.", ""]
+    # (a) X1–X3
+    lines += ["## X1–X3 (T10), tie-free: the registered readings", "",
+              "| test | arm | v1 estimate | v1 CI (stratified) | v1 Holm p | v1 reading | v1 exceeds noise | "
+              "v2 estimate | v2 CI (stratified) | v2 Holm p | v2 reading | v2 exceeds noise | v2 − v1 | "
+              "CI (paired draws) | reading moved |",
+              "|---|---|---:|---|---:|---|---|---:|---|---:|---|---|---:|---|---|"]
+    by_key = {(r["id"], r["arm"]): r for r in ref["results"]}
+    for r in this["results"]:
+        r1 = by_key[(r["id"], r["arm"])]
+        a, b = r1["tf"], r["tf"]
+        d = v2v.paired_diff(pairable(a), pairable(b))
+        exceeds = [("—" if r["id"] == "X3" else ("yes" if abs(x["est"]) > src["noise"][r["arm"]]["diff"][1] else "no"))
+                   for x, src in ((a, ref), (b, this))]
+        lines.append(f"| {r['id']} | {name(r['arm'])} | {fd(a['est'])} | {fci(a['s'], True)} | {fp(a['holm'])} | "
+                     f"{a['reading']} | {exceeds[0]} | {fd(b['est'])} | {fci(b['s'], True)} | {fp(b['holm'])} | "
+                     f"**{b['reading']}** | {exceeds[1]} | {v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | "
+                     f"{v2v.moved(a['reading'], b['reading'])} |")
+    lines += ["", "Exceeds noise: |estimate| above the arm's text-different draw-noise bar (T3) of the same version.", "",
+              "### Readings by scoring", "",
+              "| test | arm | v1 tie-free | v1 as run | v1 clean | v2 tie-free | v2 as run | v2 clean |",
+              "|---|---|---|---|---|---|---|---|"]
+    for r in this["results"]:
+        r1 = by_key[(r["id"], r["arm"])]
+        lines.append(f"| {r['id']} | {name(r['arm'])} | " + " | ".join(src[v]["reading"] for src in (r1, r) for v in VARIANTS) + " |")
+    # (b) T1
+    lines += ["", "## T1: the ladder, item level, tie-free", "",
+              "Observed Acc@1 at each rung and its clipped-additive prediction (T4) on each version; the per-leaf",
+              "difference is rung hit v2 − rung hit v1 (the identity side is the same run, so it is also δ_k v2 − δ_k v1),",
+              "with its stratified and concept intervals. *Moved* counts the leaves whose tie-free rung hit differs;",
+              "*unchanged* those among them whose rung query kept its v1 text.", "",
+              "| arm | rung | leaves | rung queries changed | v1 Acc@1 | v1 predicted | v2 Acc@1 | v2 predicted | "
+              "v2 − v1 (per leaf) | CI (stratified) | CI (concept) | per concept | moved | of them unchanged |",
+              "|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|---|---:|---:|"]
+    for _, short, _, _ in ARMS:
+        h1, iso1 = ref["LL"][short].hits("tf")
+        h2, iso2 = this["LL"][short].hits("tf")
+        for k in RUNGS:
+            d = h2[:, k] - h1[:, k]
+            r = summarise(d, np.ones(n), concepts, f"s8|cmp|T1|{short}|{k}")
+            moved = d != 0
+            lines.append(f"| {name(short)} | {k} | {n:,} | {int(rung_changed[:, k - 1].sum()):,} | {f4(h1[:, k].mean())} | "
+                         f"{f4(predicted(h1, iso1, D1['member'], k).mean())} | {f4(h2[:, k].mean())} | "
+                         f"{f4(predicted(h2, iso2, D['member'], k).mean())} | {fd(r['est'])} | {fci(r['s'], True)} | "
+                         f"{fci(r['c'], True)} | {concept_cells(r['per'])} | {int(moved.sum()):,} | "
+                         f"{int((moved & ~rung_changed[:, k - 1]).sum()):,} |")
+    # (c) T2
+    lines += ["", "## T2: each type alone, item level, tie-free", "",
+              "| arm | type | leaves | isolated queries changed | v1 isolated | v1 δ_iso | v2 isolated | v2 δ_iso | "
+              "v2 − v1 (per leaf) | CI (stratified) | CI (concept) | per concept | moved | of them unchanged |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|---:|---:|"]
+    for _, short, _, _ in ARMS:
+        h1, iso1 = ref["LL"][short].hits("tf")
+        h2, iso2 = this["LL"][short].hits("tf")
+        for t in TYPES:
+            j = TI[t]
+            d = iso2[:, j] - iso1[:, j]
+            r = summarise(d, np.ones(n), concepts, f"s8|cmp|T2|{short}|{t}")
+            moved = d != 0
+            lines.append(f"| {name(short)} | `{t}` | {n:,} | {int(iso_changed[:, j].sum()):,} | {f4(iso1[:, j].mean())} | "
+                         f"{fd((iso1[:, j] - h1[:, 0]).mean())} | {f4(iso2[:, j].mean())} | "
+                         f"{fd((iso2[:, j] - h2[:, 0]).mean())} | {fd(r['est'])} | {fci(r['s'], True)} | "
+                         f"{fci(r['c'], True)} | {concept_cells(r['per'])} | {int(moved.sum()):,} | "
+                         f"{int((moved & ~iso_changed[:, j]).sum()):,} |")
+    # (d) T3
+    lines += ["", "## T3: the draw-noise bar", "",
+              "The text-different disagreement is the bar an X-excess must clear (A2 d); the text-equal set is",
+              "re-derived from each version's text, so its size may differ.", "",
+              "| arm | v1 text-equal leaves | v1 disagreement | v1 text-different leaves | v1 disagreement (the bar) | "
+              "v2 text-equal leaves | v2 disagreement | v2 text-different leaves | v2 disagreement (the bar) | bar v2 − v1 |",
+              "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for _, short, _, _ in ARMS:
+        n1, n2 = ref["noise"][short], this["noise"][short]
+        lines.append(f"| {name(short)} | {n1['same'][0]:,} | {f4(n1['same'][1])} | {n1['diff'][0]:,} | {f4(n1['diff'][1])} | "
+                     f"{n2['same'][0]:,} | {f4(n2['same'][1])} | {n2['diff'][0]:,} | {f4(n2['diff'][1])} | "
+                     f"{v2v.fsd(n2['diff'][1] - n1['diff'][1])} |")
+    # (e) H4
+    lines += ["", "## H4 under the design's rule", "",
+              "| version | label | X1 and X2 both supported for | X1 contradicted for |", "|---|---|---|---|"]
+    for label, src in (("v1", ref), ("v2", this)):
+        verdict, held, contra = src["h4"]
+        lines.append(f"| {label} | **{verdict}** | {', '.join(name(a) for a in held) or 'no arm'} | "
+                     f"{', '.join(name(a) for a in contra) or 'no arm'} |")
+    lines += ["", f"Label moved: {v2v.moved(ref['h4'][0], this['h4'][0])}. The label is read on each version by the "
+              "same three-way rule (T10); the sprint's recorded label is v1's, the manuscript quotes v2's (D-061)."]
+    # the H8 floor: hits that moved on queries whose text did not change
+    lines += ["", "## The unchanged queries (the H8 floor)", "",
+              "A hit that moves on a query whose text is the same in both versions is not the repair: ColBERT's",
+              "query vectors depend on the request batch (H8), so a changed batch can move a near-tie on an",
+              "unchanged query, and arms built on ColBERT inherit it; an exact tie-break can move as run and not",
+              "tie-free. Per arm, the dev rung and isolated queries whose hit moved, unchanged beside changed; the",
+              "unchanged column is the floor against which the changed queries' movement is read.", "",
+              "| arm | rung queries unchanged | tie-free hit moved | as-run hit moved | rung queries changed | "
+              "tie-free hit moved | isolated queries unchanged | tie-free hit moved | as-run hit moved | "
+              "isolated queries changed | tie-free hit moved |",
+              "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for _, short, _, _ in ARMS:
+        h1, iso1 = ref["LL"][short].hits("tf")
+        h2, iso2 = this["LL"][short].hits("tf")
+        hr1, isor1 = ref["LL"][short].hits("run")
+        hr2, isor2 = this["LL"][short].hits("run")
+        rm_tf, rm_run = h2[:, 1:] != h1[:, 1:], hr2[:, 1:] != hr1[:, 1:]
+        im_tf, im_run = iso2 != iso1, isor2 != isor1
+        lines.append(f"| {name(short)} | {int((~rung_changed).sum()):,} | {int((rm_tf & ~rung_changed).sum()):,} | "
+                     f"{int((rm_run & ~rung_changed).sum()):,} | {int(rung_changed.sum()):,} | "
+                     f"{int((rm_tf & rung_changed).sum()):,} | {int((~iso_changed).sum()):,} | "
+                     f"{int((im_tf & ~iso_changed).sum()):,} | {int((im_run & ~iso_changed).sum()):,} | "
+                     f"{int(iso_changed.sum()):,} | {int((im_tf & iso_changed).sum()):,} |")
+    # (f) sources
+    lines += ["", "## Sources", "",
+              "| version | query set | run_id | queries | config SHA-256 | code commit | dirty | query-set SHA-256 |",
+              "|---|---|---|---:|---|---|---|---|"]
+    for label, querysets in (("v1", (ref["dose"], ref["iso"])), ("v2", (this["dose"], this["iso"])), ("both", (IDENT,))):
+        for queryset in querysets:
+            for _, short, _, _ in ARMS:
+                m = meta(queryset, short)
+                lines.append(f"| {label} | `{queryset}` | `{m['run_id']}` | {m['queries']:,} | `{m['config_sha256'][:16]}` | "
+                             f"`{m['code_commit'][:7]}` | {str(bool(m.get('code_dirty'))).lower()} | "
+                             f"`{m['query_set_sha256'][:16]}` |")
+    lines += ["", "| input | SHA-256 |", "|---|---|",
+              *(f"| `{p.name}` | `{sha256_file(p)[:16]}` |"
+                for p in (DATA / f"OE_{ref['dose']}.json", DATA / f"OE_{ref['iso']}.json",
+                          DATA / f"OE_{this['dose']}.json", DATA / f"OE_{this['iso']}.json", v2v.CHANGES, CORPUS_JSON)),
+              "", f"Bootstrap: B = {B:,}, seed = {SEED}, percentile 95 % intervals; the paired interval is the "
+              "percentile interval of the per-draw difference on the stratified leaf draws (D-053). Split `dev`.",
+              analysis_stack.stamp()]
+    write(OUT / "comparison.md", lines)
+
+
+def main(argv=None) -> None:
+    args = v2v.parse(argv)
+    configure(args.v2)
     analysis_stack.require()
+    require_runs()
     OUT.mkdir(parents=True, exist_ok=True)
     dup = duplicated()
     parents = parent_of()
-    D = ladder_design(load_split("dev"))
-    if set(D["golds"]) & dup:
-        raise ValueError("a dev ladder gold is a duplicate-texto leaf; the design assumed none")
-    LL = {short: Ladder(short, D, parents) for _, short, _, _ in ARMS}
-    floors = {s: float(LL[s].hits("tf")[0][:, 0].mean()) for s in LL}
-    results = evaluate(LL, D, floors)
-    noise = draw_noise(LL, D)
+    dev = load_split("dev")
+    this = assemble(DOSE, ISO, dev, dup, parents)
+    D, LL, floors, results, noise = this["D"], this["LL"], this["floors"], this["results"], this["noise"]
 
     write_ladder(LL, D, floors)
     write_isolated(LL, D, single_reference(dup, parents))
@@ -962,6 +1205,10 @@ def main() -> None:
     write_predictions(results, floors, noise, D)
     write_figure(LL, D)
     write_provenance()
+    if V2_MODE:
+        # A8: the v1 ladder once more, on the v1 sets and the same identity run, for the comparison only.
+        ref = assemble(v2v.mapped("dose_texto", False), v2v.mapped("isolated_texto", False), dev, dup, parents)
+        write_comparison(ref, this)
     print(f"wrote {OUT.relative_to(REPO)}")
 
 
