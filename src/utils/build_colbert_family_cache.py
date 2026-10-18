@@ -38,7 +38,9 @@ OUT = REPO / "index" / "OE" / "_colbert_family"
 COLBERT = "bge_m3_colbert__OE"
 E5 = "dense_e5__OE"
 K0 = "structured_pipeline_llm_keytol_valuenorm__OE"
-BASES = ("texto_u", "resumen_u", "single_texto", "single_l2_texto", "stacked_texto", "dose_texto", "isolated_texto")
+BASES = ("texto_u", "resumen_u", "single_texto", "single_l2_texto", "stacked_texto", "dose_texto", "isolated_texto",
+         # S11 A7: the v2 bases, each from its own v2 reference ColBERT run; no S9 K0 run exists on them.
+         "stacked_texto_v2", "single_texto_v2", "dose_texto_v2", "isolated_texto_v2")
 REFERENCE = {"texto_u": "texto", "resumen_u": "resumen"}
 TOP_CONCEPTS = 3
 

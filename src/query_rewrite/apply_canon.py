@@ -27,14 +27,14 @@ from utils.splits import load_split  # noqa: E402
 DATA = REPO / "data" / "processed"
 
 
-def main() -> None:
+def main(bases=S9_BASES) -> None:
     commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "status", "--porcelain", "src"], cwd=REPO, capture_output=True, text=True).stdout.strip()
     if dirty:
         raise SystemExit(f"src/ has uncommitted changes; commit the canonicaliser first:\n{dirty}")
     dev = load_split("dev")
     canon = from_corpus()
-    for base in S9_BASES:
+    for base in bases:
         records = [r for r in json.loads((DATA / f"OE_{base}.json").read_text(encoding="utf-8")) if r["parent_key"] in dev]
         totals: Counter = Counter()
         out_records = []
@@ -58,4 +58,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # S9 A13: `python src/query_rewrite/apply_canon.py stacked_texto_v2` transforms one base; no argument, S9's five.
+    main(tuple(sys.argv[1:]) or S9_BASES)

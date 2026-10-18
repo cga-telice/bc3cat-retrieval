@@ -97,12 +97,16 @@ S9_QUERY_SETS = ("texto_u", "resumen_u") + tuple(
 #: STACKED-P leaves, one query per leaf, `item_key` suffix `_btorigv_en`.
 V2_QUERY_SETS = ("stacked_texto_v2", "single_texto_v2", "dose_texto_v2", "isolated_texto_v2")
 BT_QUERY_SETS = ("bt_texto",)
+#: S9 A13: the stacked base re-generated on v2. `stacked_texto_v2__{t}` is `stacked_texto_v2` with its dev query
+#: text rewritten by S9's transform `t`, by the same frozen prompts, models and code (`query_rewrite`).
+S9_V2_BASES = ("stacked_texto_v2",)
+S9_V2_QUERY_SETS = tuple(f"{base}__{transform}" for base in S9_V2_BASES for transform in S9_TRANSFORMS)
 
 QUERY_SETS = (
     "texto", "resumen", "single_texto", "stacked_texto",
     "resumen_decoded", "resumen_stripped", "single_l2_texto",
     "dose_texto", "isolated_texto",
-) + S9_QUERY_SETS + V2_QUERY_SETS + BT_QUERY_SETS
+) + S9_QUERY_SETS + V2_QUERY_SETS + BT_QUERY_SETS + S9_V2_QUERY_SETS
 
 #: STACKED-P is not a query set but a **filter** on the stacked sets: the 4,674 STACKED queries
 #: (4,998 minus the 324 `OE_stacked_P_exclusion.json` lists: 321 with a known drift rewrite, 2

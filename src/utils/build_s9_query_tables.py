@@ -75,7 +75,7 @@ def write_or_match(norm: pd.DataFrame, feats: pd.DataFrame, norm_out: Path, feat
             print(f"written: {out.relative_to(REPO)} ({len(frame):,} rows)")
 
 
-def main() -> None:
+def main(bases=S9_BASES) -> None:
     paths = data_paths("OE", work_root=REPO)
     long_proc = add_param_token_columns(add_processed_columns(clean_df(load_records(paths.long_json)), "text"))
     corpus_keys = set(long_proc["item_key"].astype(str))
@@ -86,7 +86,7 @@ def main() -> None:
             return derive_corpus(path, corpus_keys)
         return derive_synthetic(path, corpus_keys, axis_labels)
 
-    for base in S9_BASES:
+    for base in bases:
         if base not in paths.query_json:
             raise SystemExit(f"not found: data/processed/OE_{base}.json. Run build_s9_bases.py first.")
         norm, feats = derive(base, paths.query_json[base])
@@ -105,7 +105,7 @@ def main() -> None:
 
     dev = load_split("dev")
     pending = []
-    for base in S9_BASES:
+    for base in bases:
         for transform in S9_TRANSFORMS:
             name = f"{base}__{transform}"
             if name not in paths.query_json:
@@ -119,4 +119,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # S9 A13: name the bases to derive (e.g. `stacked_texto_v2`); without arguments, S9's five.
+    main(tuple(sys.argv[1:]) or S9_BASES)

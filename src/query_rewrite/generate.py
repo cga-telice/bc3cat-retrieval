@@ -72,15 +72,22 @@ def generate_set(client: OllamaClient, transform: str, base: str, dev: frozenset
           f"{meta['truncated']} truncated)", flush=True)
 
 
-def main(transforms: list[str]) -> None:
+def main(transforms: list[str], bases=S9_BASES) -> None:
     dev = load_split("dev")
     for transform in transforms:
         client = OllamaClient(MODEL_FOR[transform])
         print(f"{transform}: {client.model} {client.digest[:12]}, ollama {client.version}, "
               f"prompt {PROMPT_SHA256[transform][:8]}", flush=True)
-        for base in S9_BASES:
+        for base in bases:
             generate_set(client, transform, base, dev)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or ["hyde", "rewrite"])
+    # S9 A13: `--base stacked_texto_v2` (repeatable) generates for those bases only; without it, S9's five.
+    args = sys.argv[1:]
+    bases = []
+    while "--base" in args:
+        i = args.index("--base")
+        bases.append(args[i + 1])
+        del args[i:i + 2]
+    main(args or ["hyde", "rewrite"], tuple(bases) or S9_BASES)
