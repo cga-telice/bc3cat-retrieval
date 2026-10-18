@@ -327,6 +327,15 @@ guard refuses to *start* dirty; nothing stops the tree going dirty afterwards. R
 `configs/` while a batch runs. A durable fix would stamp the commit at start and refuse to save if the tree
 differs from it at the end.
 
+**A third face, 2026-10-18: `check_run_inputs.py` reports 180 of 512 OE runs as not resolving, all through the
+config digest.** Every one is a line-ending phantom: the stamped `config_sha256` is the digest of the YAML with
+CRLF (`f0dd7e8b…` for `structured_pipeline_colbert_in_concept__OE.yaml`), the working copy is now LF
+(`8d37d1d4…`) after the checkout moved to `paper/aei-submission` and back, and re-encoding the LF file as CRLF
+reproduces the stamped digest exactly. The 332 runs that resolve, the 72 v2 runs among them, stamped the LF
+digest. No config content changed (`git log` shows none). The checker should compare text inputs modulo line
+endings, or the stamp should digest the normalised bytes; both are harness changes (src), to land between
+batches. Until then a `[FAIL]` on a `.yaml` whose CRLF digest equals the stamp is read as resolving.
+
 ## H6 — Five retrievers scored every query in one block, so ten arms could not run at scale · **fixed** (S3)
 
 **Found in S3 work items 6–7**: the first E0 pass lost **12 of 17 runs** to `DeadKernelError`.

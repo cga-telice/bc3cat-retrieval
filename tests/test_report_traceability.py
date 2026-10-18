@@ -33,26 +33,42 @@ REPORTS = {
     ],
     "sprints/SPRINT_S4_REPORT.md": [
         "results/S4/*.md",
+        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
+        "results/S4/v2/*.md",
         # ColBERT's identity ceiling, cited beside the derived arms' (finding 6).
         "results/S3/e0/ceiling.md",
     ],
     "sprints/SPRINT_S5_REPORT.md": [
         "results/S5/*.md",
+        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
+        "results/S5/v2/*.md",
     ],
     "sprints/SPRINT_S6_REPORT.md": [
         "results/S6/*.md",
+        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
+        "results/S6/v2/*.md",
     ],
     "sprints/SPRINT_S7_REPORT.md": [
         "results/S7/*.md",
+        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
+        "results/S7/v2/*.md",
+        "results/S7/stacked_p/*.md",
+        "results/S7/v2/stacked_p/*.md",
     ],
     "sprints/SPRINT_S8_REPORT.md": [
         "results/S8/*.md",
+        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
+        "results/S8/v2/*.md",
     ],
     "sprints/SPRINT_S9_REPORT.md": [
         "results/S9/*.md",
+        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
+        "results/S9/v2/*.md",
     ],
     "sprints/SPRINT_S11_REPORT.md": [
         "results/S11/*.md",
+        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
+        "results/S11/v2/*.md",
     ],
 }
 

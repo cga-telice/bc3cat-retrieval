@@ -152,8 +152,9 @@ class StructuredPipelineSearcher:
                 "cache": str(ex._cache.path),
             }
         if self._family_scores is not None and getattr(self._family_scores, "selected", None):
-            path = Path(self._family_scores.dir) / self._family_scores.selected
-            out["colbert_family"] = {"file": self._family_scores.selected, "sha256": sha256_file(path)}
+            # `selected` is the file's stem (`FamilyScoreStore.select`), so the suffix goes back on here.
+            path = Path(self._family_scores.dir) / f"{self._family_scores.selected}.npz"
+            out["colbert_family"] = {"file": path.name, "sha256": sha256_file(path)}
         if self._canon is not None:
             from query_rewrite.canon import CORPUS as _canon_corpus
             out["canon"] = {"corpus": _canon_corpus.name, "corpus_sha256": sha256_file(_canon_corpus)}
