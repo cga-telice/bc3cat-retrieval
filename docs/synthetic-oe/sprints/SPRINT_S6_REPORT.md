@@ -215,10 +215,13 @@ repaired strings are L3 templates it could not locate on v1 either.
 **What moves, and what does not** ([`comparison.md`](../results/S6/v2/comparison.md), tie-free):
 
 - **No registered reading moves.** R1–R6 keep their category on v2 for every arm (21 of 21), and D-043 ruling 3
-  reads *no* on both versions. The paired differences are small: R4 rises by +0.0131 for ColBERT and +0.0167 for
-  `bge_m3_dense` (overlap explains a little more of their damage once the slot defect is gone), R5's L1 : L3
-  ratio falls by −0.0586 for `bm25_unigram` and −0.1343 for its oracle twin (the L3 pool loses a little less);
-  everything else is within a hundredth or exactly 0. H1, H2 and H5 stand as restated in D-049.
+  reads *no* on both versions. The paired differences: R4 +0.0131 [−0.0144, +0.0575] for ColBERT and +0.0167
+  [−0.0165, +0.0395] for `bge_m3_dense`, neither distinguishable from 0; R5's L1 : L3 ratio −0.0586 for
+  `bm25_unigram` and −0.1343 [−0.3142, −0.0619] for its oracle twin, which falls not because its L3 δ moves
+  (−0.1933 on both versions, 0 values moved) but because the L3 pool's mean token distance falls 0.1608 → 0.1582
+  (the repaired texts sit closer to their gold), so δ / d_tok is more negative on L3; for `bm25_unigram` both
+  the δ (+0.0017, 1 value) and the distance act. Everything else is within a hundredth or exactly 0. H1, H2 and
+  H5 stand as restated in D-049.
 - **The fixed effect of `template_paraphrase` moves for the order-sensitive arms and not for the lexical ones**
   (M0 β, OLS, item level, 295 queries): ColBERT −0.3424 → −0.3308 (+0.0116 [−0.0043, +0.0287], 32 queries
   moved), `dense_es_hiiamsid` −0.6271 → −0.6000 (+0.0271 [+0.0000, +0.0558]), `bge_m3_dense` −0.7153 → −0.7051,
@@ -228,5 +231,21 @@ repaired strings are L3 templates it could not locate on v1 either.
   is identical on both versions for every arm.
 - **Mediation is unchanged in reading.** PM (OLS) is +0.4410 → +0.4384 for `bm25_unigram`, +0.5789 → +0.5733
   for its oracle twin, +0.1850 → +0.1693 for ColBERT, +0.0680 → +0.0488 for `bge_m3_dense` (every paired
-  difference's interval contains 0); PM (mixed) +0.9714 → +0.9673 for `bm25_unigram`. R3 stays *not supported*
-  for both BM25 arms: overlap is still not shown to explain most of the lexical damage. The manuscript quotes v2.
+  difference's interval contains 0); PM (mixed) +0.9714 → +0.9673 for `bm25_unigram`. The mixed fits are not
+  like for like across versions everywhere: ColBERT's M0 and M1 carry a leaf variance component on v2 and not on
+  v1, the oracle twin's M1 loses it on v2, and `dense_es_hiiamsid`'s M1 did not converge on v1 (its PM (mixed)
+  reads `—` on v1 and +0.4599 on v2); `comparison.md` prints each fit's status. R3 stays *not supported* for both
+  BM25 arms: overlap is still not shown to explain most of the lexical damage. The manuscript quotes v2 under
+  D-061, which is proposed, pending César. The v2 tables and figures were generated twice, byte-identical
+  (`logs/v2/tables_gen1.sha256`, `tables_gen2.sha256`).
+
+### Audit response (v2 re-fit)
+
+[`SPRINT_S6_AUDIT.md`](SPRINT_S6_AUDIT.md), top entry, 2026-10-19: **PASS WITH FINDINGS**, 3 minor.
+
+| Finding | Resolution |
+|---|---|
+| F1 — R5's fall explained by the wrong mechanism for the oracle twin; its interval not quoted | **Fixed**: the d_tok mechanism and both intervals |
+| F2 — R4 read directionally without intervals | **Fixed**: intervals printed, the causal gloss dropped |
+| F3 — mixed-fit status changes unreported | **Fixed**: the fits whose status differs are named |
+| Unverifiable: PM, M1/M2 and the mixed fixed effects; the sidecar statement; fourth-decimal endpoints | Stand as listed |

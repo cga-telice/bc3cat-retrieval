@@ -1,3 +1,35 @@
+# Sprint S4 — audit of amendment A6 (v2 re-run)
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-10-19 · report `858d15c` (section "## v2 re-run (A6, 2026-10-18)", `SPRINT_S4_REPORT.md` lines 257–285) · results `docs/synthetic-oe/results/S4/v2/` @ `858d15c` (on-disk files byte-identical to HEAD and to both `logs/v2/tables_gen1.sha256` and `tables_gen2.sha256`, which agree on all 87 entries) · runs `runs/OE/single_texto_v2/<15 S4 arms>/`, identity `runs/OE/texto/<arm>/`, v1 `runs/OE/single_texto/<arm>/`
+
+## Verified
+- Stamps: all 15 v2 runs carry `code_commit 8d1ffd2`, `code_dirty: false` (`code_dirty_paths: []`), `split: dev`, 2,206 queries (4,439 before split, 0 dropped), `query_set_sha256 03496b0b791b0d25…` — recomputed as the SHA-256 of `data/processed/OE_single_texto_v2_feats.parquet` (the `query_path` the runs name). Each v2 run's `config_sha256` equals its v1 run's. `OE_single_texto_v2.json` recomputed as `b3c58fcb38fd294f…` (= amendment row); `OE_v2_changes.jsonl` as `981896771092f6a9…` (= Sources table).
+- Amendment recorded before any run: row committed in `4f56a39` at 2026-10-18 19:54:58Z; first v2 run `created_utc` 2026-10-18T21:40:29Z (`bm25_unigram`), last 21:58:24Z; `8d1ffd2` itself committed 20:35:57Z, before every run.
+- The runs read the repaired text: `_feats.parquet` `text` equals the v2 JSON on 4,439/4,439 keys; the 145 changed dev queries' `query_text` in every checked v2 `results_top100.jsonl.gz` equals v2 `text_norm` (0 equal v1); v1 runs hold v1's. `OE_v2_changes.jsonl` set `single` = 241 keys, `old` == v1 text and `new` == v2 text on all 241, all `template_paraphrase` (600 in the full set), 145 on dev, only `text` differs between the two JSONs.
+- v1 untouched: `runs/OE/single_texto/*` mtimes 2026-09-17…09-29 (structured arms 09-30); `results/S4/*.md` last changed 2026-10-01; `git diff` clean on the v1 tables; `858d15c` adds only v2 files and report sections; `022ff2a` touched only the three generators.
+- Population: 2,206 dev; 29 D-033 golds + P7 `OEC140baa_syn_74d5dd2c9da3` excluded at item level → 2,176; `template_paraphrase` 302 dev / 295 scored / 40 concepts; 143 repaired + 152 unchanged scored — all recomputed.
+- Same scored queries and paired draws: v1 and v2 per-query files hold the same `query_item_key` order, golds, types, identity hits and `item_scored` flags for all 15 arms (asserted); `write_comparison` raises if the orders differ; bootstrap labels (`s4|pred|{kind}|{arm}`, `{arm}|{scope}`) carry no query-set name and `build_results_s2._rng` seeds from `SEED` + CRC-32(label); `paired_diff` pairs only when draw counts and `clusters_key` (sorted concept sets per pool) are equal.
+- Recomputed from `results_perquery.parquet` (`item_acc1`): ColBERT `template_paraphrase` 0.6407 → 0.6746, δ −0.3559 → −0.3220, paired +0.0339 (my own 10,000-draw concept bootstrap [+0.0000, +0.0640] vs printed [+0.0000, +0.0644]), 20 hits moved; repaired 143: 0.6294 → 0.6993 (20 moved); unchanged 152: 0.6513 → 0.6513 (0 moved); `dense_es_hiiamsid` 0.3729 → 0.4000 (+0.0271, 20); `bge_m3_dense` 0.2814 → 0.2915 (+0.0102, 11); `dense_e5` 0.3051 → 0.3051 (12 moved); `bm25_unigram` 0.3661 → 0.3695 (1); oracle twin 0.6068 → 0.6068; oracle TF-IDF 0.9797 → 0.9797; ColBERT L3 0.7529 → 0.7697 (+0.0168, my CI [0, +0.0317]) and `all` 0.7780 → 0.7826; `bm25_unigram` L3 0.6420 → 0.6437, `all` 0.4876 → 0.4881; P1 ColBERT +0.2201 → +0.2155 (−0.0046, my CI [−0.0088, 0]); P2 L1-vs-L3 `bm25_unigram` −0.3357 → −0.3374.
+- The eight unchanged type cells and the 152 unchanged `template_paraphrase` queries move 0 item hits and 0 parent hits for every one of the 15 arms (recomputed; the "H8 floor is empty" claim holds).
+- Finding 1 restated: retention on `all` moves at most 0.0048 for any arm (`dense_gte` 0.7488 → 0.7440, ColBERT 0.7791 → 0.7837), recomputed and equal to `profile_item.md` v1/v2.
+- Line endings (H5): none of the above is a CRLF artefact — every digest recomputed on the Windows host equals the one the container stamped; the T7 flag in F1 is a `git diff --stat` on committed blobs, not a line-ending phantom.
+
+## Findings
+### F1 — major — T7 flags every reused identity run as "retriever, notebook or config changed" and the report does not say so
+The report says "the identity side is unchanged" and T7's footer says "No reused run's retriever, `retrieve.ipynb` or config may appear above". `results/S4/v2/run_provenance.md` lists `src/retrieve.ipynb` in the diff of all 15 reused `OE/texto/*` runs (their commits `31bf1a1`/`922ae53`/`a5700a6`/`2e49566`/`36bed7a` → `8d1ffd2`) and prints the bold flag 15 times; the v1 T7 printed it 0 times. The notebook changed at `26ed9ff` (adds a `bind_queries` hook) and `e5dd940` (adds a `provenance()` hook); neither is declared by any S4 retriever, and the 2,061 unchanged dev queries move 0 hits between the v1 runs (`31bf1a1`/`36bed7a`) and the v2 runs (`8d1ffd2`) for all 15 arms, which bounds the effect empirically. But the generated provenance table contradicts its own rule and the report is silent. What must change: the v2 section (or T7) must name the flag and the reason it is accepted (the two commits, what they add, and the zero movement on unchanged queries), or the generator must separate an additive notebook hook from a retrieval-path change; a self-contradicting stamp cannot stand.
+
+### F2 — minor — "recovers for the order-sensitive arms" is read without intervals and over two arms the table does not support
+The report groups `bge_m3_dense` (+0.0102 [−0.0104, +0.0426], interval contains 0) and `dense_e5` (+0.0000, 12 hits moved both ways) under "the repaired cell recovers for the order-sensitive arms", and gives `dense_es_hiiamsid`'s +0.0271 without its interval ([+0.0000, +0.0561]); ColBERT's and L3's intervals have a lower bound of exactly +0.0000. The amendment row itself says v2 − v1 "carries an interval and no reading". What must change: print the intervals and restrict "recovers" to ColBERT and `dense_es_hiiamsid`; state `bge_m3_dense` as not distinguishable from 0 and `dense_e5` as unchanged.
+
+## Unverifiable
+- The printed interval endpoints and Holm p-values to the fourth decimal — I did not run the generators (forbidden while the batch runs); my own seeded concept bootstrap reproduces every endpoint I checked to within ±0.0005, and every point estimate exactly.
+- That the v2 runs were "first-time" in the sense of no prior `single_texto_v2` run ever existing — only the surviving directories are visible; nothing in `runs/` or `logs/v2/` contradicts it.
+
+---
+
+*The record below is the sprint's earlier audit(s), kept as written.*
+
 # Sprint S4 — audit
 
 **Verdict:** PASS WITH FINDINGS

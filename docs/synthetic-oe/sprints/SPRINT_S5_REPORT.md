@@ -173,7 +173,18 @@ are S4 A6's; the identity side is unchanged.
   or L3; the repair reaches none of the first five, and on L3 Q3 reads *supported* on both versions (+0.0903 →
   +0.0869, paired difference −0.0034 [−0.0085, +0.0000]). H3 stays refuted on dev for the published method and
   **G2 reads no** on v2 as on v1.
-- **The published pipeline does not gain from the repair.** `rules_valuenorm` on `template_paraphrase`, item
-  tie-free: 0.4033 → 0.3999 (δ −0.3415 → −0.3450; 4 hits moved), L3 0.5751 → 0.5734, `all` 0.4058 → 0.4054: Stage
-  2's rules read values by their literal strings, which the repair does not change, so the structured arms behave
-  like the lexical ones here. The manuscript quotes v2.
+- **The two rules arms do not gain from the repair at item level.** `rules_valuenorm` on `template_paraphrase`,
+  item tie-free: 0.4033 → 0.3999 (δ −0.3415 → −0.3450; −0.0035 [−0.0122, +0.0000], 4 tie-free values moved), L3
+  0.5751 → 0.5734, `all` 0.4058 → 0.4054. The oracle-extraction bound gains +0.0034 [+0.0000, +0.0096] (3
+  values), and at parent level all three structured arms gain +0.0033 (3 hits), the size of `bm25_unigram`'s
+  +0.0034 (1 hit). The manuscript quotes v2 under D-061, which is proposed, pending César. The v2 tables were
+  generated twice, byte-identical (`logs/v2/tables_gen1.sha256`, `tables_gen2.sha256`).
+
+### Audit response (v2 re-run)
+
+[`SPRINT_S5_AUDIT.md`](SPRINT_S5_AUDIT.md), top entry, 2026-10-19: **PASS WITH FINDINGS**, 1 minor.
+
+| Finding | Resolution |
+|---|---|
+| F1 — "does not gain" without its interval, "hits" for tie-free values, and broader than the two rules arms | **Fixed**: interval, unit and scope as the audit asks; the oracle bound's and the parent-level gains stated |
+| Unverifiable: the rules arms' tie-free levels need the sprint's own Stage 1–3 re-derivation | Stands; the v2 − v1 difference reproduces from score ties alone |

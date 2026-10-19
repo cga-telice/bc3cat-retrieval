@@ -1,3 +1,37 @@
+# Sprint S6 — audit of amendment A8 (v2 re-fit)
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-10-19 · report `858d15c` (section "## v2 re-fit (A8, 2026-10-18)", `SPRINT_S6_REPORT.md` lines 205–232) · results `docs/synthetic-oe/results/S6/v2/` @ `858d15c` (byte-identical to HEAD and to `logs/v2/tables_gen1.sha256` = `tables_gen2.sha256`, figures included) · runs: none of S6's own — reads `runs/OE/single_texto_v2/<15 S4 arms>/` (S4 A6), `runs/OE/single_l2_texto/<arm>/` (unchanged, `a1bbc81`, mtimes 2026-09-30), `runs/OE/texto/<arm>/`
+
+## Verified
+- No run of S6's own: no `single_l2_texto` or `texto` directory was written on 2026-10-18; T8 lists the S4 A6 runs (`8d1ffd2`, clean, dev, `03496b0b…`) and the `single_l2_texto` runs at `a1bbc81`, `9612ad99…`; T8's input digests (`OE_single_texto_v2.json` `b3c58fcb…`, `OE_single_l2_texto.json` `fff7dd3b…`, `OE_texto.json` `02a2c270…`) recomputed on the host.
+- Amendment row committed in `4f56a39` (19:54:58Z) before the S4 runs it depends on (21:40Z onward).
+- Same scored queries and paired draws: `write_comparison` asserts equal query order; labels (`s6|{kind}|{arm}|{variant}`, `s6|pm|{variant}|{tag}`, `s6|raw|…`) carry no query-set name; `_PM_CACHE` is cleared per assembly so v1 and v2 M1 fits are not shared; `ols_within` keys the pairing on the concept label tuple, `evaluate` on the sorted concept set per pool; `ols_diff`/`paired_diff` pair only on equal keys and draw counts.
+- Recomputed tie-free (hit = 1/|rank-1 tied set| if the gold is in it, from `results_top100.jsonl.gz`), item level, 2,176 scored: M0 β (= per-type mean δ) on `template_paraphrase` (295): ColBERT −0.3424 → −0.3308, +0.0116 (my CI [−0.0046, +0.0284] vs printed [−0.0043, +0.0287]), 32 values moved; `bge_m3_dense` −0.7153 → −0.7051 (11); `dense_e5` −0.1932 → −0.1932 (12); `dense_es_hiiamsid` −0.6271 → −0.6000 (20); `bm25_unigram` −0.5237 → −0.5203 (1); oracle twin −0.3898 → −0.3898 (0); oracle TF-IDF −0.0203 → −0.0203 (0). The eight other types move 0 values for all seven base arms.
+- L3 pool δ: `bm25_unigram` −0.2597 → −0.2580 (1), ColBERT −0.2319 → −0.2262 (32), oracle twin −0.1933 → −0.1933 (0); L1 identical for every arm (0 moved); pool mean δ ColBERT −0.2136 → −0.2120.
+- R6a recomputed: oracle TF-IDF +0.3638 → +0.3638, `bge_m3_dense` +0.3460 → +0.3465, `dense_e5` +0.0915 → +0.0910, `dense_es_hiiamsid` +0.3950 → +0.3918. R1 recomputed: `bm25_unigram` −0.5013 on both, oracle twin −0.5912 on both (L2w 518 scored, 9 concepts).
+- Traced to the table: R4 ColBERT +0.2560 → +0.2691 (+0.0131 [−0.0144, +0.0575]), `bge_m3_dense` +0.0167 [−0.0165, +0.0395]; R5 −0.0586 / −0.1343; 21 of 21 readings unchanged; D-043 ruling 3 "no" on both; PM (OLS) and PM (mixed) values as quoted, every quoted PM paired interval contains 0; the D-004 flags recomputed on v2 texts (`template_paraphrase` flagged 35 → 22); d_tok recomputed on v2 (L3 mean 0.1608 → 0.1582).
+- Line endings: no CRLF artefact in any digest checked.
+
+## Findings
+### F1 — minor — the stated reason for R5's fall is contradicted by the table for the oracle twin
+The report: "R5's L1 : L3 ratio falls by −0.0586 for `bm25_unigram` and −0.1343 for its oracle twin (the L3 pool loses a little less)". For `bm25_unigram_params` the L3 pool's δ is −0.1933 on both versions with 0 values moved (table and recomputed); the ratio falls because the L3 mean token distance falls 0.1608 → 0.1582 (the repaired texts sit closer to their gold), which makes δ / d_tok more negative on L3. For `bm25_unigram` the δ change (+0.0017, 1 value) and the d_tok fall both act. The oracle twin's paired interval [−0.3142, −0.0619] also excludes 0 and is not quoted. What must change: replace the parenthetical with the d_tok mechanism and print both intervals.
+
+### F2 — minor — directional readings on R4 without their intervals
+"R4 rises by +0.0131 for ColBERT and +0.0167 for `bge_m3_dense` (overlap explains a little more of their damage once the slot defect is gone)" — both paired intervals contain 0 ([−0.0144, +0.0575], [−0.0165, +0.0395]); the amendment says v2 − v1 "carries an interval and no reading". What must change: quote the intervals and drop or hedge the causal reading.
+
+### F3 — minor — mixed-fit status changes between versions are not reported
+`comparison.md` records that ColBERT's M0 and M1 mixed fits carry no leaf variance component on v1 ("leaf **no**") and do on v2, the oracle twin's M1 loses it on v2, and `dense_es_hiiamsid`'s M1 did not converge on v1 (its PM (mixed) prints "—" on v1, +0.4599 on v2). The section says only "mixed fits on one BLAS thread" and quotes PM (mixed) for `bm25_unigram`. What must change: one sentence naming the fits whose status differs, so the mixed-model columns are not read as like-for-like.
+
+## Unverifiable
+- R3/R4 (PM by OLS and mixed), the M1/M2 β and γ, and the mixed-model fixed effects: they need the S3 coverage covariates (`lexical_coverage`, `numeric_coverage`, `numbers_in`, `token_distance`) and statsmodels REML fits, which I did not re-implement; the pool mean δ entering PM is recomputed and matches.
+- "The SINGLE modifications sidecar stays v1's: its keys are the same and the repaired strings are L3 templates it could not locate on v1 either" — not checked against the sidecar.
+- Printed interval endpoints to the fourth decimal (not re-run; mine agree to ±0.0003 where checked).
+
+---
+
+*The record below is the sprint's earlier audit(s), kept as written.*
+
 # Sprint S6 — audit
 
 **Verdict:** PASS WITH FINDINGS

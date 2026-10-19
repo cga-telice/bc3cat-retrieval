@@ -62,8 +62,7 @@ REPORTS = {
     ],
     "sprints/SPRINT_S9_REPORT.md": [
         "results/S9/*.md",
-        # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
-        "results/S9/v2/*.md",
+        # The v2 re-run amendment (D-061, S9 A13): `results/S9/v2/*.md` is added here when its tables land.
     ],
     "sprints/SPRINT_S11_REPORT.md": [
         "results/S11/*.md",

@@ -1,3 +1,29 @@
+# Sprint S5 — audit of amendment A4 (v2 re-run)
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-10-19 · report `858d15c` (section "## v2 re-run (A4, 2026-10-18)", `SPRINT_S5_REPORT.md` lines 161–179) · results `docs/synthetic-oe/results/S5/v2/` @ `858d15c` (byte-identical to HEAD and to `logs/v2/tables_gen1.sha256` = `tables_gen2.sha256`) · runs `runs/OE/single_texto_v2/structured_pipeline_{rules_valuenorm,rules,oracleparams_valuenorm}__OE/`, reference arms = S4 A6's `runs/OE/single_texto_v2/{bm25_unigram__k1-0.60__b-0.35,bm25_unigram_params__k1-0.60__b-0.35,bge_m3_colbert}__OE/`, identity `runs/OE/texto/<arm>/`
+
+## Verified
+- Stamps: the 3 structured v2 runs carry `8d1ffd2`, `code_dirty: false`, dev, 2,206 queries, `03496b0b791b0d25…`, `config_sha256` equal to their v1 runs (`e9e2acdc…`, `a3b08f47…`, `b6e3031c…`); `created_utc` 21:58:48Z–21:59:36Z on 2026-10-18, after the amendment commit `4f56a39` (19:54:58Z) and after `8d1ffd2` (20:35:57Z). The later `src/retrievers/structured_pipeline.py` change in `858d15c` is a stamp-naming fix (`colbert_family` file suffix) committed after these runs. T7 and the comparison Sources name S4 A6's runs for the reference arms, and those directories are the ones audited above.
+- v1 untouched: `runs/OE/single_texto/structured_pipeline_*` mtimes 2026-09-30, at `26ed9ff`; v1 tables last changed before 2026-10-01; `git diff` clean.
+- Same scored queries and paired draws: query order asserted equal across v1/v2 and across arms; `contrast` labels `{arm}|{ref}|{scope}` carry no query-set name; `clusters_key` = sorted concept set; `paired_diff` as in S4. L1, `unit_conversion`, `num_to_text`, L2 hold no changed query (recomputed: changed keys are all `template_paraphrase`), so Q1, Q2, Q3-L1, Q3-L2 and G2 are identical by construction, as printed (+0.0000, "no").
+- Q3 on L3, v2 − v1 recomputed as −0.0034 from the rank-1 tied sets in `results_top100.jsonl.gz` (my CI [−0.0086, +0.0000] vs printed [−0.0085, +0.0000]); reading "supported" on both.
+- `rules_valuenorm` `template_paraphrase` parent (as run) 0.9735 → 0.9768 (3 hits) recomputed; `oracleparams` item tie-free 0.9729 → 0.9763 (+0.0034, 3 values) recomputed exactly from score ties; `bm25_unigram` item tie-free 0.3661 → 0.3695 (1) recomputed.
+- Counts: 145 changed dev queries, 2,176 item-scored, 295 scored `template_paraphrase` on 40 concepts, L3 595 — recomputed.
+- Line endings: no CRLF artefact in any digest checked (as for S4).
+
+## Findings
+### F1 — minor — "does not gain" is stated without its interval, with the wrong unit, and holds for the published arm at item level only
+The report: "`rules_valuenorm` on `template_paraphrase`, item tie-free: 0.4033 → 0.3999 (δ −0.3415 → −0.3450; 4 hits moved) … so the structured arms behave like the lexical ones here." The table gives −0.0035 [−0.0122, +0.0000] (interval not quoted), and the 4 are tie-free values that moved, not hits. `oracleparams` gains +0.0034 [+0.0000, +0.0096] (3 values) at item tie-free, and all three structured arms gain +0.0033 at parent level (3 hits), the same size as `bm25_unigram`'s +0.0034 (1 hit). The sentence is true of `rules_valuenorm`/`rules_faithful` at item level; "the structured arms" is broader than that. What must change: quote the interval, say "4 tie-free values moved", and qualify the claim to the two rules arms at item level, noting the parent-level and `oracleparams` gains.
+
+## Unverifiable
+- The tie-free *levels* of the two rules arms (0.4033 → 0.3999 on `template_paraphrase`; Q3 L3 +0.0903 → +0.0869; L3 0.5751 → 0.5734; `all` 0.4058 → 0.4054): the generator forms the tie set by re-deriving Stage 1–3 (`RuleBasedParamExtractor`, `CatalogLookup`, `index/OE/<method>/meta.json`), which the run files alone do not encode. Rank-1 score ties in `results_top100.jsonl.gz` give 0.4373 → 0.4339 and Q3 L3 +0.0697 → +0.0664 — the same v2 − v1 difference (−0.0034) but different levels. Reproducing the levels would mean running the sprint's own extractor code, which I did not do. (`oracleparams` levels do reproduce from score ties.)
+- Printed interval endpoints to the fourth decimal (not re-run; mine agree to ±0.0001 where checked).
+
+---
+
+*The record below is the sprint's earlier audit(s), kept as written.*
+
 # Sprint S5 — audit
 
 **Verdict:** PASS WITH FINDINGS
