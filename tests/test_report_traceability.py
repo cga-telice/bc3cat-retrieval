@@ -70,6 +70,9 @@ REPORTS = {
         # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
         "results/S11/v2/*.md",
     ],
+    "sprints/SPRINT_S14_REPORT.md": [
+        "results/S14/*.md",
+    ],
 }
 
 #: Figures in a report: decimals and grouped counts, not inside identifiers, paths or code spans.
