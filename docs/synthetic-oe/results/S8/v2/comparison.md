@@ -12,31 +12,31 @@ Reference: **`dose_texto` / `isolated_texto` (v1, the sprint's recorded tables)*
 
 ## X1–X3 (T10), tie-free: the registered readings
 
-| test | arm | v1 estimate | v1 CI (stratified) | v1 Holm p | v1 reading | v1 exceeds noise | v2 estimate | v2 CI (stratified) | v2 Holm p | v2 reading | v2 exceeds noise | v2 − v1 | CI (paired draws) | reading moved |
-|---|---|---:|---|---:|---|---|---:|---|---:|---|---|---:|---|---|
-| X1 | `bm25_unigram` | -0.0015 | [-0.0149, +0.0121] | 1.0000 | not supported | no | -0.0015 | [-0.0149, +0.0121] | 1.0000 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
-| X1 | `bm25_unigram_params` **oracle** | -0.0129 | [-0.0316, +0.0051] | 0.8075 | not supported | no | -0.0129 | [-0.0316, +0.0051] | 0.6729 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
-| X1 | `tfidf_phrases_replace` **oracle** | +0.0069 | [-0.0022, +0.0160] | 0.8075 | not supported | no | +0.0069 | [-0.0022, +0.0160] | 0.6729 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
-| X1 | `bge_m3_colbert` | +0.0199 | [-0.0234, +0.0643] | 1.0000 | not supported | no | +0.0151 | [-0.0286, +0.0597] | 1.0000 | **not supported** | no | -0.0048 | [-0.0147, +0.0051] | no |
-| X1 | `bge_m3_dense` | +0.0343 | [+0.0000, +0.0694] | 0.3654 | not supported | no | +0.0320 | [-0.0023, +0.0663] | 0.4942 | **not supported** | no | -0.0023 | [-0.0091, +0.0046] | no |
-| X1 | `dense_e5` | -0.0671 | [-0.1029, -0.0328] | 0.0042 | supported | no | -0.0678 | [-0.1037, -0.0343] | 0.0042 | **supported** | no | -0.0008 | [-0.0076, +0.0069] | no |
-| X1 | `dense_es_hiiamsid` | +0.0175 | [-0.0114, +0.0465] | 1.0000 | not supported | no | +0.0244 | [-0.0046, +0.0534] | 0.6323 | **not supported** | no | +0.0069 | [-0.0008, +0.0152] | no |
-| X2 | `bm25_unigram` | +0.0643 | [+0.0195, +0.1113] | 0.0486 | supported | no | +0.0643 | [+0.0195, +0.1113] | 0.0540 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | **yes** (supported → not supported) |
-| X2 | `bm25_unigram_params` **oracle** | +0.0974 | [+0.0600, +0.1376] | 0.0042 | supported | no | +0.0974 | [+0.0600, +0.1376] | 0.0042 | **supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
-| X2 | `tfidf_phrases_replace` **oracle** | +0.1010 | [+0.0803, +0.1238] | 0.0042 | supported | yes | +0.1010 | [+0.0803, +0.1238] | 0.0042 | **supported** | yes | +0.0000 | [+0.0000, +0.0000] | no |
-| X2 | `bge_m3_colbert` | +0.1271 | [+0.0916, +0.1632] | 0.0042 | supported | no | +0.1256 | [+0.0891, +0.1620] | 0.0042 | **supported** | no | -0.0015 | [-0.0144, +0.0109] | no |
-| X2 | `bge_m3_dense` | +0.0738 | [+0.0221, +0.1268] | 0.0486 | supported | no | +0.0742 | [+0.0217, +0.1278] | 0.0540 | **not supported** | no | +0.0004 | [-0.0090, +0.0099] | **yes** (supported → not supported) |
-| X2 | `dense_e5` | -0.0065 | [-0.0603, +0.0469] | 1.0000 | not supported | no | +0.0000 | [-0.0548, +0.0552] | 1.0000 | **not supported** | no | +0.0065 | [-0.0090, +0.0235] | no |
-| X2 | `dense_es_hiiamsid` | +0.1080 | [+0.0536, +0.1615] | 0.0042 | supported | no | +0.1061 | [+0.0525, +0.1586] | 0.0042 | **supported** | no | -0.0019 | [-0.0160, +0.0119] | no |
-| X3 | `bm25_unigram` | -0.1730 | [-0.1795, -0.1663] | 0.0042 | supported | — | -0.1730 | [-0.1795, -0.1663] | 0.0042 | **supported** | — | +0.0000 | [+0.0000, +0.0000] | no |
-| X3 | `bm25_unigram_params` **oracle** | -0.1918 | [-0.1967, -0.1869] | 0.0042 | supported | — | -0.1918 | [-0.1967, -0.1869] | 0.0042 | **supported** | — | +0.0000 | [+0.0000, +0.0000] | no |
-| X3 | `tfidf_phrases_replace` **oracle** | -0.1892 | [-0.1941, -0.1843] | 0.0042 | supported | — | -0.1892 | [-0.1941, -0.1843] | 0.0042 | **supported** | — | +0.0000 | [+0.0000, +0.0000] | no |
-| X3 | `bge_m3_colbert` | -0.1384 | [-0.1481, -0.1288] | 0.0042 | supported | — | -0.1408 | [-0.1504, -0.1312] | 0.0042 | **supported** | — | -0.0023 | [-0.0051, +0.0005] | no |
-| X3 | `bge_m3_dense` | -0.1652 | [-0.1735, -0.1565] | 0.0042 | supported | — | -0.1665 | [-0.1747, -0.1578] | 0.0042 | **supported** | — | -0.0013 | [-0.0036, +0.0010] | no |
-| X3 | `dense_e5` | -0.0551 | [-0.0658, -0.0446] | 0.0042 | supported | — | -0.0550 | [-0.0656, -0.0447] | 0.0042 | **supported** | — | +0.0001 | [-0.0015, +0.0017] | no |
-| X3 | `dense_es_hiiamsid` | -0.1759 | [-0.1828, -0.1688] | 0.0042 | supported | — | -0.1753 | [-0.1822, -0.1682] | 0.0042 | **supported** | — | +0.0005 | [-0.0010, +0.0022] | no |
+| test | arm | v1 leaves | v1 mass | v1 estimate | v1 CI (stratified) | v1 Holm p | v1 reading | v1 exceeds noise | v2 leaves | v2 mass | v2 estimate | v2 CI (stratified) | v2 Holm p | v2 reading | v2 exceeds noise | v2 − v1 | CI (paired draws) | reading moved |
+|---|---|---:|---:|---:|---|---:|---|---|---:|---:|---:|---|---:|---|---|---:|---|---|
+| X1 | `bm25_unigram` | 328 | 1,312.00 | -0.0015 | [-0.0149, +0.0121] | 1.0000 | not supported | no | 328 | 1,312.00 | -0.0015 | [-0.0149, +0.0121] | 1.0000 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
+| X1 | `bm25_unigram_params` **oracle** | 328 | 1,312.00 | -0.0129 | [-0.0316, +0.0051] | 0.8075 | not supported | no | 328 | 1,312.00 | -0.0129 | [-0.0316, +0.0051] | 0.6729 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
+| X1 | `tfidf_phrases_replace` **oracle** | 328 | 1,312.00 | +0.0069 | [-0.0022, +0.0160] | 0.8075 | not supported | no | 328 | 1,312.00 | +0.0069 | [-0.0022, +0.0160] | 0.6729 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
+| X1 | `bge_m3_colbert` | 328 | 1,312.00 | +0.0199 | [-0.0234, +0.0643] | 1.0000 | not supported | no | 328 | 1,312.00 | +0.0151 | [-0.0286, +0.0597] | 1.0000 | **not supported** | no | -0.0048 | [-0.0147, +0.0051] | no |
+| X1 | `bge_m3_dense` | 328 | 1,312.00 | +0.0343 | [+0.0000, +0.0694] | 0.3654 | not supported | no | 328 | 1,312.00 | +0.0320 | [-0.0023, +0.0663] | 0.4942 | **not supported** | no | -0.0023 | [-0.0091, +0.0046] | no |
+| X1 | `dense_e5` | 328 | 1,312.00 | -0.0671 | [-0.1029, -0.0328] | 0.0042 | supported | no | 328 | 1,312.00 | -0.0678 | [-0.1037, -0.0343] | 0.0042 | **supported** | no | -0.0008 | [-0.0076, +0.0069] | no |
+| X1 | `dense_es_hiiamsid` | 328 | 1,312.00 | +0.0175 | [-0.0114, +0.0465] | 1.0000 | not supported | no | 328 | 1,312.00 | +0.0244 | [-0.0046, +0.0534] | 0.6323 | **not supported** | no | +0.0069 | [-0.0008, +0.0152] | no |
+| X2 | `bm25_unigram` | 157 | 228.67 | +0.0643 | [+0.0195, +0.1113] | 0.0486 | supported | no | 157 | 228.67 | +0.0643 | [+0.0195, +0.1113] | 0.0540 | **not supported** | no | +0.0000 | [+0.0000, +0.0000] | **yes** (supported → not supported) |
+| X2 | `bm25_unigram_params` **oracle** | 201 | 315.55 | +0.0974 | [+0.0600, +0.1376] | 0.0042 | supported | no | 201 | 315.55 | +0.0974 | [+0.0600, +0.1376] | 0.0042 | **supported** | no | +0.0000 | [+0.0000, +0.0000] | no |
+| X2 | `tfidf_phrases_replace` **oracle** | 268 | 473.38 | +0.1010 | [+0.0803, +0.1238] | 0.0042 | supported | yes | 268 | 473.38 | +0.1010 | [+0.0803, +0.1238] | 0.0042 | **supported** | yes | +0.0000 | [+0.0000, +0.0000] | no |
+| X2 | `bge_m3_colbert` | 301 | 739.13 | +0.1271 | [+0.0916, +0.1632] | 0.0042 | supported | no | 301 | 741.85 | +0.1256 | [+0.0891, +0.1620] | 0.0042 | **supported** | no | -0.0015 | [-0.0144, +0.0109] | no |
+| X2 | `bge_m3_dense` | 214 | 420.00 | +0.0738 | [+0.0221, +0.1268] | 0.0486 | supported | no | 213 | 418.00 | +0.0742 | [+0.0217, +0.1278] | 0.0540 | **not supported** | no | +0.0004 | [-0.0090, +0.0099] | **yes** (supported → not supported) |
+| X2 | `dense_e5` | 127 | 307.00 | -0.0065 | [-0.0603, +0.0469] | 1.0000 | not supported | no | 125 | 299.00 | +0.0000 | [-0.0548, +0.0552] | 1.0000 | **not supported** | no | +0.0065 | [-0.0090, +0.0235] | no |
+| X2 | `dense_es_hiiamsid` | 209 | 389.00 | +0.1080 | [+0.0536, +0.1615] | 0.0042 | supported | no | 213 | 396.00 | +0.1061 | [+0.0525, +0.1586] | 0.0042 | **supported** | no | -0.0019 | [-0.0160, +0.0119] | no |
+| X3 | `bm25_unigram` | 328 | 328.00 | -0.1730 | [-0.1795, -0.1663] | 0.0042 | supported | — | 328 | 328.00 | -0.1730 | [-0.1795, -0.1663] | 0.0042 | **supported** | — | +0.0000 | [+0.0000, +0.0000] | no |
+| X3 | `bm25_unigram_params` **oracle** | 328 | 328.00 | -0.1918 | [-0.1967, -0.1869] | 0.0042 | supported | — | 328 | 328.00 | -0.1918 | [-0.1967, -0.1869] | 0.0042 | **supported** | — | +0.0000 | [+0.0000, +0.0000] | no |
+| X3 | `tfidf_phrases_replace` **oracle** | 328 | 328.00 | -0.1892 | [-0.1941, -0.1843] | 0.0042 | supported | — | 328 | 328.00 | -0.1892 | [-0.1941, -0.1843] | 0.0042 | **supported** | — | +0.0000 | [+0.0000, +0.0000] | no |
+| X3 | `bge_m3_colbert` | 328 | 328.00 | -0.1384 | [-0.1481, -0.1288] | 0.0042 | supported | — | 328 | 328.00 | -0.1408 | [-0.1504, -0.1312] | 0.0042 | **supported** | — | -0.0023 | [-0.0051, +0.0005] | no |
+| X3 | `bge_m3_dense` | 328 | 328.00 | -0.1652 | [-0.1735, -0.1565] | 0.0042 | supported | — | 328 | 328.00 | -0.1665 | [-0.1747, -0.1578] | 0.0042 | **supported** | — | -0.0013 | [-0.0036, +0.0010] | no |
+| X3 | `dense_e5` | 328 | 328.00 | -0.0551 | [-0.0658, -0.0446] | 0.0042 | supported | — | 328 | 328.00 | -0.0550 | [-0.0656, -0.0447] | 0.0042 | **supported** | — | +0.0001 | [-0.0015, +0.0017] | no |
+| X3 | `dense_es_hiiamsid` | 328 | 328.00 | -0.1759 | [-0.1828, -0.1688] | 0.0042 | supported | — | 328 | 328.00 | -0.1753 | [-0.1822, -0.1682] | 0.0042 | **supported** | — | +0.0005 | [-0.0010, +0.0022] | no |
 
-Exceeds noise: |estimate| above the arm's text-different draw-noise bar (T3) of the same version.
+Exceeds noise: |estimate| above the arm's text-different draw-noise bar (T3) of the same version. Leaves and mass: the leaves carrying weight and the statistic's denominator on each version (X1: leaf-rungs; X3: leaves; X2: the at-risk mass Σ h_{k−1}, which moves with the repaired text).
 
 ### Readings by scoring
 
