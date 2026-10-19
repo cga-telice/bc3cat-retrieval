@@ -185,7 +185,9 @@ def population(dev: frozenset[str]) -> pd.DataFrame:
             "fraction": float(r["bt_sentences"]["fraction"]),
             "vbt": "value_back_translation" in types, "gs": "glossary_synonym" in types,
             "label_added": any(m.get("label_added") for m in mods[r["item_key"]]),
-            "fbt1": FBT1_QUERY in r["text"] and FBT1_GOLD in corpus[gold],
+            # F-BT-1: the gold's «hormigonada» rendered as «de hormigón» — the query must have lost the token, or a gold
+            # that carries both («paramentos de hormigón» beside «canalización hormigonada») is counted twice (audit F6)
+            "fbt1": FBT1_QUERY in r["text"] and FBT1_GOLD in corpus[gold] and FBT1_GOLD not in r["text"],
             "flagged": bool(flags["doubled"] or flags["topo"]),
             "cov": lexical_coverage(r["text"], corpus[gold]),
             "item_scored": gold not in dup, "parent_scored": True,
@@ -474,7 +476,10 @@ def header(title: str, how: list[str]) -> list[str]:
             "† oracle arm (D-010): it reads `parameters`, which on BT hold the **gold's own values**, not the variants the "
             "text carries, so on BT it is a stronger oracle than on STACKED-P; printed as an upper bound, in no test "
             "(César, 2026-10-19). ‡ fewer than "
-            f"{FEW_CLUSTERS} concepts behind a cell.", ""]
+            f"{FEW_CLUSTERS} concepts behind a cell. **H8**: BT and STACKED-P are separate ColBERT encodings, so every "
+            "comparison across the two runs of `bge_m3_colbert`, and of the arms ordered by it (K2, R2, F1, the RRF and CE "
+            "blends), carries ColBERT's batch dependence (D-060); S11 A11 measured it at a few tie-free hits per thousand "
+            "unchanged queries, below any effect read here.", ""]
 
 
 def population_lines(F: Frames) -> list[str]:
@@ -563,16 +568,17 @@ def write_contrasts(F: Frames, fixed: dict, rows: list[dict]) -> None:
     ]) + population_lines(F)
     lines += [f"**P** (fixed {fixed['fixed_on']}, generator `{fixed['generator_commit']}`): "
               + (", ".join(f"`{a}` − `{b}`" for a, b in fixed["P"]) or "empty") + ".", "",
-              "| contrast (a − b) | in P | n scored | concepts | STACKED-P v2: Acc(a) | Acc(b) | a − b | CI (concept) | reading (Stage P) | "
-              "BT: Acc(a) | Acc(b) | a − b | CI (query) | CI (concept) | sign kept |",
-              "|---|---|---:|---:|---:|---:|---:|---|---|---:|---:|---:|---|---|---|"]
+              "| contrast (a − b) | in P | n scored | n excluded | concepts | STACKED-P v2: Acc(a) | Acc(b) | a − b | CI (query) | "
+              "CI (concept) | reading (Stage P) | BT: Acc(a) | Acc(b) | a − b | CI (query) | CI (concept) | sign kept |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---|---|---|---:|---:|---:|---|---|---|"]
     for pr in fixed["pairs"]:
         a, b = pr["a"], pr["b"]
         r = contrast(F, a, b, "tf", "bt", "B1")  # the registered label: one statistic, one interval (S9 audit F1)
-        lines.append(f"| `{a}` − `{b}` | {'**yes**' if (a, b) in in_p else 'no'} | {r['n']:,} | {conc(r['concepts'])} | "
-                     f"{f4(contrast(F, a, b, 'tf', 'sp', 'P')['acc_a'])} | {f4(contrast(F, a, b, 'tf', 'sp', 'P')['acc_b'])} | "
-                     f"{fd(pr['est'])} | {fci(tuple(pr['c']), True)} | {pr['reading']} | {f4(r['acc_a'])} | {f4(r['acc_b'])} | "
-                     f"{fd(r['est'])} | {fci(r['q'], True)} | {fci(r['c'], True)} | {'yes' if r['est'] > 0 else '**no**'} |")
+        sp = contrast(F, a, b, "tf", "sp", "P")  # Stage P's own draws
+        lines.append(f"| `{a}` − `{b}` | {'**yes**' if (a, b) in in_p else 'no'} | {r['n']:,} | {r['excluded']:,} | {conc(r['concepts'])} | "
+                     f"{f4(sp['acc_a'])} | {f4(sp['acc_b'])} | {fd(pr['est'])} | {fci(sp['q'], True)} | {fci(tuple(pr['c']), True)} | "
+                     f"{pr['reading']} | {f4(r['acc_a'])} | {f4(r['acc_b'])} | {fd(r['est'])} | {fci(r['q'], True)} | "
+                     f"{fci(r['c'], True)} | {'yes' if r['est'] > 0 else '**no**'} |")
     lines += ["", "## The oracle arms beside (printed, never in a pair)", "",
               "| arm | STACKED-P v2 item Acc@1 | BT item Acc@1 | identity |", "|---|---:|---:|---:|"]
     for short in SHORTS:
@@ -590,16 +596,16 @@ def write_method(F: Frames) -> None:
         "R2 − `bm25_unigram`, F1 − ColBERT, K2 − `rules_valuenorm`, and K2 − ColBERT per translated-fraction bin. The",
         "S11 arms' identity is their `texto_u` run (S11); ColBERT's and BM25's their `texto` run, on the same golds.",
     ]) + population_lines(F)
-    lines += ["| contrast | rendering | n scored | concepts | Acc(a) | Acc(b) | a − b | CI (query) | CI (concept) | a − b, as run |",
-              "|---|---|---:|---:|---:|---:|---:|---|---|---:|"]
+    lines += ["| contrast | rendering | n scored | n excluded | concepts | Acc(a) | Acc(b) | a − b | CI (query) | CI (concept) | a − b, as run |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---|---|---:|"]
     for a, b in (("K2", "bge_m3_colbert"), ("R2", "bm25_unigram"), ("F1", "bge_m3_colbert"), ("K2", "rules_valuenorm"),
                  ("K2", "R2"), ("R2", "bge_m3_colbert")):
-        for rendering, lab in (("bt", "BT"), ("sp", "STACKED-P v2")):
-            lab = "B2" if (a, b, rendering) == ("K2", "bge_m3_colbert", "bt") else "T3"  # B2's own draws for the registered cell
-            r = contrast(F, a, b, "tf", rendering, lab)
-            rr = contrast(F, a, b, "run", rendering, lab)
-            lines.append(f"| `{a}` − `{b}` | {lab} | {r['n']:,} | {conc(r['concepts'])} | {f4(r['acc_a'])} | {f4(r['acc_b'])} | "
-                         f"{fd(r['est'])} | {fci(r['q'], True)} | {fci(r['c'], True)} | {fd(rr['est'])} |")
+        for rendering, shown in (("bt", "BT"), ("sp", "STACKED-P v2")):
+            seed = "B2" if (a, b, rendering) == ("K2", "bge_m3_colbert", "bt") else "T3"  # B2's own draws for the registered cell
+            r = contrast(F, a, b, "tf", rendering, seed)
+            rr = contrast(F, a, b, "run", rendering, seed)
+            lines.append(f"| `{a}` − `{b}` | {shown} | {r['n']:,} | {r['excluded']:,} | {conc(r['concepts'])} | {f4(r['acc_a'])} | "
+                         f"{f4(r['acc_b'])} | {fd(r['est'])} | {fci(r['q'], True)} | {fci(r['c'], True)} | {fd(rr['est'])} |")
     lines += ["", "## K2 − ColBERT by translated-sentence fraction (BT, descriptive)", "",
               "| fraction bin | n scored | concepts | K2 | ColBERT | K2 − ColBERT | CI (query) | CI (concept) |",
               "|---|---:|---:|---:|---:|---:|---|---|"]

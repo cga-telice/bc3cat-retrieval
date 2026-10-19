@@ -152,9 +152,13 @@ def test_bt_parameters_hold_the_golds_values_not_the_variants(bt_dev, corpus, mo
 
 def test_f_bt_1_count_and_coverage(bt_dev, corpus, stacked_p_dev):
     """F-BT-1: «de hormigón» for the gold's «hormigonada» (closed upstream); and BT is the gentler rendering."""
-    fbt1 = [r["item_key"] for r in bt_dev
-            if "de hormigón" in r["text"] and "hormigonada" in corpus[r["gold_item_key"]]["text"]]
-    assert len(fbt1) == 1498
+    loose = [r for r in bt_dev if "de hormigón" in r["text"] and "hormigonada" in corpus[r["gold_item_key"]]["text"]]
+    fbt1 = [r for r in loose if "hormigonada" not in r["text"]]
+    # The design's 1,498 is the substring count; 5 OEB130$ queries keep «canalización hormigonada» and say «de hormigón»
+    # only where their gold does («paramentos de hormigón»): not a substitution (audit F6). A4.
+    assert len(loose) == 1498 and len(fbt1) == 1493
+    assert {r["parent_key"] for r in fbt1} == {"OEB020$", "OEB030$", "OEB230$", "OEB290$"}
+    assert {r["parent_key"] for r in loose} - {r["parent_key"] for r in fbt1} == {"OEB130$"}
     cov_bt = statistics.median(lexical_coverage(r["text"], corpus[r["gold_item_key"]]["text"]) for r in bt_dev)
     cov_sp = statistics.median(lexical_coverage(q["text"], corpus[g]["text"]) for g, q in stacked_p_dev.items()
                                if g != "OEB160a")
