@@ -1573,7 +1573,7 @@ queries: encoded in their own run batch, all 2,000 stored scores reproduce, twic
 rank 1 changes for 1. Smaller than A2 stated; the logged figures replace A2's (H8).
 
 ### D-061 — v2 is the reference query set; v1 results are kept beside it as a sensitivity analysis
-**Status:** Proposed · **Date:** 2026-10-18 · **Owner:** César · **Raised in:** the 2026-10-16 intake (`DELIVERIES.md`)
+**Status:** **Accepted** (César, 2026-10-19: v2 is the reference for S12 and the re-runs, v1 kept beside it as sensitivity, closed sprints amended, not reopened; relayed from the `bc3cat-dataset` session) · **Date:** 2026-10-18 · **Owner:** César · **Raised in:** the 2026-10-16 intake (`DELIVERIES.md`)
 **Context.** Upstream repaired 163 template paraphrases that put a value in the wrong slot or presented it as a
 reference document (`DATASET_DEFECTS.md` P10) and delivered v2 of STACKED, SINGLE, dose and isolated: same
 records in the same order, only `text` changed, on 2,039 / 241 / 547 / 348 queries. Every stacked figure and

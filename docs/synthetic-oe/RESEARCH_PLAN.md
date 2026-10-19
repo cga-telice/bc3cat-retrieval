@@ -341,7 +341,7 @@ code tag, DOI. MIT / CC-BY 4.0 dual licence, AI-assistance disclosure.
 **Gate G4.** The split freezes here. Any later change to a method requires a documented
 re-run of the whole test evaluation, reported as such.
 
-*Added 2026-10-18 (the 2026-10-16 intake; D-061 proposed).* **What S12 evaluates and what it registers before it
+*Added 2026-10-18 (the 2026-10-16 intake; D-061, accepted 2026-10-19).* **What S12 evaluates and what it registers before it
 opens.** The query sets are the **v2** sets — `single_texto_v2` `b3c58fcb…`, `stacked_texto_v2` `bc1ed968…`,
 `dose_texto_v2` `8becd49a…`, `isolated_texto_v2` `95c0c2ed…` (feature-table digests in `MANIFEST.md`) — plus
 `single_l2_texto`, `resumen` coded and decoded, and `texto`; every stacked result is given on all queries and on

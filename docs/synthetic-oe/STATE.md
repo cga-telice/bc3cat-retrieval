@@ -1,181 +1,97 @@
 # STATE — `research/synthetic-oe`
 
-The single living status file for this branch. Always current, under 2 KB. Dated snapshots
-belong in `archive/`. Updated at every sprint transition and whenever something blocks.
+The single living status file for this branch. Always current, under the contract budget (≤ 12 KB). Dated
+snapshots belong in `archive/` — the history up to 2026-10-19 is
+[`archive/STATE_2026-10-19.md`](archive/STATE_2026-10-19.md), verbatim. Updated at every sprint transition and
+whenever something blocks.
 
-**Last updated:** 2026-10-19 (**v2 re-runs of S4–S8 and S11 done and audited**; S9's v2 generation in progress; S14 BT design proposed) · **Updated by:** Claude
+**Last updated:** 2026-10-19 (v2 re-runs of S4–S9 and S11 done and audited; D-061 accepted; S14 freezing) ·
+**Updated by:** Claude
 
 ---
 
 ## Where we are
 
-**The 2026-10-16 delivery is taken in** (2026-10-18; [`DELIVERIES.md`](DELIVERIES.md), `tests/test_intake_20261016.py`,
-27 tests). Upstream repaired 163 broken template paraphrases — a value in the wrong slot, or a value presented as a
-reference document (**P10**, `DATASET_DEFECTS.md`) — and delivered **v2** of STACKED, SINGLE, dose and isolated: same
-records in the same order, only `text` changed, on 2,039 / 241 / 547 / 348 queries (dev 1,183 / 145 / 337 / 214),
-all carrying `template_paraphrase`, concentrated in the seven E3 concepts. Registered as `stacked_texto_v2`,
-`single_texto_v2`, `dose_texto_v2`, `isolated_texto_v2`; v1 stays registered and unchanged, so every earlier run
-resolves; tables by `build_v2_query_tables.py` on the proven path, equal to v1's on every unchanged row. Also taken:
-**`bt_texto`**, 4,670 back-translated gold `texto`s (OPUS-MT, no LLM), one per STACKED-P leaf, 79 concepts (40 dev /
-39 test), paired leaf for leaf to STACKED; and the **STACKED-P filter** (`exclusions.stacked_p`: 324 STACKED keys
-excluded, 321 for the 14 known drift rewrites; 4,674 queries kept, the same on v1 and v2). **D-061 proposed:** v2 is
-the reference for S12 and the re-runs; v1 results stay beside v2 as sensitivity. **Amendments recorded before any
-run** (S4 A6, S5 A4, S6 A8, S7 A8, S8 A8, S9 A13, S11 A7); every generator has a `--v2` mode that writes
-`results/Sx/v2/` and a `comparison.md` (v1 beside v2, paired-draw differences; S7 also `--population stacked_p`),
-each base mode verified to regenerate byte-identically. The LLM arms now stamp model digest, prompt SHA and caches
-in `run_meta.json` (S11 A8). **Runs:** batch 1 (`logs/v2/run_v2_base.sh`, 18 arms × 4 v2 sets) restarted at
-`022ff2a` after two runs were stamped dirty (S7 A9: `src/` edited during a batch — **never again while a batch
-runs**; the pair is archived under `runs/_archive/dirty/2026-10-18/`, not deleted). Then `gen_s9_v2.sh` +
-`run_v2_s9.sh` (25 runs) and `run_v2_s11.sh caches|A|B|det` (20 runs). **S14 (BT) is proposed, not frozen**
-(`sprints/SPRINT_S14_DESIGN.md`): ID S14 / S92 and the oracle-arm handling are César's; BT `parameters` hold the
-gold's values, not the text's variants (`DELIVERIES.md`). S12's registration list is in `RESEARCH_PLAN.md` §S12;
-S10's request is amended. **Done 2026-10-19:** 72 + 20 clean v2 runs; `results/S{4,5,6,7,8,11}/v2/` (and S7 STACKED-P, v1 and v2) generated twice byte-identically; report sections written; six fresh-context audits, all PASS WITH FINDINGS, resolved (S7 A10, S11 A10). **What moved on v2:** no registered reading of S4–S7, S11 (21 / 15 / 21 / 11 unchanged); S8's X2 for `bm25_unigram` and `bge_m3_dense` crosses the α boundary (supported → not supported) within the bootstrap's resolution, H4 label unchanged; K2 − ColBERT on stacked +0.3143 → +0.2967 (−0.0176 [−0.0301, −0.0029]) and on `template_paraphrase` +0.2403 → +0.2219, the method contribution still *established on dev*; ColBERT recovers +0.0152 on stacked, the lexical arms are unmoved. **S9 A13–A15 done 2026-10-19:** C/H/W generated for `stacked_texto_v2` (caches seeded from S9's, A14; the order of seeding and record is A15), 25 clean runs at `9036805`, `results/S9/v2/` with `comparison.md` (`65b7fd5`, regenerated after the audit), report section, fresh-context audit **PASS WITH FINDINGS** (0 major, 5 minor, resolved): 44 of 44 registered readings unchanged, the one registered paired interval excluding 0 is Y2 `bm25_unigram` H (−0.0021 [−0.0059, −0.0004]), c* moves by hundredths, 9 of 10 fits in range on both, known-wrong 1 stands; the bins move with the repaired text (B1 1,746 → 1,693 scored). **Debt from the audits landed 2026-10-19 (`fc59fd4`, between batches):** S11 T9 counts the stamped runs and labels both prompt digests (F3), the S11 comparison reads D-053 on the E3 bases (F5; K2 ladder −0.0091 [−0.0171, −0.0018]) and A4 compares on stacked v2 (2,521 of 2,521); S4 T7 names the notebook commits beside the reuse flag (F1); `check_run_inputs.py` resolves configs modulo line endings (H5). **Still open:** `.gitattributes` pins only `*.py`/`*.yaml`/`*.sh`, so under `core.autocrlf=true` every other text file (reports, fixtures, JSON) is checked out CRLF — the golden-fixture digest test fails on such a checkout until the fixture's working copy is LF again (restored from the index on 2026-10-19, uncommitted by construction); pinning `*.json`/`*.md` to LF is César's call. **Next:** César's rulings on D-061 and S14 (ID, oracle arms), the archived dirty runs, and whether to repeat the six-plus-one audits with `/audit` in a separate session.
+**The 2026-10-16 delivery is taken in and the closed sprints are re-run on it** ([`DELIVERIES.md`](DELIVERIES.md),
+`tests/test_intake_20261016.py`). Upstream repaired 163 broken template paraphrases (**P10**,
+[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)) and delivered **v2** of STACKED, SINGLE, dose and isolated (same
+records, only `text` changed on 2,039 / 241 / 547 / 348 queries), **`bt_texto`** (4,670 back-translated gold
+`texto`s, OPUS-MT, one per STACKED-P leaf, 40 dev / 39 test concepts) and the **STACKED-P filter**
+(`exclusions.stacked_p`, 324 keys). **D-061 accepted** (César, 2026-10-19): v2 is the reference for S12 and the
+re-runs, v1 stays beside it as sensitivity, closed sprints are amended, not reopened. Every re-run is an amendment
+with its own clean runs, `results/Sx/v2/` and `comparison.md` (v1 beside v2, paired draws), a report section and a
+fresh-context audit: S4 A6, S5 A4, S6 A8, S7 A8–A10 (also STACKED-P), S8 A8, S9 A13–A15, S11 A7–A10 — **seven
+audits, all PASS WITH FINDINGS, resolved**. 72 + 20 + 25 clean v2 runs.
 
-**Known drifts found 2026-10-18 (H5, not fixed):** `docs/synthetic-oe/SPLITS.md` is CRLF in the working copy and LF
-in git, so `sha256_file` prints `abac65f7…` where S11's T9 recorded `8d520eb4…`; and `runs/_archive/S2/SHA256SUMS`
-(git-ignored) was rewritten on 2026-10-01 after S5's tables were committed, so S5's `run_provenance.md` last line
-changes on any regeneration (`f5705d08…` → `cb599ae3…`). Neither moves a number; both are César's to re-commit. **Third drift:** `check_run_inputs.py` reads 180 of 512 OE runs as not resolving because their stamped config digest is of the CRLF working copy the checkout had at the time and the files are LF now (H5); the 72 v2 runs resolve. **Resolved 2026-10-19 (between batches):** the checker accepts a config whose stamped digest equals the file's under either line-ending convention and says so as a note, not a failure; 557 of 557 OE runs resolve, 180 of them modulo line endings (`logs/v2/check_run_inputs.eol.out`).
+**What moved on v2.** No registered reading of S4–S7, S9 or S11 (21 / 15 / 21 / 44 / 11 unchanged); S8's X2 for
+`bm25_unigram` and `bge_m3_dense` crosses the α boundary (supported → not supported, Holm 0.0486 → 0.0540,
+estimates unmoved), H4 *partly supported* on both. K2 − ColBERT on stacked +0.3143 → +0.2967 (−0.0176 [−0.0301,
+−0.0029], one part in eighteen), the method contribution still *established on dev*; ColBERT recovers +0.0152 on
+stacked; K2 on the ladder −0.0091 [−0.0171, −0.0018] (D-053); the lexical arms are unmoved; S9's c* moves by
+hundredths and its bins move with the repaired text.
 
-**S11 is done** (2026-10-04; Track E, two-stage; [design](sprints/SPRINT_S11_DESIGN.md) frozen at `931ee0c`, [amendments](sprints/SPRINT_S11_AMENDMENTS.md) A1–A6, [report](sprints/SPRINT_S11_REPORT.md), [audit](sprints/SPRINT_S11_AUDIT.md), [results](results/S11)). Audit **PASS WITH FINDINGS**, 3 major and 7 minor, resolved in the report (`results/S11/` at `8e60502`). 35 runs clean; 6 of 7 exit criteria met; EC3 accepted as not met by César (no run stamps model digest or prompt SHA; S12 stamps both). K2 (E5 concept → `phi4` values → ColBERT order inside the family) beats ColBERT on stacked and on the blind E3 ladder; the method contribution reads **established on dev**. Soft matching adds nothing detectable; ordering by ColBERT adds to K0, but most of the gain is reading values and filtering on them; R2 (no LLM) wins on one edit and breaks under stacking. D-059 accepted: K2 is Track E's method on dev, S12 registers K2 and R2. ColBERT scores are batch-dependent: logged re-measurement reproduces it, smaller than A2 stated (D-060 accepted, `DATASET_DEFECTS.md` H8). **Next: S12 registration (K2/R2 admission, run stamps, ColBERT batching).**
+**S14 (BT, backbone)** — César ruled 2026-10-19: backbone, not probe; the oracle arms (readers of `parameters`,
+which on BT hold the gold's values, `DELIVERIES.md`) are out of every S14 test and of S12's BT reading, printed as
+bounds with the asymmetry stated; no regenerated BT is requested. Design
+[`sprints/SPRINT_S14_DESIGN.md`](sprints/SPRINT_S14_DESIGN.md) freezes with those two conditions; then the P-fixing
+stage from the S7 A8 runs, 21 BT runs, tables, report, audit.
 
-**S10 is blocked** (2026-10-04) on a training set from `bc3cat-dataset` ([request](requests/S10_TRAINING_SET.md), issued). The delivered query sets share rewrite menus across the dev/test split (73 of 89 test `synonym_label` pairs occur on dev), so training on them would teach the model test rewrites. D-058 (César): `dense_e5` + ColBERT, contrastive with sibling negatives, trained on the menu-disjoint delivery mixed with decoded `resumen`, scored on dev by concept k-fold cross-fitting; RL out (D-015 closed). S10 opens when the delivery lands with its digests.
+**S12** is registered in [`RESEARCH_PLAN.md`](RESEARCH_PLAN.md) §S12: v2 digests, STACKED-P, `bt_texto` (test
+side, once), the S14 pair list, model/prompt stamps on every LLM run.
 
-**S9 is done** (2026-10-03; Track C, H6; [design](sprints/SPRINT_S9_DESIGN.md) frozen at `587e466`, [amendments](sprints/SPRINT_S9_AMENDMENTS.md) A1–A12, [report](sprints/SPRINT_S9_REPORT.md), [audit](sprints/SPRINT_S9_AUDIT.md), [results](results/S9)). Audit **PASS WITH FINDINGS**, 4 major and 3 minor, all resolved (A11–A12; `results/S9/` at `639c6f4`, byte-identical twice, hashes logged; T9 unchanged). Rewriting and HyDE harm near-verbatim queries; no gain was detected at low overlap; c* is reported by the rule and not as a gain region (D-055 as amended, accepted). The published LLM extractor is defeated by the schema's padded axis names (P9); the key-tolerant variant is a lead for S10/S11 only if registered there (D-056, accepted). The IDF cap helps every base in-sample; BM25 ceilings are quoted as uncapped, and S12 registers whether the capped arms are admitted (D-057, accepted). **Next: S10 or S11 (D-046); S12 must register its X2 signed reference, whether X1 is read, and the capped-BM25 admission before it opens.**
+## Sprints
 
-**S8 is done** (2026-10-02; E3 balanced dose design, H4; [design](sprints/SPRINT_S8_DESIGN.md) frozen at `4f62d5a`, [amendments](sprints/SPRINT_S8_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S8_REPORT.md), [audit](sprints/SPRINT_S8_AUDIT.md), [results](results/S8)). 36 runs clean on 328 dev ladder leaves in 4 OEB concepts. Accuracy falls with every added edit for all seven arms (X3). X1 is supported for `dense_e5` only, not robust, and is floor-bound for most arms. X2 is supported for six arms, but none clears the registered draw-noise bar under both scorings, so no excess is attributed to interaction. **H4 is not resolved on this design**; the design's label reads *partly supported*. Two audits **PASS WITH FINDINGS**, all resolved; the second (F1) withdrew a post-hoc reading of X2 (T13), which now only motivates S12's signed reference. D-054 accepted as revised twice (César, 2026-10-02): H4 is not established on dev; S12 tests X2 against a signed reference registered in advance.
+| ID | Status | Documents | One line |
+|---|---|---|---|
+| S0–S3 | done | [`archive/STATE_2026-10-19.md`](archive/STATE_2026-10-19.md) ("Done", "In flight", "Latest results"); [S3 report](sprints/SPRINT_S3_REPORT.md), [audit](sprints/SPRINT_S3_AUDIT.md), [results](results/S3) | Harness, splits, 15 S2 runs, S3 ceilings / replication (BM25 0.6394 on OE `resumen`, does not replicate) / sweep / overlap |
+| S4 | done, A6 v2 | [design](sprints/SPRINT_S4_DESIGN.md) `dd407c6`, [amendments](sprints/SPRINT_S4_AMENDMENTS.md), [report](sprints/SPRINT_S4_REPORT.md), [audit](sprints/SPRINT_S4_AUDIT.md), [results](results/S4) | E1 Track A, 15 arms × 9 types; H1 supported, H2 split; 21 of 21 readings unchanged on v2 |
+| S5 | done, A4 v2 | [design](sprints/SPRINT_S5_DESIGN.md) `432b39e`, [amendments](sprints/SPRINT_S5_AMENDMENTS.md), [report](sprints/SPRINT_S5_REPORT.md), [audit](sprints/SPRINT_S5_AUDIT.md), [results](results/S5) | Track B rules pipeline; H3 refuted on dev, G2 no (D-046); 15 of 15 unchanged on v2 |
+| S6 | done, A8 v2 | [design](sprints/SPRINT_S6_DESIGN.md) `8abf24f`, [amendments](sprints/SPRINT_S6_AMENDMENTS.md), [report](sprints/SPRINT_S6_REPORT.md), [audit](sprints/SPRINT_S6_AUDIT.md), [results](results/S6) | Mediation and mixed models; H1 for seven arms, H5 restated (D-049), D-048; 21 of 21 unchanged on v2 |
+| S7 | done, A8–A10 v2 | [design](sprints/SPRINT_S7_DESIGN.md) `5e89809`, [amendments](sprints/SPRINT_S7_AMENDMENTS.md), [report](sprints/SPRINT_S7_REPORT.md), [audit](sprints/SPRINT_S7_AUDIT.md), [results](results/S7) | E2 stacked headline; no arm keeps half its item accuracy, BM25 loses the concept (D-050), density law not established (D-051); unchanged on v2 and on STACKED-P |
+| S8 | done, A8 v2 | [design](sprints/SPRINT_S8_DESIGN.md) `4f62d5a`, [amendments](sprints/SPRINT_S8_AMENDMENTS.md), [report](sprints/SPRINT_S8_REPORT.md), [audit](sprints/SPRINT_S8_AUDIT.md), [results](results/S8) | E3 dose ladder, H4 *partly supported* (D-053, D-054); two X2 cells cross α on v2 |
+| S9 | done, A13–A15 v2 | [design](sprints/SPRINT_S9_DESIGN.md) `587e466`, [amendments](sprints/SPRINT_S9_AMENDMENTS.md), [report](sprints/SPRINT_S9_REPORT.md), [audit](sprints/SPRINT_S9_AUDIT.md), [results](results/S9) | Track C: HyDE harms, rewriting harms dense arms, C recovers number-word damage, IDF cap (D-055–D-057); 44 of 44 unchanged on v2 |
+| S10 | **blocked** | [request](requests/S10_TRAINING_SET.md), amended 2026-10-18 (repaired menus, disjoint from BT lists, no BT in training) | Waits on a training set from `bc3cat-dataset` whose menus are disjoint from every delivered query |
+| S11 | done, A7–A10 v2 | [design](sprints/SPRINT_S11_DESIGN.md) `931ee0c`, [amendments](sprints/SPRINT_S11_AMENDMENTS.md), [report](sprints/SPRINT_S11_REPORT.md), [audit](sprints/SPRINT_S11_AUDIT.md), [results](results/S11) | Track E two-stage: K2 beats ColBERT on stacked and the blind ladder, *established on dev* (D-059); EC3 accepted as not met on dev, the v2 runs stamp model and prompt (A8); H8 ColBERT batch dependence (D-060) |
+| S12 | planned | [`RESEARCH_PLAN.md`](RESEARCH_PLAN.md) §S12 | One-shot test evaluation on v2, STACKED-P, `bt_texto`; registration list there |
+| S14 | **freezing** → active | [design](sprints/SPRINT_S14_DESIGN.md) | External rendering (BT) paired leaf for leaf against STACKED-P v2; B1–B4 |
+| S91 | done | [report](sprints/SPRINT_S91_REPORT.md), [results](results/S91) | Coded vs decoded `resumen` (D-037, D-039) |
 
-**S7 is done** (2026-10-01; E2 stacked headline and stratifications; [design](sprints/SPRINT_S7_DESIGN.md) frozen at `5e89809`, [amendments](sprints/SPRINT_S7_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S7_REPORT.md), [audit](sprints/SPRINT_S7_AUDIT.md), [results](results/S7)). 18 runs on the corrected stacked set, all clean. No arm keeps half its item accuracy stacked (ColBERT highest, 0.4128 tie-free). W1 (gap widens) holds for all 7 arms; W2 holds for the encoders but not for BM25, whose **parent** level collapses (0.9980 → 0.2931). H1 is partly supported on stacked. The sibling-density law is not established: 1 of 7 supported; descriptively it holds within OEB for 5 of 7, not separated from the dose. Audit **PASS WITH FINDINGS**, 2 major and 5 minor, all resolved: A5–A6 add n excluded, concept counts and query-level CIs to T2–T7 (generated at `47cbbbd`, byte-identical twice), A7 corrects A1/A3, the rest is prose. D-050 accepted; D-051 amended after the audit (rationale restated), accepted by César.
+## Environment and harness
 
-**S6 is done** (2026-10-01; statistical analysis and mediation, H1 / H2 / H5; [design](sprints/SPRINT_S6_DESIGN.md) frozen at `8abf24f`, [amendments](sprints/SPRINT_S6_AMENDMENTS.md) A1–A7, [report](sprints/SPRINT_S6_REPORT.md), [audit](sprints/SPRINT_S6_AUDIT.md)). Audit **PASS WITH FINDINGS**, 2 major and 4 minor, all resolved: A7 adds n excluded to T2–T7 and the tie-free query-level CI to T1 (columns only, no earlier cell moved; generated at `c2ecdde`, byte-identical twice); the rest in prose. 15 runs on `single_l2_texto`; 21 tests, 16 supported, 5 not, 0 contradicted, tie-free. H1 supported for all seven non-floor arms; H2's L1 clause replicated blind on 9 L2 concepts, its L2 clause holds for BM25 (not robust to D-004) and not for ColBERT; H5 restated (D-049, amended after audit F2): overlap explains more of BM25's damage than of BGE-M3's, is not shown to explain most of it, and the L1 : L3 ratio is not shown to reach 10. M0's additive concept intercept does not hold for bag-of-words (D-048).
-
-**S5 is done** (2026-09-30; E1 ablation, Track B, H3 and G2; [design](sprints/SPRINT_S5_DESIGN.md) frozen at `432b39e`, [amendments](sprints/SPRINT_S5_AMENDMENTS.md) A1–A3, [report](sprints/SPRINT_S5_REPORT.md), [audit](sprints/SPRINT_S5_AUDIT.md)). Audit **PASS WITH FINDINGS**, 1 major and 3 minor, all resolved in prose and A3; no run or table changed. The published rules pipeline ranks below deployable BM25 under L1, tie-free (Q1 contradicted pooled and on `unit_conversion`): **H3 refuted on dev for the published method**. The oracle bound is not detected beating BM25 on pooled L1 (Q2 not supported) but does on `num_to_text` (9 concepts ‡). **G2 reads no**: S10 before S11 (D-046). Superseded runs archived via `utils/archived_runs.py` (D-047).
-
-**S4 is done** (2026-09-30; E1 ablation, Track A). First audit FAIL, reopened, all nine resolved (A4). Re-audit **PASS WITH FINDINGS**, 1 major and 5 minor, all resolved (A5: columns only). No run changed ([design](sprints/SPRINT_S4_DESIGN.md), frozen `dd407c6`; [amendments](sprints/SPRINT_S4_AMENDMENTS.md) A1–A5, moved out under D-045; [report](sprints/SPRINT_S4_REPORT.md), [audit](sprints/SPRINT_S4_AUDIT.md)). 15 arms × 9 single types on dev, paired against identity: H1 supported on dev (the gap widens for both BM25 arms and ColBERT); H2 split, L1 and `reorder` as predicted, L3 not a coherent layer. Found P7 (one dev query renders a sibling's `texto`; 2 more on test), excluded at item level. Took in `OE_P7_test_exclusion.json` (S12) and `OE_single_l2_texto.json` (S6, 9 / 9 / 8 dev concepts), both unwired (D-043). **S91 is done** (2026-09-29; probe, coded vs decoded `resumen`, frozen at `09d11f7`) — first audit FAIL, reopened, all eight resolved; re-audit **PASS WITH FINDINGS**, all eight resolved (design A4); D-039 and D-037 amendments accepted by César ([design](sprints/SPRINT_S91_DESIGN.md), [report](sprints/SPRINT_S91_REPORT.md), [audit](sprints/SPRINT_S91_AUDIT.md)). The catalogue's parameter codes mislead `bm25_unigram` at concept level (P2 not supported for `bm25_unigram_params`), and decoding them lifts item-level accuracy for both BM25 arms (P1), and, exploratory, for ColBERT (0.0284 → 0.4826 on P). It answers D-039's open question: a catalogue-only decoder is viable in-sample (80.9 %). Ruled 2026-09-29: `resumen` results are reported coded **and** decoded (D-039, second amendment); `resumen`-identical siblings are excluded at item level (D-040, 9,348 dev leaves; not yet in the harness). D-041 (document-side expansion probe) declined; its two questions go to S9. **S3 is done** (2026-09-28) — first audit FAIL, reopened, re-audit **PASS WITH FINDINGS**, all nine resolved; a third audit **PASS WITH FINDINGS**, three minor, all resolved ([audit](sprints/SPRINT_S3_AUDIT.md), [report](sprints/SPRINT_S3_REPORT.md)). **S2 is done**
-(2026-09-17). **Gate G1 read: ambiguous** — the L1 branch says proceed, but two gated arms fail
-the identity branch under the design as frozen: `bm25_unigram` 0.8870 (clustered [0.7996,
-0.9242]) and `bge_m3_colbert` 0.9861 (clustered [0.9463, 1.0000], straddling 0.98). S3 inherits
-those ceilings; under D-032 they are read as per-method ceilings, not as a gate.
-
-## Done
-
-Release received and validated (`INTAKE.md`, 2026-09-08); proposal and plan written. Each
-sprint below was audited in a fresh session, returned PASS WITH FINDINGS, and had every finding
-resolved before it was marked done — see its `SPRINT_XX_AUDIT.md`.
-
-- **S0 2026-09-15** — `data/` repopulated and re-verified, `SPLITS.md` (seed `20260915`), 77
-  configs naming collection and retriever, E3 issued.
-- **S1 2026-09-16** — five notebooks on one resolver, gold read from the query record, batched
-  scoring. The OEB fixture reproduces to ten decimals: the migration moved no number.
-- **S2 2026-09-17** — 15 stamped runs, 5 methods × 3 query sets on OE dev. Tuned BM25 falls
-  under L1; the rules pipeline overtakes it in none of 8 contrasts; ColBERT inverts in 3 of 4.
-- **S3 2026-09-28** — ten arms' identity ceilings, the `resumen` replication, the 150-cell sweep,
-  overlap. First audit **failed** (untraceable p-values); passed on re-audit.
-- **S4 2026-09-30** — 15 arms × 9 single types, paired against identity. H1 supported on dev; H2
-  split: L1 and `reorder` as predicted, L3 not a coherent layer. First audit **failed** (T4 mixed
-  samples); passed on re-audit.
-- **S5 2026-09-30** — Track B: the published rules pipeline under the nine single types. H3 refuted on
-  dev for the published method; G2 reads no (D-046).
-- **S6 2026-10-01** — L2w taken in and run; mixed models, overlap mediation, 21 registered tests. H1
-  holds for seven arms; H5 restated (D-049 amended).
-- **S7 2026-10-01** — 18 runs on the corrected stacked set. No arm keeps half its item accuracy; BM25 loses the
-  concept (D-050); the sibling-density law is not established (D-051 amended after the audit).
-
-## In flight
-
-- **S3 closed** at `8353cf7` + amendments A1–A13. 177 of 177 runs resolve; 11 generated tables under
-  [`results/S3/`](results/S3) regenerate byte-identically, all three generators under the prose
-  guard; suite 984 passed, 1 xfailed. D-012 closed on the ten-method set.
-- **All ten arms are indexed** over the full corpus (D-023), 70,242 docs each, every one
-  `code_dirty: false`: `bm25_*` at `6336974`, `bge_m3_colbert` at `31bf1a1`, the other seven at
-  `2dd653d`. The four **local dense** arms run on `transformers 4.57.6` / `sentence-transformers
-  3.4.1`, not `requirements.txt`'s old pin, which cannot load GTE at all (**D-034**); the BM25 and
-  BGE-M3 arms never touch it and keep their S2 stamps. GTE follows the config — `gte-multilingual-base`
-  for both arms (**D-035**) — and their `embeddings.npy` are byte-identical, so they differ only at
-  query time.
-- **Runs in the sprint's own container, `bc3cat-s3`** — main checkout → `/work`, papermill and the
-  pinned stack installed by hand, model cache in the bind-mounted `hf-cache/`; `logs/S3/` holds the
-  executed notebooks and the build runner. It reports *unhealthy* because the image expects
-  JupyterLab and we run `sleep infinity`. **`index/*/meta.json` does not stamp the ML stack**
-  (defect H4), so those versions live only in the runner's captured output.
-- **Worktree hazard closed** 2026-09-27: `run_context` now refuses a linked worktree, and the two
-  containers that mounted one as `/work` are gone or repointed. D-018 amended.
-- **Both upstream deliveries taken in** — see [`DELIVERIES.md`](DELIVERIES.md) for what was
-  verified. Item-level scoring excludes duplicate-gold queries from work item 3 on (D-033).
-- **[`DATASET_DEFECTS.md`](DATASET_DEFECTS.md)** — every corpus defect, classified by who fixes it.
-
-## Incident — 2026-09-14
-
-`data/`, `index/`, `runs/`, `logs/`, `hf-cache/` emptied by an agent session; rebuilt in S1.
-[`archive/INCIDENT_2026-09-14.md`](archive/INCIDENT_2026-09-14.md) · D-019, D-020.
+- **Checkout.** Main checkout only (no worktrees; `run_context` refuses them). Container `bc3cat-s3` mounts it at
+  `/work`; `host.docker.internal` reaches the BGE-M3 server (8800) and ollama (11434) again (2026-10-18), no hosts
+  edit. **Never edit `src/` or `configs/` while a batch runs**: the stamp reads git status at save time (S7 A9,
+  S11 A9).
+- **Line endings (H5).** `.gitattributes` pins `*.py`, `*.yaml`, `*.sh`, `*.md`, `*.json` to LF (`4ef19aa`,
+  2026-10-19); the CRLF working copies were re-checked out, so file digests equal the committed blobs' (`SPLITS.md`
+  `8d520eb4…` as S11 recorded) and `test_golden_fixture` passes. `check_run_inputs.py` resolves a config modulo
+  line endings (a note, not a failure): 557 of 557 OE runs resolve, 180 so. The remaining CRLF working copies are
+  `.csv` / `.txt` / `.tex` under `analysis/`, `eval/`, `docs/reviews/`, none digested.
+- **Archived runs.** `runs/_archive/dirty/2026-10-18/` (seven dirty or partial attempts, S7 A9 / S11 A9–A10) is
+  kept, not deleted (César, 2026-10-19; D-019). `runs/_archive/S2/SHA256SUMS` was rewritten on 2026-10-01, so S5's
+  T7 last line changes on regeneration (`f5705d08…` → `cb599ae3…`); César's to re-commit.
+- **Generators.** `results/` is generated, never typed (prose guard, traceability test); each v2 mode generated
+  twice, clean at its commit, hashes in `logs/v2/*.sha256`. The S9 generation caches are one file per set and
+  need seeding for a new base (A14). `index/*/meta.json` still omits the ML stack (H4).
+- **Audits.** The seven v2 audits were run by fresh-context subagents from the implementing session; César asked
+  (2026-10-19) that at least S8's and S11's v2 amendments be repeated with `/audit` in a separate session. The
+  others stand on the subagent audits.
+- **Suite** at `70f2776`: 2,096 passed, 2 skipped, 1 xfailed.
 
 ## Blocked / waiting
 
-- **Real-query anchor** (200–500 Telice queries) — not requested. Off the path.
+- **S10** on the upstream training set (above). **Real-query anchor** (S90): not requested, off the path.
 
 ## Next action
 
-S9 work item 1 **done** (`25965f6`, `87a85b8`): 17 S9 query sets registered; `texto_u` / `resumen_u` written (2,691 dev leaves), paths proven; D-040 in `utils/exclusions.py`, its counts regenerated exactly (25,498 scored on dev); ollama client and prompts committed (SHA-256 hyde `ed5de490`, rewrite `6811f1a9`); regeneration 98 / 100 (HyDE), 99 / 100 (rewrite), recorded as A1. Work item 2: C done (`10578be`; identity on all 70,242 corpus texts, so Z2 holds by construction), canon sets written (`5e5d124`); HyDE/rewrite generating in `bc3cat-s3` (`logs/S9/generate.out`, resumable cache). Work item 3 done (`ad2f78f`): D-041 diagnostic in `utils/idf_diagnostic.py` (T5 prints it), `idf_cap_df` in both BM25 builders, two `__idfcap-1200__OE` indexes built clean; the cap reaches 468 of 682 / 770 of 1,017 vocabulary terms, not only the codes (run as frozen). Work item 4 code done (`1d27b40` unmodified checkout, `35a23a9` adaptation): `structured_pipeline_llm_valuenorm__OE` (phi4, `extract`, cached), pseudo-index built; its 100-query regeneration test waits for the GPU. Work item 5 batch A done 2026-10-02 (`logs/S9/run_s9_a.sh`, A2 hosts mapping): 35 C runs + 10 IDF-guard runs, all `code_dirty: false`, split dev, commit `7174392`, metrics present; `check_run_inputs.py` 325 of 325 OE runs resolve. Batches B1 (H, 35) and B2 (W, 35; extractor, 5) done by 2026-10-03 at `d24e7c7` / `58e950f`, all clean, metrics present: **work item 5 done, 120 runs**; `check_run_inputs.py` 400 of 400 OE runs resolve. Rewrite sets: 7 fallbacks, all A3 truncations; extractor regenerates 100/100 (A4), its cache in the manifest. Next: work item 6, `build_results_s9.py`. Ollama 0.17.7 answers from `bc3cat-s3` at `host.docker.internal:11434` (checked 2026-10-02). S10–S11 remain unblocked; S12 must register its X2 signed reference and whether X1 is read before it opens. Suite: 1718 passed, 2 skipped, 1 xfailed.
-
-**BGE-M3 server from `bc3cat-s3`, 2026-10-01:** after the Docker restart `host.docker.internal` no longer reached it; S7's second pass mapped it to `172.17.0.1` in the container's `/etc/hosts` for that pass only (A3), since restored. The next BGE-M3 run will hit the same fault until Docker Desktop is fixed.
-
-**Docker Desktop, 2026-09-30:** it failed at start on a stale socket (`%LOCALAPPDATA%\Docker\run\userAnalyticsOtlpHttp.sock`, an undeletable reparse point). The directory was renamed to `run.stale-20260930`, not deleted and not factory-reset; Docker recreated `run` and started. The renamed directory can be removed by hand.
-
-## Latest results
-
-**All of S3's tables are generated, regenerate byte-identically, and type no number into their
-prose** — [`results/S3/e0/`](results/S3/e0) (ceiling, replication, transferability, provenance for
-169 runs), [`results/S3/overlap/`](results/S3/overlap), [`results/S3/s2_rescored/`](results/S3/s2_rescored).
-Every item-level figure carries its scored n; the oracle arms are marked in every table they appear in.
-Read the [report](sprints/SPRINT_S3_REPORT.md) for the findings. Its short form:
-
-- **Identity ceiling.** For a `texto`-only method the corpus permits at most 0.9863. The oracle arms
-  resolve 776 and 676 of the 776 undecidable queries; the text-only arms at their ceiling land on
-  292 / 293 / 293 against a chance expectation of 292. The one-query surplus is exact-score ties
-  (FAISS or `np.argpartition`, neither stable). The oracle arms' own fields cap at 1.0000 / 0.9972.
-- **Replication.** Tuned BM25 0.6394 on OE dev `resumen` (n = 34,646 scored) against 0.974 on OEB
-  test: does not replicate *on OE*. The cause is **not** established. Tuning was not swept on
-  `resumen`, and OE's lower lexical coverage (79.38 % against 94.10 % on OEB) is descriptive only
-  (D-036, D-037 amended).
-- **Operating point.** Both BM25 variants keep 0.60/0.35: unique argmax in 3 of 6 cells, an exact tie
-  in a fourth, no detectable gain elsewhere (p = 0.8507, 0.4250), which is not equivalence.
-- **Overlap.** Numeric coverage is blind to `num_to_text` and `unit_expansion`, and this survives
-  excluding both D-004 artefacts per type (D-038 amended). H5 needs two covariates.
-- **`bge_m3_sparse`** cannot read back its own document (0.0501 scored). Its vectors are unnormalised
-  under a raw dot product; the gold's rank on a miss has a median of 18, not "2–6".
-- **`dense_es_hiiamsid`** is perfect on the decidable identity population (1.0000) and falls to
-  0.0093 on `resumen` (n = 34,646 scored).
-
-### Earlier, from S2 and its re-score
-
-
-Two directories, deliberately kept apart. **Every item-level figure is quoted with its scored n**
-(D-033 note): the same run has one value on all queries and another on the duplicate-free
-population, and both are correct about their own.
-
-- [`results/S2/`](results/S2) — **what S2 reported.** Tuned BM25 falls under L1 (item Acc@1 0.608
-  `unit_conversion`, 0.098 `num_to_text`, dev, all queries); the rules pipeline overtakes it in no contrast;
-  ColBERT holds best under L1 and stacking, its advantage over *tuned* BM25 under
-  `unit_conversion` being +0.083 [−0.010, +0.177], the one L1 contrast that does not invert.
-- [`results/S3/s2_rescored/`](results/S3/s2_rescored) — **the control S3 inherits**, item-level on
-  duplicate-free golds (`build_results_s3.py`, no retrieval, regenerates byte-identically). L1 and
-  stacked move in the third decimal and no S2 conclusion turns on it. Identity moves materially and
-  only for text-only methods: **`bge_m3_colbert` 0.9861 → 0.9998**, because 484 of its 492 identity
-  misses were undecidable from the indexed field. `bm25_unigram_params` is unchanged at 0.9994 with
-  **zero** duplicate-gold misses — the oracle signal of D-010, not robustness. Neither is a
-  re-reading of G1 (D-032). `stacked_by_dose.md` re-stratifies on the corrected
-  `texto_modification_count`: of the 730 dev queries S2 called dose 5, **193** show five
-  modifications in the TEXTO, so S2's by-dose strata were misattributed, not merely uncertain. The
-  cells' concept counts fall 27 → 17 → 8 → 2 → 1 with dose, which is the dose/family confound E3
-  exists to remove — hypothesis H4 is answered in S8, not here.
+1. Freeze S14 (header, SPRINTS, plan); P-fixing stage from the S7 A8 runs (`results/S14/pairs_stacked_p.md`,
+   listed in the amendments file) before any BT run is read; the 21 BT runs (`logs/S14/run_s14.sh`), the BT family
+   cache and the extractor's regeneration check; tables, report, audit.
+2. `/audit` of S8 A8 and S11 A7–A9 in a separate session.
+3. S12 registration (its design) once S14 is done.
 
 ## Open decisions
 
-See `DECISIONS.md` (`Open`). **D-012 (method scope on OE) is closed** — 2026-09-27, ten arms,
-full `k1`/`b` re-sweep; it gated S3 and no longer does. Closed in S1:
-**D-016**, **D-022**. Recorded in S1: **D-023** (index over the full corpus), **D-024**
-(`OEB#`), **D-025** (the stacked dose is one lower than `modification_count` says — it reaches
-H4), and an amendment to **D-008** adding `texto` as the fourth query set. Recorded in S2: **D-026** (structured
-pipeline ported by file checkout, not merged), **D-030** (a threshold on an Acc@1 is read
-against the concept-clustered interval). Rejected in S2: **D-027** (re-defining G1's stop rule
-after the result). Still Proposed, amended: **D-028** (tie-free reading for every family),
-**D-029** (ColBERT as the L1 reference for S3).
+Searched by ID in [`DECISIONS.md`](DECISIONS.md). Accepted 2026-10-19: **D-061**. Still proposed: **D-028**
+(tie-free reading), **D-029** (ColBERT as the L1 reference). The per-sprint roll of earlier decisions is in the
+archive snapshot.
