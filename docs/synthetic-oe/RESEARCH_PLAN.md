@@ -55,7 +55,7 @@ baseline taken from a different system — all provenance failures, none of them
 | S11 | Track E — two-stage architecture | O4 | 3 w | S6 |
 | S12 | Frozen test evaluation and artefact release | O5 | 1 w | S8–S11 |
 | S13 | Manuscript | — | 3 w | S12 |
-| S14 | External rendering: back-translated queries (**proposed** 2026-10-18; S92 if César rules it a probe) | validity, O4, H1 | 1 w | S7 A8, S11 A7 + upstream BT |
+| S14 | External rendering: back-translated queries (backbone, frozen 2026-10-19) | validity, O4, H1 | 1 w | S7 A8, S11 A7 + upstream BT |
 | S✻ | Real-query anchor (parallel, gated) | validity | 2 w | external |
 
 ---
@@ -352,7 +352,9 @@ before any test run, in one place: (a) S8's X2 signed draw reference matched on 
 (D-059), their family caches built from the test ColBERT runs' own batches with S11's exact check (D-060, H8), and
 `phi4` extraction generated for test with its regeneration rate; (d) **every LLM run stamps the model digest and
 the prompt SHA-256 in `run_meta.json`** (S11 exit criterion 3, accepted as not met on dev); (e) the P7 and P8
-test key lists (D-043, D-044) and D-040's `resumen` exclusions; (f) the B1 pair list of S14 as fixed on dev.
+test key lists (D-043, D-044) and D-040's `resumen` exclusions; (f) the B1 pair list of S14 as fixed on dev; (g) **the oracle arms take part in
+no BT reading** (César, 2026-10-19): BT's `parameters` hold the gold's values, so on `bt_texto` they are printed as
+bounds with that asymmetry stated and enter no test.
 
 ---
 
@@ -365,7 +367,7 @@ than to spend a review round on it.
 
 ---
 
-### S14 — External rendering: back-translated queries (proposed 2026-10-18)
+### S14 — External rendering: back-translated queries (frozen 2026-10-19)
 
 **Goal.** Whether the arm ordering measured on STACKED-P is reproduced when the same 2,331 dev leaves are rendered
 by an independent generator: sentence-level back-translation with OPUS-MT (no LLM, no rewrite menu beyond audited
@@ -378,8 +380,9 @@ four registered hypotheses — B1 the pairwise ordering of the base arms fixed f
 before any BT run is read, B2 K2 − ColBERT > 0, B3 H1 on BT, B4 BT gentler than STACKED-P (calibration) — paired
 leaf for leaf against STACKED-P v2 and the identity; secondary strata by translated fraction, value / glossary
 variation, subchapter and S9's coverage bins; sensitivity without the 1,498 F-BT-1 queries. Design:
-[`sprints/SPRINT_S14_DESIGN.md`](sprints/SPRINT_S14_DESIGN.md), proposed, not frozen; **S92 (probe, with the
-stopping criterion the design states) if César rules that it validates and carries no claim**.
+[`sprints/SPRINT_S14_DESIGN.md`](sprints/SPRINT_S14_DESIGN.md), frozen 2026-10-19 as a backbone (César): the
+oracle arms, which read `parameters` and on BT read the gold's own values, are out of every S14 test and of S12's
+BT reading, printed as bounds only.
 
 **Exit.** The B1 verdict (preserved / partly / contradicted), B2–B4, and, for the manuscript, which of S4–S11's
 readings the BT rendering reproduces. The test-side BT is evaluated once in S12.

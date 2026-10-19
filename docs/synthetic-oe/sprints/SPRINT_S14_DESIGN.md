@@ -1,16 +1,17 @@
 # Sprint S14 — External rendering: back-translated queries · design
 
-> **Status: proposed, not frozen** (drafted 2026-10-18). Nothing in it has run. It freezes at the commit
-> César approves it, and from then on changes go in `SPRINT_S14_AMENDMENTS.md` (D-045), dated and justified.
-> **The ID is César's call.** The draft is written as backbone **S14**, because its result is meant to answer the
-> proposal's first threat to validity in the manuscript ("synthetic queries are not real"). If he rules that it
-> only validates and carries no claim, it is probe **S92** with the stopping criterion below, and this file is
-> renamed before the freeze (IDs are never reused; no S14 row exists until then).
+> **Status: frozen 2026-10-19** (drafted 2026-10-18; César's ruling of 2026-10-19, relayed by the
+> `bc3cat-dataset` session: **backbone S14**, not a probe; **the oracle arms — the readers of `parameters` — are
+> out of every test of this sprint and of S12's BT reading**, printed only as bounds with a note that BT's
+> `parameters` hold the gold's values; no BT regenerated with variant `parameters` is requested). Nothing in it had
+> run at the freeze. From the freeze commit, which carries this header and `SPRINT_S14_AMENDMENTS.md` (its SHA is
+> recorded there and in `SPRINTS.md`), changes go in the amendments file (D-045), dated and justified. The
+> stopping-criterion section below is void for a backbone and is kept as written.
 
 | Field | Value |
 |---|---|
-| **ID / type** | `S14` · backbone (or `S92` · probe, César) |
-| **Status** | proposed |
+| **ID / type** | `S14` · backbone (César, 2026-10-19) |
+| **Status** | active (frozen 2026-10-19) |
 | **Serves** | Validity of the whole robustness profile (proposal §9, threat 1); O4 (the method contribution, S11) on an independent rendering; H1 on a non-menu rendering |
 | **Depends on** | the 2026-10-16 intake (`bt_texto`, STACKED-P filter, v2; `DELIVERIES.md`); S7 A8 (the `stacked_texto_v2` runs and `results/S7/v2/stacked_p/`); S11 A7 (K2, R2, F1 on v2; the ColBERT family cache machinery) |
 | **Decisions applied** | D-010, D-028, D-030, D-033, D-045, D-059, D-060 (H8), D-061 |
@@ -55,7 +56,8 @@ unless stated):
   *original* value (5,268 of 5,268 located; 0 hold the variant), while STACKED's `parameters` hold the rewritten
   values. The oracle arms (D-010: `bm25_unigram_params`, `tfidf_phrases_replace`, `oracleparams_valuenorm`)
   therefore read a strictly stronger oracle on BT than on STACKED-P. **They are printed on BT as upper bounds with
-  this asymmetry in every header, and they enter no registered test of this sprint** (my call, below).
+  this asymmetry in every header, and they enter no registered test of this sprint, nor S12's BT reading**
+  (César, 2026-10-19; proposed as my call in the draft).
 - **The reference runs exist:** every arm below has a dev run on `stacked_texto_v2` (S7 A8, S11 A7) and on
   `texto` (identity), and `results/S7/v2/stacked_p/` has been generated. Checked by `check_run_inputs.py` before
   the freeze. **Sequencing:** the sprint freezes only after the S7 A8 and S11 A7 runs are made and their tables
@@ -164,7 +166,7 @@ unless stated):
 
 ## Stopping criterion — if César rules it a probe (S92)
 
-Five working days from the freeze. The probe is pointless, and stops with a one-page note, if (a) P is empty
+*Void: César ruled it a backbone on 2026-10-19. Kept as drafted.* Five working days from the freeze. The probe is pointless, and stops with a one-page note, if (a) P is empty
 (STACKED-P v2 supports no pairwise ordering, so there is nothing to preserve), or (b) on BT every base arm's
 item δ interval contains 0 (the rendering is too gentle to order the arms). As a backbone neither case stops it:
 (a) is reported as the manuscript's own limitation and (b) as a result.
