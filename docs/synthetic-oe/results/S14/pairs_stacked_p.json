@@ -1,0 +1,185 @@
+{
+ "fixed_on": "2026-10-19",
+ "generator_commit": "2d0b51a",
+ "n_scored": 2276,
+ "keys_sha256": "8d77e31e977b080df79b6cd2614f18c772254c734be5e1640027af35ca94415b",
+ "runs": {
+  "bm25_unigram": {
+   "run_id": "OE/stacked_texto_v2/bm25_unigram__k1-0.60__b-0.35__OE",
+   "code_commit": "4f56a39cc93bfcdb4452dc7e4e4d1c4cf9a16193",
+   "results_sha256": "b71fa7faf3056c980c3b71f94ddf5b2da1daa3932d4bbcbad4980661d77b81be"
+  },
+  "bge_m3_colbert": {
+   "run_id": "OE/stacked_texto_v2/bge_m3_colbert__OE",
+   "code_commit": "8d1ffd2d0cbde6446321bb4f672ba37859ccfaff",
+   "results_sha256": "0cf784ac97c21e3d6800481194f2ec933e113afbe1b8081c1678488410782e2c"
+  },
+  "bge_m3_dense": {
+   "run_id": "OE/stacked_texto_v2/bge_m3_dense__OE",
+   "code_commit": "8d1ffd2d0cbde6446321bb4f672ba37859ccfaff",
+   "results_sha256": "29bd1b4274031dc78d4eac8a8753e16c42e954a0cf031fb294b6a92a1a1d736d"
+  },
+  "dense_e5": {
+   "run_id": "OE/stacked_texto_v2/dense_e5__OE",
+   "code_commit": "8d1ffd2d0cbde6446321bb4f672ba37859ccfaff",
+   "results_sha256": "c9cbeb3a3b43b5cc9832f63072e5da67e19dff3f5714af1d5c8365755dd38180"
+  },
+  "dense_es_hiiamsid": {
+   "run_id": "OE/stacked_texto_v2/dense_es_hiiamsid__OE",
+   "code_commit": "8d1ffd2d0cbde6446321bb4f672ba37859ccfaff",
+   "results_sha256": "b51a42ce44550b21a0fe474876f289fb25ae5dd37f3846b66ede11e290d6c725"
+  }
+ },
+ "pairs": [
+  {
+   "a": "bge_m3_colbert",
+   "b": "bm25_unigram",
+   "est": 0.32893228195842433,
+   "c": [
+    0.2859479924290075,
+    0.398873304633054
+   ],
+   "p": 0.00019998000199980003,
+   "holm": 0.001999800019998,
+   "reading": "supported"
+  },
+  {
+   "a": "bge_m3_dense",
+   "b": "bm25_unigram",
+   "est": 0.06733054401661608,
+   "c": [
+    0.028711805263708923,
+    0.13238892045536735
+   ],
+   "p": 0.0015998400159984002,
+   "holm": 0.009599040095990401,
+   "reading": "supported"
+  },
+  {
+   "a": "dense_e5",
+   "b": "bm25_unigram",
+   "est": 0.090177644192363,
+   "c": [
+    0.0377495733818209,
+    0.1572853008072163
+   ],
+   "p": 0.0027997200279972004,
+   "holm": 0.013998600139986002,
+   "reading": "supported"
+  },
+  {
+   "a": "dense_es_hiiamsid",
+   "b": "bm25_unigram",
+   "est": 0.0075765897108164264,
+   "c": [
+    -0.07619815033129208,
+    0.048760051509847115
+   ],
+   "p": 0.8205179482051795,
+   "holm": 0.8205179482051795,
+   "reading": "not supported"
+  },
+  {
+   "a": "bge_m3_colbert",
+   "b": "bge_m3_dense",
+   "est": 0.26160173794180824,
+   "c": [
+    0.234167257440627,
+    0.28484719577493334
+   ],
+   "p": 0.00019998000199980003,
+   "holm": 0.001999800019998,
+   "reading": "supported"
+  },
+  {
+   "a": "bge_m3_colbert",
+   "b": "dense_e5",
+   "est": 0.23875463776606132,
+   "c": [
+    0.2119035982024896,
+    0.26949907181387256
+   ],
+   "p": 0.00019998000199980003,
+   "holm": 0.001999800019998,
+   "reading": "supported"
+  },
+  {
+   "a": "bge_m3_colbert",
+   "b": "dense_es_hiiamsid",
+   "est": 0.3213556922476079,
+   "c": [
+    0.2607047146974566,
+    0.4548401905887438
+   ],
+   "p": 0.00019998000199980003,
+   "holm": 0.001999800019998,
+   "reading": "supported"
+  },
+  {
+   "a": "dense_e5",
+   "b": "bge_m3_dense",
+   "est": 0.022847100175746926,
+   "c": [
+    -0.00985725062688597,
+    0.05227025903208601
+   ],
+   "p": 0.1573842615738426,
+   "holm": 0.3147685231476852,
+   "reading": "not supported"
+  },
+  {
+   "a": "bge_m3_dense",
+   "b": "dense_es_hiiamsid",
+   "est": 0.05975395430579965,
+   "c": [
+    0.0012597653776806631,
+    0.18501714816490814
+   ],
+   "p": 0.0435956404359564,
+   "holm": 0.1307869213078692,
+   "reading": "not supported"
+  },
+  {
+   "a": "dense_e5",
+   "b": "dense_es_hiiamsid",
+   "est": 0.08260105448154657,
+   "c": [
+    0.01888837882567851,
+    0.20539493417763688
+   ],
+   "p": 0.0035996400359964,
+   "holm": 0.0143985601439856,
+   "reading": "supported"
+  }
+ ],
+ "P": [
+  [
+   "bge_m3_colbert",
+   "bm25_unigram"
+  ],
+  [
+   "bge_m3_dense",
+   "bm25_unigram"
+  ],
+  [
+   "dense_e5",
+   "bm25_unigram"
+  ],
+  [
+   "bge_m3_colbert",
+   "bge_m3_dense"
+  ],
+  [
+   "bge_m3_colbert",
+   "dense_e5"
+  ],
+  [
+   "bge_m3_colbert",
+   "dense_es_hiiamsid"
+  ],
+  [
+   "dense_e5",
+   "dense_es_hiiamsid"
+  ]
+ ]
+}

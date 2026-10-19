@@ -1,9 +1,9 @@
 # Sprint S14 — amendments
 
 Record, append-only (D-045). The amendments to [`SPRINT_S14_DESIGN.md`](SPRINT_S14_DESIGN.md), frozen at
-the commit that carries this file's first version (2026-10-19; its SHA is in the registry log, `SPRINTS.md`, and
-in the P-fixing row below once P is listed). One row per change made after the freeze, dated, justified, and with
+the commit that carries this file's first version (`dd419a1`, 2026-10-19). One row per change made after the freeze, dated, justified, and with
 its effect on claims. Rows are never edited or deleted; a correction is a new row.
 
 | Date | What changed | Why | Effect on claims |
 |---|---|---|---|
+| 2026-10-19 | **A1. P fixed before any BT result is read (design, Design constraints, B1).** Stage P of `build_results_s14.py --fix-pairs` at `2d0b51a` (the freeze is `dd419a1`), on dev STACKED-P v2 restricted to the 2,276 item-scored BT-paired leaves (sorted key list SHA-256 `8d77e31e977b080d`), tie-free, concept-clustered intervals, Holm within the ten: **P = 7 of 10** — `bge_m3_colbert` − `bm25_unigram`; `bge_m3_dense` − `bm25_unigram`; `dense_e5` − `bm25_unigram`; `bge_m3_colbert` − `bge_m3_dense`; `bge_m3_colbert` − `dense_e5`; `bge_m3_colbert` − `dense_es_hiiamsid`; `dense_e5` − `dense_es_hiiamsid`. Not in P: `dense_es_hiiamsid` − `bm25_unigram` (+0.0076 [-0.0762, +0.0488], Holm 0.8205); `dense_e5` − `bge_m3_dense` (+0.0228 [-0.0099, +0.0523], Holm 0.3148); `bge_m3_dense` − `dense_es_hiiamsid` (+0.0598 [+0.0013, +0.1850], Holm 0.1308). Runs: `OE/stacked_texto_v2/bm25_unigram__k1-0.60__b-0.35__OE` @ `4f56a39`, `OE/stacked_texto_v2/bge_m3_colbert__OE` @ `8d1ffd2`, `OE/stacked_texto_v2/bge_m3_dense__OE` @ `8d1ffd2`, `OE/stacked_texto_v2/dense_e5__OE` @ `8d1ffd2`, `OE/stacked_texto_v2/dense_es_hiiamsid__OE` @ `8d1ffd2`; the table is `results/S14/pairs_stacked_p.md` and the machine-readable copy `pairs_stacked_p.json`, which the full generation re-derives and asserts before reading a BT figure. At this time the 18 non-S11 BT runs existed (made 07:14–07:40Z, none read) and the S11 BT runs did not. | The design requires P to be fixed and listed here with its date and run ids before the first BT run is read, so that B1 cannot be chosen after the fact. | B1 tests exactly these 7 contrasts on BT; the other 3 are printed descriptively. |
