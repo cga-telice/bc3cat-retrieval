@@ -88,8 +88,8 @@ side, once), the S14 pair list, model/prompt stamps on every LLM run.
 
 1. `/audit S14` in a separate session; resolve; `done`.
 2. The independent audits of S8 A8 and S11 A7–A10 (separate sessions, 2026-10-19, both PASS WITH FINDINGS) are
-   answered in the reports; the generator changes landed at `9a19a9b` (S8 A9; S11 A11: the STACKED-P reading of
-   the S11 stacked rows, pending its tables and row).
+   answered and closed: S8 A9 (`1b691ee`), S11 A11 — the S11 stacked rows on STACKED-P (A1 +0.3295 v1 / +0.3117
+   v2, *established on dev* on both populations), the H8 floor for the reference arms, S9's rows marked as-run.
 3. S12 registration (its design) once S14 is done.
 
 ## Open decisions

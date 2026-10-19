@@ -69,6 +69,9 @@ REPORTS = {
         "results/S11/*.md",
         # The v2 re-run amendment (D-061): its tables and the v1-beside-v2 comparison.
         "results/S11/v2/*.md",
+        # A11 (D-061 §4, independent audit F1): the STACKED-P reading of the stacked rows, v1 and v2.
+        "results/S11/stacked_p/*.md",
+        "results/S11/v2/stacked_p/*.md",
     ],
     "sprints/SPRINT_S14_REPORT.md": [
         "results/S14/*.md",
