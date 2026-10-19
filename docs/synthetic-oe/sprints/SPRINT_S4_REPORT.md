@@ -267,8 +267,9 @@ runs, read, not re-run; T7 (v2) flags all 15 of them "retriever, notebook or con
 and at `e5dd940` (S11 A8, the `provenance()` hook). Neither hook is declared by any S4 retriever, and the 2,061
 dev queries whose text v2 did not change move 0 item and 0 parent hits between the v1 and the v2 runs for all 15
 arms (`comparison.md`, the H8 floor), which is the bound the flag asks for. The flag is accepted on that
-evidence (audit F1); T7's rule, which cannot tell an additive notebook hook from a retrieval-path change, is debt
-for the generator, to land between batches.
+evidence (audit F1). T7's rule cannot tell an additive notebook hook from a retrieval-path change, so since
+2026-10-19 (between batches) T7 names, beside the flag, the commits that moved `src/retrieve.ipynb` between the
+run's commit and S4's, read from git, for the reader to judge; the flag itself stands.
 
 **What moves, and what does not** ([`comparison.md`](../results/S4/v2/comparison.md), paired on the same scored
 queries):
@@ -300,6 +301,6 @@ every sampled figure recomputed from the runs.
 
 | Finding | Resolution |
 |---|---|
-| F1 — T7 (v2) flags every reused identity run as changed and the section was silent | **Fixed** in the section: the two notebook commits named, the zero movement on the 2,061 unchanged queries cited as the bound; the generator's rule recorded as debt |
+| F1 — T7 (v2) flags every reused identity run as changed and the section was silent | **Fixed** in the section: the two notebook commits named, the zero movement on the 2,061 unchanged queries cited as the bound; the generator's rule recorded as debt, landed 2026-10-19: T7 (v2) names the notebook commits beside the flag |
 | F2 — "recovers for the order-sensitive arms" without intervals, over two arms the table does not support | **Fixed**: intervals printed; "recovers" restricted to ColBERT and `dense_es_hiiamsid` |
 | Unverifiable: fourth-decimal endpoints, first-time runs | Stand as listed |

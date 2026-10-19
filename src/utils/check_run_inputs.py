@@ -39,6 +39,18 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def sha256_eol_variants(path: Path) -> dict[str, str]:
+    """The digests a text file takes under either line-ending convention (DATASET_DEFECTS.md H5, third face).
+
+    A run stamps the config as the bytes on disk at the time; a Windows checkout can hold the same YAML as CRLF
+    one day and LF the next (a branch switch re-checks files out LF), so the same content carries two digests.
+    Nothing in the content changed, and the checker must not call that a changed config."""
+    raw = path.read_bytes()
+    lf = raw.replace(b"\r\n", b"\n")
+    crlf = lf.replace(b"\n", b"\r\n")
+    return {"lf": hashlib.sha256(lf).hexdigest(), "crlf": hashlib.sha256(crlf).hexdigest()}
+
+
 def data_digests() -> dict[str, list[str]]:
     """digest -> the files in data/processed carrying it (a digest can have several copies)."""
     out: dict[str, list[str]] = {}
@@ -80,10 +92,18 @@ def check_run(meta_path: Path, digests: dict[str, list[str]]) -> list[str]:
         if not candidate.exists():
             problems.append(f"config {candidate.name} no longer in configs/")
         elif sha256(candidate) != config_sha:
-            problems.append(
-                f"config {candidate.name} has changed since the run "
-                f"(stamped {config_sha[:16]}…, now {sha256(candidate)[:16]}…)"
-            )
+            variants = sha256_eol_variants(candidate)
+            if config_sha in variants.values():
+                # Same content, other line endings: resolves (H5). Said, not hidden.
+                problems.append(
+                    f"note: config {candidate.name} resolves modulo line endings "
+                    f"(stamped {config_sha[:16]}…, on disk {sha256(candidate)[:16]}…)"
+                )
+            else:
+                problems.append(
+                    f"config {candidate.name} has changed since the run "
+                    f"(stamped {config_sha[:16]}…, now {sha256(candidate)[:16]}…)"
+                )
 
     commit = meta.get("code_commit")
     if not commit:
@@ -146,18 +166,26 @@ def main() -> int:
     metas = sorted(root.rglob("run_meta.json"))
     failures: dict[str, list[str]] = {}
 
+    eol_notes = 0
     for meta_path in metas:
-        problems = check_run(meta_path, digests)
+        found = check_run(meta_path, digests)
+        # A "note:" is said, not counted: the stamped config resolves modulo line endings (H5, third face).
+        notes = [f for f in found if f.startswith("note:")]
+        problems = [f for f in found if not f.startswith("note:")]
+        eol_notes += len(notes)
         run_id = str(meta_path.parent.relative_to(RUNS)).replace("\\", "/")
         status = "ok" if not problems else "FAIL"
         print(f"[{status:4s}] {run_id}")
-        for problem in problems:
-            print(f"         - {problem}")
+        for line in problems + notes:
+            print(f"         - {line}")
         if problems:
             failures[run_id] = problems
 
     print()
     print(f"{len(metas) - len(failures)} of {len(metas)} runs resolve against the tree.")
+    if eol_notes:
+        print(f"{eol_notes} config stamps resolve only modulo line endings (CRLF/LF, DATASET_DEFECTS.md H5): "
+              "same content, other bytes.")
     if failures:
         print(f"{len(failures)} do not; the stamps above name inputs that are gone or changed.")
         return 1

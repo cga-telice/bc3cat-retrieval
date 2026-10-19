@@ -310,6 +310,9 @@ class Frames:
 
     def __init__(self, dev: frozenset[str]):
         self.dev = dev
+        # The base names at construction: under `--v2` the v1 frames are built, then `configure(True)` renames the
+        # stacked base, and the comparison pools the v1 frames afterwards (A13). They must not read the globals.
+        self.bases, self.nonid, self.stacked = tuple(BASES), list(NONID), STACKED
         self.Q = {b: query_table(b, dev) for b in BASES}
         self.T: dict = {}      # (arm, base, transform) -> frame
         self.G: dict = {}      # (arm, base) -> guard frame
@@ -323,7 +326,7 @@ class Frames:
                     self.G[(arm, base)] = pair(self.Q[base], (base, GUARD[arm]), ref)
 
     def pooled(self, arm: str, t: str, bases=None) -> pd.DataFrame:
-        return pd.concat([self.T[(arm, b, t)] for b in (NONID if bases is None else bases)])
+        return pd.concat([self.T[(arm, b, t)] for b in (self.nonid if bases is None else bases)])
 
 
 def floors(F: Frames) -> dict[str, float]:

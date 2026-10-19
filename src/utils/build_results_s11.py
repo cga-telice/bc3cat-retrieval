@@ -774,34 +774,62 @@ def k0_comparison() -> list[str]:
     out = ["", "## A4: K0 against S9's key-tolerant runs", "", "| base | queries | identical top 100 |", "|---|---:|---:|"]
     import gzip
     for base in S9_BASES:
-        if phys(base) != base:
-            # A7: S9 never ran on a v2 base, so there is nothing for K0's v2 run to be compared with.
-            out.append(f"| `{base}` (`{phys(base)}`) | — | not applicable: S9's run is on v1 only |")
+        label = f"`{base}` (`{phys(base)}`)" if phys(base) != base else f"`{base}`"
+        if not available(base, REFS["K0 as S9 ran it"]):
+            # A7: S9 ran on a v2 base only where S9 A13 re-ran its extractor arms (`stacked_texto_v2`); elsewhere
+            # there is nothing for K0's v2 run to be compared with.
+            out.append(f"| {label} | — | not applicable: S9's run is on v1 only |")
             continue
         def load(m):
-            with gzip.open(RUNS / base / m / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
+            with gzip.open(run_dir(base, m) / "results_top100.jsonl.gz", "rt", encoding="utf-8") as fh:
                 return [(r["query_item_key"], [(c["index_item_key"], c["score"]) for c in r["candidates"]])
                         for r in map(json.loads, fh)]
         a, b = load(S11_ARMS["K0"]), load(REFS["K0 as S9 ran it"])
         same = sum(x == y for x, y in zip(a, b)) if len(a) == len(b) else 0
-        out.append(f"| `{base}` | {len(a):,} | {same:,} |")
+        out.append(f"| {label} | {len(a):,} | {same:,} |")
     return out
 
 
 def prompt_source() -> list[str]:
     """The extraction prompt has no template file: `build_extraction_prompt` in `src/pipeline/prompts.py` is the
-    prompt. Its SHA-256 at each run commit stands in for the prompt SHA that no `run_meta.json` carries (S11 audit F1)."""
+    prompt. Two digests stand for it, and they are not the same thing (S11 v2 audit F3): the SHA-256 of the whole
+    file at each run commit (recomputed here from the git blob, for the runs that carry no stamp — S11 audit F1),
+    and the SHA-256 of the function's source as A8's `retriever_provenance` stamps it (`prompt_template_sha256`,
+    beside `prompts_py_sha256` and the model digest). Which LLM runs carry the stamp is counted, not assumed."""
     path = "src/pipeline/prompts.py"
-    commits = sorted({run_meta(qs, m)["code_commit"] for qs, m, _ in _HITS if m in S11_ARMS.values()})
+    llm_arms = {S11_ARMS[k] for k in ("K0", "K1", "K2")}  # R2 and F1 run no LLM: their stamp has no `llm` block
+    llm_runs = sorted({(qs, m) for qs, m, _ in _HITS if m in llm_arms})
+    commits = sorted({run_meta(qs, m)["code_commit"] for qs, m in llm_runs})
     shas = {}
     for c in commits:
         blob = subprocess.run(["git", "show", f"{c}:{path}"], cwd=REPO, capture_output=True, check=True).stdout
         shas[c[:7]] = hashlib.sha256(blob).hexdigest()
     if len(set(shas.values())) != 1:
         raise ValueError(f"{path} differs across the S11 run commits: {shas}")
-    return ["", f"Extraction prompt (`{path}`, `build_extraction_prompt`): SHA-256 `{next(iter(shas.values()))[:16]}` "
-            f"at every S11 run commit ({', '.join(f'`{c}`' for c in shas)}). Recorded here, not in the runs' "
-            "`run_meta.json`, which carry neither the prompt SHA nor the model digest."]
+    file_sha = next(iter(shas.values()))
+    stamped = {(qs, m): run_meta(qs, m)["retriever_provenance"]["llm"]
+               for qs, m in llm_runs if "retriever_provenance" in run_meta(qs, m)}
+    out = ["", f"Extraction prompt: `{path}`, function `build_extraction_prompt`. Whole-file SHA-256 `{file_sha[:16]}` "
+           f"at every S11 run commit ({', '.join(f'`{c}`' for c in shas)}), recomputed from the git blob."]
+    if not stamped:
+        out.append(f"None of the {len(llm_runs)} LLM runs read here carries a `retriever_provenance` stamp: their "
+                   "`run_meta.json` record neither the prompt SHA nor the model digest (S11 audit F1), so the digest "
+                   "above and the determinism log's model digest stand in for them.")
+        return out
+    keys = ("prompt_template_sha256", "prompts_py_sha256", "model_digest", "ollama_version")
+    values = {k: sorted({str(v[k]) for v in stamped.values()}) for k in keys}
+    if any(len(v) != 1 for v in values.values()):
+        raise ValueError(f"the stamped LLM runs disagree on their prompt or model: {values}")
+    fn_sha, py_sha, model, ollama = (values[k][0] for k in keys)
+    if py_sha != file_sha:
+        raise ValueError(f"the stamped prompts.py digest {py_sha[:16]} differs from the blob's {file_sha[:16]}")
+    unstamped = [f"`{qs}/{m}`" for qs, m in llm_runs if (qs, m) not in stamped]
+    out.append(f"{len(stamped)} of the {len(llm_runs)} LLM runs read here carry A8's `retriever_provenance` stamp: "
+               f"function-source SHA-256 `{fn_sha[:16]}` (the stamp's `prompt_template_sha256`), file SHA-256 "
+               f"`{py_sha[:16]}` (its `prompts_py_sha256`, equal to the blob's), model digest `{model[:16]}`, ollama "
+               f"{ollama}. The {len(unstamped)} without it (made before A8) are {', '.join(unstamped)}: for them the "
+               "file digest above and the determinism log's model digest stand in.")
+    return out
 
 
 def determinism_lines() -> list[str]:
@@ -903,10 +931,22 @@ def snapshot(F: Frames, results: list[dict]) -> dict:
                 continue
             h = hits(base, ARM_DIR[arm], tuple(Q.index))
             profile[(arm, base)] = {"acc": acc_cell(Q, base, arm, "item", "tf"),
-                                    "hits": h[["item_tf", "item_run"]].join(Q[["concept", "item_scored"]])}
+                                    "hits": h[["item_tf", "item_run"]].join(Q[["gold", "concept", "item_scored"]])}
     runs = sorted({(run_qs(b, m), m) for b in BASES for m in ARM_DIR.values() if available(b, m)})
     return {"phys": dict(PHYS), "results": results, "types": type_cells(F), "profile": profile, "runs": runs,
             "caches": {b: family_meta(b) for b in BASES}, "keys": {b: tuple(F.Q[b].index) for b in BASES}}
+
+
+def paired_leaf_draws(d: np.ndarray, gold: np.ndarray, concept: np.ndarray, label: str) -> np.ndarray:
+    """D-053 for a paired per-query difference on an E3 base (S11 v2 audit F5): per leaf, Σ d over its scored
+    queries and their count; leaves resampled within their concept (`strat_weights`, as `_ladder_draws`), the
+    ratio per draw. The difference is drawn once, so the pairing is in the per-query values, not in the weights."""
+    g = pd.DataFrame({"gold": gold, "concept": concept, "d": d})
+    leaf = g.groupby("gold", sort=True).agg(num=("d", "sum"), den=("d", "size"), concept=("concept", "first"))
+    w = strat_weights(leaf["concept"].to_numpy(), label)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        s = (w @ leaf["num"].to_numpy(float)) / (w @ leaf["den"].to_numpy(float))
+    return s[np.isfinite(s)]
 
 
 def write_comparison(ref: dict, this: dict) -> None:
@@ -944,30 +984,40 @@ def write_comparison(ref: dict, this: dict) -> None:
               f"**{resolution(this['results'])}**."]
     # (b) T1: every arm on every base; on a changed base the per-query paired difference of the tie-free item hit
     lines += ["", "## T1: item Acc@1, tie-free, per arm and base", "",
-              "| base | arm | n scored | concepts | item Acc@1, v1 | item Acc@1, v2 | v2 − v1 | "
-              "CI (concept, paired per query) | queries whose tie-free hit moved |",
-              "|---|---|---:|---:|---:|---:|---:|---|---:|"]
+              "The paired interval resamples whole concepts on the S9 bases (D-030) and, on the E3 ladder — "
+              f"{', '.join(f'`{b}`' for b in E3_BASES)}, whose dev ladder has too few concepts for a cluster "
+              "bootstrap — leaves within their concept (D-053, the reading interval of the A7 rows above).", "",
+              "| base | arm | n scored | concepts | leaves | item Acc@1, v1 | item Acc@1, v2 | v2 − v1 | "
+              "CI (paired per query) | bootstrap | queries whose tie-free hit moved |",
+              "|---|---|---:|---:|---:|---:|---:|---:|---|---|---:|"]
     for base in BASES:
         for arm in list(S11_ARMS) + list(REFS):
             a, b = ref["profile"].get((arm, base)), this["profile"].get((arm, base))
             if a is None and b is None:
                 continue
+            kind = "stratified leaf (D-053)" if base in E3_BASES else "concept (D-030)"
             if a is None or b is None:
-                have = (a or b)["acc"]
-                lines.append(f"| `{base}` | {name(arm)} | {have['n']:,} | {have['concepts']} | "
+                have = (a or b)
+                leaves = have["hits"][have["hits"]["item_scored"]]["gold"].nunique()
+                lines.append(f"| `{base}` | {name(arm)} | {have['acc']['n']:,} | {have['acc']['concepts']} | {leaves:,} | "
                              f"{f4(a['acc']['acc']) if a else '—'} | {f4(b['acc']['acc']) if b else '—'} | — | "
-                             "— (run on one version only) | — |")
-                continue
-            if base not in changed_bases:
-                lines.append(f"| `{base}` | {name(arm)} | {b['acc']['n']:,} | {b['acc']['concepts']} | {f4(a['acc']['acc'])} | "
-                             f"{f4(b['acc']['acc'])} | {v2v.fsd(b['acc']['acc'] - a['acc']['acc'])} | — (same run) | — |")
+                             "— (run on one version only) | — | — |")
                 continue
             g = b["hits"][b["hits"]["item_scored"]]
+            if base not in changed_bases:
+                lines.append(f"| `{base}` | {name(arm)} | {b['acc']['n']:,} | {b['acc']['concepts']} | {g['gold'].nunique():,} | "
+                             f"{f4(a['acc']['acc'])} | {f4(b['acc']['acc'])} | {v2v.fsd(b['acc']['acc'] - a['acc']['acc'])} | "
+                             "— (same run) | — | — |")
+                continue
             h = a["hits"].loc[g.index]
             dv = (g["item_tf"] - h["item_tf"]).to_numpy(float)
-            draws = boot_cluster(dv[:, None], g["concept"].to_numpy(), f"s11|cmp|{arm}|{base}")[:, 0]
-            lines.append(f"| `{base}` | {name(arm)} | {len(g):,} | {b['acc']['concepts']} | {f4(a['acc']['acc'])} | "
-                         f"{f4(b['acc']['acc'])} | {v2v.fsd(float(dv.mean()))} | {v2v.fci(ci(draws))} | {int((dv != 0).sum()):,} |")
+            if base in E3_BASES:
+                draws = paired_leaf_draws(dv, g["gold"].to_numpy(), g["concept"].to_numpy(), f"s11|cmp|{arm}|{base}")
+            else:
+                draws = boot_cluster(dv[:, None], g["concept"].to_numpy(), f"s11|cmp|{arm}|{base}")[:, 0]
+            lines.append(f"| `{base}` | {name(arm)} | {len(g):,} | {b['acc']['concepts']} | {g['gold'].nunique():,} | "
+                         f"{f4(a['acc']['acc'])} | {f4(b['acc']['acc'])} | {v2v.fsd(float(dv.mean()))} | "
+                         f"{v2v.fci(ci(draws))} | {kind} | {int((dv != 0).sum()):,} |")
     # (c) T4 by type: K2 − ColBERT per type and layer on `single_texto`
     lines += ["", "## T4: K2 − ColBERT by type and layer, `single_texto`", "",
               "| scope | n scored | concepts | K2, v1 | ColBERT, v1 | K2 − ColBERT, v1 | CI, v1 | K2, v2 | ColBERT, v2 | "

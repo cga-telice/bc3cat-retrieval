@@ -201,10 +201,11 @@ query):
   ColBERT goes 0.4128 → 0.4280 (+0.0152 [+0.0040, +0.0223]) while K2's −0.0024 [−0.0098, +0.0034] and K0's
   +0.0005 [−0.0095, +0.0075] are not distinguishable from 0; on the 1,179 repaired stacked queries K2 reads
   0.6877 → 0.6826 and K0 0.6139 → 0.6149, so the extractor was already reading the value out of the broken slot
-  and the repaired text gives it nothing. On the ladder K2 falls 0.7850 → 0.7758 (−0.0091 [−0.0168, −0.0014]; a
-  concept-clustered interval over the ladder's 4 concepts, which D-053 sets aside for the E3 sets — the audit's
-  stratified-leaf interval has the same sign, and the comparison generator is to print D-053's interval on the
-  E3 bases between batches): on its 337 repaired rung queries 0.8427 → 0.7982 (K0 0.7363 → 0.7016), while
+  and the repaired text gives it nothing. On the ladder K2 falls 0.7850 → 0.7758 (−0.0091 [−0.0171, −0.0018],
+  D-053's concept-stratified leaf interval over the ladder's 328 leaves, which the comparison's T1 prints on the
+  E3 bases since 2026-10-19; the first generation printed a concept-clustered interval over the ladder's 4
+  concepts, of the same sign, which D-053 sets aside for the E3 sets — audit F5): on its 337 repaired rung
+  queries 0.8427 → 0.7982 (K0 0.7363 → 0.7016), while
   ColBERT holds 0.5091 → 0.5092 on all 1,640 ladder queries. The paraphrases that are now well-formed are the
   ones `phi4` reads a little worse, not better; which axes it now misreads is in `stages.md` (v2) and is a
   descriptive lead for S12's registration, not a result.
@@ -221,11 +222,18 @@ the commit message of `8c8fe18` said (audit F1). Finding 6's ordering by type an
 known-wrong 1–4 stand. The v2 tables were generated twice; the second differs from the first only in the
 generator-commit line of T9, HEAD having moved between them (`logs/v2/s11_gen1.sha256`, `s11_gen2.sha256`).
 
-**Debt from the audit, to land between batches (src):** T9's `prompt_source()` sentence says no run carries the
-prompt SHA or model digest, which is false for the 12 v2 LLM runs (A8) and true for the v1 ones; the two digests
-it prints under one name (the file's and the function's) are to be labelled; the comparison's T1 and H8 blocks
-are to print D-053's stratified-leaf interval on the E3 bases; `determinism_extract_v2.json` records no prompt
-SHA.
+**Debt from the audit, landed 2026-10-19 between batches (src; tables regenerated):** T9 now counts the LLM runs
+that carry A8's `retriever_provenance` stamp — 12 of the 21 it reads, the nine `texto_u` / `resumen_u` /
+`single_l2_texto` runs made before A8 named as the ones without it — and prints the two digests under their own
+names: the function-source SHA-256 `bdc20c46…` (the stamp's `prompt_template_sha256`) and the whole-file SHA-256
+`6dcc3f27…` (its `prompts_py_sha256`, equal to the git blob at every run commit), beside the model digest
+`ac896e5b…` and ollama 0.17.7 (audit F3). The comparison's T1 prints D-053's concept-stratified leaf interval on
+`dose_texto` and `isolated_texto` and names the bootstrap per row (audit F5); its H8 block carries counts only.
+`determinism_extract_v2.json` still records `prompt_sha256: null`: it is a log the extraction pass writes, and the
+digests are read from the run stamps, not from it. Two rows the first generation printed as "run on one version
+only" now exist on both: S9 A13's extractor runs on `stacked_texto_v2` (`llm_exact (S9)` 0.2157 → 0.2145, −0.0012
+[−0.0042, +0.0005]; `K0 as S9 ran it` 0.6780 → 0.6764, −0.0016 [−0.0120, +0.0053]) appear in T1 and in the
+comparison since A13's batch.
 
 ### Audit response (v2 re-run)
 
@@ -236,9 +244,9 @@ minor; every sampled statistic, including the paired intervals, reproduced exact
 |---|---|
 | F1 — "about a seventh" does not follow (0.0176 / 0.3143 is about one eighteenth) | **Fixed** in the section; the commit message stands as written and is named as wrong |
 | F2 — ColBERT's ladder figure quoted beside a 337-query cell it was not computed on | **Fixed**: stated as the all-1,640 figure |
-| F3 — T9's fixed sentence contradicts the v2 stamps; two digests under one name; no prompt SHA in the v2 determinism log | **Recorded as debt** (src change between batches); the section says what the stamps carry |
+| F3 — T9's fixed sentence contradicts the v2 stamps; two digests under one name; no prompt SHA in the v2 determinism log | **Fixed** 2026-10-19 between batches: T9 counts the stamped runs and labels both digests (the debt paragraph above); the determinism log's null stands, the digests are read from the stamps |
 | F4 — A9's account of the five archived attempts (2 + 3, not 1 + 3 + 1; shared archive) | **Recorded** as A10 |
-| F5 — the ladder interval in T1/H8 is concept-clustered over 4 clusters | **Stated** in the section with the audit's stratified-leaf interval's sign; generator change recorded as debt |
+| F5 — the ladder interval in T1/H8 is concept-clustered over 4 clusters | **Fixed** 2026-10-19 between batches: the comparison's T1 prints D-053's interval on the E3 bases and names the bootstrap per row; the section quotes it |
 | F6 — "K2 giving a little back" on stacked without its interval | **Fixed**: intervals printed, the stacked clause read as not distinguishable from 0 |
 | F7 — the v2 caches stamp `host.docker.internal`, not A1's address | **Recorded** as A10 |
 | Unverifiable: first-time runs, blindness on v2, K0's tier decode, the pinned stack | Stand as listed |

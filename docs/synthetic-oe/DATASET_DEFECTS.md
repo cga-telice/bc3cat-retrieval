@@ -335,6 +335,7 @@ reproduces the stamped digest exactly. The 332 runs that resolve, the 72 v2 runs
 digest. No config content changed (`git log` shows none). The checker should compare text inputs modulo line
 endings, or the stamp should digest the normalised bytes; both are harness changes (src), to land between
 batches. Until then a `[FAIL]` on a `.yaml` whose CRLF digest equals the stamp is read as resolving.
+**2026-10-19, landed (between batches):** the checker compares the config modulo line endings (`sha256_eol_variants`): a stamp that equals the file's digest under the other convention is printed as a note on an `[ok]` run and counted in the summary, never as a failure; a stamp that equals neither still fails. The stamp itself is unchanged (it digests the bytes the run read), so the phantom stays visible in `run_meta.json` and is only read correctly. 557 of 557 OE runs resolve, 180 of them modulo line endings (`logs/v2/check_run_inputs.eol.out`).
 
 ## H6 — Five retrievers scored every query in one block, so ten arms could not run at scale · **fixed** (S3)
 

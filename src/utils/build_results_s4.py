@@ -717,14 +717,24 @@ def write_provenance() -> None:
             stat = git("diff", "--stat", f"{m['code_commit']}..{target}", "--", *files)
             changed = [line.split("|")[0].strip() for line in stat.splitlines()[:-1]]
             touches_retriever = [c for c in changed if c.startswith("src/retrievers/") or c.endswith(".ipynb") or c.startswith("configs/")]
+            # The flag cannot tell an additive notebook hook from a retrieval-path change (S4 v2 audit F1), so when
+            # the notebook is among the changes its commits are named here, read from git, for the reader to judge.
+            notebook_commits = ""
+            if any(c.endswith(".ipynb") for c in changed):
+                log = git("log", "--format=%h %s", f"{m['code_commit']}..{target}", "--", "src/retrieve.ipynb")
+                notebook_commits = "; notebook commits: " + "; ".join(
+                    f"`{line.split(' ', 1)[0]}` {line.split(' ', 1)[1][:72]}" for line in log.splitlines())
             lines.append(
                 f"- `{m['run_id']}` `{m['code_commit'][:7]}..{target[:7]}`: "
                 + (", ".join(f"`{c}`" for c in changed) if changed else "no change")
                 + (" — **retriever, notebook or config changed**" if touches_retriever else "")
+                + notebook_commits
             )
     lines += ["", "No reused run's retriever, `retrieve.ipynb` or config may appear above; the remaining files "
               "are precondition checks and query-set registration, and the query tables the runs read carry the "
-              "digests printed in the table."]
+              "digests printed in the table. Where `src/retrieve.ipynb` appears, the commits that moved it are "
+              "named: the flag stands, and whether each is an additive hook the run's retriever never declares, "
+              "or a change of its retrieval path, is read from those commits, not decided here."]
     write(OUT / "run_provenance.md", lines)
 
 
