@@ -1,3 +1,99 @@
+# Sprint S11 (v2 re-run, A7–A10) — audit
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-10-19 · report `docs/synthetic-oe/sprints/SPRINT_S11_REPORT.md` §"v2 re-run (A7–A9, 2026-10-18)" and its "Audit response" at HEAD `23a162f`. HEAD moved to `d9c4d62` (S14 commits `2d0b51a`, `d9c4d62`) while I worked; neither touches an in-scope file or any module the generator imports. · runs `runs/OE/{stacked,single,dose,isolated}_texto_v2/*`, `runs/OE/{texto_u,resumen_u,single_l2_texto}/structured_pipeline_*`, `index/OE/_colbert_family/*_texto_v2.*`, `runs/_archive/dirty/2026-10-18/`, `logs/S11/determinism_extract_v2.json`
+
+## Verified
+- **The tables regenerate.** I ran `build_results_s11.py --v2` read-only in `bc3cat-s3` (pinned stack), writing to the container's `/tmp`. 10 of 11 files and Fig. 8 came out byte-identical, including `comparison.md`, so every bootstrap interval reproduces. `run_provenance.md` differs on two lines only: the generator commit, and the `SPLITS.md` digest (`8d520eb4…` now against `abac65f7…` committed). That second one is H5: the file went CRLF→LF at `4ef19aa`, after the tables were generated at `fc59fd4`. The committed files match `logs/v2/s11_gen4.sha256` 11/11. The repo tree is unchanged after my run.
+- **Headline figures, recomputed independently** (my own tie-free scorer: rank-1 score-tie expectation, D-033 golds dropped, dev split):
+  - K2 on stacked: v2 0.7247, v1 0.7271.
+  - ColBERT on stacked: 0.4280 / 0.4128.
+  - So A1 is +0.2967 on v2 and +0.3143 on v1.
+  - R2 on stacked: 0.4867 / 0.4779.
+  - On the ladder: K2 0.7758 / 0.7850, ColBERT 0.5092 / 0.5091, so A7 pooled is +0.2666.
+  - Populations: n scored 2,466 / 1,640; 39 / 4 concepts.
+  - All of these match `comparison.md` T1 and A1/A7 to 4 dp.
+- **Changed/unchanged subsets reproduce exactly:**
+  - Stacked, 1,179 repaired queries: K2 0.6877→0.6826; R2 0.3887→0.4081. On the 1,287 unchanged queries, R2 moves 8 and K2 moves 0.
+  - Ladder, 337 repaired queries: K2 0.8427→0.7982.
+- **S9 A13 references and the A4 check reproduce:** `llm_exact (S9)` 0.2157→0.2145; `K0 as S9 ran it` 0.6780→0.6764; A4 gives 2,521/2,521 identical top-100 lists between the stacked v2 runs of K0 and `llm_keytol_valuenorm`.
+- **Run stamps.** All 20 S11 v2 runs have `code_dirty: false`, split `dev`, and the full query count. The four K0 runs are at `8d1ffd2` and the other 16 at `858d15c`. Each config digest equals the current file. Each run carries `retriever_provenance`: model `ac896e5b…`, ollama 0.17.7, `prompt_template_sha256` `bdc20c46…`, `prompts_py_sha256` `6dcc3f27…` (the git blob of `prompts.py` at all four run commits). R2 also carries a `canon` block. Every ColBERT-ordered run selects its own base's `.npz` (A5).
+- **One sample per comparison.** On every v2 base, each S11 arm and each reference arm (`bge_m3_colbert`, `dense_e5`, `bm25_*`, `rules_valuenorm`, oracles) stamps the same query-set SHA, which equals that base's `_feats.parquet` digest (`977d40b9…`, `03496b0b…`, `ac0cb6a5…`, `35de7967…`). The v2 JSON digests match `DELIVERIES.md`. Golds are identical per key between v1 and v2.
+- **Family caches.** All four v2 caches report `mismatched: 0`, `max_abs_diff: 0.0`. Each `reference_results_sha256` equals the current ColBERT v2 `results_top100.jsonl.gz`. Stage 1 comes from the v2 `dense_e5` runs, and each cache stamps `host.docker.internal:8800` (A10 b).
+- **Archive.** `sha256sum -c` passes 44/44, with 44 files on disk. It holds 7 run dirs: S7 A9's 2, plus S11's 5. The S11 five are 2 top-100-only failures (`hard_colbert` and `soft_colbert`, stacked) and 3 dirty saves at `8d1ffd2` (stacked `rules_canon` and `colbert_in_concept`, single `hard_colbert`), each dirty on `src/retrievers/structured_pipeline.py`. This matches A10(a), not A9.
+- **The A9 fix and A8 are what they say.** The diff `8d1ffd2..858d15c` is the one-line `.npz` suffix fix inside `provenance()`. A8's diff (`retrieve.ipynb` plus `provenance()`) touches no retrieval path.
+- **Determinism log.** 100/100 identical, no unparsed, 0 truncated. The sample is 100 unique keys, all dev, all in `OE_v2_changes.jsonl`, 25 per set. `prompt_sha256: null` is disclosed in the report.
+- **Design freeze.** `git diff 931ee0c..HEAD` on the design shows only the freeze-SHA header line (`5e13ff9`). A7–A10 are dated rows in the amendments file. A7 was recorded (`4f56a39`, 21:54 +0200) before the first v2 run (19:55 UTC).
+- **The sign rule is applied.** `ladder.md` prints concepts with δ > 0 per rung; rung 5 is 4 of 4.
+- **The "about one eighteenth" figure** is right: 0.3143 / 0.0176 = 17.9.
+
+## Findings
+### F1 — major — The stacked results have no STACKED-P reading, as D-061 §4 requires
+D-061 §4 says "every stacked result from these amendments on is given on all queries and on STACKED-P". That clause was present from `fb33db1`, before A7 was recorded, and D-061 is now Accepted. `exclusions.stacked_p` documents the same rule.
+
+The S11 v2 outputs ignore it:
+- `results/S11/v2/` has no `stacked_p/` directory, unlike `results/S7/v2/`.
+- `build_results_s11.py` parses without `population=True`.
+- Neither A7 nor the report mentions STACKED-P.
+
+The omitted reading differs from the quoted one. My unstamped point estimate on 2,277 STACKED-P dev scored queries is K2 − ColBERT +0.3117 on v2 (v1 +0.3295), against the +0.2967 quoted on all queries.
+
+**What must change:** generate the STACKED-P reading for every stacked row (A1, A2, A3, A5, T1, H8), or record an amendment that exempts S11 and says why.
+
+### F2 — minor — The H8 floor table leaves out the reference ColBERT arm, so "the differences above are the repair" is too strong
+`comparison.md` prints the unchanged-query floor for the five S11 arms only. But `bge_m3_colbert` was itself re-run on v2, and I count 8 tie-free moves on the 1,287 unchanged stacked queries (0.4980→0.4971). ColBERT's +0.0152, and therefore A1's −0.0176, include that batch noise (about +0.0005 on A1). The size is small; the sentence is still not exact.
+
+**What must change:** print the floor for the reference arms too, and scope the sentence to the S11 arms.
+
+### F3 — minor — Two rows with identical rankings get different "tie-free" values
+In `comparison.md` T1 for stacked v2, K0 reads 0.6576 tie-free, while `K0 as S9 ran it` reads 0.6764. The two top-100 lists are identical (A4, 2,521/2,521) and so are their scores. The S9 row's value is its as-run, catalogue-order reading, which the design says is "not a score".
+
+The report quotes the S9-row figures (0.6780 → 0.6764) as tie-free beside K0's.
+
+**What must change:** score the S9 row under the same tier-as-one-tie-set rule, or label its column as-run.
+
+### F4 — minor — The boilerplate in every v2 table is stale
+Each v2 file says A4's comparison and the S9 reference arms "exist on v1 bases only and are printed as absent on the v2 ones". The same files print the A4 stacked row (2,521/2,521) and the S9 reference rows on `stacked_texto_v2`.
+
+**What must change:** correct the sentence in `v2_note()` / `run_provenance.md`.
+
+### F5 — minor — "The blind v2 ladder" overstates blindness
+Report, "Finding 1 restated", and A7 ("the ladder stays blind"). 1,303 of the 1,640 v2 ladder queries are byte-identical to v1 ladder queries. Their K0/K1/K2 results were read at S11's v1 closure, and K2 − ColBERT on the ladder (+0.2758) was known before A7 was written. No tuning happened, so the "no LLM has seen v2" claim holds only for the 337 changed texts.
+
+**What must change:** scope "blind" to the 337 changed queries, or call the v2 ladder a re-reading of a seen population.
+
+### F6 — minor — The comparison does not explain why the v1 and v2 config digests differ
+The comparison's Sources table prints different config SHAs for all five S11 arms between v1 and v2. For example K0 is `51654ff8…` on v1 and `094557d5…` on v2, and F1 is `f0dd7e8b…` on v1 and `8d37d1d4…` on v2. A7 says "configs unchanged".
+
+I confirmed that each v1 stamp equals the CRLF encoding of the unchanged git blob (H5, third face). Neither the table nor the report says so.
+
+**What must change:** add a note in the comparison and in the report section.
+
+### F7 — minor — D-061's status in the report is stale
+The section says "D-061 (proposed)" and "under D-061, proposed, pending César". `DECISIONS.md` records it as Accepted on 2026-10-19.
+
+## Unverifiable
+- **"20 first-time runs."** Nothing on disk rules out a v2 attempt that was overwritten rather than archived. The `.start__*` markers in `logs/S11/` are from the v1 phase only.
+- **"phi4 extractions generated for the changed queries only."** I did not reconstruct the growth of the extraction cache. That the S11 LLM arms move 0 unchanged queries is consistent with the claim but does not prove it.
+- **K0's tier-as-tie-set values** were reproduced only through the generator (`s11_stages`), not by an independent decoder.
+- **EC7 (full suite and OEB fixture pass).** I did not run the tests, to avoid writing caches into the tree.
+
+## Exit criteria (scoped to the v2 re-run)
+| Criterion | Met | Evidence |
+|---|---|---|
+| EC1: scorer reproduces ColBERT's stored scores | Met | 4 v2 caches, `mismatched: 0`, `max_abs_diff: 0.0`, reference digests match |
+| EC2: regeneration recorded | Met | `determinism_extract_v2.json`: 100/100 identical, 100 dev changed keys |
+| EC3a: runs clean, dev, resolving | Met | 20/20 `code_dirty: false`, `dev`; `logs/v2/check_run_inputs.eol.out` `[ok]` for all 20 |
+| EC3b: model digest and prompt SHA stamped | Met | `retriever_provenance` on all 20 (and on the S9 A13 runs) |
+| EC3c: K0 reuse diff recorded | Met | T9 A4 row: 2,521/2,521 on stacked v2; single v2 "not applicable" |
+| EC4a: T1–T9 and Fig. 8 regenerate byte-identically | Met | Re-run identical except the generator line and the H5 `SPLITS.md` digest |
+| EC4b: n scored, n excluded and concepts on every item-level figure; both intervals on every contrast | Met | `profile.md`, `contrasts.md` |
+| EC5: 11 tests read tie-free, as run, D-004, seen/blind | Met | `results/S11/v2/predictions.md` |
+| EC6: contribution stated by the rule, scoped to dev | Not met | Stated "established on dev", but the blindness wording is overstated (F5) and the stacked rows lack STACKED-P (F1) |
+| EC7: full suite and OEB fixture pass | Unverifiable | Not run in this audit |
+
+---
+
 # Sprint S11 — audit of amendments A7–A9 (v2 re-run)
 
 **Verdict:** PASS WITH FINDINGS (1 major, 6 minor)

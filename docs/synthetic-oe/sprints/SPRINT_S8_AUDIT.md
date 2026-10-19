@@ -1,3 +1,90 @@
+# Sprint S8, amendment A8 (v2 re-run): audit
+
+**Verdict:** PASS WITH FINDINGS
+**Audited:** 2026-10-19 · report `docs/synthetic-oe/sprints/SPRINT_S8_REPORT.md`, last changed at `e083dc9` (blob `54a8dc8`), sections "v2 re-run (A8, 2026-10-18)" and "Audit response (v2 re-run)" · HEAD `23a162f` when the audit started. `d9c4d62` and `2d0b51a` landed during the audit; they touch S14 only and change no S8 file · runs: `runs/OE/dose_texto_v2/` (18 arms), `runs/OE/isolated_texto_v2/` (18 arms), `runs/OE/texto/` (identity), with `runs/OE/dose_texto/` and `runs/OE/isolated_texto/` read for the v1 side.
+
+## Verified
+- **Stamps, all 36 cited runs.** For every run in `results/S8/v2/run_provenance.md` (T11) I checked `run_meta.json` field by field: run_id, config SHA-256, `code_commit` 8d1ffd2, `code_dirty: false`, `split: dev`, 1,640 / 2,952 queries, `dropped` 0. Each config digest resolves against `configs/*.yaml`, allowing for the H5 line-ending variants. Each `query_set_sha256` equals the actual digest of the feature table the run read: `OE_dose_texto_v2_feats.parquet` = `ac0cb6a5…`, `OE_isolated_texto_v2_feats.parquet` = `35de7967…`. The JSON digests match A8: `8becd49a…` and `95c0c2ed…`. Script: scratchpad `stamps.py`; result 36 checked, 0 mismatches.
+- **Amendment recorded before the runs, and first-time runs.** A8 was committed at `4f56a39` (19:54:58Z). The first v2 run started at 19:55:12Z and the first dose/isolated run at 21:00:58Z (`logs/v2/run_v2_base.out`). The first attempt (`run_v2_base.attempt1.out`) stopped on `stacked_texto_v2` and never reached dose or isolated. The script's `guard` refuses any run directory that already exists. `logs/` is git-ignored, so this evidence is on disk only.
+- **Batch commit versus stamp.** The batch started at `022ff2a` (dirty=0). The runs are stamped `8d1ffd2` because that docs-only commit (`DATASET_DEFECTS.md`, `STATE.md`) landed mid-batch. `git diff 022ff2a 8d1ffd2 -- src configs` is empty, so the stamp correctly describes the code the runs used.
+- **Tables reproduce.** I re-ran `build_results_s8.py --v2` at `23a162f` in `bc3cat-s3`, writing to container `/tmp` with the output directory monkeypatched (wrapper `regen_s8.py` in the scratchpad). All 16 outputs, including `fig6_ladder.png`, are byte-identical to the committed `results/S8/v2/`, and to `logs/v2/tables_gen1.sha256` and `tables_gen2.sha256`.
+- **Independent recomputation from the raw `results_top100.jsonl.gz`** (tie-free = uniform break of the rank-1 tie), without the generator:
+  - ColBERT, isolated `template_paraphrase` Acc@1: 0.6551 → 0.6629, so δ −0.3449 → −0.3371 against identity 1.0000. Matches.
+  - `dense_e5`, same cell: 0.1402 → 0.1555, so δ −0.2470 → −0.2317. Matches.
+  - Oracle BM25, same cell: 0.4878 → 0.4939. Matches.
+  - ColBERT rung 5: 0.2923 → 0.2844. Matches.
+- **Holm.** I recomputed it from the 21 raw p's in `predictions.md` and `v2/predictions.md`: 0 mismatches on either version. The report's account of the flip is exact:
+  - v1: `bge_m3_dense` p 0.0054 at rank 13 (×9 = 0.0486); `bm25_unigram` p 0.0060 at rank 14 (×8 = 0.048, lifted to 0.0486).
+  - v2: `bm25_unigram` 0.0060 at rank 13 (×9 = 0.0540); `bge_m3_dense` 0.0062 at rank 14 (×8 = 0.0496, lifted to 0.0540).
+- **Report figures against `v2/comparison.md`:**
+  - Changed queries: 337 rung queries (23/46/72/95/101) and 214 isolated, all of them `template_paraphrase`.
+  - X1: ColBERT +0.0199 → +0.0151 (−0.0048 [−0.0147, +0.0051]); `bge_m3_dense` +0.0343 → +0.0320; `dense_e5` −0.0671 → −0.0678.
+  - X2: `bm25_unigram` +0.0643 with Holm 0.0486 → 0.0540; `bge_m3_dense` +0.0738 → +0.0742, with 9 rung and 13 isolated hits moved.
+  - Rung 5 prediction 0.2762 → 0.2807. ColBERT has 53 isolated hits moved. The oracle BM25 twin moves 2 hits, +0.0061 [+0.0000, +0.0152].
+  - The T3 bar is identical for the three lexical arms. H4 reads *partly supported* on both versions.
+  - X2 is supported for 4 arms on v2 against 6 on v1; X1 for `dense_e5` only; X3 for all 7.
+- **Known-wrong 5 against `v2/d004.md`.** Flagged counts 481/316 on v1 and 447/296 on v2. On the clean subset: `dense_e5` X1 −0.0561, not supported; `bge_m3_dense` X2 +0.0922 [+0.0307, +0.1554], Holm 0.0280, supported. All match.
+- **The v1 column of `comparison.md` equals the recorded v1 tables** (`predictions.md`, `isolated.md`, `ladder.md`, `additivity.md`). No v1 table has changed since 2026-10-03.
+- **One sample per comparison.** `same_design()` asserts that golds, concepts, keys, membership and added types are identical across versions before the comparison is written. Every comparison uses 328 dev leaves in 4 concepts, with one identity run. Only dev is read: `split=dev` in every run, and the generator calls `load_split("dev")`.
+- **Design freeze.** `git diff 4f62d5a..HEAD -- SPRINT_S8_DESIGN.md` changes only the freeze-SHA line. The amendments file is append-only: A8 is one inserted line at `4f56a39`. D-052 and D-053 are untouched.
+- **Tests.** `tests/test_report_traceability.py`, `test_generated_prose.py` and `test_intake_20261016.py` give 63 passed and 1 skipped (the S14 report is not yet written).
+- **Quoted repair.** The example «se detallan en» → «son:» is present in `data/processed/OE_v2_changes.jsonl`.
+
+## Findings
+
+### F1 (major): "finding 4 does not change" is stated without the v2 as-run figure that decides it, and that figure now sits 0.0008 below the bar
+- **What the report says.** The lexical arms are "indifferent to the repair in outcome": for `bm25_unigram` and the oracle TF-IDF every X1–X3 estimate is identical on v1 and v2. And "finding 4 does not change: no X2 excess is attributed to interaction."
+- **What the artefacts say.** The identity holds only tie-free.
+  - As run, the oracle arms move in all three tests (`predictions.md` against `v2/predictions.md`, as-run column, A5). `tfidf_phrases_replace` X1 −0.0175 → −0.0191, X3 −0.1928 → −0.1935. `bm25_unigram_params` X2 +0.0927 → +0.0889.
+  - Most importantly, `tfidf_phrases_replace` X2 as run goes from **+0.0768 to +0.0855**, against an unchanged bar of **0.0863**.
+- **Why it matters.** Finding 4 credits no interaction to `tfidf_phrases_replace` for one reason only: its as-run excess falls below the bar, although its tie-free excess (+0.1010) is above it. On v2 that margin shrinks from 0.0095 to 0.0008. The section reports the Holm flips carefully as boundary cases but says nothing about this one. Finding 4 also still cites +0.0768, and that is not the v2 value the manuscript will quote (D-061).
+- **What must change.**
+  - State the v2 as-run figure (+0.0855 [+0.0503, +0.1219] against 0.0863) and call it the same kind of boundary case.
+  - Scope the "indifferent" claim to tie-free scoring.
+  - Make sure the manuscript does not carry +0.0768.
+
+### F2 (minor): D-061 is described as "proposed, not accepted", but it has been accepted
+The report says "(proposed)" at line 188 and "D-061 is proposed, not accepted … pending César" at line 230. `DECISIONS.md` D-061 has been **Accepted** since `10868c8` (2026-10-19 09:10), which is after the report's last change at `e083dc9`. Add a dated note; the reports are a record, so do not rewrite the sentence in place.
+
+### F3 (minor): the H8 batch-noise floor is printed but not reported, and the audit response still lists it as unverifiable
+- **What the table shows.** "The unchanged queries (the H8 floor)" in `comparison.md` shows **0** moved hits on all 1,303 unchanged rung queries and all 2,738 unchanged isolated queries, for every arm, tie-free and as run.
+- **What I checked.** The ColBERT `results_top100` records for those 4,041 queries are identical between v1 and v2 (scratchpad `h8check.py`).
+- **Why it matters.** With a floor of 0, ColBERT's 77 rung and 53 isolated moved hits are all on changed queries and can be attributed to the repair. The section should say so, and the "Unverifiable: … H8 as a floor" row is wrong.
+
+### F4 (minor): the registered comparison does not print n for each version
+- **What D-061 and A8 require.** D-061 (2) and A8 ask for "n, concepts and stamps for both" versions.
+- **What `comparison.md` prints.** One population line for v2, plus a sentence the generator asserts. X2's denominator is the at-risk mass, and it differs between versions: `bge_m3_dense` 420 → 418, ColBERT 739.13 → 741.85 (`marginal.md` against `v2/marginal.md`).
+- **What must change.** The X1–X3 table should carry each version's n. S9's audit F1 raised the same gap, and S9 fixed it at `70f2776`; S8 was not fixed.
+
+### F5 (minor): the H4 sentence does not name the 4 concepts or the draw-noise limitation
+The design says "Every H4 sentence names the 4 concepts and the draw-noise limitation." The A8 bullet ("H4 under the design's rule reads *partly supported* on both versions …") does neither. It relies on D-054 by reference.
+
+## Unverifiable
+- **Full test suite at HEAD.** `logs/v2/pytest_20261019d.out` shows 2,098 passed, but the log carries no commit stamp. I ran only the three suites listed above.
+- **The first-time-run guarantee.** It rests on `logs/v2/*.out` and `run_v2_base.sh`, which are git-ignored. They are consistent with the run timestamps (`created_utc` from 21:01Z on) but are not committed evidence.
+
+## Exit criteria (applied to the v2 re-run)
+| Criterion | Met | Evidence |
+|---|---|---|
+| A8 recorded before any v2 run | Yes | `4f56a39` at 19:54:58Z; first v2 run at 19:55:12Z |
+| 1. v2 sets resolve; intake tests pass | Yes | `run_context.py:98` `V2_QUERY_SETS`; `test_intake_20261016.py` passes |
+| 2. 36 runs: clean, dev, resolving, stamped against the feature-table digest | Yes | `stamps.py`: 36/36; `check_run_inputs.eol.out`: 557/557 |
+| 3a. T1–T13 and Fig. 6 generated and byte-identical on regeneration | Yes | re-run at `23a162f`: 16/16 identical |
+| 3b. Prose guard and traceability | Yes | tests pass |
+| 3c. n, both intervals and per-concept signs on every contrast in T1–T13 | Yes | `v2/*.md` |
+| A8: `comparison.md` gives concepts and stamps for both versions | Yes | Sources section, `same_design()` |
+| A8: `comparison.md` gives n for each version | No | F4 |
+| 4. X1–X3 read tie-free and as run, with D-004 and T3 beside | Yes | `v2/predictions.md`, `v2/d004.md` |
+| 5a. H4 resolved under the frozen rule | Yes | *partly supported* on both versions; recomputed |
+| 5b. The H4 sentence names the 4 concepts and the draw-noise limitation | No | F5 |
+| 5c. Readings that move on v2 are named, with their uncertainty | No | F1: the as-run TF-IDF X2 boundary is not disclosed |
+| 6. D-052 and D-053 unchanged | Yes | no edits after the freeze |
+| 7. Full suite passes | Unverifiable at HEAD | log only; 3 relevant suites re-run and passing |
+
+Scratch work: `C:/Users/cesar/AppData/Local/Temp/claude/D--Users-cesar-Dev-Phd-bc3cat-retrieval/10f97cf9-08cf-4a1f-a3fa-ba7f0f308208/scratchpad/` (`regen_s8.py`, `stamps.py`, `holm.py`, `h8check.py`, `regen/`, `committed.sha256`, `regen.sha256`). No repository file was modified. `SPRINT_S11_AUDIT.md` shows as modified in the working tree; another session did that, not this audit.
+
+---
+
 # Sprint S8 — audit of amendment A8 (v2 re-run)
 
 **Verdict:** PASS WITH FINDINGS
