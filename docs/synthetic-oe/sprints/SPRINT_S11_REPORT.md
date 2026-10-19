@@ -254,3 +254,22 @@ minor; every sampled statistic, including the paired intervals, reproduced exact
 | F6 — "K2 giving a little back" on stacked without its interval | **Fixed**: intervals printed, the stacked clause read as not distinguishable from 0 |
 | F7 — the v2 caches stamp `host.docker.internal`, not A1's address | **Recorded** as A10 |
 | Unverifiable: first-time runs, blindness on v2, K0's tier decode, the pinned stack | Stand as listed |
+
+### Independent audit of A7–A10 (separate session, 2026-10-19)
+
+César asked that the v2 amendments be re-audited with `/audit` in a clean session, independently of the subagent
+audit above. [`SPRINT_S11_AUDIT.md`](SPRINT_S11_AUDIT.md), top entry: **PASS WITH FINDINGS**, 1 major and 6 minor;
+the tables regenerate byte-identically (save the generator line and the H5 `SPLITS.md` digest), every headline
+figure was recomputed independently from the runs, the stamps, caches, archive and determinism log verified. The
+section above is a record and is not rewritten; each finding is answered here, dated.
+
+| Finding | Resolution |
+|---|---|
+| F1 (major) — no STACKED-P reading of the stacked results, which D-061 §4 requires | **Accepted; pending, between batches** (the S14 batch is running; `src/` is not edited while it runs): `build_results_s11.py` gains `--population stacked_p` as S7's generator has, every stacked row (A1, A2, A3, A5, T1, the H8 floor) is generated on STACKED-P v1 and v2 under `results/S11/{stacked_p,v2/stacked_p}/`, and the reading is recorded as amendment A11 with its figures. Until then the stacked rows above are all-queries readings only, as the auditor says |
+| F2 (minor) — the H8 floor omits the reference ColBERT arm | **Pending, between batches** (same generator change): the floor is printed for the reference arms too, and the sentence "the differences above are the repair" is scoped to the S11 LLM arms, whose floor is 0; ColBERT's own run moves 8 unchanged stacked queries, so A1's −0.0176 carries that batch noise (H8) |
+| F3 (minor) — `K0 as S9 ran it` is printed as tie-free while scored as run | **Pending, between batches**: the S9 reference rows are labelled as-run in T1 and the comparison, or scored under K0's tier-as-one-tie-set rule; the figures quoted above for that row (0.6780 → 0.6764) are as-run figures |
+| F4 (minor) — stale boilerplate ("printed as absent on the v2 ones") | **Pending, between batches**: `v2_note()` is corrected to say the S9 A13 extractor runs exist on `stacked_texto_v2` and are read (A4's stacked row, T1) |
+| F5 (minor) — "the blind v2 ladder" overstates blindness | **Scoped.** 1,303 of the 1,640 v2 ladder queries are byte-identical to v1's and their K0 / K1 / K2 results were read at S11's closure; no tuning happened, and the "no LLM has seen v2" claim holds for the 337 changed texts only. The v2 ladder is a re-reading of a seen population with 337 repaired queries, and the manuscript says so |
+| F6 (minor) — the v1 and v2 config digests differ and the comparison does not say why | **Stated here**; the note in the comparison is pending (same generator change). Each v1 stamp is the CRLF encoding of the unchanged git blob and each v2 stamp the LF encoding (H5, third face; `DATASET_DEFECTS.md`): "configs unchanged" (A7) holds, and `check_run_inputs.py` now resolves them modulo line endings |
+| F7 (minor) — D-061 described as proposed | **Dated note.** D-061 was **accepted** by César on 2026-10-19 (`10868c8`), after the section above was written |
+| Unverifiable: first-time runs, the extraction cache's growth, K0's tier decode, the suite | Stand as listed; the suite at `70f2776` is recorded in `STATE.md` |
