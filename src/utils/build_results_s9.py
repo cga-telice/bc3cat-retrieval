@@ -1024,16 +1024,19 @@ def write_comparison(F1: Frames, r1: list[dict], fits1: list[dict], F2: Frames, 
                        "base shows a zero difference; it is printed anyway. Where a bin's or a pool's concept set differs "
                        "between the two, the difference is not paired.")
     lines += ["## The registered tests", "",
-              "| test | arm | transform | estimate, v1 | CI (concept), v1 | reading, v1 | n scored | concepts | estimate, v2 | "
-              "CI (concept), v2 | reading, v2 | v2 − v1 | CI (paired draws) | reading moved |",
-              "|---|---|---|---:|---|---|---:|---:|---:|---|---|---:|---|---|"]
+              "| test | arm | transform | n scored, v1 | concepts, v1 | estimate, v1 | CI (concept), v1 | reading, v1 | "
+              "n scored, v2 | concepts, v2 | estimate, v2 | CI (concept), v2 | reading, v2 | v2 − v1 | CI (paired draws) | "
+              "reading moved |",
+              "|---|---|---|---:|---:|---:|---|---|---:|---:|---:|---|---|---:|---|---|"]
     for a, b in zip(r1, r2):
         assert (a["id"], a["arm"], a["t"]) == (b["id"], b["arm"], b["t"])
         x, y = a["tf"], b["tf"]
         d = v2v.paired_diff(x, y)
-        lines.append(f"| {a['id']} | `{a['arm']}` | {a['t']} | {fd(x['est'])} | {fci(x['c'], True)} | {x['reading']} | "
-                     f"{y['n']:,} | {y['concepts']} | {fd(y['est'])} | {fci(y['c'], True)} | **{y['reading']}** | "
-                     f"{v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | {v2v.moved(x['reading'], y['reading'])} |")
+        # n and concepts for both versions: a bin test's population moves with the repaired text (S9 v2 audit F1)
+        lines.append(f"| {a['id']} | `{a['arm']}` | {a['t']} | {x['n']:,} | {x['concepts']} | {fd(x['est'])} | "
+                     f"{fci(x['c'], True)} | {x['reading']} | {y['n']:,} | {y['concepts']} | {fd(y['est'])} | "
+                     f"{fci(y['c'], True)} | **{y['reading']}** | {v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | "
+                     f"{v2v.moved(x['reading'], y['reading'])} |")
     lines += ["", "## T3: the crossover", "",
               "| arm | transform | slope, v1 | CI, v1 | c*, v1 | in range, v1 | slope, v2 | CI, v2 | c*, v2 | in range, v2 | "
               "slope v2 − v1 | CI (paired draws) |", "|---|---|---:|---|---:|---|---:|---|---:|---|---:|---|"]
