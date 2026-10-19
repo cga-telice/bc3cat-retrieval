@@ -40,7 +40,9 @@ E5 = "dense_e5__OE"
 K0 = "structured_pipeline_llm_keytol_valuenorm__OE"
 BASES = ("texto_u", "resumen_u", "single_texto", "single_l2_texto", "stacked_texto", "dose_texto", "isolated_texto",
          # S11 A7: the v2 bases, each from its own v2 reference ColBERT run; no S9 K0 run exists on them.
-         "stacked_texto_v2", "single_texto_v2", "dose_texto_v2", "isolated_texto_v2")
+         "stacked_texto_v2", "single_texto_v2", "dose_texto_v2", "isolated_texto_v2",
+         # S14 work item 2: the BT rendering, from its own ColBERT and dense_e5 runs (H8: its own batches).
+         "bt_texto")
 REFERENCE = {"texto_u": "texto", "resumen_u": "resumen"}
 TOP_CONCEPTS = 3
 

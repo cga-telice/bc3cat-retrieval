@@ -29,6 +29,11 @@ procedure; the changed keys come from `OE_v2_changes.jsonl` (`utils.v2_variant.c
 
     python src/query_rewrite/determinism.py hyde rewrite --v2
     python src/query_rewrite/determinism.py extract --v2
+
+`--s14` (S14 work item 2) runs the `extract` check on 100 dev `bt_texto` queries, the rendering the S11 arms see
+for the first time in S14, and writes `logs/S14/determinism_extract.json`. Same seed, same procedure.
+
+    python src/query_rewrite/determinism.py extract --s14
 """
 
 from __future__ import annotations
@@ -129,10 +134,17 @@ def run(transform: str, queries: list[dict]) -> dict:
     }
 
 
-def main(transforms: list[str], s11: bool = False, v2: bool = False) -> None:
-    if s11 and transforms != ["extract"]:
-        raise SystemExit("--s11 checks the extractor only")
-    if v2 and transforms == ["extract"]:
+#: S14 work item 2: the BT rendering, 100 dev queries.
+S14_BASES = ("bt_texto",)
+S14_PER_BASE = 100
+
+
+def main(transforms: list[str], s11: bool = False, v2: bool = False, s14: bool = False) -> None:
+    if (s11 or s14) and transforms != ["extract"]:
+        raise SystemExit("--s11 and --s14 check the extractor only")
+    if s14:
+        queries, out_dir = sample(S14_BASES, S14_PER_BASE), REPO / "logs" / "S14"
+    elif v2 and transforms == ["extract"]:
         queries, out_dir = sample(V2_S11_BASES, 25, changed_only=True), REPO / "logs" / "S11"
     elif v2:
         queries, out_dir = sample(V2_S9_BASES, 100, changed_only=True), REPO / "logs" / "S9"
@@ -150,5 +162,5 @@ def main(transforms: list[str], s11: bool = False, v2: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if a not in ("--s11", "--v2")]
-    main(args or ["hyde", "rewrite"], s11="--s11" in sys.argv[1:], v2="--v2" in sys.argv[1:])
+    args = [a for a in sys.argv[1:] if a not in ("--s11", "--v2", "--s14")]
+    main(args or ["hyde", "rewrite"], s11="--s11" in sys.argv[1:], v2="--v2" in sys.argv[1:], s14="--s14" in sys.argv[1:])
