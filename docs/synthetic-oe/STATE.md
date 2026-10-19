@@ -5,7 +5,7 @@ snapshots belong in `archive/` — the history up to 2026-10-19 is
 [`archive/STATE_2026-10-19.md`](archive/STATE_2026-10-19.md), verbatim. Updated at every sprint transition and
 whenever something blocks.
 
-**Last updated:** 2026-10-19 (v2 re-runs of S4–S9 and S11 done and audited; D-061 accepted; S14 freezing) ·
+**Last updated:** 2026-10-19 (S14 run and reported, audit pending; independent audits of S8 and S11 answered) ·
 **Updated by:** Claude
 
 ---
@@ -30,11 +30,13 @@ estimates unmoved), H4 *partly supported* on both. K2 − ColBERT on stacked +0.
 stacked; K2 on the ladder −0.0091 [−0.0171, −0.0018] (D-053); the lexical arms are unmoved; S9's c* moves by
 hundredths and its bins move with the repaired text.
 
-**S14 (BT, backbone)** — César ruled 2026-10-19: backbone, not probe; the oracle arms (readers of `parameters`,
-which on BT hold the gold's values, `DELIVERIES.md`) are out of every S14 test and of S12's BT reading, printed as
-bounds with the asymmetry stated; no regenerated BT is requested. Design
-[`sprints/SPRINT_S14_DESIGN.md`](sprints/SPRINT_S14_DESIGN.md) freezes with those two conditions; then the P-fixing
-stage from the S7 A8 runs, 21 BT runs, tables, report, audit.
+**S14 (BT, backbone) ran and is reported; `done` waits on the audit.** Frozen at `dd419a1` (César: backbone; the
+oracle arms out of every test and of S12's BT reading). P fixed before any BT result was read (A1: 7 of 10 pairs);
+21 clean runs on `bt_texto`; [`results/S14/`](results/S14) twice byte-identical; [report](sprints/SPRINT_S14_REPORT.md).
+**B1 partly preserved** (6 of 7 pairs hold with wider margins; `dense_e5` − `dense_es_hiiamsid` reverses, carried by
+the 1,498 F-BT-1 queries), **B2 supported** (K2 − ColBERT +0.2197 on BT), B3 W1 for all five base arms and W2 for
+four, B4 for all five. K2 reads better on BT than on its own identity (lead for S12). Next: `/audit S14` in a
+separate session.
 
 **S12** is registered in [`RESEARCH_PLAN.md`](RESEARCH_PLAN.md) §S12: v2 digests, STACKED-P, `bt_texto` (test
 side, once), the S14 pair list, model/prompt stamps on every LLM run.
@@ -53,7 +55,7 @@ side, once), the S14 pair list, model/prompt stamps on every LLM run.
 | S10 | **blocked** | [request](requests/S10_TRAINING_SET.md), amended 2026-10-18 (repaired menus, disjoint from BT lists, no BT in training) | Waits on a training set from `bc3cat-dataset` whose menus are disjoint from every delivered query |
 | S11 | done, A7–A10 v2 | [design](sprints/SPRINT_S11_DESIGN.md) `931ee0c`, [amendments](sprints/SPRINT_S11_AMENDMENTS.md), [report](sprints/SPRINT_S11_REPORT.md), [audit](sprints/SPRINT_S11_AUDIT.md), [results](results/S11) | Track E two-stage: K2 beats ColBERT on stacked and the blind ladder, *established on dev* (D-059); EC3 accepted as not met on dev, the v2 runs stamp model and prompt (A8); H8 ColBERT batch dependence (D-060) |
 | S12 | planned | [`RESEARCH_PLAN.md`](RESEARCH_PLAN.md) §S12 | One-shot test evaluation on v2, STACKED-P, `bt_texto`; registration list there |
-| S14 | **freezing** → active | [design](sprints/SPRINT_S14_DESIGN.md) | External rendering (BT) paired leaf for leaf against STACKED-P v2; B1–B4 |
+| S14 | active, report written, audit pending | [design](sprints/SPRINT_S14_DESIGN.md) `dd419a1`, [amendments](sprints/SPRINT_S14_AMENDMENTS.md), [report](sprints/SPRINT_S14_REPORT.md), [results](results/S14) | External rendering (BT): B1 partly preserved, B2 supported, B3 and B4 supported |
 | S91 | done | [report](sprints/SPRINT_S91_REPORT.md), [results](results/S91) | Coded vs decoded `resumen` (D-037, D-039) |
 
 ## Environment and harness
@@ -84,10 +86,10 @@ side, once), the S14 pair list, model/prompt stamps on every LLM run.
 
 ## Next action
 
-1. Freeze S14 (header, SPRINTS, plan); P-fixing stage from the S7 A8 runs (`results/S14/pairs_stacked_p.md`,
-   listed in the amendments file) before any BT run is read; the 21 BT runs (`logs/S14/run_s14.sh`), the BT family
-   cache and the extractor's regeneration check; tables, report, audit.
-2. `/audit` of S8 A8 and S11 A7–A9 in a separate session.
+1. `/audit S14` in a separate session; resolve; `done`.
+2. The independent audits of S8 A8 and S11 A7–A10 (separate sessions, 2026-10-19, both PASS WITH FINDINGS) are
+   answered in the reports; the generator changes landed at `9a19a9b` (S8 A9; S11 A11: the STACKED-P reading of
+   the S11 stacked rows, pending its tables and row).
 3. S12 registration (its design) once S14 is done.
 
 ## Open decisions
