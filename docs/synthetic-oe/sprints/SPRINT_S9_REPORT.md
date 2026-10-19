@@ -255,5 +255,6 @@ a slope and a few thousandths of a δ, and no reading of the design's rule chang
 
 **Generation.** The first `--v2` pass failed while writing the comparison: `Frames.pooled` read the module-level
 base list, which `configure(True)` had renamed after the v1 frames were built; the fix (`Frames` keeps the names
-it was built with) is in the commit that carries this section, and the tables committed with it were generated at
-that commit with `src/` clean.
+it was built with) is in the commit that carries this section (`fc59fd4`). The v2 tables were generated twice,
+once before that commit with `src/` dirty and once at it with `src/` clean; the two differ only in T10's
+generator line (`logs/v2/s9_gen1.sha256`, `s9_gen2.sha256`), and the clean generation is the one committed.

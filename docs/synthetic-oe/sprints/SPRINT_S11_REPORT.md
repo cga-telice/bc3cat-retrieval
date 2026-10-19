@@ -220,7 +220,10 @@ proposed, pending César) and states that the slot defect accounted for −0.017
 +0.3143 stacked advantage measured on v1 — about one part in eighteen, not the "seventh" an earlier draft and
 the commit message of `8c8fe18` said (audit F1). Finding 6's ordering by type and finding 9's costs stand;
 known-wrong 1–4 stand. The v2 tables were generated twice; the second differs from the first only in the
-generator-commit line of T9, HEAD having moved between them (`logs/v2/s11_gen1.sha256`, `s11_gen2.sha256`).
+generator-commit line of T9, HEAD having moved between them (`logs/v2/s11_gen1.sha256`, `s11_gen2.sha256`); after
+the between-batches change they were generated twice more, before `fc59fd4` with `src/` dirty and at it with
+`src/` clean, differing only in T9's generator line and in A4's row for the stacked base, which the dirty
+generation still printed as not applicable (`s11_gen3.sha256`, `s11_gen4.sha256`); the clean one is committed.
 
 **Debt from the audit, landed 2026-10-19 between batches (src; tables regenerated):** T9 now counts the LLM runs
 that carry A8's `retriever_provenance` stamp — 12 of the 21 it reads, the nine `texto_u` / `resumen_u` /
@@ -233,7 +236,8 @@ names: the function-source SHA-256 `bdc20c46…` (the stamp's `prompt_template_s
 digests are read from the run stamps, not from it. Two rows the first generation printed as "run on one version
 only" now exist on both: S9 A13's extractor runs on `stacked_texto_v2` (`llm_exact (S9)` 0.2157 → 0.2145, −0.0012
 [−0.0042, +0.0005]; `K0 as S9 ran it` 0.6780 → 0.6764, −0.0016 [−0.0120, +0.0053]) appear in T1 and in the
-comparison since A13's batch.
+comparison since A13's batch, and A4's check runs on the stacked base too: K0's v2 run and S9 A13's key-tolerant
+run agree on 2,521 of 2,521 top-100 lists (T9).
 
 ### Audit response (v2 re-run)
 

@@ -24,98 +24,100 @@ The method contribution, by the design's rule: v1 **established on dev**, v2 **e
 
 ## T1: item Acc@1, tie-free, per arm and base
 
-| base | arm | n scored | concepts | item Acc@1, v1 | item Acc@1, v2 | v2 − v1 | CI (concept, paired per query) | queries whose tie-free hit moved |
-|---|---|---:|---:|---:|---:|---:|---|---:|
-| `texto_u` | **K0** `llm_keytol_hard` | 2,636 | 40 | 0.8085 | 0.8085 | +0.0000 | — (same run) | — |
-| `texto_u` | **K1** `llm_keytol_hard_colbert` | 2,636 | 40 | 0.8483 | 0.8483 | +0.0000 | — (same run) | — |
-| `texto_u` | **K2** `llm_keytol_soft_colbert` | 2,636 | 40 | 0.8483 | 0.8483 | +0.0000 | — (same run) | — |
-| `texto_u` | **R2** `rules_canon_soft_colbert` | 2,636 | 40 | 0.9970 | 0.9970 | +0.0000 | — (same run) | — |
-| `texto_u` | **F1** `colbert_in_concept` | 2,636 | 40 | 0.9963 | 0.9963 | +0.0000 | — (same run) | — |
-| `texto_u` | `bge_m3_colbert` | 2,636 | 40 | 0.9993 | 0.9993 | +0.0000 | — (same run) | — |
-| `texto_u` | `dense_e5` | 2,636 | 40 | 0.5083 | 0.5083 | +0.0000 | — (same run) | — |
-| `texto_u` | `bm25_unigram` | 2,636 | 40 | 0.8934 | 0.8934 | +0.0000 | — (same run) | — |
-| `texto_u` | `rules_valuenorm` | 2,636 | 40 | 0.8103 | 0.8103 | +0.0000 | — (same run) | — |
-| `texto_u` | `llm_exact (S9)` | 2,636 | 40 | 0.2652 | 0.2652 | +0.0000 | — (same run) | — |
-| `texto_u` | `K0 as S9 ran it` | 2,636 | 40 | 0.8380 | 0.8380 | +0.0000 | — (same run) | — |
-| `texto_u` | `bm25_unigram_params†` | 2,636 | 40 | 0.9970 | 0.9970 | +0.0000 | — (same run) | — |
-| `texto_u` | `tfidf_phrases_replace†` | 2,636 | 40 | 0.9987 | 0.9987 | +0.0000 | — (same run) | — |
-| `texto_u` | `oracleparams†` | 2,636 | 40 | 0.9970 | 0.9970 | +0.0000 | — (same run) | — |
-| `resumen_u` | **K0** `llm_keytol_hard` | 1,933 | 39 | 0.0842 | 0.0842 | +0.0000 | — (same run) | — |
-| `resumen_u` | **K1** `llm_keytol_hard_colbert` | 1,933 | 39 | 0.0956 | 0.0956 | +0.0000 | — (same run) | — |
-| `resumen_u` | **K2** `llm_keytol_soft_colbert` | 1,933 | 39 | 0.0961 | 0.0961 | +0.0000 | — (same run) | — |
-| `resumen_u` | **R2** `rules_canon_soft_colbert` | 1,933 | 39 | 0.0568 | 0.0568 | +0.0000 | — (same run) | — |
-| `resumen_u` | **F1** `colbert_in_concept` | 1,933 | 39 | 0.0509 | 0.0509 | +0.0000 | — (same run) | — |
-| `resumen_u` | `bge_m3_colbert` | 1,933 | 39 | 0.0530 | 0.0530 | +0.0000 | — (same run) | — |
-| `resumen_u` | `dense_e5` | 1,933 | 39 | 0.0279 | 0.0279 | +0.0000 | — (same run) | — |
-| `resumen_u` | `bm25_unigram` | 1,933 | 39 | 0.0239 | 0.0239 | +0.0000 | — (same run) | — |
-| `resumen_u` | `llm_exact (S9)` | 1,933 | 39 | 0.0145 | 0.0145 | +0.0000 | — (same run) | — |
-| `resumen_u` | `K0 as S9 ran it` | 1,933 | 39 | 0.0729 | 0.0729 | +0.0000 | — (same run) | — |
-| `resumen_u` | `bm25_unigram_params†` | 1,933 | 39 | 0.6689 | 0.6689 | +0.0000 | — (same run) | — |
-| `resumen_u` | `tfidf_phrases_replace†` | 1,933 | 39 | 0.4211 | 0.4211 | +0.0000 | — (same run) | — |
-| `single_texto` | **K0** `llm_keytol_hard` | 2,176 | 40 | 0.7728 | 0.7727 | -0.0001 | [-0.0012, +0.0011] | 7 |
-| `single_texto` | **K1** `llm_keytol_hard_colbert` | 2,176 | 40 | 0.8316 | 0.8311 | -0.0005 | [-0.0024, +0.0018] | 5 |
-| `single_texto` | **K2** `llm_keytol_soft_colbert` | 2,176 | 40 | 0.8325 | 0.8316 | -0.0009 | [-0.0027, +0.0000] | 4 |
-| `single_texto` | **R2** `rules_canon_soft_colbert` | 2,176 | 40 | 0.8825 | 0.8837 | +0.0011 | [+0.0000, +0.0029] | 6 |
-| `single_texto` | **F1** `colbert_in_concept` | 2,176 | 40 | 0.7810 | 0.7828 | +0.0018 | [-0.0006, +0.0045] | 34 |
-| `single_texto` | `bge_m3_colbert` | 2,176 | 40 | 0.7852 | 0.7867 | +0.0016 | [-0.0006, +0.0040] | 32 |
-| `single_texto` | `dense_e5` | 2,176 | 40 | 0.3975 | 0.3975 | +0.0000 | [-0.0022, +0.0029] | 12 |
-| `single_texto` | `bm25_unigram` | 2,176 | 40 | 0.4821 | 0.4826 | +0.0005 | [+0.0000, +0.0014] | 1 |
-| `single_texto` | `rules_valuenorm` | 2,176 | 40 | 0.4494 | 0.4490 | -0.0005 | [-0.0020, +0.0000] | 1 |
-| `single_texto` | `llm_exact (S9)` | 2,176 | 40 | 0.2068 | — | — | — (run on one version only) | — |
-| `single_texto` | `K0 as S9 ran it` | 2,176 | 40 | 0.8157 | — | — | — (run on one version only) | — |
-| `single_texto` | `bm25_unigram_params†` | 2,176 | 40 | 0.6199 | 0.6199 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `single_texto` | `tfidf_phrases_replace†` | 2,176 | 40 | 0.6322 | 0.6322 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `single_texto` | `oracleparams†` | 2,176 | 40 | 0.6324 | 0.6328 | +0.0005 | [+0.0000, +0.0013] | 3 |
-| `single_l2_texto` | **K0** `llm_keytol_hard` | 518 | 9 | 0.8011 | 0.8011 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | **K1** `llm_keytol_hard_colbert` | 518 | 9 | 0.9044 | 0.9044 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | **K2** `llm_keytol_soft_colbert` | 518 | 9 | 0.9044 | 0.9044 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | **R2** `rules_canon_soft_colbert` | 518 | 9 | 0.9208 | 0.9208 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | **F1** `colbert_in_concept` | 518 | 9 | 0.8534 | 0.8534 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | `bge_m3_colbert` | 518 | 9 | 0.8515 | 0.8515 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | `dense_e5` | 518 | 9 | 0.4208 | 0.4208 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | `bm25_unigram` | 518 | 9 | 0.6033 | 0.6033 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | `llm_exact (S9)` | 518 | 9 | 0.2490 | 0.2490 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | `K0 as S9 ran it` | 518 | 9 | 0.8359 | 0.8359 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | `bm25_unigram_params†` | 518 | 9 | 0.9189 | 0.9189 | +0.0000 | — (same run) | — |
-| `single_l2_texto` | `tfidf_phrases_replace†` | 518 | 9 | 0.9624 | 0.9624 | +0.0000 | — (same run) | — |
-| `stacked_texto` | **K0** `llm_keytol_hard` | 2,466 | 39 | 0.6571 | 0.6576 | +0.0005 | [-0.0095, +0.0075] | 84 |
-| `stacked_texto` | **K1** `llm_keytol_hard_colbert` | 2,466 | 39 | 0.7263 | 0.7239 | -0.0024 | [-0.0098, +0.0035] | 70 |
-| `stacked_texto` | **K2** `llm_keytol_soft_colbert` | 2,466 | 39 | 0.7271 | 0.7247 | -0.0024 | [-0.0098, +0.0034] | 70 |
-| `stacked_texto` | **R2** `rules_canon_soft_colbert` | 2,466 | 39 | 0.4779 | 0.4867 | +0.0088 | [+0.0032, +0.0127] | 169 |
-| `stacked_texto` | **F1** `colbert_in_concept` | 2,466 | 39 | 0.4073 | 0.4222 | +0.0149 | [+0.0032, +0.0227] | 266 |
-| `stacked_texto` | `bge_m3_colbert` | 2,466 | 39 | 0.4128 | 0.4280 | +0.0152 | [+0.0040, +0.0223] | 261 |
-| `stacked_texto` | `dense_e5` | 2,466 | 39 | 0.1894 | 0.1918 | +0.0024 | [-0.0029, +0.0067] | 32 |
-| `stacked_texto` | `bm25_unigram` | 2,466 | 39 | 0.1061 | 0.1078 | +0.0016 | [+0.0000, +0.0060] | 7 |
-| `stacked_texto` | `rules_valuenorm` | 2,466 | 39 | 0.1298 | 0.1281 | -0.0016 | [-0.0062, +0.0000] | 4 |
-| `stacked_texto` | `llm_exact (S9)` | 2,466 | 39 | 0.2157 | — | — | — (run on one version only) | — |
-| `stacked_texto` | `K0 as S9 ran it` | 2,466 | 39 | 0.6780 | — | — | — (run on one version only) | — |
-| `stacked_texto` | `bm25_unigram_params†` | 2,466 | 39 | 0.1772 | 0.1776 | +0.0004 | [+0.0000, +0.0018] | 3 |
-| `stacked_texto` | `tfidf_phrases_replace†` | 2,466 | 39 | 0.1889 | 0.1889 | +0.0000 | [+0.0000, +0.0001] | 1 |
-| `stacked_texto` | `oracleparams†` | 2,466 | 39 | 0.1756 | 0.1756 | +0.0000 | [+0.0000, +0.0000] | 2 |
-| `dose_texto` | **K0** `llm_keytol_hard` | 1,640 | 4 | 0.6906 | 0.6834 | -0.0071 | [-0.0168, +0.0001] | 32 |
-| `dose_texto` | **K1** `llm_keytol_hard_colbert` | 1,640 | 4 | 0.7850 | 0.7758 | -0.0091 | [-0.0168, -0.0014] | 21 |
-| `dose_texto` | **K2** `llm_keytol_soft_colbert` | 1,640 | 4 | 0.7850 | 0.7758 | -0.0091 | [-0.0168, -0.0014] | 21 |
-| `dose_texto` | **R2** `rules_canon_soft_colbert` | 1,640 | 4 | 0.5690 | 0.5691 | +0.0001 | [-0.0016, +0.0021] | 62 |
-| `dose_texto` | **F1** `colbert_in_concept` | 1,640 | 4 | 0.5122 | 0.5119 | -0.0003 | [-0.0063, +0.0061] | 78 |
-| `dose_texto` | `bge_m3_colbert` | 1,640 | 4 | 0.5091 | 0.5092 | +0.0001 | [-0.0070, +0.0074] | 77 |
-| `dose_texto` | `dense_e5` | 1,640 | 4 | 0.2128 | 0.2085 | -0.0043 | [-0.0095, +0.0000] | 11 |
-| `dose_texto` | `bm25_unigram` | 1,640 | 4 | 0.1396 | 0.1396 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `dose_texto` | `rules_valuenorm` | 1,640 | 4 | 0.1604 | 0.1604 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `dose_texto` | `bm25_unigram_params†` | 1,640 | 4 | 0.1932 | 0.1932 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `dose_texto` | `tfidf_phrases_replace†` | 1,640 | 4 | 0.2965 | 0.2965 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `dose_texto` | `oracleparams†` | 1,640 | 4 | 0.3146 | 0.3146 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `isolated_texto` | **K0** `llm_keytol_hard` | 2,952 | 4 | 0.7078 | 0.7073 | -0.0005 | [-0.0014, +0.0005] | 11 |
-| `isolated_texto` | **K1** `llm_keytol_hard_colbert` | 2,952 | 4 | 0.7734 | 0.7720 | -0.0014 | [-0.0023, -0.0003] | 4 |
-| `isolated_texto` | **K2** `llm_keytol_soft_colbert` | 2,952 | 4 | 0.7734 | 0.7720 | -0.0014 | [-0.0023, -0.0003] | 4 |
-| `isolated_texto` | **R2** `rules_canon_soft_colbert` | 2,952 | 4 | 0.8459 | 0.8453 | -0.0005 | [-0.0011, +0.0003] | 5 |
-| `isolated_texto` | **F1** `colbert_in_concept` | 2,952 | 4 | 0.7536 | 0.7545 | +0.0009 | [+0.0007, +0.0011] | 53 |
-| `isolated_texto` | `bge_m3_colbert` | 2,952 | 4 | 0.7570 | 0.7579 | +0.0009 | [+0.0007, +0.0011] | 53 |
-| `isolated_texto` | `dense_e5` | 2,952 | 4 | 0.3238 | 0.3255 | +0.0017 | [+0.0006, +0.0025] | 11 |
-| `isolated_texto` | `bm25_unigram` | 2,952 | 4 | 0.4133 | 0.4133 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `isolated_texto` | `rules_valuenorm` | 2,952 | 4 | 0.3869 | 0.3869 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `isolated_texto` | `bm25_unigram_params†` | 2,952 | 4 | 0.5537 | 0.5544 | +0.0007 | [+0.0000, +0.0025] | 2 |
-| `isolated_texto` | `tfidf_phrases_replace†` | 2,952 | 4 | 0.6387 | 0.6387 | +0.0000 | [+0.0000, +0.0000] | 0 |
-| `isolated_texto` | `oracleparams†` | 2,952 | 4 | 0.6717 | 0.6717 | +0.0000 | [+0.0000, +0.0000] | 0 |
+The paired interval resamples whole concepts on the S9 bases (D-030) and, on the E3 ladder — `dose_texto`, `isolated_texto`, whose dev ladder has too few concepts for a cluster bootstrap — leaves within their concept (D-053, the reading interval of the A7 rows above).
+
+| base | arm | n scored | concepts | leaves | item Acc@1, v1 | item Acc@1, v2 | v2 − v1 | CI (paired per query) | bootstrap | queries whose tie-free hit moved |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|---:|
+| `texto_u` | **K0** `llm_keytol_hard` | 2,636 | 40 | 2,636 | 0.8085 | 0.8085 | +0.0000 | — (same run) | — | — |
+| `texto_u` | **K1** `llm_keytol_hard_colbert` | 2,636 | 40 | 2,636 | 0.8483 | 0.8483 | +0.0000 | — (same run) | — | — |
+| `texto_u` | **K2** `llm_keytol_soft_colbert` | 2,636 | 40 | 2,636 | 0.8483 | 0.8483 | +0.0000 | — (same run) | — | — |
+| `texto_u` | **R2** `rules_canon_soft_colbert` | 2,636 | 40 | 2,636 | 0.9970 | 0.9970 | +0.0000 | — (same run) | — | — |
+| `texto_u` | **F1** `colbert_in_concept` | 2,636 | 40 | 2,636 | 0.9963 | 0.9963 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `bge_m3_colbert` | 2,636 | 40 | 2,636 | 0.9993 | 0.9993 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `dense_e5` | 2,636 | 40 | 2,636 | 0.5083 | 0.5083 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `bm25_unigram` | 2,636 | 40 | 2,636 | 0.8934 | 0.8934 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `rules_valuenorm` | 2,636 | 40 | 2,636 | 0.8103 | 0.8103 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `llm_exact (S9)` | 2,636 | 40 | 2,636 | 0.2652 | 0.2652 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `K0 as S9 ran it` | 2,636 | 40 | 2,636 | 0.8380 | 0.8380 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `bm25_unigram_params†` | 2,636 | 40 | 2,636 | 0.9970 | 0.9970 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `tfidf_phrases_replace†` | 2,636 | 40 | 2,636 | 0.9987 | 0.9987 | +0.0000 | — (same run) | — | — |
+| `texto_u` | `oracleparams†` | 2,636 | 40 | 2,636 | 0.9970 | 0.9970 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | **K0** `llm_keytol_hard` | 1,933 | 39 | 1,933 | 0.0842 | 0.0842 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | **K1** `llm_keytol_hard_colbert` | 1,933 | 39 | 1,933 | 0.0956 | 0.0956 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | **K2** `llm_keytol_soft_colbert` | 1,933 | 39 | 1,933 | 0.0961 | 0.0961 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | **R2** `rules_canon_soft_colbert` | 1,933 | 39 | 1,933 | 0.0568 | 0.0568 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | **F1** `colbert_in_concept` | 1,933 | 39 | 1,933 | 0.0509 | 0.0509 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | `bge_m3_colbert` | 1,933 | 39 | 1,933 | 0.0530 | 0.0530 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | `dense_e5` | 1,933 | 39 | 1,933 | 0.0279 | 0.0279 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | `bm25_unigram` | 1,933 | 39 | 1,933 | 0.0239 | 0.0239 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | `llm_exact (S9)` | 1,933 | 39 | 1,933 | 0.0145 | 0.0145 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | `K0 as S9 ran it` | 1,933 | 39 | 1,933 | 0.0729 | 0.0729 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | `bm25_unigram_params†` | 1,933 | 39 | 1,933 | 0.6689 | 0.6689 | +0.0000 | — (same run) | — | — |
+| `resumen_u` | `tfidf_phrases_replace†` | 1,933 | 39 | 1,933 | 0.4211 | 0.4211 | +0.0000 | — (same run) | — | — |
+| `single_texto` | **K0** `llm_keytol_hard` | 2,176 | 40 | 1,434 | 0.7728 | 0.7727 | -0.0001 | [-0.0012, +0.0011] | concept (D-030) | 7 |
+| `single_texto` | **K1** `llm_keytol_hard_colbert` | 2,176 | 40 | 1,434 | 0.8316 | 0.8311 | -0.0005 | [-0.0024, +0.0018] | concept (D-030) | 5 |
+| `single_texto` | **K2** `llm_keytol_soft_colbert` | 2,176 | 40 | 1,434 | 0.8325 | 0.8316 | -0.0009 | [-0.0027, +0.0000] | concept (D-030) | 4 |
+| `single_texto` | **R2** `rules_canon_soft_colbert` | 2,176 | 40 | 1,434 | 0.8825 | 0.8837 | +0.0011 | [+0.0000, +0.0029] | concept (D-030) | 6 |
+| `single_texto` | **F1** `colbert_in_concept` | 2,176 | 40 | 1,434 | 0.7810 | 0.7828 | +0.0018 | [-0.0006, +0.0045] | concept (D-030) | 34 |
+| `single_texto` | `bge_m3_colbert` | 2,176 | 40 | 1,434 | 0.7852 | 0.7867 | +0.0016 | [-0.0006, +0.0040] | concept (D-030) | 32 |
+| `single_texto` | `dense_e5` | 2,176 | 40 | 1,434 | 0.3975 | 0.3975 | +0.0000 | [-0.0022, +0.0029] | concept (D-030) | 12 |
+| `single_texto` | `bm25_unigram` | 2,176 | 40 | 1,434 | 0.4821 | 0.4826 | +0.0005 | [+0.0000, +0.0014] | concept (D-030) | 1 |
+| `single_texto` | `rules_valuenorm` | 2,176 | 40 | 1,434 | 0.4494 | 0.4490 | -0.0005 | [-0.0020, +0.0000] | concept (D-030) | 1 |
+| `single_texto` | `llm_exact (S9)` | 2,176 | 40 | 1,434 | 0.2068 | — | — | — (run on one version only) | — | — |
+| `single_texto` | `K0 as S9 ran it` | 2,176 | 40 | 1,434 | 0.8157 | — | — | — (run on one version only) | — | — |
+| `single_texto` | `bm25_unigram_params†` | 2,176 | 40 | 1,434 | 0.6199 | 0.6199 | +0.0000 | [+0.0000, +0.0000] | concept (D-030) | 0 |
+| `single_texto` | `tfidf_phrases_replace†` | 2,176 | 40 | 1,434 | 0.6322 | 0.6322 | +0.0000 | [+0.0000, +0.0000] | concept (D-030) | 0 |
+| `single_texto` | `oracleparams†` | 2,176 | 40 | 1,434 | 0.6324 | 0.6328 | +0.0005 | [+0.0000, +0.0013] | concept (D-030) | 3 |
+| `single_l2_texto` | **K0** `llm_keytol_hard` | 518 | 9 | 188 | 0.8011 | 0.8011 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | **K1** `llm_keytol_hard_colbert` | 518 | 9 | 188 | 0.9044 | 0.9044 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | **K2** `llm_keytol_soft_colbert` | 518 | 9 | 188 | 0.9044 | 0.9044 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | **R2** `rules_canon_soft_colbert` | 518 | 9 | 188 | 0.9208 | 0.9208 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | **F1** `colbert_in_concept` | 518 | 9 | 188 | 0.8534 | 0.8534 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | `bge_m3_colbert` | 518 | 9 | 188 | 0.8515 | 0.8515 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | `dense_e5` | 518 | 9 | 188 | 0.4208 | 0.4208 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | `bm25_unigram` | 518 | 9 | 188 | 0.6033 | 0.6033 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | `llm_exact (S9)` | 518 | 9 | 188 | 0.2490 | 0.2490 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | `K0 as S9 ran it` | 518 | 9 | 188 | 0.8359 | 0.8359 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | `bm25_unigram_params†` | 518 | 9 | 188 | 0.9189 | 0.9189 | +0.0000 | — (same run) | — | — |
+| `single_l2_texto` | `tfidf_phrases_replace†` | 518 | 9 | 188 | 0.9624 | 0.9624 | +0.0000 | — (same run) | — | — |
+| `stacked_texto` | **K0** `llm_keytol_hard` | 2,466 | 39 | 2,466 | 0.6571 | 0.6576 | +0.0005 | [-0.0095, +0.0075] | concept (D-030) | 84 |
+| `stacked_texto` | **K1** `llm_keytol_hard_colbert` | 2,466 | 39 | 2,466 | 0.7263 | 0.7239 | -0.0024 | [-0.0098, +0.0035] | concept (D-030) | 70 |
+| `stacked_texto` | **K2** `llm_keytol_soft_colbert` | 2,466 | 39 | 2,466 | 0.7271 | 0.7247 | -0.0024 | [-0.0098, +0.0034] | concept (D-030) | 70 |
+| `stacked_texto` | **R2** `rules_canon_soft_colbert` | 2,466 | 39 | 2,466 | 0.4779 | 0.4867 | +0.0088 | [+0.0032, +0.0127] | concept (D-030) | 169 |
+| `stacked_texto` | **F1** `colbert_in_concept` | 2,466 | 39 | 2,466 | 0.4073 | 0.4222 | +0.0149 | [+0.0032, +0.0227] | concept (D-030) | 266 |
+| `stacked_texto` | `bge_m3_colbert` | 2,466 | 39 | 2,466 | 0.4128 | 0.4280 | +0.0152 | [+0.0040, +0.0223] | concept (D-030) | 261 |
+| `stacked_texto` | `dense_e5` | 2,466 | 39 | 2,466 | 0.1894 | 0.1918 | +0.0024 | [-0.0029, +0.0067] | concept (D-030) | 32 |
+| `stacked_texto` | `bm25_unigram` | 2,466 | 39 | 2,466 | 0.1061 | 0.1078 | +0.0016 | [+0.0000, +0.0060] | concept (D-030) | 7 |
+| `stacked_texto` | `rules_valuenorm` | 2,466 | 39 | 2,466 | 0.1298 | 0.1281 | -0.0016 | [-0.0062, +0.0000] | concept (D-030) | 4 |
+| `stacked_texto` | `llm_exact (S9)` | 2,466 | 39 | 2,466 | 0.2157 | 0.2145 | -0.0012 | [-0.0042, +0.0005] | concept (D-030) | 5 |
+| `stacked_texto` | `K0 as S9 ran it` | 2,466 | 39 | 2,466 | 0.6780 | 0.6764 | -0.0016 | [-0.0120, +0.0053] | concept (D-030) | 60 |
+| `stacked_texto` | `bm25_unigram_params†` | 2,466 | 39 | 2,466 | 0.1772 | 0.1776 | +0.0004 | [+0.0000, +0.0018] | concept (D-030) | 3 |
+| `stacked_texto` | `tfidf_phrases_replace†` | 2,466 | 39 | 2,466 | 0.1889 | 0.1889 | +0.0000 | [+0.0000, +0.0001] | concept (D-030) | 1 |
+| `stacked_texto` | `oracleparams†` | 2,466 | 39 | 2,466 | 0.1756 | 0.1756 | +0.0000 | [+0.0000, +0.0000] | concept (D-030) | 2 |
+| `dose_texto` | **K0** `llm_keytol_hard` | 1,640 | 4 | 328 | 0.6906 | 0.6834 | -0.0071 | [-0.0162, +0.0012] | stratified leaf (D-053) | 32 |
+| `dose_texto` | **K1** `llm_keytol_hard_colbert` | 1,640 | 4 | 328 | 0.7850 | 0.7758 | -0.0091 | [-0.0171, -0.0018] | stratified leaf (D-053) | 21 |
+| `dose_texto` | **K2** `llm_keytol_soft_colbert` | 1,640 | 4 | 328 | 0.7850 | 0.7758 | -0.0091 | [-0.0171, -0.0018] | stratified leaf (D-053) | 21 |
+| `dose_texto` | **R2** `rules_canon_soft_colbert` | 1,640 | 4 | 328 | 0.5690 | 0.5691 | +0.0001 | [-0.0050, +0.0053] | stratified leaf (D-053) | 62 |
+| `dose_texto` | **F1** `colbert_in_concept` | 1,640 | 4 | 328 | 0.5122 | 0.5119 | -0.0003 | [-0.0061, +0.0058] | stratified leaf (D-053) | 78 |
+| `dose_texto` | `bge_m3_colbert` | 1,640 | 4 | 328 | 0.5091 | 0.5092 | +0.0001 | [-0.0059, +0.0062] | stratified leaf (D-053) | 77 |
+| `dose_texto` | `dense_e5` | 1,640 | 4 | 328 | 0.2128 | 0.2085 | -0.0043 | [-0.0091, +0.0000] | stratified leaf (D-053) | 11 |
+| `dose_texto` | `bm25_unigram` | 1,640 | 4 | 328 | 0.1396 | 0.1396 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `dose_texto` | `rules_valuenorm` | 1,640 | 4 | 328 | 0.1604 | 0.1604 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `dose_texto` | `bm25_unigram_params†` | 1,640 | 4 | 328 | 0.1932 | 0.1932 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `dose_texto` | `tfidf_phrases_replace†` | 1,640 | 4 | 328 | 0.2965 | 0.2965 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `dose_texto` | `oracleparams†` | 1,640 | 4 | 328 | 0.3146 | 0.3146 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `isolated_texto` | **K0** `llm_keytol_hard` | 2,952 | 4 | 328 | 0.7078 | 0.7073 | -0.0005 | [-0.0024, +0.0016] | stratified leaf (D-053) | 11 |
+| `isolated_texto` | **K1** `llm_keytol_hard_colbert` | 2,952 | 4 | 328 | 0.7734 | 0.7720 | -0.0014 | [-0.0027, -0.0003] | stratified leaf (D-053) | 4 |
+| `isolated_texto` | **K2** `llm_keytol_soft_colbert` | 2,952 | 4 | 328 | 0.7734 | 0.7720 | -0.0014 | [-0.0027, -0.0003] | stratified leaf (D-053) | 4 |
+| `isolated_texto` | **R2** `rules_canon_soft_colbert` | 2,952 | 4 | 328 | 0.8459 | 0.8453 | -0.0005 | [-0.0014, +0.0002] | stratified leaf (D-053) | 5 |
+| `isolated_texto` | **F1** `colbert_in_concept` | 2,952 | 4 | 328 | 0.7536 | 0.7545 | +0.0009 | [-0.0020, +0.0037] | stratified leaf (D-053) | 53 |
+| `isolated_texto` | `bge_m3_colbert` | 2,952 | 4 | 328 | 0.7570 | 0.7579 | +0.0009 | [-0.0020, +0.0038] | stratified leaf (D-053) | 53 |
+| `isolated_texto` | `dense_e5` | 2,952 | 4 | 328 | 0.3238 | 0.3255 | +0.0017 | [-0.0003, +0.0041] | stratified leaf (D-053) | 11 |
+| `isolated_texto` | `bm25_unigram` | 2,952 | 4 | 328 | 0.4133 | 0.4133 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `isolated_texto` | `rules_valuenorm` | 2,952 | 4 | 328 | 0.3869 | 0.3869 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `isolated_texto` | `bm25_unigram_params†` | 2,952 | 4 | 328 | 0.5537 | 0.5544 | +0.0007 | [+0.0000, +0.0017] | stratified leaf (D-053) | 2 |
+| `isolated_texto` | `tfidf_phrases_replace†` | 2,952 | 4 | 328 | 0.6387 | 0.6387 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
+| `isolated_texto` | `oracleparams†` | 2,952 | 4 | 328 | 0.6717 | 0.6717 | +0.0000 | [+0.0000, +0.0000] | stratified leaf (D-053) | 0 |
 
 ## T4: K2 − ColBERT by type and layer, `single_texto`
 
@@ -323,6 +325,8 @@ On each changed base, the dev queries whose text v2 did not change (`OE_v2_chang
 | v2 | `OE/stacked_texto_v2/structured_pipeline_llm_keytol_hard__OE` | 2,521 | `094557d51ddc1a1f` | `8d1ffd2` | false | `977d40b9a4ae6bf0` |
 | v2 | `OE/stacked_texto_v2/structured_pipeline_llm_keytol_hard_colbert__OE` | 2,521 | `546955de8cccd352` | `858d15c` | false | `977d40b9a4ae6bf0` |
 | v2 | `OE/stacked_texto_v2/structured_pipeline_llm_keytol_soft_colbert__OE` | 2,521 | `cf80f290f876caec` | `858d15c` | false | `977d40b9a4ae6bf0` |
+| v2 | `OE/stacked_texto_v2/structured_pipeline_llm_keytol_valuenorm__OE` | 2,521 | `15266660a1d80374` | `9036805` | false | `977d40b9a4ae6bf0` |
+| v2 | `OE/stacked_texto_v2/structured_pipeline_llm_valuenorm__OE` | 2,521 | `a3f6665555e6a767` | `9036805` | false | `977d40b9a4ae6bf0` |
 | v2 | `OE/stacked_texto_v2/structured_pipeline_oracleparams_valuenorm__OE` | 2,521 | `b6e3031ca83df7e7` | `8d1ffd2` | false | `977d40b9a4ae6bf0` |
 | v2 | `OE/stacked_texto_v2/structured_pipeline_rules_canon_soft_colbert__OE` | 2,521 | `ad1b9094ce999a3b` | `858d15c` | false | `977d40b9a4ae6bf0` |
 | v2 | `OE/stacked_texto_v2/structured_pipeline_rules_valuenorm__OE` | 2,521 | `e9e2acdcc6c8583a` | `8d1ffd2` | false | `977d40b9a4ae6bf0` |
