@@ -1053,10 +1053,10 @@ def write_comparison(ref: dict, this: dict) -> None:
               f"{int(D['same_draw'].sum()):,} on v2.", ""]
     # (a) X1–X3
     lines += ["## X1–X3 (T10), tie-free: the registered readings", "",
-              "| test | arm | v1 estimate | v1 CI (stratified) | v1 Holm p | v1 reading | v1 exceeds noise | "
-              "v2 estimate | v2 CI (stratified) | v2 Holm p | v2 reading | v2 exceeds noise | v2 − v1 | "
+              "| test | arm | v1 leaves | v1 mass | v1 estimate | v1 CI (stratified) | v1 Holm p | v1 reading | v1 exceeds noise | "
+              "v2 leaves | v2 mass | v2 estimate | v2 CI (stratified) | v2 Holm p | v2 reading | v2 exceeds noise | v2 − v1 | "
               "CI (paired draws) | reading moved |",
-              "|---|---|---:|---|---:|---|---|---:|---|---:|---|---|---:|---|---|"]
+              "|---|---|---:|---:|---:|---|---:|---|---|---:|---:|---:|---|---:|---|---|---:|---|---|"]
     by_key = {(r["id"], r["arm"]): r for r in ref["results"]}
     for r in this["results"]:
         r1 = by_key[(r["id"], r["arm"])]
@@ -1064,11 +1064,15 @@ def write_comparison(ref: dict, this: dict) -> None:
         d = v2v.paired_diff(pairable(a), pairable(b))
         exceeds = [("—" if r["id"] == "X3" else ("yes" if abs(x["est"]) > src["noise"][r["arm"]]["diff"][1] else "no"))
                    for x, src in ((a, ref), (b, this))]
-        lines.append(f"| {r['id']} | {name(r['arm'])} | {fd(a['est'])} | {fci(a['s'], True)} | {fp(a['holm'])} | "
-                     f"{a['reading']} | {exceeds[0]} | {fd(b['est'])} | {fci(b['s'], True)} | {fp(b['holm'])} | "
-                     f"**{b['reading']}** | {exceeds[1]} | {v2v.fsd(d['est'])} | {v2v.fci(d['c'])} | "
-                     f"{v2v.moved(a['reading'], b['reading'])} |")
-    lines += ["", "Exceeds noise: |estimate| above the arm's text-different draw-noise bar (T3) of the same version.", "",
+        # A9: n per version — the leaves with mass and the mass itself (X2's denominator is the at-risk mass and
+        # moves with the repaired text; independent audit of A8, F4)
+        lines.append(f"| {r['id']} | {name(r['arm'])} | {a['leaves']:,} | {a['den']:,.2f} | {fd(a['est'])} | {fci(a['s'], True)} | "
+                     f"{fp(a['holm'])} | {a['reading']} | {exceeds[0]} | {b['leaves']:,} | {b['den']:,.2f} | {fd(b['est'])} | "
+                     f"{fci(b['s'], True)} | {fp(b['holm'])} | **{b['reading']}** | {exceeds[1]} | {v2v.fsd(d['est'])} | "
+                     f"{v2v.fci(d['c'])} | {v2v.moved(a['reading'], b['reading'])} |")
+    lines += ["", "Exceeds noise: |estimate| above the arm's text-different draw-noise bar (T3) of the same version. Leaves and "
+              "mass: the leaves carrying weight and the statistic's denominator on each version (X1: leaf-rungs; X3: leaves; X2: "
+              "the at-risk mass Σ h_{k−1}, which moves with the repaired text).", "",
               "### Readings by scoring", "",
               "| test | arm | v1 tie-free | v1 as run | v1 clean | v2 tie-free | v2 as run | v2 clean |",
               "|---|---|---|---|---|---|---|---|"]

@@ -55,7 +55,7 @@ from utils.build_results_s7 import tie_table  # noqa: E402
 from utils.build_results_s8 import SIGN_MIN, strat_weights, cluster_leaf_weights  # noqa: E402
 from utils.build_results_s9 import query_table as s9_query_table  # noqa: E402
 from utils import v2_variant as v2v  # noqa: E402
-from utils.exclusions import item_excluded  # noqa: E402
+from utils.exclusions import item_excluded, stacked_p  # noqa: E402
 from utils.pantry_flags import text_flags  # noqa: E402
 from utils.provenance import sha256_file  # noqa: E402
 from utils.s11_stages import decompose, extractor_for, gold_axes_from  # noqa: E402
@@ -113,11 +113,17 @@ LADDER_RUNG = 5
 #: module-level caches (`_HITS`, `run_meta`, `_perquery`, `Stages`) are keyed on physical names and the v1 and v2
 #: passes of one `--v2` invocation never collide; `_CELLS` and `_LADDERS` are keyed on the data itself.
 V2_MODE = False
+#: A11 (independent audit F1, D-061 §4): `--population stacked_p` restricts `stacked_texto` to STACKED-P
+#: (`exclusions.stacked_p`) in both passes of `--v2`, and writes under `stacked_p/`, as S7 A8 does.
+POPULATION = "all"
 PHYS: dict[str, str] = {b: b for b in BASES}
 #: Reference arms that every base must carry (T5 and T6 read them without an `available` check).
 REQUIRED_REFS = ("bge_m3_colbert", "dense_e5", "bm25_unigram")
-#: Reference arms that exist on v1 bases only: S9 ran them, and S9's v2 re-run (A13) does not repeat them.
+#: S9's reference arms: run by S9 on the v1 bases and, since S9 A13, on `stacked_texto_v2`. Their rank lists carry
+#: scores that encode catalogue order, so no tie is visible to the tie-free scorer and their "tie-free" value is the
+#: as-run reading (independent audit F3): marked ◇ wherever printed.
 V1_ONLY_REFS = ("llm_exact (S9)", "K0 as S9 ran it")
+S9_REFS = V1_ONLY_REFS
 
 
 def set_mapping(v2: bool) -> None:
@@ -131,14 +137,15 @@ def phys(name: str) -> str:
     return PHYS.get(name, name)
 
 
-def configure(v2: bool) -> None:
-    """`--v2`: the mapping, the output directory and the generator label (A7). Called before anything else."""
-    global V2_MODE, OUT, FIGS, GENERATOR
-    V2_MODE = v2
+def configure(v2: bool, population: str = "all") -> None:
+    """`--v2` and `--population` (A7, A11): the mapping, the population, the output directory and the generator
+    label. Called before anything else."""
+    global V2_MODE, POPULATION, OUT, FIGS, GENERATOR
+    V2_MODE, POPULATION = v2, population
     set_mapping(v2)
-    OUT = v2v.out_dir(RESULTS_S11, v2)
+    OUT = v2v.out_dir(RESULTS_S11, v2, population)
     FIGS = OUT / "figures"
-    GENERATOR = v2v.generator_label("src/utils/build_results_s11.py", v2)
+    GENERATOR = v2v.generator_label("src/utils/build_results_s11.py", v2, population)
 
 
 def run_qs(base: str, method: str) -> str:
@@ -210,6 +217,9 @@ def query_table(base: str, dev: frozenset[str]) -> pd.DataFrame:
     if base in E3_BASES:
         return e3_table(base, dev)
     q = s9_query_table(phys(base), dev)
+    if base == "stacked_texto" and POPULATION == "stacked_p":
+        # A11: the STACKED-P filter is on `item_key`, the same on v1 and v2 (D-061 §4, `exclusions.stacked_p`)
+        q = q[stacked_p(list(q.index))]
     q["rung"] = 0
     q["base"] = base
     return q
@@ -516,9 +526,9 @@ def v2_note() -> list[str]:
         return []
     mapped = [f"`{b}` → `{p}`" for b, p in PHYS.items() if b != p]
     return [f"**A7 (D-061):** {', '.join(mapped)} are read on their repaired v2 query sets; the rows keep the logical "
-            "names. The other bases are untouched by the delivery and their runs are read as they are. A4's "
-            "K0-versus-S9 comparison and the S9 reference arms exist on v1 bases only and are printed as absent on "
-            "the v2 ones."]
+            "names. The other bases are untouched by the delivery and their runs are read as they are. S9's reference "
+            "arms and A4's K0-versus-S9 comparison exist on the v1 bases and, since S9 A13, on `stacked_texto_v2`; on "
+            "the other v2 bases they are printed as absent."]
 
 
 def header(title: str, how: list[str]) -> list[str]:
@@ -526,15 +536,19 @@ def header(title: str, how: list[str]) -> list[str]:
 
 
 def footer() -> list[str]:
+    pop = ("" if POPULATION == "all" else
+           " **Population STACKED-P** (A11): the stacked queries outside `OE_stacked_P_exclusion.json` (`exclusions.stacked_p`).")
     return ["", f"Bootstrap: B = {B:,}, seed = {SEED}, percentile intervals at level {1 - ALPHA:.0%}; concept-clustered "
-            "(D-030) unless marked otherwise; on the E3 ladder, concept-stratified leaf bootstrap (D-053). Split `dev`.",
-            "", analysis_stack.stamp()]
+            "(D-030) unless marked otherwise; on the E3 ladder, concept-stratified leaf bootstrap (D-053). Split `dev`." + pop,
+            "◇ S9's reference arms: their rank lists carry scores that encode catalogue order, so the tie-free scorer sees "
+            "no tie and their value is the as-run reading (K0's tie-free reading, by contrast, scores its top tier as one "
+            "tie set).", "", analysis_stack.stamp()]
 
 
 def name(arm: str) -> str:
     if arm in S11_ARMS:
         return f"**{arm}** `{S11_ARMS[arm].replace('structured_pipeline_', '').replace('__OE', '')}`"
-    return f"`{arm}`"
+    return f"`{arm}`" + (" ◇" if arm in S9_REFS else "")
 
 
 def thin(c: dict) -> str:
@@ -963,7 +977,12 @@ def write_comparison(ref: dict, this: dict) -> None:
             "difference below is per query, bootstrapped by concept under the cell's own label. "
             + ", ".join(f"`{b}`" for b in untouched) + " are untouched by the delivery: their runs are read once for "
             "both versions and their rows show a zero difference.")
-    lines = header("Comparison: v2 against v1 (dev, tie-free)", ["Written in the `--v2` mode (A7)."])
+    lines = header("Comparison: v2 against v1 (dev, tie-free)", [
+        "Written in the `--v2` mode (A7).",
+        "Config SHA-256s in the Sources below differ between a v1 and a v2 row of the same arm only by line endings: the "
+        "v1 runs stamped the CRLF encoding of the YAML and the v2 runs the LF encoding of the same git blob "
+        "(`DATASET_DEFECTS.md` H5, third face; `check_run_inputs.py` resolves them modulo line endings).",
+    ])
     lines += v2v.intro("S11", ref_label, this_label, what)
     # (a) the registered tests, in `evaluate`'s order; the reading interval is the concept one, or D-053's on the ladder
     lines += ["## The registered tests (T8), tie-free", "",
@@ -1037,7 +1056,9 @@ def write_comparison(ref: dict, this: dict) -> None:
               "On each changed base, the dev queries whose text v2 did not change (`OE_v2_changes.jsonl`). A tie-free hit "
               "that moves on one of them is not the repair: it is a batch-dependent near-tie (H8: every ColBERT run, and "
               "every arm built on it) or an exact-tie break, and is the floor against which the changed queries' movement "
-              "is read. Item-scored queries.", "",
+              "is read. Item-scored queries. The S11 arms and the reference arms re-run on v2 are both listed (A11): the "
+              "LLM arms' floor is read on its own, and a reference arm's floor is the batch noise that every arm ordered "
+              "by it inherits.", "",
               "| base | dev queries | unchanged | changed | arm | n scored, unchanged | item Acc@1 v1 | item Acc@1 v2 | "
               "tie-free hit moved | as-run hit moved | n scored, changed | item Acc@1 v1 | item Acc@1 v2 | tie-free hit moved |",
               "|---|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
@@ -1045,7 +1066,9 @@ def write_comparison(ref: dict, this: dict) -> None:
         changed = v2v.changed_keys(base)
         keys = pd.Index(this["keys"][base])
         n_changed = int(keys.isin(changed).sum())
-        for arm in S11_ARMS:
+        # A11 (independent audit F2): the reference arms re-run on v2 carry their own floor; ColBERT's moves on
+        # unchanged queries are H8's batch noise and enter every arm built on its order.
+        for arm in [a for a in list(S11_ARMS) + list(REFS) if (a, base) in ref["profile"] and (a, base) in this["profile"]]:
             a, b = ref["profile"][(arm, base)]["hits"], this["profile"][(arm, base)]["hits"]
             cells = []
             for sel in (~b.index.isin(changed), b.index.isin(changed)):
@@ -1081,7 +1104,8 @@ def write_comparison(ref: dict, this: dict) -> None:
 
 def main(argv=None) -> None:
     global STAGES
-    configure(v2v.parse(argv).v2)
+    args = v2v.parse(argv, population=True)
+    configure(args.v2, args.population)
     analysis_stack.require()
     require_inputs()
     OUT.mkdir(parents=True, exist_ok=True)
