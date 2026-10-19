@@ -3,7 +3,7 @@
 The single living status file for this branch. Always current, under 2 KB. Dated snapshots
 belong in `archive/`. Updated at every sprint transition and whenever something blocks.
 
-**Last updated:** 2026-10-18 (**2026-10-16 delivery taken in**; v2 amendments recorded, generators ready, batch 1 of the v2 runs in progress; S14 BT design proposed) · **Updated by:** Claude
+**Last updated:** 2026-10-19 (**v2 re-runs of S4–S8 and S11 done and audited**; S9's v2 generation in progress; S14 BT design proposed) · **Updated by:** Claude
 
 ---
 
@@ -29,8 +29,7 @@ runs**; the pair is archived under `runs/_archive/dirty/2026-10-18/`, not delete
 `run_v2_s9.sh` (25 runs) and `run_v2_s11.sh caches|A|B|det` (20 runs). **S14 (BT) is proposed, not frozen**
 (`sprints/SPRINT_S14_DESIGN.md`): ID S14 / S92 and the oracle-arm handling are César's; BT `parameters` hold the
 gold's values, not the text's variants (`DELIVERIES.md`). S12's registration list is in `RESEARCH_PLAN.md` §S12;
-S10's request is amended. **Next:** tables `--v2` for S7 (and STACKED-P), S8, S4/S5/S6, S9, S11 as the runs land;
-report sections; a fresh-session audit per amendment; César's rulings on D-061 and S14.
+S10's request is amended. **Done 2026-10-19:** 72 + 20 clean v2 runs; `results/S{4,5,6,7,8,11}/v2/` (and S7 STACKED-P, v1 and v2) generated twice byte-identically; report sections written; six fresh-context audits, all PASS WITH FINDINGS, resolved (S7 A10, S11 A10). **What moved on v2:** no registered reading of S4–S7, S11 (21 / 15 / 21 / 11 unchanged); S8's X2 for `bm25_unigram` and `bge_m3_dense` crosses the α boundary (supported → not supported) within the bootstrap's resolution, H4 label unchanged; K2 − ColBERT on stacked +0.3143 → +0.2967 (−0.0176 [−0.0301, −0.0029]) and on `template_paraphrase` +0.2403 → +0.2219, the method contribution still *established on dev*; ColBERT recovers +0.0152 on stacked, the lexical arms are unmoved. **In progress:** S9 A13 (C/H/W generation for `stacked_texto_v2`, caches seeded from S9's, A14; then 25 runs, tables, report section, audit). **Debt from the audits (src, between batches):** T9's `prompt_source()` sentence and digest labels (S11 F3); D-053's interval in the S11 comparison on E3 bases (F5); S4 T7's rule for additive notebook hooks (F1); `check_run_inputs.py` line-ending-blind. **Next:** S9 v2 tables and audit; the src debt; César's rulings on D-061 and S14 (ID, oracle arms).
 
 **Known drifts found 2026-10-18 (H5, not fixed):** `docs/synthetic-oe/SPLITS.md` is CRLF in the working copy and LF
 in git, so `sha256_file` prints `abac65f7…` where S11's T9 recorded `8d520eb4…`; and `runs/_archive/S2/SHA256SUMS`
