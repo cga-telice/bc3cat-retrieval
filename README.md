@@ -142,10 +142,16 @@ Jupyter is then at http://localhost:8888 (token set by `JUPYTER_TOKEN` in
 
 ### Data
 
-Download the BC3CAT dataset and place its processed files in `data/processed/`.
-The code reads `OEB_short_feats.parquet`, `OEB_long_feats.parquet`,
-`OEB_features_meta.json`, `OEB_texto.json`, `OEB_resumen.json` and
-`OEB_concept_schema.json`.
+Place these files in `data/processed/`:
+
+- `OEB_short_feats.parquet` and `OEB_long_feats.parquet`, from the
+  [BC3CAT dataset](https://doi.org/10.5281/zenodo.20277801).
+- `OEB_features_meta.json`, `OEB_texto.json`, `OEB_resumen.json` and
+  `OEB_concept_schema.json`, from `dataset_files/` in the data archive of
+  [this release](https://doi.org/10.5281/zenodo.23966845). In the dataset archive
+  the three JSON files with catalog text and metadata are Git LFS pointers, and the
+  schema is not included; `python -m src.pipeline.schema_extractor` regenerates it
+  from the dataset's `OEB_long_norm.parquet`.
 
 ### Running a method
 
