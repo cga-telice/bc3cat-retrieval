@@ -1,0 +1,22 @@
+# Exported 2026-10-12 from the code and executed logs that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: hyde
+  name: hyde__bge_m3_colbert__query
+  impl: run_hyde
+  params:
+    retriever_index: bge_m3_colbert
+    query_representation: query
+    query_representation_desc: original query text (baseline on the same subsample)
+    k: 100
+    batch: 500
+    text_preparation: 'by the index''s meta.json text_field: text_word -> text_word(), text_norm -> normalize_text()
+      (same functions as src/data.ipynb)'
+    query_sample: /work/benchmark/query_samples/OEB_query_sample_hyde_1976.json
+    query_sample_sha256: 4e9b933b3f08970c49defb4436d9cd2e7d5b0f61f110aa1098ea9897266b5d13
+source:
+  script: scripts/hyde_generate.py (generation); scripts/run_hyde.py (retrieval and metrics)
+  metrics: eval/hyde/results.json -> results['bge_m3_colbert::query']

@@ -1,0 +1,79 @@
+{
+  "n_queries": 16590,
+  "n_boot": 10000,
+  "seed": 0,
+  "pairs": [
+    {
+      "a": "bm25_unigram_params__k1-0.60__b-0.35",
+      "b": "dense_e5",
+      "a_label": "BM25 + parameter phrases",
+      "b_label": "multilingual-e5-base",
+      "acc_a": 0.9736588306208559,
+      "acc_b": 0.13628691983122362,
+      "ci_low": 0.8315852923447861,
+      "ci_high": 0.8431585292344786,
+      "p_raw": 0.0,
+      "p_holm": 0.0
+    },
+    {
+      "a": "structured_pipeline_rules",
+      "b": "dense_e5",
+      "a_label": "Rule-based structured",
+      "b_label": "multilingual-e5-base",
+      "acc_a": 0.9033152501506931,
+      "acc_b": 0.13628691983122362,
+      "ci_low": 0.7604581072935503,
+      "ci_high": 0.7735382760699216,
+      "p_raw": 0.0,
+      "p_holm": 0.0
+    },
+    {
+      "a": "bm25_unigram_params__k1-0.60__b-0.35",
+      "b": "bge_m3_colbert",
+      "a_label": "BM25 + parameter phrases",
+      "b_label": "BGE-M3 ColBERT",
+      "acc_a": 0.9736588306208559,
+      "acc_b": 0.4479807112718505,
+      "ci_low": 0.5175406871609404,
+      "ci_high": 0.5334538878842676,
+      "p_raw": 0.0,
+      "p_holm": 0.0
+    },
+    {
+      "a": "structured_pipeline_rules",
+      "b": "bge_m3_colbert",
+      "a_label": "Rule-based structured",
+      "b_label": "BGE-M3 ColBERT",
+      "acc_a": 0.9033152501506931,
+      "acc_b": 0.4479807112718505,
+      "ci_low": 0.4470162748643761,
+      "ci_high": 0.46377335744424353,
+      "p_raw": 0.0,
+      "p_holm": 0.0
+    },
+    {
+      "a": "bge_m3_colbert",
+      "b": "dense_e5",
+      "a_label": "BGE-M3 ColBERT",
+      "b_label": "multilingual-e5-base",
+      "acc_a": 0.4479807112718505,
+      "acc_b": 0.13628691983122362,
+      "ci_low": 0.3037356841470766,
+      "ci_high": 0.319831223628692,
+      "p_raw": 0.0,
+      "p_holm": 0.0
+    },
+    {
+      "a": "bm25_unigram_params__k1-0.60__b-0.35",
+      "b": "structured_pipeline_rules",
+      "a_label": "BM25 + parameter phrases",
+      "b_label": "Rule-based structured",
+      "acc_a": 0.9736588306208559,
+      "acc_b": 0.9033152501506931,
+      "ci_low": 0.06612417118746233,
+      "ci_high": 0.07462326702833032,
+      "p_raw": 0.0,
+      "p_holm": 0.0
+    }
+  ]
+}

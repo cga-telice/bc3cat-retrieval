@@ -1,0 +1,148 @@
+# Exported 2026-10-12 from the code and executed logs that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: hybrid
+  name: hyb_bm25_uni__bge_colbert__tfidf_char_3_5
+  impl: hybrid
+  params:
+    indexes:
+    - bm25_unigram
+    - bge_m3_colbert
+    - tfidf_char_3_5
+    topK_per_ranker: 100
+    normalization: minmax
+    final_topK: 100
+    query_sample: /work/benchmark/query_samples/OEB_query_sample_test_16590.json
+    query_sample_sha256: 884deade9d3c275b4c4fe325240ff5f0d46a2c9762b2ba68b8d3bfd7b9c36587
+sweep:
+  fusion: weighted
+  selection_criterion: acc@1 on the test sample (first maximum in sweep order)
+  weight_candidates:
+    generator: uniform; single-dominant w in {0.5, 0.7}; pair-dominant w in {0.4, 0.45} (R>=3); 16 Dirichlet(alpha=1)
+      samples from numpy.random.default_rng(1337); deduplicated after rounding to 2 decimals
+    rankers:
+    - bge_m3_colbert
+    - bm25_unigram
+    - tfidf_char_3_5
+    numpy: 1.26.4
+    n: 29
+    vectors:
+    - - 0.3333333333333333
+      - 0.3333333333333333
+      - 0.3333333333333333
+    - - 0.5
+      - 0.25
+      - 0.25
+    - - 0.7
+      - 0.15000000000000002
+      - 0.15000000000000002
+    - - 0.25
+      - 0.5
+      - 0.25
+    - - 0.15000000000000002
+      - 0.7
+      - 0.15000000000000002
+    - - 0.25
+      - 0.25
+      - 0.5
+    - - 0.15000000000000002
+      - 0.15000000000000002
+      - 0.7
+    - - 0.4
+      - 0.4
+      - 0.19999999999999996
+    - - 0.45
+      - 0.45
+      - 0.09999999999999998
+    - - 0.4
+      - 0.19999999999999996
+      - 0.4
+    - - 0.45
+      - 0.09999999999999998
+      - 0.45
+    - - 0.19999999999999996
+      - 0.4
+      - 0.4
+    - - 0.09999999999999998
+      - 0.45
+      - 0.45
+    - - 0.31556453870286505
+      - 0.17486825187255248
+      - 0.5095672094245824
+    - - 0.5178984815533153
+      - 0.37268216589681313
+      - 0.10941935254987166
+    - - 0.19267750841626535
+      - 0.4810307058544989
+      - 0.3262917857292357
+    - - 0.043891330275262735
+      - 0.10215283135804186
+      - 0.8539558383666954
+    - - 0.3137850342040292
+      - 0.0824635559802119
+      - 0.6037514098157589
+    - - 0.07140686299217501
+      - 0.005960792185406279
+      - 0.9226323448224186
+    - - 0.011575503820768869
+      - 0.8785111067197521
+      - 0.10991338945947907
+    - - 0.05080079655416826
+      - 0.22022364166026714
+      - 0.7289755617855647
+    - - 0.46466881869534077
+      - 0.028088214329206832
+      - 0.5072429669754523
+    - - 0.4564282661407269
+      - 0.356983122218361
+      - 0.1865886116409121
+    - - 0.026091226188042518
+      - 0.3392543924504135
+      - 0.6346543813615441
+    - - 0.5760695723805369
+      - 0.33666010445516303
+      - 0.08727032316430001
+    - - 0.14787908108694073
+      - 0.11152942282678416
+      - 0.7405914960862751
+    - - 0.6322173258826937
+      - 0.3277489549481114
+      - 0.04003371916919496
+    - - 0.14610403623063128
+      - 0.8482075014751802
+      - 0.005688462294188669
+    - - 0.20448025666179187
+      - 0.6661307795535167
+      - 0.12938896378469136
+  beta_exact_grid:
+  - 0.0
+  - 0.05
+  - 0.1
+  - 0.15
+  beta_overlap_grid:
+  - 0.0
+  - 0.05
+  n_configurations: 232
+chosen:
+  weights:
+    bge_m3_colbert: 0.011575503820768869
+    bm25_unigram: 0.8785111067197521
+    tfidf_char_3_5: 0.10991338945947907
+  numeric_bonus:
+    beta_exact: 0.0
+    beta_overlap: 0.05
+  sweep_row: 153
+  logged_metrics_item:
+    acc@1: 0.8926
+    recall@5: 0.9436
+    recall@10: 0.9554
+    mrr@10: 0.9101
+source:
+  notebook: src/hybrid.ipynb
+  script: scripts/run_hybrids.py (HYBRIDS); scripts/export_best_fusion.py (persists the chosen fusion)
+  executed_log: .claude/worktrees/structured-retrieval-type-5aeb7f/logs/hybrid__hyb_bm25_uni__bge_colbert__tfidf_char_3_5__test.ipynb
+  note: Candidate vectors re-generated with the notebook's code and seed; they match all 232 logged sweep
+    rows (rounded to 2 decimals) in order.

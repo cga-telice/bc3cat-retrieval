@@ -1,0 +1,11 @@
+{
+  "model": "Alibaba-NLP/gte-multilingual-base",
+  "n_queries": 2000,
+  "n_docs": 47513,
+  "acc@1": {
+    "mean__prefix": 0.0,
+    "cls__prefix": 0.0525,
+    "mean__noprefix": 0.0,
+    "cls__noprefix": 0.097
+  }
+}

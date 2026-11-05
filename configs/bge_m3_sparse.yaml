@@ -1,0 +1,33 @@
+#/work/configs/bge_m3_sparse.yaml
+
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_feats: "{data_dir}/{collection}_short_feats.parquet"
+  long_feats:  "{data_dir}/{collection}_long_feats.parquet"
+  features_meta: "{data_dir}/{collection}_features_meta.json"
+
+method:
+  family: sparse         # retrieval family (BM25, tfidf, dense, sparse, etc.)
+  name: bge_m3_sparse    # run name (used as key in registry.json and /runs/)
+  impl: bge_m3_sparse    # Python module in src/index_builders + src/retrievers
+  save_as: bge_m3_sparse # folder name under /index/
+  params:
+    mode: sparse         # tell the builder/retriever to request sparse encodings
+    analyzer: word       # analyzer type (parity with BM25/TF-IDF configs)
+    lowercase: true
+    token_pattern: "(?u)\\b\\w+\\b"
+    strip_accents: unicode
+    api_url: "http://host.docker.internal:8800/encode_batch"
+    batch_size: 64
+    timeout: 300
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json

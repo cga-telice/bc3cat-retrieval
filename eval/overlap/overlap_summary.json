@@ -1,0 +1,11 @@
+{
+  "n_pairs": 47513,
+  "lexical_coverage_mean": 0.94101257711579,
+  "lexical_coverage_median": 0.9473684210526315,
+  "lexical_fully_contained_pct": 7.793656472965294,
+  "queries_with_numbers_pct": 99.82531096752467,
+  "numbers_per_query_mean": 2.8825005270925574,
+  "numeric_coverage_mean": 0.9996204933586338,
+  "numeric_fully_contained_pct": 99.96204933586338,
+  "query_tokens_mean": 19.10346641971671
+}

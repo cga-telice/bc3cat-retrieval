@@ -1,0 +1,7 @@
+Highlights
+
+• BC3CAT: open IR benchmark on a 47,513-item parametric railway construction catalog
+• 142 configurations, lexical to structured, scored at both item and family level
+• Zero-shot dense models: 96–99.8% family accuracy, only 7.0–44.8% on the exact variant
+• BM25 with BC3 parameter tokens: 97.4% Acc@1, 52.6 points above the best neural model
+• Numeric mismatches cause ~98% of errors; cross-encoder reranking degrades top rankers

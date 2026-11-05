@@ -1,0 +1,62 @@
+{
+  "seed": 20260910,
+  "n": 500,
+  "results": {
+    "rules": {
+      "queries": 500,
+      "axes": 2486,
+      "axis_correct": 0.9802896218825422,
+      "axis_abstained": 0.014481094127111826,
+      "axis_wrong": 0.005229283990345938,
+      "query_complete": 0.902
+    },
+    "classifier": {
+      "queries": 500,
+      "axes": 2486,
+      "axis_correct": 0.7614641995172968,
+      "axis_abstained": 0.0,
+      "axis_wrong": 0.23853580048270315,
+      "query_complete": 0.224
+    },
+    "bio_tagger": {
+      "queries": 500,
+      "axes": 2486,
+      "axis_correct": 0.45414320193081253,
+      "axis_abstained": 0.5414320193081255,
+      "axis_wrong": 0.004424778761061947,
+      "query_complete": 0.008
+    }
+  },
+  "tiers": {
+    "structured_pipeline_rules": {
+      "queries": 16590,
+      "mean_size": 1.317781796262809,
+      "singleton_share": 0.9110307414104882,
+      "gold_in_set": 0.966787221217601
+    },
+    "structured_pipeline_phi4_classify": {
+      "queries": 16590,
+      "mean_size": 0.9928872814948765,
+      "singleton_share": 0.9751657625075346,
+      "gold_in_set": 0.8777576853526221
+    },
+    "structured_pipeline": {
+      "queries": 16590,
+      "mean_size": 2.601627486437613,
+      "singleton_share": 0.8095238095238095,
+      "gold_in_set": 0.9754068716094032
+    },
+    "structured_pipeline_classifier": {
+      "queries": 16590,
+      "mean_size": 0.9779385171790235,
+      "singleton_share": 0.9770343580470163,
+      "gold_in_set": 0.20940325497287524
+    },
+    "structured_pipeline_bio_tagger": {
+      "queries": 16590,
+      "mean_size": 65.54002411091018,
+      "singleton_share": 0.005123568414707656,
+      "gold_in_set": 0.6945750452079567
+    }
+  }
+}

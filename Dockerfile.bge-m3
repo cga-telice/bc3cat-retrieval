@@ -1,0 +1,31 @@
+# CUDA-ready base with PyTorch preinstalled (simplest path)
+FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-runtime
+
+# Optional: faster downloads for HF model files
+ENV HF_HOME=/hf-cache \
+    TRANSFORMERS_CACHE=/hf-cache/transformers \
+    HF_DATASETS_CACHE=/hf-cache/datasets \
+    XDG_CACHE_HOME=/hf-cache \
+    HF_HUB_ENABLE_HF_TRANSFER=1
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git build-essential && rm -rf /var/lib/apt/lists/*
+
+# Python deps: FlagEmbedding + FAISS (CPU is fine for 40k docs)
+# (BGE encoding will use your GPU; FAISS can stay CPU for now)
+
+# Upgrade pip and PyTorch (CUDA 12.1 wheels)
+RUN pip install -U pip && \
+    pip install --upgrade --index-url https://download.pytorch.org/whl/cu126 \
+      torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0
+
+# App deps
+RUN pip install "FlagEmbedding>=1.2.11" faiss-cpu fastapi uvicorn hf_transfer
+
+WORKDIR /app
+
+COPY apis/bge-m3/serve.py /app/
+
+EXPOSE 8000
+CMD ["uvicorn", "serve:app", "--host", "0.0.0.0", "--port", "8000"]

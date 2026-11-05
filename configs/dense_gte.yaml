@@ -1,0 +1,55 @@
+# Dense GTE (Spanish/multilingual)
+collection: OEB
+
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+
+inputs:
+  short_text_path: "{data_dir}/{collection}_resumen.json"
+  long_text_path: "{data_dir}/{collection}_texto.json"
+
+
+method:
+  family: dense
+  name: dense_gte
+  impl: dense_gte
+  params:
+    model_name: Alibaba-NLP/gte-multilingual-base
+    batch_size: 256
+    max_length: 512
+    normalize: true
+    # Docs (applied at index time):
+    # gte-multilingual-base no se entreno con prefijos asimetricos estilo E5.
+    # Aplicarselos degradaba el resultado.
+    add_doc_prefix: false
+    doc_prefix: ""
+    # Queries (applied at retrieval time):
+    add_query_prefix: false
+    query_prefix: ""
+    device: "cuda"
+    trust_remote_code: true
+    # El modelo usa CLS; el codigo aplicaba mean incondicionalmente.
+    pooling: cls
+    # sentence-transformers 2.2.2 no admite trust_remote_code y no puede
+    # cargar este modelo: se fuerza el camino explicito de transformers.
+    force_backend: hf
+
+index:
+  # Where the index artifacts will be written (same layout as lexical methods)
+  output_dir: /index/dense_gte
+
+builder:
+  module: src.index_builders.dense_gte
+
+retriever:
+  module: src.retrievers.dense_gte
+  class: DenseSearcher
+  params:
+    topk: 100
+
+io:
+  data_dirname: data
+  mapping_file: mapping.jsonl
+  fields_file: fields.json
+  meta_file: meta.json

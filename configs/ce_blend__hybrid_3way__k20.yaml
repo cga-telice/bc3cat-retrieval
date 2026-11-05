@@ -1,0 +1,32 @@
+# Exported 2026-10-12 from the code and executed logs that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: reranking
+  name: ce_blend__hybrid_3way__k20
+  impl: cross_encoder
+  params:
+    input_run_dir: /work/runs/hybrids/hyb_bm25_uni__bge_colbert__tfidf_char_3_5
+    k_prime: 20
+    ce_model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+    max_length: 320
+    batch_size: 64
+    use_fp16: true
+    device: cuda
+    query_text: /work/data/processed/OEB_resumen.json (short raw text)
+    doc_text: /work/data/processed/OEB_texto.json (long raw text)
+    strategy: blend
+    lambda_blend: 0.6
+    blend_formula: lambda * CE + (1 - lambda) * first-stage score
+base: chosen weighted fusion of hyb_bm25_uni__bge_colbert__tfidf_char_3_5 (exported by scripts/export_best_fusion.py)
+logged_metrics_item:
+  acc@1: 0.7024
+  recall@5: 0.9491
+  recall@10: 0.97
+  mrr@10: 0.814
+source:
+  notebook: src/cross_encoder.ipynb (CFG)
+  script: scripts/run_cross_encoder.py (SYSTEMS, DEPTHS)
+  executed_log: .claude/worktrees/structured-retrieval-type-5aeb7f/logs/ce__hybrid_3way__k20.ipynb

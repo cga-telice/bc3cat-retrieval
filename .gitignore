@@ -1,0 +1,106 @@
+# Ignore all files in milvus, etcd, and minio folders
+milvus/
+etcd/
+minio/
+
+# Ignore Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore data files
+*.pkl
+*.json
+*.npz
+*.csv
+*.parquet
+*.gz
+
+# Data / cache
+data/
+data/raw/
+data/intermediate/
+resultados.jsonl
+notebooks/resultados.jsonl
+runs/
+index/
+data/hf_cache/
+hf_cache/
+sandbox/
+notebooks/.ipynb_checkpoints/
+*.ipynb_checkpoints/
+__pycache__/
+hf-cache/
+**.ipynb_checkpoints/
+
+
+# Artefacts/models
+*.npz
+*.pkl
+*.pt
+*.onnx
+*.onnx_data
+*.bin
+*.model
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore virtual environment
+venv/
+env/
+
+# Ignore compiled files
+*.class
+*.pyc
+*.o
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.swp
+*.bak
+*.orig
+
+# Ignore Ollama-related files
+ollama/
+*.ollama
+
+# Ignore coda and torch folders
+coda/
+torch/
+# Las fuentes del manuscrito y los artefactos de reproducibilidad deben
+# versionarse pese a los patrones globales *.json / *.csv de más arriba.
+!paper/**
+!benchmark/**
+!docs/**
+
+# Subproductos de compilación LaTeX
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/*.toc
+paper/*.synctex.gz
+paper/*.fdb_latexmk
+paper/*.fls
+.cache/
+paper/*.pdf
+paper/*.log
+paper/*.spl
+docker-compose.override.yml
+
+# Paquete de envío a la revista (lo genera scripts/build_submission.py)
+submission/
+
+# Herramientas locales y temporales de pytest
+.serena/
+.pytest-tmp/
+**/.pytest-tmp/
+Claude outputs/
+
+# Metadatos de Zenodo para los releases (la regla *.json de arriba lo excluiría)
+!.zenodo.json

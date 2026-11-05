@@ -1,0 +1,43 @@
+{
+  "title": "BC3CAT-RETRIEVAL: retrieval and evaluation code for the BC3CAT parametric construction catalog benchmark",
+  "upload_type": "software",
+  "description": "<p>Code, configurations and evaluation artefacts of the study <em>A Systematic Comparative Study of Retrieval Methods for Parametric Construction Catalogs: From Lexical to Neural Approaches</em>. The benchmark is built from the 47,513 items of subcategory OEB of the ADIF railway price catalog, and every system is scored at two levels: the exact parametric variant (item) and its template family (parent).</p><p>The release contains the lexical, neural, hybrid, reranking, HyDE and structured-matching implementations, the YAML configuration of every run, the versioned query sets (16,590 test and 5,000 validation queries, identified by SHA-256), the dual item/parent evaluator, the scripts that build the manuscript's tables and figures from the run artefacts, and the manuscript source.</p><p>The catalog with its parsed parameters and the BC3/FIEBDC conversion tools are released separately as the BC3CAT dataset.</p>",
+  "creators": [
+    {
+      "name": "González-Alvarez, Cesáreo",
+      "affiliation": "Universidad de León; Telice S.A."
+    },
+    {
+      "name": "Fernández-Robles, Laura",
+      "affiliation": "Universidad de León"
+    },
+    {
+      "name": "Alegre, Enrique",
+      "affiliation": "Universidad de León"
+    },
+    {
+      "name": "Castejón-Limas, Manuel",
+      "affiliation": "Universidad de León"
+    }
+  ],
+  "license": "MIT",
+  "access_right": "open",
+  "language": "eng",
+  "keywords": [
+    "information retrieval",
+    "parametric construction catalog",
+    "BM25",
+    "dense retrieval",
+    "domain knowledge",
+    "benchmark dataset",
+    "BC3/FIEBDC"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.20277800",
+      "relation": "requires",
+      "resource_type": "dataset",
+      "scheme": "doi"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+# Exported 2026-10-12 from the code and executed logs that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: reranking
+  name: ce_replace__bge_m3_colbert__k100
+  impl: cross_encoder
+  params:
+    input_run_dir: /work/runs/bge_m3_colbert
+    k_prime: 100
+    ce_model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+    max_length: 320
+    batch_size: 64
+    use_fp16: true
+    device: cuda
+    query_text: /work/data/processed/OEB_resumen.json (short raw text)
+    doc_text: /work/data/processed/OEB_texto.json (long raw text)
+    strategy: replace
+base: run bge_m3_colbert
+logged_metrics_item:
+  acc@1: 0.2977
+  recall@5: 0.6574
+  recall@10: 0.7303
+  mrr@10: 0.4515
+source:
+  notebook: src/cross_encoder.ipynb (CFG)
+  script: scripts/run_cross_encoder.py (SYSTEMS, DEPTHS)
+  executed_log: .claude/worktrees/structured-retrieval-type-5aeb7f/logs/ce__bge_m3_colbert__k100.ipynb

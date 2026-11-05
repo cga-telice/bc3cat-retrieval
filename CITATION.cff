@@ -1,0 +1,67 @@
+cff-version: 1.2.0
+message: >-
+  If you use this code, please cite the article below and the software release
+  you used (its version DOI is on Zenodo).
+title: >-
+  BC3CAT-RETRIEVAL: retrieval and evaluation code for the BC3CAT parametric
+  construction catalog benchmark
+type: software
+authors:
+  - family-names: González-Alvarez
+    given-names: Cesáreo
+    affiliation: Universidad de León; Telice S.A.
+    email: cgonza06@estudiantes.unileon.es
+  - family-names: Fernández-Robles
+    given-names: Laura
+    affiliation: Universidad de León
+  - family-names: Alegre
+    given-names: Enrique
+    affiliation: Universidad de León
+  - family-names: Castejón-Limas
+    given-names: Manuel
+    affiliation: Universidad de León
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.20277823
+    description: Concept DOI of the software (resolves to the latest release).
+repository-code: https://github.com/cga-telice/bc3cat-retrieval
+license: MIT
+keywords:
+  - information retrieval
+  - parametric construction catalog
+  - BM25
+  - dense retrieval
+  - domain knowledge
+  - benchmark dataset
+references:
+  - type: data
+    title: >-
+      BC3CAT: A benchmark dataset for information retrieval on Spanish
+      parametric construction catalogs
+    authors:
+      - family-names: González-Alvarez
+        given-names: Cesáreo
+      - family-names: Fernández-Robles
+        given-names: Laura
+      - family-names: Alegre
+        given-names: Enrique
+      - family-names: Castejón-Limas
+        given-names: Manuel
+    doi: 10.5281/zenodo.20277800
+    repository-code: https://github.com/cga-telice/bc3cat-dataset
+preferred-citation:
+  type: article
+  status: submitted
+  title: >-
+    A Systematic Comparative Study of Retrieval Methods for Parametric
+    Construction Catalogs: From Lexical to Neural Approaches
+  authors:
+    - family-names: González-Alvarez
+      given-names: Cesáreo
+    - family-names: Fernández-Robles
+      given-names: Laura
+    - family-names: Alegre
+      given-names: Enrique
+    - family-names: Castejón-Limas
+      given-names: Manuel
+  year: 2026

@@ -1,0 +1,32 @@
+# Exported 2026-10-12 from the code and executed logs that produced this run; nothing was re-run.
+collection: OEB
+paths:
+  data_dir: /work/data/processed
+  index_root: /work/index
+method:
+  family: reranking
+  name: ce_blend__bm25_unigram__k20
+  impl: cross_encoder
+  params:
+    input_run_dir: /work/runs/bm25_unigram
+    k_prime: 20
+    ce_model: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+    max_length: 320
+    batch_size: 64
+    use_fp16: true
+    device: cuda
+    query_text: /work/data/processed/OEB_resumen.json (short raw text)
+    doc_text: /work/data/processed/OEB_texto.json (long raw text)
+    strategy: blend
+    lambda_blend: 0.6
+    blend_formula: lambda * CE + (1 - lambda) * first-stage score
+base: run bm25_unigram (Acc@1 0.8691, same as bm25_unigram__k1-0.80__b-0.35)
+logged_metrics_item:
+  acc@1: 0.7644
+  recall@5: 0.9455
+  recall@10: 0.9638
+  mrr@10: 0.8457
+source:
+  notebook: src/cross_encoder.ipynb (CFG)
+  script: scripts/run_cross_encoder.py (SYSTEMS, DEPTHS)
+  executed_log: .claude/worktrees/structured-retrieval-type-5aeb7f/logs/ce__bm25_unigram__k20.ipynb
